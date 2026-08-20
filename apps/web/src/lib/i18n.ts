@@ -4,6 +4,24 @@ export type Locale = (typeof LOCALES)[number];
 
 export const DEFAULT_LOCALE: Locale = 'zh-CN';
 
+export function getTelemetryModeLabel(
+  mode: 'none' | 'partial' | 'instrumented',
+  locale: Locale,
+): string {
+  const labels = {
+    none: { 'zh-CN': '仅平台边界', en: 'Boundary only' },
+    instrumented: {
+      'zh-CN': '参与者主动导出',
+      en: 'Participant exported',
+    },
+    partial: {
+      'zh-CN': '参与者采样导出',
+      en: 'Sampled participant export',
+    },
+  } as const;
+  return labels[mode][locale];
+}
+
 export function isLocale(value: string): value is Locale {
   return LOCALES.includes(value as Locale);
 }
@@ -87,7 +105,7 @@ const zhCN = {
     heading: '演练运行',
     lede: '每个 Run 固定场景版本和团队编制，并聚合多条 Trace，而不是伪造一条超长调用链。',
     agents: 'Agent Session',
-    coverage: '边界 / 参与者覆盖',
+    coverage: '遥测完整性信号',
     open: '查看协作 Trace',
   },
   trace: {
@@ -122,7 +140,10 @@ const zhCN = {
     coverage: 'Telemetry 覆盖率',
     boundaryCoverage: '平台边界覆盖',
     participantMode: '参与者遥测模式',
-    participantCoverage: '参与者遥测覆盖',
+    platformSpans: '平台观测 Span',
+    participantSpans: '参与者上报 Span',
+    droppedSpans: '丢弃 Span',
+    lateSpans: '迟到 Span',
     source: '观测来源',
     trust: '信任范围',
     platformObserved: '平台边界观测',
@@ -248,7 +269,7 @@ const en: typeof zhCN = {
     heading: 'Exercise runs',
     lede: 'Every Run pins a scenario version and team roster, and aggregates multiple traces instead of inventing one oversized call tree.',
     agents: 'Agent Sessions',
-    coverage: 'Boundary / participant coverage',
+    coverage: 'Telemetry completeness signals',
     open: 'Observe collaboration trace',
   },
   trace: {
@@ -284,7 +305,10 @@ const en: typeof zhCN = {
     coverage: 'Telemetry coverage',
     boundaryCoverage: 'Platform boundary coverage',
     participantMode: 'Participant telemetry mode',
-    participantCoverage: 'Participant telemetry coverage',
+    platformSpans: 'Platform-observed spans',
+    participantSpans: 'Participant-reported spans',
+    droppedSpans: 'Dropped spans',
+    lateSpans: 'Late spans',
     source: 'Observation source',
     trust: 'Trust scope',
     platformObserved: 'Platform boundary observed',

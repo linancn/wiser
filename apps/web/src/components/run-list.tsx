@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { getDictionary, type Locale } from '@/lib/i18n';
+import { getDictionary, getTelemetryModeLabel, type Locale } from '@/lib/i18n';
 import { exerciseRuns, getScenarioById } from '@/lib/platform';
 
 export function RunList({ locale }: { locale: Locale }) {
@@ -49,8 +49,15 @@ export function RunList({ locale }: { locale: Locale }) {
                 <div>
                   <dt>{dictionary.runList.coverage}</dt>
                   <dd>
-                    B {Math.round(run.boundaryCoverage * 100)}% / P{' '}
-                    {Math.round(run.participantTelemetry.coverage * 100)}%
+                    B {Math.round(run.boundaryCoverage * 100)}% · P{' '}
+                    {getTelemetryModeLabel(
+                      run.participantTelemetry.mode,
+                      locale,
+                    )}{' '}
+                    · {dictionary.trace.droppedSpans}{' '}
+                    {run.participantTelemetry.droppedSpanCount} ·{' '}
+                    {dictionary.trace.lateSpans}{' '}
+                    {run.participantTelemetry.lateSpanCount}
                   </dd>
                 </div>
               </dl>

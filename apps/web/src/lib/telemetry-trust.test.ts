@@ -7,6 +7,17 @@ describe('telemetry trust projection', () => {
     const run = getRunById('run-yongding-spring-042');
     expect(run?.boundaryCoverage).toBe(1);
     expect(run?.participantTelemetry.mode).toBe('instrumented');
+    expect(run?.participantTelemetry.platformObservedSpanCount).toBeGreaterThan(
+      0,
+    );
+    expect(
+      run?.participantTelemetry.participantReportedSpanCount,
+    ).toBeGreaterThan(0);
+    expect(run?.participantTelemetry.droppedSpanCount).toBeGreaterThanOrEqual(
+      0,
+    );
+    expect(run?.participantTelemetry.lateSpanCount).toBeGreaterThanOrEqual(0);
+    expect(run?.participantTelemetry).not.toHaveProperty('coverage');
 
     const platformSpans = run?.spans.filter(
       (span) => span.telemetryTrust === 'platform_observed',

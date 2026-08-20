@@ -127,7 +127,10 @@ export interface ExerciseRun {
   readonly boundaryCoverage: number;
   readonly participantTelemetry: {
     readonly mode: 'none' | 'partial' | 'instrumented';
-    readonly coverage: number;
+    readonly platformObservedSpanCount: number;
+    readonly participantReportedSpanCount: number;
+    readonly droppedSpanCount: number;
+    readonly lateSpanCount: number;
   };
   readonly participants: readonly AgentSession[];
   readonly spans: readonly ExerciseSpan[];
@@ -920,7 +923,14 @@ export const exerciseRuns: readonly ExerciseRun[] = [
     boundaryCoverage: 1,
     participantTelemetry: {
       mode: 'instrumented',
-      coverage: 0.82,
+      platformObservedSpanCount: yongdingSpans.filter(
+        ({ telemetryTrust }) => telemetryTrust === 'platform_observed',
+      ).length,
+      participantReportedSpanCount: yongdingSpans.filter(
+        ({ telemetryTrust }) => telemetryTrust === 'participant_reported',
+      ).length,
+      droppedSpanCount: 2,
+      lateSpanCount: 1,
     },
     participants: yongdingParticipants,
     spans: yongdingSpans,
@@ -937,7 +947,10 @@ export const exerciseRuns: readonly ExerciseRun[] = [
     boundaryCoverage: 0.55,
     participantTelemetry: {
       mode: 'none',
-      coverage: 0,
+      platformObservedSpanCount: 0,
+      participantReportedSpanCount: 0,
+      droppedSpanCount: 0,
+      lateSpanCount: 0,
     },
     participants: baiyangdianRoles.map((role, index) =>
       participantForRole('baiyangdian-agent', role, index),
@@ -956,7 +969,10 @@ export const exerciseRuns: readonly ExerciseRun[] = [
     boundaryCoverage: 0.96,
     participantTelemetry: {
       mode: 'partial',
-      coverage: 0.64,
+      platformObservedSpanCount: 0,
+      participantReportedSpanCount: 0,
+      droppedSpanCount: 3,
+      lateSpanCount: 0,
     },
     participants: haiheRoles.map((role, index) =>
       participantForRole('haihe-agent', role, index),

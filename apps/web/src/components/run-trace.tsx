@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState, type CSSProperties } from 'react';
 
-import { getDictionary, type Locale } from '@/lib/i18n';
+import { getDictionary, getTelemetryModeLabel, type Locale } from '@/lib/i18n';
 import type {
   AgentSession,
   ExerciseRun,
@@ -38,27 +38,6 @@ function operationLabel(operation: ExerciseSpan['operation'], locale: Locale) {
     feedback: { 'zh-CN': '定向反馈', en: 'Feedback' },
   };
   return labels[operation][locale];
-}
-
-function telemetryModeLabel(
-  mode: ExerciseRun['participantTelemetry']['mode'],
-  locale: Locale,
-): string {
-  const labels: Record<
-    ExerciseRun['participantTelemetry']['mode'],
-    Record<Locale, string>
-  > = {
-    none: { 'zh-CN': '仅平台边界', en: 'Boundary only' },
-    instrumented: {
-      'zh-CN': '参与者主动导出',
-      en: 'Participant exported',
-    },
-    partial: {
-      'zh-CN': '参与者采样导出',
-      en: 'Sampled participant export',
-    },
-  };
-  return labels[mode][locale];
 }
 
 function AgentIdentity({
@@ -172,11 +151,25 @@ export function RunTrace({
           </div>
           <div>
             <dt>{dictionary.trace.participantMode}</dt>
-            <dd>{telemetryModeLabel(run.participantTelemetry.mode, locale)}</dd>
+            <dd>
+              {getTelemetryModeLabel(run.participantTelemetry.mode, locale)}
+            </dd>
           </div>
           <div>
-            <dt>{dictionary.trace.participantCoverage}</dt>
-            <dd>{Math.round(run.participantTelemetry.coverage * 100)}%</dd>
+            <dt>{dictionary.trace.platformSpans}</dt>
+            <dd>{run.participantTelemetry.platformObservedSpanCount}</dd>
+          </div>
+          <div>
+            <dt>{dictionary.trace.participantSpans}</dt>
+            <dd>{run.participantTelemetry.participantReportedSpanCount}</dd>
+          </div>
+          <div>
+            <dt>{dictionary.trace.droppedSpans}</dt>
+            <dd>{run.participantTelemetry.droppedSpanCount}</dd>
+          </div>
+          <div>
+            <dt>{dictionary.trace.lateSpans}</dt>
+            <dd>{run.participantTelemetry.lateSpanCount}</dd>
           </div>
           <div>
             <dt>Run state</dt>
