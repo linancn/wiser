@@ -8,9 +8,9 @@ description: 控制面、协议 API、导调领域、Supabase、AI 与 MCP 的�
 Agent EXCON 把不确定的智能体行为放在确定性的环境边界之外。状态转换、权限、证据可见性、事件记录和基础裁决必须由可测试代码与数据库约束完成。
 
 ```text
-参训智能体 ── HTTP / SDK / MCP ──► 协议 API
+参训智能体 + Agent EXCON Skill ── HTTP / MCP ──► 协议 API
                                       │
-Next.js 控制台 ────────────────────────┤
+Next.js 只读态势与 Trace 回放 ◄────────┤
                                       ▼
                          导调领域服务与状态机
                             │           │
@@ -22,14 +22,14 @@ Next.js 控制台 ────────────────────�
 
 ## 进程与职责
 
-| 组件                | 负责                                     | 不负责                       |
-| ------------------- | ---------------------------------------- | ---------------------------- |
-| Next.js Web         | 中文默认控制台、人工裁决、回放与对比     | 长任务、公共协议实现         |
-| Fastify API         | `/api/v1`、认证、幂等、OpenAPI、事务边界 | 页面渲染、模型内部策略       |
-| Worker              | 异步评价、重试、结果接入                 | 直接绕过领域状态机修改数据   |
-| PostgreSQL/Supabase | 事实数据、行锁、RLS、Auth、Storage       | 生成自然语言裁决             |
-| AI adapters         | Codex 与 OpenAI-compatible 调用          | 决定数据权限或覆盖确定性规则 |
-| MCP Server          | 把稳定 HTTP 操作映射为 Tools/Resources   | 复制业务逻辑或直接访问数据库 |
+| 组件                | 负责                                       | 不负责                       |
+| ------------------- | ------------------------------------------ | ---------------------------- |
+| Next.js Web         | 中文默认案例可视化、态势、Trace 与只读回放 | 提交、推进或直接控制 Episode |
+| Fastify API         | `/api/v1`、认证、幂等、OpenAPI、事务边界   | 页面渲染、模型内部策略       |
+| Worker              | 异步评价、重试、结果接入                   | 直接绕过领域状态机修改数据   |
+| PostgreSQL/Supabase | 事实数据、行锁、RLS、Auth、Storage         | 生成自然语言裁决             |
+| AI adapters         | Codex 与 OpenAI-compatible 调用            | 决定数据权限或覆盖确定性规则 |
+| MCP Server          | 把稳定 HTTP 操作映射为 Tools/Resources     | 复制业务逻辑或直接访问数据库 |
 
 ## 统一类型体系
 
@@ -37,7 +37,7 @@ Next.js 控制台 ────────────────────�
 
 - Fastify 请求和响应校验；
 - OpenAPI 文档；
-- Web 表单；
+- Web 只读投影；
 - Worker job payload；
 - TypeScript SDK；
 - MCP Tool 输入输出；
@@ -61,8 +61,6 @@ Next.js 控制台 ────────────────────�
 
 ## Compose 运维边界
 
-Supabase 采用官方 compose 的固定 commit 和整套镜像。应用 compose 通过多文件叠加接入，不单独升级 Auth、PostgREST、Storage 或数据库镜像。analytics/vector 保持可选 profile，首切片不启用。
+开发环境刻意分成两层：Supabase CLI 按官方兼容集合管理本地 Auth、PostgreSQL 17、Storage、PostgREST 与 Studio 容器；仓库 `compose.yaml` 管理 API、只读 Web、Worker 和文档。这样既保留 Compose 的应用级健康检查与统一启停，也避免手工复制一套会随 Supabase 上游网关和镜像变化而漂移的半自托管配置。
 
-本次初始化核定的上游基线是 Supabase 官方仓库 commit [`9ae6e54`](https://github.com/supabase/supabase/commit/9ae6e54dd585fb7f71dfc6917ab9fc09fe3a408a)，其中数据库为 `supabase/postgres:17.6.1.136`，网关为 `envoyproxy/envoy:v1.39.0`。仓库实际 compose 文件是运行时权威来源；更新时必须整体核对该 commit 中的所有镜像，而不是只复制这两个标签。
-
-新环境直接从 PostgreSQL 17 初始化。若以后导入 PostgreSQL 15 数据，先按 [Supabase 官方升级指南](https://supabase.com/docs/guides/self-hosting/postgres-upgrade-17) 备份并演练升级，不允许直接复用旧数据卷启动 PG17。
+生产环境使用 Supabase Platform，或整体固定官方 self-host Compose commit 与全部镜像；不得单独升级 Auth、数据库、Storage 或网关。导入旧 PostgreSQL 15 数据前，必须按 [Supabase 官方升级指南](https://supabase.com/docs/guides/self-hosting/postgres-upgrade-17) 备份并演练，不能直接让 PG17 复用旧数据卷。

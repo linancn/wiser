@@ -65,6 +65,8 @@ pnpm exec supabase gen types typescript --local
 
 ## 跑通首个业务闭环
 
+演练由参训智能体加载仓库中的 `skills/agent-excon` 后，经 HTTP 或 MCP 完成；Web 仅展示案例、状态和 Trace，不提供提交或推进控件。
+
 1. 创建“永定河生态补水与多水源联合调度”合成场景的一个 Episode。
 2. 获取该虚拟时点已经释放的水源可用量、控制断面目标和监测 Observation。
 3. 提交带证据引用的分阶段水源配置与下泄计划。

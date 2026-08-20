@@ -50,6 +50,8 @@ pnpm exec supabase gen types typescript --local
 
 ## Exercise the first loop
 
+The participant loads `skills/agent-excon` and runs the exercise through HTTP or MCP. Web is a read-only case, status, and trace visualization; it does not submit or advance Episodes.
+
 1. Create an Episode from the synthetic Yongding River multi-source dispatch scenario.
 2. Read released source availability, control targets, and monitoring observations.
 3. Submit a staged source-allocation and release plan with evidence references.
