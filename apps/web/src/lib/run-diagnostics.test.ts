@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildRunDiagnostics } from './run-diagnostics';
+import {
+  buildRunDiagnostics,
+  type DiagnosticEvaluation,
+} from './run-diagnostics';
 
 const roles = [
   'water-evidence',
@@ -9,18 +12,20 @@ const roles = [
   'dispatch-coordination',
 ] as const;
 
-const accepted = roles.map((roleSlotId, index) => ({
-  id: `evaluation-${index}`,
-  roleSlotId,
-  targetScope: roleSlotId === 'dispatch-coordination' ? 'team' : 'role',
-  verdict: 'ACCEPTED' as const,
-  issueCodes: [] as readonly string[],
-  submissionId: `submission-${index}`,
-  deterministic: true as const,
-  evaluatorVersion: 'yongding-role-output-v1',
-  createdRunSeq: 100 + index,
-  createdAt: `2026-08-20T10:3${index}:00.000Z`,
-}));
+const accepted: readonly DiagnosticEvaluation[] = roles.map(
+  (roleSlotId, index) => ({
+    id: `evaluation-${index}`,
+    roleSlotId,
+    targetScope: roleSlotId === 'dispatch-coordination' ? 'team' : 'role',
+    verdict: 'ACCEPTED' as const,
+    issueCodes: [] as readonly string[],
+    submissionId: `submission-${index}`,
+    deterministic: true as const,
+    evaluatorVersion: 'yongding-role-output-v1',
+    createdRunSeq: 100 + index,
+    createdAt: `2026-08-20T10:3${index}:00.000Z`,
+  }),
+);
 
 describe('run diagnostics projection', () => {
   it('keeps deterministic acceptance authoritative while surfacing telemetry gaps', () => {
@@ -28,7 +33,7 @@ describe('run diagnostics projection', () => {
       requiredRoleIds: roles,
       evaluations: [
         {
-          ...accepted[0]!,
+          ...accepted[0],
           id: 'evaluation-water-red',
           verdict: 'REWORK_REQUIRED',
           issueCodes: ['OUTPUT_SCHEMA_ADDITIONAL_PROPERTY'],
