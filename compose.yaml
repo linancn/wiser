@@ -24,7 +24,8 @@ services:
       API_HOST: 0.0.0.0
       API_PORT: 3001
       AI_PROVIDER: fake
-      AGENT_EXCON_PARTICIPANT_TOKEN: local-demo-participant-token
+      AGENT_EXCON_PARTICIPANT_TOKEN: ${AGENT_EXCON_PARTICIPANT_TOKEN:-local-demo-participant-token}
+      AGENT_EXCON_OPERATOR_TOKEN: ${AGENT_EXCON_OPERATOR_TOKEN:-local-demo-operator-token}
     ports:
       - 127.0.0.1:3001:3001
     healthcheck:
@@ -42,7 +43,9 @@ services:
     <<: *app
     command: pnpm --filter @agent-excon/web exec next dev --hostname 0.0.0.0 --port 3000
     environment:
-      AGENT_EXCON_API_INTERNAL_URL: http://api:3001/api/v1
+      AGENT_EXCON_API_INTERNAL_URL: http://api:3001
+      AGENT_EXCON_WEB_DATA_MODE: ${AGENT_EXCON_WEB_DATA_MODE:-live}
+      WISER_WEB_OPERATOR_TOKEN: ${WISER_WEB_OPERATOR_TOKEN:-local-demo-operator-token}
     ports:
       - 127.0.0.1:3000:3000
     depends_on:
