@@ -118,6 +118,8 @@ describe('four-process WorkBuddy launcher', () => {
     for (const command of result.commands) {
       expect(command.args).toContain('--strict-mcp-config');
       expect(command.args).toContain('--no-session-persistence');
+      expect(command.args).not.toContain('--json-schema');
+      expect(command.args.at(-1)).toContain('"schemaVersion"');
       expect(command.args).not.toContain('--swarm');
       expect(command.args).not.toContain('-y');
       expect(command.args).not.toContain('bypassPermissions');
