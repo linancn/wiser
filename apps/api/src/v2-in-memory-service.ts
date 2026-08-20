@@ -1024,6 +1024,28 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
               requiredConditionKeys: analysisBarrier.requiredConditionKeys,
             },
           });
+          const endorsementBarrier = createRunBarrier({
+            id: this.#idFactory(),
+            runId,
+            requiredConditionKeys: [
+              'water-evidence',
+              'hydraulic-constraints',
+              'ecological-target',
+            ],
+          });
+          stored.barriers.set('endorsement-ready', endorsementBarrier);
+          this.appendRunEvent(stored, {
+            streamType: 'barrier',
+            streamId: endorsementBarrier.id,
+            eventType: 'barrier.created',
+            actorType: 'system',
+            actorId: 'excon',
+            assertionClass: 'platform_observed',
+            payload: {
+              definitionKey: 'endorsement-ready',
+              requiredConditionKeys: endorsementBarrier.requiredConditionKeys,
+            },
+          });
           for (const role of scenarioVersion.requiredRoles) {
             const runAgentId = assignments.get(role.id)!;
             this.createInitialResources(stored, role, runAgentId);
@@ -1817,6 +1839,12 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
             createdRunSeq: event.runSeq,
           };
           stored.endorsements.set(endorsement.id, endorsement);
+          this.recordEndorsementBarrierInput(
+            stored,
+            submission,
+            runAgentId,
+            event,
+          );
           return { endorsement, actionGrant: nextGrant };
         },
       ),
@@ -2213,7 +2241,11 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
     evaluation: RunEvaluationDto,
     result: YongdingV2RoleEvaluation,
   ): void {
-    for (const targetScope of ['individual', 'role'] as const) {
+    const feedbackScopes =
+      submission.roleSlotId === 'dispatch-coordination'
+        ? (['individual', 'team'] as const)
+        : (['individual', 'role'] as const);
+    for (const targetScope of feedbackScopes) {
       const feedbackId = this.#idFactory();
       const event = this.appendRunEvent(stored, {
         streamType: 'feedback',
@@ -2260,20 +2292,33 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
         actionGrants.push(grant);
       }
       const accepted = result.verdict === 'ACCEPTED';
+      const recipientRunAgentIds =
+        targetScope === 'team'
+          ? [...stored.runAgents.keys()]
+          : [submission.actorRunAgentId];
+      const teamResult = targetScope === 'team';
       const feedback: RunFeedbackDto = {
         id: feedbackId,
         runId: stored.run.id,
         targetScope,
-        recipientRunAgentIds: [submission.actorRunAgentId],
+        recipientRunAgentIds,
         basisType: 'evaluation',
         summary: accepted
           ? {
-              'zh-CN': '确定性评价已接受该角色输出。',
-              en: 'The deterministic evaluator accepted this role output.',
+              'zh-CN': teamResult
+                ? '确定性评价已接受团队方案。'
+                : '确定性评价已接受该角色输出。',
+              en: teamResult
+                ? 'The deterministic evaluator accepted the team plan.'
+                : 'The deterministic evaluator accepted this role output.',
             }
           : {
-              'zh-CN': '确定性评价要求修订该角色输出。',
-              en: 'The deterministic evaluator requires a revised role output.',
+              'zh-CN': teamResult
+                ? '确定性评价要求修订团队方案。'
+                : '确定性评价要求修订该角色输出。',
+              en: teamResult
+                ? 'The deterministic evaluator requires a revised team plan.'
+                : 'The deterministic evaluator requires a revised role output.',
             },
         guidance: accepted
           ? [
@@ -2286,20 +2331,23 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
               'zh-CN': `修订问题：${issue}`,
               en: `Revision issue: ${issue}`,
             })),
-        allowedActions: accepted ? [] : ['resubmit'],
+        allowedActions:
+          !accepted && targetScope === 'individual' ? ['resubmit'] : [],
         subjectSubmissionId: submission.id,
         ...(actionGrants.length === 0 ? {} : { actionGrants }),
         createdRunSeq: event.runSeq,
         createdAt: evaluation.createdAt,
       };
       stored.feedback.set(feedback.id, feedback);
-      this.addEligible(
-        stored,
-        submission.actorRunAgentId,
-        feedback,
-        event,
-        'feedback',
-      );
+      for (const recipientRunAgentId of recipientRunAgentIds) {
+        this.addEligible(
+          stored,
+          recipientRunAgentId,
+          feedback,
+          event,
+          'feedback',
+        );
+      }
     }
   }
 
@@ -2387,6 +2435,83 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
       readyEvent,
       'task',
     );
+  }
+
+  private recordEndorsementBarrierInput(
+    stored: StoredRun,
+    submission: RunSubmissionDto,
+    endorserRunAgentId: string,
+    endorsementEvent: RunEventDto,
+  ): void {
+    if (
+      submission.roleSlotId !== 'dispatch-coordination' ||
+      submission.targetScope !== 'team'
+    ) {
+      return;
+    }
+    const roleSlotId = this.ownedRunAgent(stored, endorserRunAgentId).dto
+      .roleSlotId;
+    const barrier = stored.barriers.get('endorsement-ready');
+    if (barrier === undefined) {
+      throw new ExerciseServiceError(
+        'INTERNAL_ERROR',
+        'The endorsement-ready barrier is missing.',
+      );
+    }
+    if (!barrier.requiredConditionKeys.includes(roleSlotId)) {
+      throw new ExerciseServiceError(
+        'SUBMISSION_CONFLICT',
+        '只有规定的专业角色可以满足 endorsement Barrier。 / Only required specialist roles can satisfy the endorsement Barrier.',
+      );
+    }
+    const next = recordRunBarrierInput(barrier, {
+      expectedVersion: barrier.version,
+      conditionKey: roleSlotId,
+      sourceEventId: endorsementEvent.eventId,
+    });
+    stored.barriers.set('endorsement-ready', next);
+    this.appendRunEvent(stored, {
+      streamType: 'barrier',
+      streamId: barrier.id,
+      eventType: 'barrier.condition-satisfied',
+      actorType: 'system',
+      actorId: 'excon-evaluator',
+      assertionClass: 'evaluator_derived',
+      payload: {
+        definitionKey: 'endorsement-ready',
+        conditionKey: roleSlotId,
+        endorsementEventId: endorsementEvent.eventId,
+        submissionId: submission.id,
+        barrierState: next.state,
+      },
+    });
+    if (next.state !== 'SATISFIED') return;
+
+    const decision = releaseRunBarrier(next, next.version);
+    stored.barriers.set('endorsement-ready', decision.barrier);
+    if (!decision.releasedNow) return;
+    this.appendRunEvent(stored, {
+      streamType: 'barrier',
+      streamId: barrier.id,
+      eventType: 'barrier.released',
+      actorType: 'system',
+      actorId: 'excon-evaluator',
+      assertionClass: 'evaluator_derived',
+      payload: {
+        definitionKey: 'endorsement-ready',
+        submissionId: submission.id,
+        conditionKeys: decision.barrier.requiredConditionKeys,
+      },
+    });
+    const taskDto = stored.tasks.get(submission.taskId);
+    const domainTask = stored.taskStates.get(submission.taskId);
+    if (taskDto === undefined || domainTask === undefined) {
+      throw new ExerciseServiceError(
+        'INTERNAL_ERROR',
+        'The team Submission Task is missing.',
+      );
+    }
+    this.evaluateRoleSubmission(stored, submission, domainTask, taskDto);
   }
 
   private updateTaskDto(stored: StoredRun, task: DomainRunTask): RunTaskDto {
