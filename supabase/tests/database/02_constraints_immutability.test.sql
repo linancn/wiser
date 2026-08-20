@@ -1,6 +1,6 @@
 begin;
 
-select plan(20);
+select plan(22);
 
 insert into public.episodes (
   id,
@@ -17,6 +17,35 @@ values (
   'completed',
   '2023-03-23T03:10:00Z',
   now()
+);
+
+insert into public.episodes (
+  id,
+  scenario_version_id,
+  participant_version_id,
+  state,
+  virtual_time
+)
+values (
+  'd0000000-0000-4000-8000-000000000020',
+  '30000000-0000-4000-8000-000000000001',
+  '40000000-0000-4000-8000-000000000001',
+  'waiting_for_submission',
+  '2023-03-22T07:10:00Z'
+);
+
+select lives_ok(
+  $$update public.episodes
+    set state = 'evaluation_queued'
+    where id = 'd0000000-0000-4000-8000-000000000020'$$,
+  'a valid submission can queue deterministic evaluation'
+);
+
+select lives_ok(
+  $$update public.episodes
+    set state = 'evaluating'
+    where id = 'd0000000-0000-4000-8000-000000000020'$$,
+  'a worker can start a queued evaluation'
 );
 
 select throws_ok(
