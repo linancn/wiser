@@ -21,6 +21,13 @@ export {
   type V2LocalLab,
 } from './v2-local-lab.js';
 export {
+  writeV2LocalLabRuntimeBundle,
+  type LocalLabRuntimeBundle,
+  type LocalLabRuntimeManifest,
+  type LocalLabRuntimeRosterEntry,
+  type WriteV2LocalLabRuntimeBundleOptions,
+} from './v2-local-lab-runtime.js';
+export {
   DEFAULT_SCENARIO,
   DEFAULT_SCENARIO_VERSION_ID,
   type ScenarioDocument,
