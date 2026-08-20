@@ -6,6 +6,7 @@ dist/
 coverage/
 playwright-report/
 test-results/
+skills/*-workspace/
 
 # local Supabase state
 supabase/.branches/
