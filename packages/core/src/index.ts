@@ -1,8 +1,8 @@
 export type EpisodeState =
-  | 'awaiting_submission'
+  | 'waiting_for_submission'
   | 'evaluation_queued'
   | 'evaluating'
-  | 'feedback_ready'
+  | 'feedback_available'
   | 'completed';
 
 export interface Episode {
@@ -146,7 +146,7 @@ export function createEpisode(_input: {
     id: _input.id,
     scenarioVersionId: _input.scenarioVersionId,
     participantVersionId: _input.participantVersionId,
-    state: 'awaiting_submission',
+    state: 'waiting_for_submission',
     stageIndex: 0,
     virtualTime: _input.replayStartAt,
     version: 1,
@@ -183,7 +183,7 @@ export function recordObservation(
   episode: Episode,
   informationIds: readonly string[],
 ): Episode {
-  assertState(episode, 'awaiting_submission');
+  assertState(episode, 'waiting_for_submission');
   const observed = new Set(episode.observedInformationIds);
   for (const informationId of informationIds) {
     observed.add(informationId);
@@ -203,7 +203,7 @@ export function queueSubmission(
   expectedVersion: number,
 ): Episode {
   assertVersion(episode, expectedVersion);
-  assertState(episode, 'awaiting_submission');
+  assertState(episode, 'waiting_for_submission');
 
   if (submission.sourceReleases.length === 0) {
     fail('EMPTY_SUBMISSION', 'A water allocation plan needs source releases.');
@@ -260,7 +260,7 @@ export function publishFeedback(
   assertVersion(episode, expectedVersion);
   assertState(episode, 'evaluating');
   return nextEpisode(episode, {
-    state: 'feedback_ready',
+    state: 'feedback_available',
     version: episode.version + 1,
   });
 }
@@ -270,7 +270,7 @@ export function advanceEpisode(
   input: { expectedVersion: number; nextCheckpoint: string },
 ): Episode {
   assertVersion(episode, input.expectedVersion);
-  assertState(episode, 'feedback_ready');
+  assertState(episode, 'feedback_available');
   const currentTime = toEpoch(episode.virtualTime, 'episode.virtualTime');
   const nextCheckpoint = toEpoch(input.nextCheckpoint, 'nextCheckpoint');
   if (nextCheckpoint <= currentTime) {
@@ -280,7 +280,7 @@ export function advanceEpisode(
     );
   }
   return nextEpisode(episode, {
-    state: 'awaiting_submission',
+    state: 'waiting_for_submission',
     stageIndex: episode.stageIndex + 1,
     virtualTime: input.nextCheckpoint,
     version: episode.version + 1,
@@ -292,7 +292,7 @@ export function completeEpisode(
   expectedVersion: number,
 ): Episode {
   assertVersion(episode, expectedVersion);
-  assertState(episode, 'feedback_ready');
+  assertState(episode, 'feedback_available');
   return nextEpisode(episode, {
     state: 'completed',
     version: episode.version + 1,

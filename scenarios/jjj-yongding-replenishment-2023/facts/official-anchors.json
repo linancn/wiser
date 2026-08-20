@@ -1,0 +1,46 @@
+{
+  "license": "NOASSERTION",
+  "attributionRequired": true,
+  "facts": [
+    {
+      "id": "program-period-2023",
+      "value": {
+        "start": "2023-02-24",
+        "end": "2023-06-15",
+        "plannedGuantingVolumeM3": 200000000,
+        "plannedConnectedLengthKm": 270
+      },
+      "qualifier": "The official wording describes the volume as nearly 200 million m³.",
+      "sourceId": "beijing-water-authority-2023-program"
+    },
+    {
+      "id": "official-flows-2023-03-22-0800-cst",
+      "value": {
+        "unit": "m3/s",
+        "guanting": 20.7,
+        "sanjiadian": 0.8,
+        "lugouqiao": 15.2,
+        "cuizhihuiying": 18.5
+      },
+      "publishedAt": "2023-03-22T14:56:00+08:00",
+      "sourceId": "beijing-water-authority-2023-03-22"
+    },
+    {
+      "id": "qujiadian-gate-opened",
+      "value": "2023-03-22T12:00:00+08:00",
+      "sourceId": "beijing-water-authority-2023-03-22"
+    },
+    {
+      "id": "official-flows-2023-03-23-0800-cst",
+      "value": {
+        "unit": "m3/s",
+        "guanting": 20.7,
+        "sanjiadian": 10.2,
+        "lugouqiao": 13.3,
+        "cuizhihuiying": 20.3
+      },
+      "publishedAt": "2023-03-23T11:09:00+08:00",
+      "sourceId": "beijing-water-authority-2023-03-23"
+    }
+  ]
+}

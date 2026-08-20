@@ -67,7 +67,7 @@ describe('Jing-Jin-Ji water-system exercise loop', () => {
       id: 'episode-001',
       participantVersionId: 'participant-version-001',
       scenarioVersionId: 'jjj-yongding-replenishment-2023-v1',
-      state: 'awaiting_submission',
+      state: 'waiting_for_submission',
       stageIndex: 0,
       virtualTime: exerciseStartAt,
       version: 1,
@@ -101,7 +101,7 @@ describe('Jing-Jin-Ji water-system exercise loop', () => {
       observedInformationIds: ['official-flow-20230322-guanting'],
     });
     expect(observed).toMatchObject({
-      state: 'awaiting_submission',
+      state: 'waiting_for_submission',
       version: 2,
     });
   });
@@ -131,7 +131,7 @@ describe('Jing-Jin-Ji water-system exercise loop', () => {
     });
 
     expect(advanced).toMatchObject({
-      state: 'awaiting_submission',
+      state: 'waiting_for_submission',
       stageIndex: 1,
       virtualTime: secondCheckpoint,
       version: 6,

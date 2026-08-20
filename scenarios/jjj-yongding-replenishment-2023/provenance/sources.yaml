@@ -1,0 +1,28 @@
+sources:
+  - id: beijing-water-authority-2023-program
+    title: 2023 年永定河生态补水
+    url: https://swj.beijing.gov.cn/swdt/ztzl/2023nydhstbsdt/202303/t20230320_2940003.html
+    publisher: 北京市水务局
+    accessed: 2026-08-20
+    use: Program period, planned Guanting volume, and 270 km connectivity target.
+
+  - id: beijing-water-authority-2023-03-22
+    title: 2023 年 3 月 22 日补水每日信息
+    url: https://swj.beijing.gov.cn/swdt/ztzl/2023nydhstbsdt/2023bsmrxx/202303/t20230322_2942113.html
+    publisher: 北京市水务局
+    accessed: 2026-08-20
+    use: 08:00 section-flow anchors and the Qujiadian gate-opening fact.
+
+  - id: beijing-water-authority-2023-03-23
+    title: 2023 年 3 月 23 日补水每日信息
+    url: https://swj.beijing.gov.cn/swdt/ztzl/2023nydhstbsdt/2023bsmrxx/202303/t20230323_2942886.html
+    publisher: 北京市水务局
+    accessed: 2026-08-20
+    use: 08:00 section-flow anchors for the second checkpoint.
+
+  - id: water-diversion-regulation
+    title: 南水北调工程供用水管理条例
+    url: https://www.mee.gov.cn/zcwj/gwywj/202001/t20200109_758446.shtml
+    publisher: 中华人民共和国国务院
+    accessed: 2026-08-20
+    use: Policy meaning only—water conservation, coordinated sources, and ecological protection.

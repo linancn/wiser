@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Agent EXCON'
+  short_description: 'Run auditable Agent EXCON exercises'
+  default_prompt: 'Use $agent-excon to run the current exercise through observation, submission, feedback, and advance.'

@@ -11,10 +11,10 @@ export const LocalizedTextSchema = z
   .strict();
 
 export const EpisodeStateSchema = z.enum([
-  'awaiting_submission',
+  'waiting_for_submission',
   'evaluation_queued',
   'evaluating',
-  'feedback_ready',
+  'feedback_available',
   'completed',
 ]);
 export type EpisodeState = z.infer<typeof EpisodeStateSchema>;

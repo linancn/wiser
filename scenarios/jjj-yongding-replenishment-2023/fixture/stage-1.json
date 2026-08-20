@@ -1,0 +1,58 @@
+{
+  "license": "CC0-1.0",
+  "simulationOnly": true,
+  "notForOperationalUse": true,
+  "stage": 1,
+  "releasedAt": "2023-03-22T15:00:00+08:00",
+  "officialObservationRefs": [
+    "official-flows-2023-03-22-0800-cst",
+    "qujiadian-gate-opened"
+  ],
+  "rules": {
+    "sources": [
+      { "sourceId": "guanting", "maximumFlowM3s": 24 },
+      { "sourceId": "south-water", "maximumFlowM3s": 10 },
+      { "sourceId": "reclaimed-lower", "maximumFlowM3s": 6 }
+    ],
+    "sectionTargets": [
+      { "sectionId": "sanjiadian", "minimumFlowM3s": 10 },
+      { "sectionId": "lugouqiao", "minimumFlowM3s": 16 },
+      { "sectionId": "cuizhihuiying", "minimumFlowM3s": 15 },
+      { "sectionId": "qujiadian", "minimumFlowM3s": 12 }
+    ],
+    "transferModel": {
+      "guantingToSanjiadian": 0.9,
+      "sanjiadianToLugouqiao": 0.88,
+      "lugouqiaoToCuizhihuiying": 0.82,
+      "cuizhihuiyingToQujiadian": 0.9
+    },
+    "totalReleaseLimitM3s": 30
+  },
+  "canonicalPlan": {
+    "stage": 1,
+    "sourceReleases": [
+      {
+        "sourceId": "guanting",
+        "flowM3s": 20,
+        "evidenceRefs": ["official-flow-20230322-guanting"]
+      },
+      {
+        "sourceId": "south-water",
+        "flowM3s": 1,
+        "evidenceRefs": ["official-flow-20230322-lugouqiao"]
+      },
+      {
+        "sourceId": "reclaimed-lower",
+        "flowM3s": 2.5,
+        "evidenceRefs": ["official-flow-20230322-cuizhihuiying"]
+      }
+    ],
+    "expectedSectionFlows": [
+      { "sectionId": "sanjiadian", "flowM3s": 18 },
+      { "sectionId": "lugouqiao", "flowM3s": 16.72 },
+      { "sectionId": "cuizhihuiying", "flowM3s": 15.7604 },
+      { "sectionId": "qujiadian", "flowM3s": 14.18436 }
+    ],
+    "isFinal": false
+  }
+}
