@@ -11,7 +11,10 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { launchWorkBuddyRoles } from '../../cookbooks/workbuddy-yongding-tdd/scripts/launch-four-agents.mjs';
+import {
+  launchWorkBuddyRoles,
+  parseWorkBuddyJson,
+} from '../../cookbooks/workbuddy-yongding-tdd/scripts/launch-four-agents.mjs';
 
 const roles = [
   'water-evidence',
@@ -95,6 +98,14 @@ async function launchFixture() {
 }
 
 describe('four-process WorkBuddy launcher', () => {
+  it('extracts a fenced final JSON object from text-only WorkBuddy output', () => {
+    expect(
+      parseWorkBuddyJson(
+        'Completed safely.\n```json\n{"schemaVersion":1,"status":"completed"}\n```',
+      ),
+    ).toEqual({ schemaVersion: 1, status: 'completed' });
+  });
+
   it('runs four fake headless agents and aggregates semantic results', async () => {
     const fixture = await launchFixture();
     const result = await launchWorkBuddyRoles({

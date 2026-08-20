@@ -144,6 +144,8 @@ describe('WorkBuddy role-isolated runtime renderer', () => {
       expect(prompt).toContain('`leaseSeconds=300`');
       expect(prompt).toContain('`excon_heartbeat_task`');
       expect(prompt).toContain('`excon_wait_and_sync`');
+      expect(prompt).toContain('## Exact final JSON template');
+      expect(prompt).toContain('"lastReceiptSeq": null');
       expect(prompt.indexOf('`excon_claim_task`')).toBeLessThan(
         prompt.indexOf('`excon_publish_artifact`'),
       );

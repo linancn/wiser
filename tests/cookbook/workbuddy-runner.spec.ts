@@ -5,7 +5,10 @@ import { randomUUID } from 'node:crypto';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { runWorkBuddyCookbook } from '../../cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs';
+import {
+  collectOperatorEvents,
+  runWorkBuddyCookbook,
+} from '../../cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs';
 
 const temporaryDirectories: string[] = [];
 
@@ -18,6 +21,26 @@ afterEach(async () => {
 });
 
 describe('WorkBuddy Yongding cookbook runner', () => {
+  it('paginates the complete authoritative Event stream past 200 entries', async () => {
+    const calls: number[] = [];
+    const events = Array.from({ length: 229 }, (_, index) => ({
+      runSeq: index + 1,
+      eventType: index === 228 ? 'barrier.released' : 'receipt.acknowledged',
+      payload: index === 228 ? { definitionKey: 'endorsement-ready' } : {},
+    }));
+
+    const result = await collectOperatorEvents(async (after, limit) => {
+      calls.push(after);
+      return {
+        items: events.filter(({ runSeq }) => runSeq > after).slice(0, limit),
+      };
+    });
+
+    expect(calls).toEqual([0, 200]);
+    expect(result.items).toHaveLength(229);
+    expect(result.items.at(-1)).toMatchObject({ runSeq: 229 });
+  });
+
   it('runs the scripted profile, verifies authoritative gates, and destroys credentials', async () => {
     const outputDirectory = join(
       tmpdir(),
