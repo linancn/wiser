@@ -16,6 +16,16 @@ test('opens the Chinese scenario center and preserves the route in English', asy
   ).toBeVisible();
 });
 
+test('declares the route locale in server-rendered HTML without JavaScript', async ({
+  request,
+}) => {
+  for (const locale of ['zh-CN', 'en'] as const) {
+    const response = await request.get(`/${locale}/scenarios`);
+    expect(response.ok()).toBe(true);
+    await expect(response.text()).resolves.toContain(`<html lang="${locale}"`);
+  }
+});
+
 test('separates scenario management from active multi-agent runs', async ({
   page,
 }) => {

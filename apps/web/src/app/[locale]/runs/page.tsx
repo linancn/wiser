@@ -21,7 +21,8 @@ export async function generateMetadata({
 export default async function RunsPage({ params }: RunsPageProps) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  const result = await getWebReadModelSource().readRunCatalog();
+  const source = await getWebReadModelSource();
+  const result = await source.readRunCatalog();
   if (result.status === 'unavailable') {
     return <ReadModelUnavailable locale={locale} {...result} />;
   }

@@ -21,7 +21,8 @@ export async function generateMetadata({
 export default async function ReplayPage({ params }: ReplayPageProps) {
   const { locale, runId } = await params;
   if (!isLocale(locale)) notFound();
-  const result = await getWebReadModelSource().readRunWorkspace(runId);
+  const source = await getWebReadModelSource();
+  const result = await source.readRunWorkspace(runId);
   if (result.status === 'unavailable') {
     return <ReadModelUnavailable locale={locale} {...result} />;
   }

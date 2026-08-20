@@ -6,6 +6,8 @@ import { AppShell } from '@/components/app-shell';
 import { getDictionary, isLocale, LOCALES } from '@/lib/i18n';
 import { getWebDataMode } from '@/lib/read-model-source.server';
 
+import '../globals.css';
+
 interface LocaleLayoutProps {
   children: ReactNode;
   params: Promise<{ locale: string }>;
@@ -33,6 +35,7 @@ export async function generateMetadata({
         en: '/en/scenarios',
       },
     },
+    icons: [{ rel: 'icon', url: '/favicon.svg', type: 'image/svg+xml' }],
   };
 }
 
@@ -43,8 +46,12 @@ export default async function LocaleLayout({
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   return (
-    <AppShell locale={locale} mode={getWebDataMode()}>
-      {children}
-    </AppShell>
+    <html lang={locale} data-scroll-behavior="smooth">
+      <body>
+        <AppShell locale={locale} mode={await getWebDataMode()}>
+          {children}
+        </AppShell>
+      </body>
+    </html>
   );
 }

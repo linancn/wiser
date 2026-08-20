@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
-import './globals.css';
+import '../globals.css';
 
 export const metadata: Metadata = {
   title: 'Agent EXCON',
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   icons: [{ rel: 'icon', url: '/favicon.svg', type: 'image/svg+xml' }],
 };
 
-export default function RootLayout({
+export default function RedirectRootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (

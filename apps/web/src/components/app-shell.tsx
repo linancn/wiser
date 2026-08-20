@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { getDictionary, switchLocalePath, type Locale } from '@/lib/i18n';
 import type { WebDataMode } from '@/lib/read-model-source';
@@ -33,10 +33,6 @@ export function AppShell({
   const pathname = usePathname();
   const otherLocale: Locale = locale === 'zh-CN' ? 'en' : 'zh-CN';
   const languageHref = switchLocalePath(pathname, otherLocale);
-
-  useEffect(() => {
-    document.documentElement.lang = locale;
-  }, [locale]);
 
   return (
     <div className="app-shell" lang={locale}>

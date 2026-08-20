@@ -6,10 +6,12 @@ import {
 } from './read-model-source';
 
 const RUN_ID = '0f6a20fb-8138-4723-8c3c-77d2e0b7f2bd';
+const OTHER_RUN_ID = '11111111-1111-4111-8111-111111111111';
 const RUN_AGENT_ID = '4d41f32a-cb6e-475f-939f-e37de25822ce';
 const AGENT_VERSION_ID = '657e99e9-46e2-4ddb-a8de-57273c62b146';
 const SCENARIO_ID = 'yongding-live';
 const SCENARIO_VERSION_ID = 'yongding-live-v2';
+const OTHER_SCENARIO_VERSION_ID = 'yongding-live-v3';
 const HASH = `sha256:${'a'.repeat(64)}`;
 
 const localized = (zhCN: string, en: string) => ({ 'zh-CN': zhCN, en });
@@ -177,7 +179,13 @@ function response(body: unknown, status = 200): Response {
   });
 }
 
-function liveFetch() {
+interface LiveFetchOverrides {
+  readonly scenarioDetail?: unknown;
+  readonly scenarioVersions?: unknown;
+  readonly replay?: unknown;
+}
+
+function liveFetch(overrides: LiveFetchOverrides = {}) {
   return vi.fn<
     (input: string | URL | Request, init?: RequestInit) => Promise<Response>
   >((input, init) => {
@@ -194,11 +202,18 @@ function liveFetch() {
     }
     if (url.pathname === `/api/v2/scenarios/${SCENARIO_ID}`) {
       return Promise.resolve(
-        response({ scenario, currentVersion: scenarioVersion }),
+        response(
+          overrides.scenarioDetail ?? {
+            scenario,
+            currentVersion: scenarioVersion,
+          },
+        ),
       );
     }
     if (url.pathname === `/api/v2/scenarios/${SCENARIO_ID}/versions`) {
-      return Promise.resolve(response({ items: [scenarioVersion] }));
+      return Promise.resolve(
+        response(overrides.scenarioVersions ?? { items: [scenarioVersion] }),
+      );
     }
     if (url.pathname === '/api/v2/runs') {
       return Promise.resolve(response({ items: [run] }));
@@ -207,7 +222,7 @@ function liveFetch() {
       return Promise.resolve(response({ items: [runAgent] }));
     }
     if (url.pathname === `/api/v2/runs/${RUN_ID}/replay`) {
-      return Promise.resolve(response(replay));
+      return Promise.resolve(response(overrides.replay ?? replay));
     }
     if (url.pathname === `/api/v2/runs/${RUN_ID}/traces`) {
       return Promise.resolve(response(replay.bestEffortTelemetryOverlay));
@@ -313,6 +328,96 @@ describe('Web read-model sources', () => {
     });
     if (result.status === 'ready') throw new Error('must fail closed');
     expect(result.message).toContain('/api/v2/scenarios');
+  });
+
+  it.each([
+    [
+      'RunAgent',
+      {
+        ...replay,
+        authoritativeProjection: {
+          ...replay.authoritativeProjection,
+          runAgents: [{ ...runAgent, runId: OTHER_RUN_ID }],
+        },
+      },
+    ],
+    [
+      'Event',
+      {
+        ...replay,
+        authoritativeProjection: {
+          ...replay.authoritativeProjection,
+          events: [{ ...event, runId: OTHER_RUN_ID }],
+        },
+      },
+    ],
+    [
+      'Receipt',
+      {
+        ...replay,
+        authoritativeProjection: {
+          ...replay.authoritativeProjection,
+          receipts: replay.authoritativeProjection.receipts.map((receipt) => ({
+            ...receipt,
+            runId: OTHER_RUN_ID,
+          })),
+        },
+      },
+    ],
+    [
+      'Trace',
+      {
+        ...replay,
+        bestEffortTelemetryOverlay: {
+          ...replay.bestEffortTelemetryOverlay,
+          traces: replay.bestEffortTelemetryOverlay.traces.map((trace) => ({
+            ...trace,
+            runId: OTHER_RUN_ID,
+          })),
+        },
+      },
+    ],
+  ])(
+    'rejects a replay containing a cross-Run %s',
+    async (_kind, replayValue) => {
+      const source = createLiveReadModelSource({
+        apiOrigin: 'http://api:3001',
+        operatorToken: 'operator-secret',
+        fetcher: liveFetch({ replay: replayValue }),
+      });
+
+      const result = await source.readRunWorkspace(RUN_ID);
+
+      expect(result).toMatchObject({
+        status: 'unavailable',
+        mode: 'live',
+        reason: 'contract',
+      });
+    },
+  );
+
+  it('rejects a scenario detail whose current version does not match currentVersionId', async () => {
+    const source = createLiveReadModelSource({
+      apiOrigin: 'http://api:3001',
+      operatorToken: 'operator-secret',
+      fetcher: liveFetch({
+        scenarioDetail: {
+          scenario,
+          currentVersion: {
+            ...scenarioVersion,
+            id: OTHER_SCENARIO_VERSION_ID,
+          },
+        },
+      }),
+    });
+
+    const result = await source.readScenarioWorkspace(SCENARIO_ID);
+
+    expect(result).toMatchObject({
+      status: 'unavailable',
+      mode: 'live',
+      reason: 'contract',
+    });
   });
 
   it('keeps 401 failures actionable and never leaks the token in the message', async () => {

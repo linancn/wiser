@@ -21,8 +21,8 @@ export async function generateMetadata({
 export default async function ScenarioPage({ params }: ScenarioPageProps) {
   const { locale, scenarioId } = await params;
   if (!isLocale(locale)) notFound();
-  const result =
-    await getWebReadModelSource().readScenarioWorkspace(scenarioId);
+  const source = await getWebReadModelSource();
+  const result = await source.readScenarioWorkspace(scenarioId);
   if (result.status === 'unavailable') {
     return <ReadModelUnavailable locale={locale} {...result} />;
   }

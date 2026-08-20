@@ -1048,11 +1048,25 @@ class LiveReadModelSource implements WebReadModelSource {
       }
       if (
         agents.some((agent) => agent.runId !== runId) ||
-        telemetry.traces.some((trace) => trace.runId !== runId)
+        telemetry.traces.some((trace) => trace.runId !== runId) ||
+        replay.authoritativeProjection.run.scenarioVersionId !==
+          apiRun.scenarioVersionId ||
+        replay.authoritativeProjection.runAgents.some(
+          (agent) => agent.runId !== runId,
+        ) ||
+        replay.authoritativeProjection.events.some(
+          (event) => event.runId !== runId,
+        ) ||
+        replay.authoritativeProjection.receipts.some(
+          (receipt) => receipt.runId !== runId,
+        ) ||
+        replay.bestEffortTelemetryOverlay.traces.some(
+          (trace) => trace.runId !== runId,
+        )
       ) {
         throw new ReadModelSourceError(
           'contract',
-          `A RunAgent or Trace returned for ${runId} references a different Run.`,
+          `A Run, RunAgent, Event, Receipt, or Trace returned for ${runId} references a different Run or ScenarioVersion.`,
         );
       }
       const run = runToReadModel(
@@ -1193,8 +1207,15 @@ class LiveReadModelSource implements WebReadModelSource {
     }
     if (
       detailValue.scenario.id !== scenarioId ||
+      detailValue.scenario.currentVersionId !== detailValue.currentVersion.id ||
       detailValue.currentVersion.scenarioId !== scenarioId ||
-      versionsValue.items.some((version) => version.scenarioId !== scenarioId)
+      versionsValue.items.some(
+        (version) => version.scenarioId !== scenarioId,
+      ) ||
+      (versionsValue.items.length > 0 &&
+        !versionsValue.items.some(
+          (version) => version.id === detailValue.scenario.currentVersionId,
+        ))
     ) {
       throw new ReadModelSourceError(
         'contract',

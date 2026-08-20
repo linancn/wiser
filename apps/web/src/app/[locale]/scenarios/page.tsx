@@ -23,7 +23,8 @@ export default async function ScenarioCenterPage({
 }: ScenarioCenterPageProps) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  const result = await getWebReadModelSource().readScenarioCatalog();
+  const source = await getWebReadModelSource();
+  const result = await source.readScenarioCatalog();
   if (result.status === 'unavailable') {
     return <ReadModelUnavailable locale={locale} {...result} />;
   }
