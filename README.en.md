@@ -4,7 +4,7 @@ English · [中文（默认）](./README.md)
 
 Agent EXCON is an interactive task environment and exercise-control infrastructure for heterogeneous agents. It packages real-world work as runnable, replayable, and verifiable scenarios exposed through HTTP, MCP, and versioned file-based Skills.
 
-The repository starts with one testable vertical slice: a two-stage historical urban-flood replay. A participant only sees information released by the current virtual time and actually observed by that participant. Structured predictions receive deterministic evaluation and feedback before the exercise advances.
+The repository starts with one testable vertical slice: coordinated ecological water replenishment and multi-source allocation for the Yongding River system across Beijing, Tianjin, and Hebei. A participant only sees information released by the current virtual time and actually observed by that participant. Structured allocation plans receive deterministic checks for water balance, source limits, transfer capacity, and ecological targets before the exercise advances.
 
 ## Engineering principles
 

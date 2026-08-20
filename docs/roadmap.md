@@ -2,7 +2,7 @@
 
 ## Goal
 
-Run one fixed, versioned, two-stage historical urban-flood replay from episode creation through observation, prediction, deterministic feedback, virtual-time advance, final evaluation, and audit replay.
+Run one fixed, versioned, two-stage Jing-Jin-Ji water-system exercise from episode creation through observation, allocation planning, deterministic feedback, virtual-time advance, final evaluation, and audit replay. The case models coordinated ecological replenishment and multi-source allocation along the Yongding River system.
 
 ## Acceptance boundary
 
@@ -12,7 +12,7 @@ Run one fixed, versioned, two-stage historical urban-flood replay from episode c
 4. A worker claims work with `FOR UPDATE SKIP LOCKED`; retries cannot create a second evaluation.
 5. Stage-one feedback cannot inspect or leak future outcomes.
 6. Advancing virtual time releases the next inject atomically; conflicting versions return a stable conflict error.
-7. The final deterministic evaluator reports precision, recall, Brier score, evidence coverage, and time-travel violations.
+7. The final deterministic evaluator reports target coverage, source and corridor compliance, over-allocation, evidence coverage, and time-travel violations.
 8. Event sequence numbers remain monotonic and support a complete read-only replay.
 9. RLS prevents one participant from seeing another participant's episode; public roles cannot read hidden outcomes.
 10. HTTP and MCP use the same versioned Zod contracts; the MCP adapter only calls HTTP.
