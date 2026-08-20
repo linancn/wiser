@@ -208,6 +208,22 @@ export function queueSubmission(
   if (submission.sourceReleases.length === 0) {
     fail('EMPTY_SUBMISSION', 'A water allocation plan needs source releases.');
   }
+  const expectedStage = episode.stageIndex + 1;
+  if (submission.stage !== expectedStage) {
+    fail(
+      'SUBMISSION_STAGE_CONFLICT',
+      `Expected stage ${expectedStage}, received ${submission.stage}.`,
+    );
+  }
+  if (
+    (submission.stage === 1 && submission.isFinal) ||
+    (submission.stage === 2 && !submission.isFinal)
+  ) {
+    fail(
+      'SUBMISSION_FINALITY_INVALID',
+      'Stage one must be revisable and stage two must be final.',
+    );
+  }
 
   const observed = new Set(episode.observedInformationIds);
   const sourceIds = new Set<string>();
@@ -302,9 +318,19 @@ export function advanceEpisode(
 export function completeEpisode(
   episode: Episode,
   expectedVersion: number,
+  result: {
+    readonly isFinal: boolean;
+    readonly verdict: EvaluationResult['verdict'];
+  },
 ): Episode {
   assertVersion(episode, expectedVersion);
   assertState(episode, 'feedback_available');
+  if (!result.isFinal || result.verdict !== 'pass') {
+    fail(
+      'EPISODE_NOT_FINALIZABLE',
+      'Only a passing final submission can complete an episode.',
+    );
+  }
   return nextEpisode(episode, {
     state: 'completed',
     version: episode.version + 1,

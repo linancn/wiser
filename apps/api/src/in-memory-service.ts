@@ -666,7 +666,10 @@ export class InMemoryExerciseService implements ExerciseService {
           let next: Episode;
           let eventType: 'episode.advanced' | 'episode.completed';
           if (submission.view.plan.isFinal) {
-            next = completeEpisode(stored.episode, input.episodeVersion);
+            next = completeEpisode(stored.episode, input.episodeVersion, {
+              isFinal: submission.view.plan.isFinal,
+              verdict: submission.evaluation.verdict,
+            });
             eventType = 'episode.completed';
           } else {
             const checkpoint =

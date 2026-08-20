@@ -157,18 +157,51 @@ describe('Jing-Jin-Ji water-system exercise loop', () => {
     expect(revised).toMatchObject({ state: 'evaluation_queued', version: 7 });
   });
 
+  it('rejects finality that does not match the current stage', () => {
+    const observed = recordObservation(episode(), [
+      'official-flow-20230322-guanting',
+    ]);
+
+    expect(() =>
+      queueSubmission(
+        observed,
+        { ...firstPlan, isFinal: true },
+        observed.version,
+      ),
+    ).toThrowError(
+      expect.objectContaining<Partial<DomainError>>({
+        code: 'SUBMISSION_FINALITY_INVALID',
+      }),
+    );
+  });
+
   it('completes only after final feedback is ready', () => {
     const observed = recordObservation(episode(), [
       'official-flow-20230322-guanting',
     ]);
-    const finalPlan = { ...firstPlan, isFinal: true };
-    const queued = queueSubmission(observed, finalPlan, observed.version);
+    const firstQueued = queueSubmission(observed, firstPlan, observed.version);
+    const firstEvaluating = startEvaluation(firstQueued, firstQueued.version);
+    const firstFeedback = publishFeedback(
+      firstEvaluating,
+      firstEvaluating.version,
+    );
+    const advanced = advanceEpisode(firstFeedback, {
+      expectedVersion: firstFeedback.version,
+      nextCheckpoint: secondCheckpoint,
+    });
+    const finalPlan = { ...firstPlan, stage: 2, isFinal: true };
+    const queued = queueSubmission(advanced, finalPlan, advanced.version);
     const evaluating = startEvaluation(queued, queued.version);
     const feedback = publishFeedback(evaluating, evaluating.version);
 
-    expect(completeEpisode(feedback, feedback.version)).toMatchObject({
+    expect(
+      completeEpisode(feedback, feedback.version, {
+        isFinal: true,
+        verdict: 'pass',
+      }),
+    ).toMatchObject({
       state: 'completed',
-      version: 6,
+      version: 10,
     });
   });
 });
