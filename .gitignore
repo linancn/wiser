@@ -1,0 +1,29 @@
+# dependencies and builds
+node_modules/
+dist/
+.next/
+.astro/
+coverage/
+playwright-report/
+test-results/
+
+# local Supabase state
+supabase/.branches/
+supabase/.temp/
+
+# environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+auth.json
+
+# editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+
+# logs
+*.log
+pnpm-debug.log*
