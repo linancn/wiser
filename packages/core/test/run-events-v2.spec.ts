@@ -5,6 +5,37 @@ import { type DomainError, prepareRunEventAppendBatch } from '../src/index.js';
 const testHash = (canonical: string) => `test-hash:${canonical}`;
 
 describe('short serialized RunEvent append request', () => {
+  it('uses locale-independent key ordering for canonical hashes', () => {
+    const request = prepareRunEventAppendBatch({
+      head: {
+        runId: 'run-yongding-001',
+        nextRunSeq: 1,
+        headHash: 'genesis',
+      },
+      drafts: [
+        {
+          eventId: 'event-canonical-order',
+          streamType: 'run',
+          streamId: 'run-yongding-001',
+          eventType: 'run.created',
+          actorType: 'human_member',
+          actorId: 'operator-1',
+          virtualTime: '2023-03-22T07:00:00.000Z',
+          occurredAt: '2023-03-22T07:00:01.000Z',
+          recordedAt: '2023-03-22T07:00:01.100Z',
+          schemaVersion: 1,
+          assertionClass: 'operator_asserted',
+          payload: { z: 1, ä: 2, a: 3 },
+        },
+      ],
+      hashCanonical: testHash,
+    });
+
+    expect(request.events[0]?.eventHash).toContain(
+      '"payload":{"a":3,"z":1,"ä":2}',
+    );
+  });
+
   it('copies event payloads so caller mutation cannot rewrite a prepared append', () => {
     const payload = { claimEpoch: 1, nested: { taskId: 'task-evidence' } };
     const request = prepareRunEventAppendBatch({
