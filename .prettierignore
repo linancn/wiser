@@ -1,0 +1,9 @@
+**/.astro/
+**/.next/
+**/dist/
+**/next-env.d.ts
+**/node_modules/
+coverage/
+playwright-report/
+supabase/.temp/
+test-results/
