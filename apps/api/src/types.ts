@@ -1,5 +1,6 @@
 import type {
   AllocationPlanSubmission,
+  ApiErrorCode as ContractApiErrorCode,
   CreateEpisodeRequest,
   FeedbackDto,
   ObservationDto,
@@ -8,16 +9,7 @@ import type { Episode, EvaluationResult } from '@agent-excon/core';
 
 import type { ScenarioDocument } from './scenario.js';
 
-export type ApiErrorCode =
-  | 'VALIDATION_FAILED'
-  | 'EPISODE_NOT_FOUND'
-  | 'EPISODE_VERSION_CONFLICT'
-  | 'EPISODE_STATE_CONFLICT'
-  | 'EVIDENCE_NOT_OBSERVED'
-  | 'EVIDENCE_NOT_RELEVANT'
-  | 'IDEMPOTENCY_CONFLICT'
-  | 'NOT_AUTHORIZED'
-  | 'INTERNAL_ERROR';
+export type ApiErrorCode = ContractApiErrorCode;
 
 export class ExerciseServiceError extends Error {
   constructor(
@@ -33,6 +25,10 @@ export class ExerciseServiceError extends Error {
 export interface ParticipantPrincipal {
   readonly id: string;
   readonly participantVersionIds: readonly string[];
+  /** Explicit v2 protocol roles. Omitted roles remain valid only for v1. */
+  readonly roles?: readonly ('operator' | 'run_agent')[];
+  /** RunAgent credentials are bound to concrete server-issued instance ids. */
+  readonly runAgentIds?: readonly string[];
 }
 
 export interface ParticipantAuthenticator {

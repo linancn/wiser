@@ -5,6 +5,12 @@ export {
   type InMemoryExerciseServiceOptions,
 } from './in-memory-service.js';
 export {
+  DEFAULT_V2_SCENARIO_ID,
+  DEFAULT_V2_SCENARIO_VERSION_ID,
+  InMemoryV2ExerciseService,
+  type InMemoryV2ExerciseServiceOptions,
+} from './v2-in-memory-service.js';
+export {
   DEFAULT_SCENARIO,
   DEFAULT_SCENARIO_VERSION_ID,
   type ScenarioDocument,
@@ -30,3 +36,4 @@ export {
   type SubmitPlanInput,
   type SubmitPlanResult,
 } from './types.js';
+export { type IssuedRunResource, type V2ExerciseService } from './v2-types.js';

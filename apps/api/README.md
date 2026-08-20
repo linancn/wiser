@@ -8,7 +8,7 @@ API_PORT=3001 \
 pnpm --filter @agent-excon/api dev
 ```
 
-The default `InMemoryExerciseService` is a deterministic walking-slice adapter for local demos and contract tests. It is intentionally non-durable. Production must inject a PostgreSQL/Supabase repository implementing `ExerciseService`; HTTP handlers, Skill, and MCP contracts do not change.
+The default `InMemoryExerciseService` (v1) and `InMemoryV2ExerciseService` are deterministic walking-slice adapters for local demos and contract tests. They are intentionally non-durable and provide no cross-process concurrency, transaction, RLS, Outbox, or recovery guarantee. Production must inject PostgreSQL/Supabase repositories implementing `ExerciseService` and `V2ExerciseService`; HTTP handlers, Skill, and MCP contracts do not change.
 
 Participant requests use `Authorization: Bearer <token>`. Every POST uses a UUID `Idempotency-Key`; observe, submit, and advance also include `episodeVersion`.
 
@@ -25,3 +25,21 @@ Key routes:
 - `GET /api/v1/episodes/{id}/events`
 
 Deterministic evaluation never calls an LLM. AI adapters may create explanatory summaries outside the scoring boundary.
+
+## v2 multi-agent protocol slice
+
+Public scenario catalog reads require no bearer token and structurally omit draft and validation fields. Management, Agent catalog, Run lifecycle, event/replay, and observability reads require an explicit `operator` principal. `/sync` and the four issued-resource recovery routes require a separate `run_agent` principal bound to the concrete `runAgentId`; an operator token cannot act as a participant.
+
+Every v2 POST requires a UUID `Idempotency-Key`. Scenario draft validation/publication, AgentVersion publication, and Run start use the version of the smallest changed aggregate. Joining a RunAgent does not consume the ExerciseRun lifecycle version, and each RunTask carries its own `lockVersion`.
+
+Key v2 routes:
+
+- `GET /api/v2/scenarios`, `GET /api/v2/scenarios/{id}` and published version reads
+- `POST /api/v2/manage/scenarios`, `POST .../{id}/versions`, `POST .../{versionId}:validate|publish`
+- `POST /api/v2/agents`, `POST /api/v2/agents/{id}/versions`
+- `POST /api/v2/runs`, `POST /api/v2/runs/{id}/agents`, `POST /api/v2/runs/{id}:start`
+- `POST /api/v2/runs/{id}/sync`
+- `GET /api/v2/runs/{id}/tasks|messages|artifacts|feedback` (already issued only)
+- `GET /api/v2/runs/{id}/events|replay|traces`
+
+The replay response deliberately separates the complete, unsampled authoritative `RunEvent`/Receipt projection from the best-effort telemetry overlay. An empty sync batch has `fromReceiptSeq: null`; acknowledgements append a new event and never mutate an issuance Receipt.

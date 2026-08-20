@@ -192,10 +192,27 @@ export const ApiErrorCodeSchema = z.enum([
   'EPISODE_STATE_CONFLICT',
   'EVIDENCE_NOT_OBSERVED',
   'EVIDENCE_NOT_RELEVANT',
+  'SCENARIO_NOT_FOUND',
+  'SCENARIO_VERSION_NOT_FOUND',
+  'SCENARIO_VERSION_CONFLICT',
+  'SCENARIO_STATE_CONFLICT',
+  'AGENT_NOT_FOUND',
+  'AGENT_VERSION_NOT_FOUND',
+  'AGENT_VERSION_CONFLICT',
+  'RUN_NOT_FOUND',
+  'RUN_AGENT_NOT_FOUND',
+  'RUN_VERSION_CONFLICT',
+  'RUN_STATE_CONFLICT',
+  'RUN_ROLE_CONFLICT',
+  'TASK_NOT_FOUND',
+  'RECEIPT_CURSOR_CONFLICT',
+  'RECEIPT_CHAIN_CONFLICT',
   'IDEMPOTENCY_CONFLICT',
   'NOT_AUTHORIZED',
+  'FORBIDDEN',
   'INTERNAL_ERROR',
 ]);
+export type ApiErrorCode = z.infer<typeof ApiErrorCodeSchema>;
 
 export const ApiErrorSchema = z
   .object({
@@ -225,3 +242,5 @@ export const AiFeedbackSummarySchema = z
   })
   .strict();
 export type AiFeedbackSummary = z.infer<typeof AiFeedbackSummarySchema>;
+
+export * from './v2.js';

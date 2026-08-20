@@ -13,6 +13,8 @@ import { z, ZodError, type ZodType } from 'zod';
 
 import { StaticParticipantAuthenticator } from './auth.js';
 import { InMemoryExerciseService } from './in-memory-service.js';
+import { InMemoryV2ExerciseService } from './v2-in-memory-service.js';
+import { registerV2Routes } from './v2-routes.js';
 import {
   AdvanceBodySchema,
   CreateEpisodeBodySchema,
@@ -31,6 +33,7 @@ import {
   type ParticipantAuthenticator,
   type ParticipantPrincipal,
 } from './types.js';
+import type { V2ExerciseService } from './v2-types.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -40,6 +43,7 @@ declare module 'fastify' {
 
 export interface BuildAppOptions {
   readonly service?: ExerciseService;
+  readonly v2Service?: V2ExerciseService;
   readonly authenticator?: ParticipantAuthenticator;
   readonly corsOrigin?: string | readonly string[];
   readonly logger?: boolean;
@@ -59,8 +63,24 @@ const publicErrorStatus: Readonly<Record<ApiErrorCode, number>> = {
   EPISODE_STATE_CONFLICT: 409,
   EVIDENCE_NOT_OBSERVED: 422,
   EVIDENCE_NOT_RELEVANT: 422,
+  SCENARIO_NOT_FOUND: 404,
+  SCENARIO_VERSION_NOT_FOUND: 404,
+  SCENARIO_VERSION_CONFLICT: 409,
+  SCENARIO_STATE_CONFLICT: 409,
+  AGENT_NOT_FOUND: 404,
+  AGENT_VERSION_NOT_FOUND: 404,
+  AGENT_VERSION_CONFLICT: 409,
+  RUN_NOT_FOUND: 404,
+  RUN_AGENT_NOT_FOUND: 404,
+  RUN_VERSION_CONFLICT: 409,
+  RUN_STATE_CONFLICT: 409,
+  RUN_ROLE_CONFLICT: 409,
+  TASK_NOT_FOUND: 404,
+  RECEIPT_CURSOR_CONFLICT: 409,
+  RECEIPT_CHAIN_CONFLICT: 409,
   IDEMPOTENCY_CONFLICT: 409,
   NOT_AUTHORIZED: 401,
+  FORBIDDEN: 403,
   INTERNAL_ERROR: 500,
 };
 
@@ -179,12 +199,14 @@ const idempotencyHeadersSchema = {
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const service = options.service ?? new InMemoryExerciseService();
+  const v2Service = options.v2Service ?? new InMemoryV2ExerciseService();
   const authenticator =
     options.authenticator ??
     new StaticParticipantAuthenticator({
       'local-demo-participant-token': {
         id: 'local-demo-participant',
         participantVersionIds: ['40000000-0000-4000-8000-000000000001'],
+        roles: ['operator'],
       },
     });
   const app = fastify({
@@ -231,6 +253,28 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         { name: 'health', description: 'Service health' },
         { name: 'exercise', description: 'Skill-driven exercise workflow' },
         { name: 'trace', description: 'Participant-visible trace data' },
+        {
+          name: 'scenario-v2',
+          description: 'Published multi-scenario catalog',
+        },
+        {
+          name: 'scenario-manage-v2',
+          description: 'Draft validation and immutable publication',
+        },
+        { name: 'agent-v2', description: 'Versioned external Agent catalog' },
+        { name: 'run-v2', description: 'Multi-agent ExerciseRun lifecycle' },
+        {
+          name: 'agent-collaboration-v2',
+          description: 'Receipt-gated Agent collaboration protocol',
+        },
+        {
+          name: 'replay-v2',
+          description: 'Authoritative event and Receipt replay',
+        },
+        {
+          name: 'observability-v2',
+          description: 'Best-effort telemetry overlays',
+        },
       ],
       components: {
         securitySchemes: {
@@ -263,7 +307,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       },
     },
     async (_request, reply) => {
-      const ready = await service.isReady();
+      const ready = (await service.isReady()) && (await v2Service.isReady());
       return reply
         .code(ready ? 200 : 503)
         .send({ status: ready ? 'ready' : 'not_ready', ready });
@@ -544,6 +588,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     { prefix: '/api/v1' },
   );
 
-  app.addHook('onClose', async () => service.close());
+  registerV2Routes(app, v2Service, authenticator);
+
+  app.addHook('onClose', async () => {
+    await Promise.all([service.close(), v2Service.close()]);
+  });
   return app;
 }
