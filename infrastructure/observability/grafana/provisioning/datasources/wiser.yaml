@@ -33,7 +33,7 @@ datasources:
         - name: TraceID
           matcherRegex: '(?:trace_id|traceId)[=:]"?([0-9a-fA-F]{32})'
           datasourceUid: wiser-tempo
-          url: '$${__value.raw}'
+          url: '${__value.raw}'
 
   - name: Tempo
     uid: wiser-tempo

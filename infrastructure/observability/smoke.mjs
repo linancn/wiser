@@ -23,6 +23,10 @@ const resource = {
       key: 'wiser.exercise.run.id',
       value: { stringValue: 'observability-smoke-run' },
     },
+    {
+      key: 'wiser.hidden.outcome',
+      value: { stringValue: sensitiveSentinel },
+    },
   ],
 };
 
@@ -110,6 +114,10 @@ await Promise.all([
                     key: 'wiser.event.id',
                     value: { stringValue: 'smoke-event' },
                   },
+                  {
+                    key: 'gen_ai.completion',
+                    value: { stringValue: sensitiveSentinel },
+                  },
                 ],
               },
             ],
@@ -157,7 +165,7 @@ if (JSON.stringify(trace).includes(sensitiveSentinel)) {
   throw new Error('Collector leaked the sensitive test attribute into Tempo.');
 }
 
-const lokiResultCount = await poll('Loki log', async () => {
+const lokiResults = await poll('Loki log', async () => {
   const url = new URL(
     '/api/datasources/proxy/uid/wiser-loki/loki/api/v1/query_range',
     grafanaUrl,
@@ -166,10 +174,12 @@ const lokiResultCount = await poll('Loki log', async () => {
   const response = await fetch(url, { headers: { authorization: auth } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const payload = await response.json();
-  return payload.data?.result?.length > 0
-    ? payload.data.result.length
-    : undefined;
+  return payload.data?.result?.length > 0 ? payload.data.result : undefined;
 });
+
+if (JSON.stringify(lokiResults).includes(sensitiveSentinel)) {
+  throw new Error('Collector leaked the sensitive test attribute into Loki.');
+}
 
 const metricResultCount = await poll('Prometheus metric', async () => {
   const url = new URL('/api/v1/query', prometheusUrl);
@@ -186,5 +196,5 @@ const metricResultCount = await poll('Prometheus metric', async () => {
 });
 
 process.stdout.write(
-  `${JSON.stringify({ status: 'ok', serviceName, traceId, spanId, lokiResultCount, metricResultCount, sensitiveAttributeRemoved: true })}\n`,
+  `${JSON.stringify({ status: 'ok', serviceName, traceId, spanId, lokiResultCount: lokiResults.length, metricResultCount, sensitiveAttributeRemoved: true })}\n`,
 );
