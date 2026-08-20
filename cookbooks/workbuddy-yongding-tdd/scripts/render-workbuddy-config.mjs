@@ -91,7 +91,7 @@ function rolePrompt({ manifest, role, roleInstructions }) {
   }));
   return `# WISER WorkBuddy participant assignment
 
-Act as exactly one external RunAgent. The \`agent-excon\` Skill directory is already injected into this session and the complete live execution order is repeated below. Do not call \`Read\`, Bash, a browser, or any repository tool to load instructions. Discover only \`agent-excon\` MCP tools with \`ToolSearch\`, then invoke them through the approved deferred executor.
+Act as exactly one external RunAgent. The \`agent-excon\` Skill directory is already injected into this session and the complete live execution order is repeated below. Do not call \`Read\`, Bash, a browser, or any repository tool to load instructions. Before the first use of every named \`excon_*\` tool, call \`ToolSearch\` with that exact tool name, then invoke the returned \`agent-excon\` tool through the approved deferred executor. Keep a discovered tool available for later repeated calls; one broad search is not a substitute for exact first-use discovery.
 
 Trusted bootstrap:
 

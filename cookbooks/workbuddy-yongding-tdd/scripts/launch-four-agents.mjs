@@ -391,7 +391,7 @@ export async function launchWorkBuddyRoles(options) {
     maxOutputBytes: options.maxOutputBytes ?? 1_048_576,
     timeoutMs: options.timeoutMs ?? 900_000,
   };
-  const maxTurns = options.maxTurns ?? 32;
+  const maxTurns = options.maxTurns ?? 64;
   const sourceEnvironment = options.environment ?? {};
   const commands = [];
   const executions = [];
