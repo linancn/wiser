@@ -132,8 +132,14 @@ describe('WorkBuddy role-isolated runtime renderer', () => {
       )) {
         expect(configText).not.toContain(`wbl_${otherRole}_test_secret`);
       }
-      expect(await readFile(role.promptPath, 'utf8')).not.toContain(
-        'test_secret',
+      const prompt = await readFile(role.promptPath, 'utf8');
+      expect(prompt).not.toContain('test_secret');
+      expect(prompt).toContain('Do not call `Read`');
+      expect(prompt).toContain(
+        'must not publish a Message or Artifact before `excon_begin_task` succeeds',
+      );
+      expect(prompt.indexOf('`excon_claim_task`')).toBeLessThan(
+        prompt.indexOf('`excon_publish_artifact`'),
       );
     }
   });
