@@ -67,7 +67,7 @@ export interface AgentSyncDeliveryBatch {
   readonly idempotencyKey: string;
   readonly requestHash: string;
   readonly afterReceiptSeq: number;
-  readonly fromReceiptSeq: number;
+  readonly fromReceiptSeq: number | null;
   readonly throughReceiptSeq: number;
   readonly receiptHeadHash: string;
   readonly runCursor: number;
@@ -435,7 +435,8 @@ export function issueAgentSyncBatch(input: {
     idempotencyKey: input.idempotencyKey,
     requestHash: input.requestHash,
     afterReceiptSeq: input.afterReceiptSeq,
-    fromReceiptSeq: input.chainHead.lastReceiptSeq + 1,
+    fromReceiptSeq:
+      issuedReceipts.length === 0 ? null : input.chainHead.lastReceiptSeq + 1,
     throughReceiptSeq,
     receiptHeadHash: previousReceiptHash,
     runCursor: input.responseRunCursor,

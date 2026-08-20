@@ -101,6 +101,41 @@ function issueFirstBatch() {
 }
 
 describe('/sync eligibility, issuance and idempotency', () => {
+  it('represents an empty delivery batch without an inverted Receipt range', () => {
+    const decision = issueAgentSyncBatch({
+      runId: 'run-yongding-001',
+      runAgentId: 'agent-a',
+      eligibilityCutoffRunSeq: 20,
+      responseRunCursor: 20,
+      currentVirtualTime: virtualNow,
+      afterReceiptSeq: 0,
+      maxItems: 50,
+      idempotencyKey: 'sync-empty',
+      requestHash: 'sha256:sync-empty',
+      deliveryBatchId: 'batch-empty',
+      issuedAt: '2023-03-22T07:10:01.000Z',
+      issuedVirtualAt: virtualNow,
+      chainHead: {
+        runId: 'run-yongding-001',
+        runAgentId: 'agent-a',
+        lastReceiptSeq: 0,
+        headHash: 'receipt-genesis',
+      },
+      existingReceipts: [],
+      existingBatches: [],
+      disclosures: [],
+      issuanceCoordinates: [],
+      hashCanonical: testHash,
+    });
+
+    expect(decision.batch).toMatchObject({
+      fromReceiptSeq: null,
+      throughReceiptSeq: 0,
+      receipts: [],
+      hasMore: false,
+    });
+  });
+
   it('copies Receipt content so the issued hash chain cannot be rewritten by its caller', () => {
     const contentSnapshot = { nested: { text: 'original' } };
     const decision = issueAgentSyncBatch({
