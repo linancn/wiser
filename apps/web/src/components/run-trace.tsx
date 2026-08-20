@@ -12,6 +12,7 @@ import type {
 } from '@/lib/platform';
 import type { ReadModelGap } from '@/lib/read-model-source';
 import { ReadModelGaps } from './read-model-state';
+import { RunDiagnosticsPanel } from './run-diagnostics-panel';
 
 type TimelineStyle = CSSProperties & {
   '--span-left': string;
@@ -239,6 +240,8 @@ export function RunTrace({
         </section>
       )}
 
+      <RunDiagnosticsPanel locale={locale} run={run} scenario={scenario} />
+
       {run.spans.length === 0 ? (
         <section
           className="trace-summary-section"
@@ -314,7 +317,7 @@ export function RunTrace({
         >
           <div className="trace-section-heading trace-workspace-heading">
             <div>
-              <p className="eyebrow">02 · WALL + VIRTUAL TIME</p>
+              <p className="eyebrow">03 · WALL + VIRTUAL TIME</p>
               <h2 id="agent-lanes-heading">{dictionary.trace.agentLanes}</h2>
             </div>
             <div className="clock-legend">
