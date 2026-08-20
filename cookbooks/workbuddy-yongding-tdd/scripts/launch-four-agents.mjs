@@ -142,10 +142,17 @@ function redactText(source, sensitiveValues) {
 
 function parseJson(value) {
   if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
   try {
-    return JSON.parse(value);
+    return JSON.parse(trimmed);
   } catch {
-    return undefined;
+    const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    if (fenced === null) return undefined;
+    try {
+      return JSON.parse(fenced[1]);
+    } catch {
+      return undefined;
+    }
   }
 }
 
@@ -254,12 +261,11 @@ function collectProcess(child, limits) {
 }
 
 function standardArguments({ mcpConfigPath, prompt, schema, maxTurns }) {
+  const finalPrompt = `${prompt.trim()}\n\n# Final response contract\n\nAfter all WISER work is complete, return exactly one JSON object and no prose or Markdown. The launcher validates this schema locally; never call or search for a StructuredOutput tool.\n\n${JSON.stringify(schema, null, 2)}\n`;
   return [
     '-p',
     '--output-format',
     'json',
-    '--json-schema',
-    JSON.stringify(schema),
     '--permission-mode',
     'default',
     '--subagent-permission-mode',
@@ -274,7 +280,7 @@ function standardArguments({ mcpConfigPath, prompt, schema, maxTurns }) {
     String(maxTurns),
     '--effort',
     'high',
-    prompt,
+    finalPrompt,
   ];
 }
 
