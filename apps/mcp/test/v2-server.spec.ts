@@ -420,7 +420,12 @@ describe('WISER Agent EXCON v2 MCP adapter', () => {
       },
     });
 
-    const text = result.content.find((block) => block.type === 'text')?.text;
+    const text = (
+      result.content as readonly {
+        readonly type: string;
+        readonly text?: string;
+      }[]
+    ).find((block) => block.type === 'text')?.text;
     expect(text).toContain('MACHINE_DATA:');
     expect(text).toContain('"throughReceiptSeq":4');
     expect(text).toContain(`"resourceId":"${TASK_ID}"`);

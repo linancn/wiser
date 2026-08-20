@@ -583,7 +583,18 @@ async function callHttp(
 ): Promise<CallToolResult> {
   try {
     const data: JsonValue = await http.request(request);
-    if (JSON.stringify(data).length > MCP_RESPONSE_CHARACTER_LIMIT) {
+    const structuredContent = { ok: true as const, data };
+    const machineData = JSON.stringify(structuredContent);
+    const successResult: CallToolResult = {
+      content: [
+        {
+          type: 'text',
+          text: `${bilingual(success)}\n\nMACHINE_DATA:\n${machineData}`,
+        },
+      ],
+      structuredContent,
+    };
+    if (JSON.stringify(successResult).length > MCP_RESPONSE_CHARACTER_LIMIT) {
       const structuredContent = {
         ok: false as const,
         error: {
@@ -609,10 +620,7 @@ async function callHttp(
         structuredContent,
       };
     }
-    return {
-      content: [{ type: 'text', text: bilingual(success) }],
-      structuredContent: { ok: true, data },
-    };
+    return successResult;
   } catch (error) {
     return errorResult(error);
   }
