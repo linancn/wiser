@@ -108,7 +108,7 @@ Accept: application/json
 - Artifact 更新以精确 `baseVersionId` 检测冲突，不覆盖并发版本。
 - 背书必须消费匹配 actor、Task、Submission 修订、action、scope、期限和次数的 ActionGrant。
 
-协议已经支持不可变提交、背书和 ActionGrant 契约，但完整 evaluator → `EVALUATING` → `REWORK`/`ACCEPTED` → revision/resubmit 编排尚未交付。
+本机内存 profile 已交付不可变提交、背书、ActionGrant 与完整 evaluator → `EVALUATING` → `REWORK`/`ACCEPTED` → revision/resubmit 编排；该闭环尚未接入 PostgreSQL 持久化 adapter。
 
 ## 权威回放与 Telemetry overlay
 

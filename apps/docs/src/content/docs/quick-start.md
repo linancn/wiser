@@ -44,7 +44,7 @@ pnpm --filter agent-excon-mcp-server test
 node skills/agent-excon/scripts/lint-skill.mjs
 ```
 
-这些测试覆盖多角色 quorum、Task/Barrier 状态、Receipt chain、`/sync`、Task lease、Message/Artifact、Submission/endorsement、Receipt-gated Submission 安全恢复、参训者安全回放和 MCP→HTTP 映射。完整 evaluator → rework → resubmit 闭环仍未交付；不要从契约里存在相关字段推断该闭环已经可用。
+这些测试覆盖多角色 quorum、Task/Barrier 状态、Receipt chain、`/sync`、Task lease、Message/Artifact、Submission/endorsement、Receipt-gated Submission 安全恢复、确定性 evaluator → rework → resubmit、参训者安全回放和 MCP→HTTP 映射。完整闭环已在本机内存 profile 交付；PostgreSQL 持久化 adapter 尚未接入。
 
 ## 启动本地服务
 

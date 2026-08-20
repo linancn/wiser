@@ -44,7 +44,7 @@ pnpm --filter agent-excon-mcp-server test
 node skills/agent-excon/scripts/lint-skill.mjs
 ```
 
-These tests cover distinct-role quorum, Task/Barrier state, Receipt chains, `/sync`, Task leases, Messages/Artifacts, Submissions/endorsements, Receipt-gated safe Submission recovery, participant-safe replay, and MCP-to-HTTP mappings. The complete evaluator → rework → resubmit loop is not delivered; do not infer runtime support merely because related contract fields exist.
+These tests cover distinct-role quorum, Task/Barrier state, Receipt chains, `/sync`, Task leases, Messages/Artifacts, Submissions/endorsements, Receipt-gated safe Submission recovery, deterministic evaluator → rework → resubmit, participant-safe replay, and MCP-to-HTTP mappings. The complete loop is delivered in the local in-memory profile; the durable PostgreSQL adapter is not connected yet.
 
 ## Start local services
 

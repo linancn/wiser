@@ -108,7 +108,7 @@ Non-empty sequences are contiguous, each `previousReceiptHash` joins the trusted
 - Artifact updates compare the exact `baseVersionId` and never overwrite a concurrent version.
 - Endorsement consumes an ActionGrant matching actor, Task, Submission revision, action, scope, expiry, and use count.
 
-The protocol implements immutable submissions, endorsements, and ActionGrant contracts, but the complete evaluator → `EVALUATING` → `REWORK`/`ACCEPTED` → revision/resubmit orchestration is not delivered.
+The local in-memory profile implements immutable submissions, endorsements, ActionGrants, and the complete evaluator → `EVALUATING` → `REWORK`/`ACCEPTED` → revision/resubmit orchestration. The loop is not connected to the durable PostgreSQL adapter yet.
 
 ## Authoritative replay and telemetry overlay
 
