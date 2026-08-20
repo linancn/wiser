@@ -1,0 +1,57 @@
+import { readFile, rm, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { runWorkBuddyCookbook } from '../../cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs';
+
+const temporaryDirectories: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { force: true, recursive: true })),
+  );
+});
+
+describe('WorkBuddy Yongding cookbook runner', () => {
+  it('runs the scripted profile, verifies authoritative gates, and destroys credentials', async () => {
+    const outputDirectory = join(
+      tmpdir(),
+      `wiser-cookbook-runner-${randomUUID()}`,
+    );
+    temporaryDirectories.push(outputDirectory);
+    const result = await runWorkBuddyCookbook({
+      environment: { ...process.env, NODE_ENV: 'test' },
+      mode: 'scripted',
+      outputDirectory,
+      repositoryRoot: import.meta.dirname.replace(/\/tests\/cookbook$/, ''),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.report.status).toBe('passed');
+    expect(result.report.authoritative.evaluations).toHaveLength(4);
+    expect(
+      result.report.authoritative.evaluations.every(
+        ({ verdict }) => verdict === 'ACCEPTED',
+      ),
+    ).toBe(true);
+    expect(result.report.authoritative.releasedBarriers).toEqual(
+      expect.arrayContaining(['analysis-ready', 'endorsement-ready']),
+    );
+    expect((await stat(result.reportPath)).mode & 0o777).toBe(0o600);
+    const serialized = await readFile(result.reportPath, 'utf8');
+    expect(serialized).not.toMatch(/wbl_[A-Za-z0-9_-]+/);
+    expect(serialized).not.toContain('AGENT_EXCON_API_KEY');
+    expect(serialized).not.toContain('leaseToken');
+    await expect(
+      stat(join(outputDirectory, 'lab', 'credentials')),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(
+      stat(join(outputDirectory, 'workbuddy', 'mcp')),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
+  }, 40_000);
+});
