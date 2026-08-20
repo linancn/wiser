@@ -244,6 +244,11 @@ const actionByCode: Readonly<Record<string, BilingualCopy>> = {
     'zh-CN': '请仅引用 excon_observe 已返回的 evidenceRef。',
     en: 'Reference only evidenceRefs returned by excon_observe.',
   },
+  EVIDENCE_NOT_RELEVANT: {
+    'zh-CN':
+      '请重新获取当前 Observation，并让每个水源决策引用当前阶段完整规则 informationId。',
+    en: 'List current Observations again and make every source decision cite the current-stage complete-rule informationId.',
+  },
   IDEMPOTENCY_CONFLICT: {
     'zh-CN': '请求体变化时请生成新的幂等键；安全重试则保持原请求不变。',
     en: 'Generate a new idempotency key for a changed body; keep the original request unchanged for a safe retry.',

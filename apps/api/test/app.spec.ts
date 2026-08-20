@@ -175,7 +175,7 @@ const canonicalStageTwoPlan = {
       flowM3s: 23.3,
       evidenceRefs: [
         'official-flow-20230322-guanting',
-        'simulated-rules-20230322-stage-1',
+        'simulated-update-20230323-corridor',
       ],
     },
     {
@@ -677,6 +677,29 @@ describe('validation, ownership, versions, and idempotency', () => {
     expect(stale.statusCode).toBe(409);
     expect(ApiErrorSchema.parse(json(stale))).toMatchObject({
       error: { code: 'EPISODE_VERSION_CONFLICT' },
+    });
+
+    const irrelevant = await instance.inject({
+      method: 'POST',
+      url: `/api/v1/episodes/${episodeId}/submissions`,
+      headers: {
+        ...headers,
+        'idempotency-key': '10000000-0000-4000-8000-000000000034',
+      },
+      payload: {
+        episodeVersion: 2,
+        plan: {
+          ...canonicalPlan,
+          sourceReleases: canonicalPlan.sourceReleases.map((release) => ({
+            ...release,
+            evidenceRefs: ['official-flow-20230322-guanting'],
+          })),
+        },
+      },
+    });
+    expect(irrelevant.statusCode).toBe(422);
+    expect(ApiErrorSchema.parse(json(irrelevant))).toMatchObject({
+      error: { code: 'EVIDENCE_NOT_RELEVANT' },
     });
   });
 });

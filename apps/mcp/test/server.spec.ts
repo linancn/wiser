@@ -289,6 +289,37 @@ describe('Agent EXCON MCP server', () => {
     expect(JSON.stringify(result)).not.toContain('must-not-leak');
   });
 
+  it('maps irrelevant evidence to a participant-safe recovery action', async () => {
+    const http = new RecordingHttpClient();
+    http.nextError = new AgentExconApiError({
+      status: 422,
+      payload: {
+        error: {
+          code: 'EVIDENCE_NOT_RELEVANT',
+          message: 'Current rules are not cited.',
+          traceId: 'trace-evidence-1234',
+        },
+      },
+    });
+    const mcpClient = await connect(http);
+
+    const result = await mcpClient.callTool({
+      name: 'excon_get_feedback',
+      arguments: { episodeId: EPISODE_ID },
+    });
+
+    expect(result.structuredContent).toEqual({
+      ok: false,
+      error: {
+        code: 'EVIDENCE_NOT_RELEVANT',
+        message: 'Current rules are not cited.',
+        action:
+          '请重新获取当前 Observation，并让每个水源决策引用当前阶段完整规则 informationId。 / List current Observations again and make every source decision cite the current-stage complete-rule informationId.',
+        traceId: 'trace-evidence-1234',
+      },
+    });
+  });
+
   it('publishes the bilingual Yongding River scenario resource locally', async () => {
     const http = new RecordingHttpClient();
     const mcpClient = await connect(http);

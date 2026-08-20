@@ -37,17 +37,17 @@
       {
         "sourceId": "guanting",
         "flowM3s": 23.3,
-        "evidenceRefs": ["official-flow-20230323-guanting"]
+        "evidenceRefs": ["simulated-update-20230323-corridor"]
       },
       {
         "sourceId": "south-water",
         "flowM3s": 0,
-        "evidenceRefs": ["simulated-south-water-limit-t2"]
+        "evidenceRefs": ["simulated-update-20230323-corridor"]
       },
       {
         "sourceId": "reclaimed-lower",
         "flowM3s": 4,
-        "evidenceRefs": ["official-flow-20230323-cuizhihuiying"]
+        "evidenceRefs": ["simulated-update-20230323-corridor"]
       }
     ],
     "expectedSectionFlows": [

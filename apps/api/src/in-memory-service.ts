@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import type {
+  AllocationPlanSubmission,
   CreateEpisodeRequest,
   FeedbackDto,
   ObservationDto,
@@ -117,6 +118,25 @@ const STAGE_TWO_RULES = Object.freeze({
 
 function rulesForStage(stage: number) {
   return stage === 2 ? STAGE_TWO_RULES : STAGE_ONE_RULES;
+}
+
+function currentRuleInformationId(stage: number): string {
+  return stage === 2
+    ? 'simulated-update-20230323-corridor'
+    : 'simulated-rules-20230322-stage-1';
+}
+
+function assertRelevantEvidence(plan: AllocationPlanSubmission): void {
+  const requiredInformationId = currentRuleInformationId(plan.stage);
+  for (const release of plan.sourceReleases) {
+    if (!release.evidenceRefs.includes(requiredInformationId)) {
+      throw new ExerciseServiceError(
+        'EVIDENCE_NOT_RELEVANT',
+        '每个水源决策必须引用当前阶段完整规则 Observation。 / Every source decision must cite the current stage complete-rule Observation.',
+        { sourceId: release.sourceId },
+      );
+    }
+  }
 }
 
 function canonicalize(value: unknown): unknown {
@@ -490,6 +510,7 @@ export class InMemoryExerciseService implements ExerciseService {
             input.plan,
             queueExpectedVersion,
           );
+          assertRelevantEvidence(input.plan);
           const evaluating = startEvaluation(queued, queued.version);
           const submittedAt = this.timestamp();
           const evaluation = evaluateWaterAllocationPlan({
