@@ -40,6 +40,7 @@ export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v1/
 | -------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
 | `excon_get_assignment`           | `GET runs/{runId}/me`                          | Read the credential-bound RunAgent, role, and sync cursor             |
 | `excon_sync`                     | `POST runs/{runId}/sync`                       | Issue new resources and optionally acknowledge the prior Receipt head |
+| `excon_wait_and_sync`            | `POST runs/{runId}/sync`                       | Wait on wall time, then issue one normal sync without virtual advance |
 | `excon_list_tasks`               | `GET runs/{runId}/tasks`                       | Recover already-issued Tasks                                          |
 | `excon_list_messages`            | `GET runs/{runId}/messages`                    | Recover already-issued Messages                                       |
 | `excon_list_artifacts`           | `GET runs/{runId}/artifacts`                   | Recover already-issued Artifacts                                      |
@@ -66,7 +67,9 @@ export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v1/
 
    - 先调用 `excon_get_assignment`，要求返回的 `runAgent.id`/`runAgent.runId` 与可信启动参数一致。
    - 使用 `syncCursor.afterReceiptSeq` 调用 `excon_sync`。处理完非空批次后，下一次 sync 用精确 `throughReceiptSeq` 和 `receiptHeadHash` 确认。
+   - 等待 Barrier 时使用 `excon_wait_and_sync`，先按墙钟有界等待再执行一次普通 sync；它不推进虚拟时钟。
    - Call `excon_get_assignment` first and require `runAgent.id`/`runAgent.runId` to match the trusted bootstrap. Sync from `syncCursor.afterReceiptSeq`; acknowledge a processed non-empty batch with its exact sequence and head hash on the next sync.
+   - Use `excon_wait_and_sync` at a Barrier to wait on wall time before one normal sync; it never advances virtual time.
 
 2. **Task 租约与提交 / Task lease and submission**
 
@@ -86,17 +89,17 @@ export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v1/
 
 - 所有输入使用 strict Zod schema；额外字段（包括 token）在发送 HTTP 前被拒绝。 / All inputs use strict Zod schemas; extra fields, including tokens, are rejected before HTTP dispatch.
 - 所有写工具都要求 UUID 幂等键。安全重试时 actor、tool/path、body 与幂等键必须完全不变。 / Every write requires a UUID idempotency key; a safe retry preserves the actor, tool/path, body, and key exactly.
-- 工具返回中文优先的简短 `content` 与机器可读 `structuredContent`。API `details` 不会转发给智能体。 / Tools return concise Chinese-first `content` plus machine-readable `structuredContent`; API `details` are never forwarded to agents.
-- 单次 API JSON 超过 32,000 字符时，适配器返回 `MCP_RESPONSE_TOO_LARGE`，并要求缩小 `sync.maxItems` 或回放游标。 / API JSON over 32,000 characters returns `MCP_RESPONSE_TOO_LARGE` with guidance to narrow `sync.maxItems` or the replay cursor.
+- 成功工具在中文优先的 `content` 中镜像紧凑 `MACHINE_DATA`，同时保留同一份机器可读 `structuredContent`，兼容只展示文本的 Agent 客户端；API `details` 不会转发。 / Successful tools mirror compact `MACHINE_DATA` in Chinese-first `content` while preserving the same machine-readable `structuredContent` for text-only Agent clients; API `details` are never forwarded.
+- 单次完整 MCP 响应超过 32,000 字符时，适配器返回 `MCP_RESPONSE_TOO_LARGE`，并要求缩小 `sync.maxItems` 或回放游标。 / A complete MCP response over 32,000 characters returns `MCP_RESPONSE_TOO_LARGE` with guidance to narrow `sync.maxItems` or the replay cursor.
 
 Resource `excon://scenarios/jing-jin-ji-yongding-river` 提供中英文的京津冀永定河合成多智能体演练说明。 / The resource provides the bilingual guide for the synthetic Jing-Jin-Ji Yongding River multi-agent exercise.
 
 ## 当前后端边界 / Current backend boundary
 
-这 17 个 v2 Tools 已实现并由 MCP `listTools()` 与 HTTP request-mapping 测试验证，但 MCP 只是适配器。当前 Fastify v2 服务使用不持久化的内存协议实现；Supabase v2 schema/RLS 尚未通过 PostgreSQL API adapter 接入。交互式运行还需要受信运行时提供绑定到具体 RunAgent 的 credential。
+这 18 个 v2 Tools 已实现并由 MCP `listTools()` 与 HTTP request-mapping 测试验证，但 MCP 只是适配器。当前 Fastify v2 服务使用不持久化的内存协议实现；Supabase v2 schema/RLS 尚未通过 PostgreSQL API adapter 接入。交互式运行还需要受信运行时提供绑定到具体 RunAgent 的 credential。
 
-These 17 v2 Tools are implemented and verified by MCP `listTools()` and HTTP request-mapping tests, but MCP remains only an adapter. The current Fastify v2 service uses a non-durable in-memory protocol implementation; the Supabase v2 schema/RLS is not yet connected through a PostgreSQL API adapter. An interactive Run also requires a trusted runtime to provision a credential bound to the concrete RunAgent.
+These 18 v2 Tools are implemented and verified by MCP `listTools()` and HTTP request-mapping tests, but MCP remains only an adapter. The current Fastify v2 service uses a non-durable in-memory protocol implementation; the Supabase v2 schema/RLS is not yet connected through a PostgreSQL API adapter. An interactive Run also requires a trusted runtime to provision a credential bound to the concrete RunAgent.
 
-完整 evaluator → rework → resubmit 编排仍未交付。参训者安全的 `GET runs/{runId}/submissions` 与 `excon_list_submissions` 只恢复自身已 Receipt 的不可变快照；不得用 operator replay 替代。
+本机 v2 Lab 已交付确定性 evaluator → rework → resubmit 与团队背书闭环，但仍是非持久化开发 profile。参训者安全的 `GET runs/{runId}/submissions` 与 `excon_list_submissions` 只恢复自身已 Receipt 的不可变快照；不得用 operator replay 替代。
 
-The complete evaluator → rework → resubmit orchestration is not delivered. Participant-safe `GET runs/{runId}/submissions` and `excon_list_submissions` recover only immutable snapshots already receipted to the caller; never substitute operator replay.
+The local v2 Lab delivers the deterministic evaluator → rework → resubmit and team-endorsement loop, but it remains a non-durable development profile. Participant-safe `GET runs/{runId}/submissions` and `excon_list_submissions` recover only immutable snapshots already receipted to the caller; never substitute operator replay.

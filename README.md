@@ -28,7 +28,7 @@ WISER 面向水系统的感知、推演、决策与重构。当前首个开源�
 - `packages/contracts` 与纯 `packages/core` 已定义 Scenario/Version/Run/RunAgent/Task/Barrier、Receipt/Event、Message/Artifact、Submission/Feedback 及确定性状态机。
 - Fastify 已提供多场景管理、Run 编组、Receipt `/sync`、Task 租约、协作工件、提交/背书和安全回放的 `/api/v2` 开发纵切；当前实现是**内存协议适配器**，进程重启后不保留状态。
 - Supabase 已有 v2 PostgreSQL schema、约束、RLS、私有 Event/Outbox/credential/telemetry 表和 pgTAP 覆盖，但 Fastify 尚未接入 PostgreSQL API adapter。
-- Agent EXCON Skill 已以 v2 RunAgent 循环为默认；stdio MCP 已实现与 HTTP 路由一致的 17 个 v2 参训工具，包括 Receipt-gated 的 Submission 安全恢复。v1 只在显式选择兼容模式时启用，不会自动降级。
+- Agent EXCON Skill 已以 v2 RunAgent 循环为默认；stdio MCP 已实现与 HTTP 路由一致的 18 个 v2 参训工具，包括 Receipt-gated 的 Submission 安全恢复与不推进虚拟时钟的有界 wait-and-sync。v1 只在显式选择兼容模式时启用，不会自动降级。
 - 本机 WorkBuddy Cookbook 已能用四个隔离的顶层进程运行真实 Yongding v2 协作链；scripted 与故障注入 profile 均经过真实 MCP，覆盖确定性评价、scoped rework、三方背书与两个 Barrier，真实 WorkBuddy 仅在显式 opt-in 时启动。
 - Compose `observability` profile 已包含认证 Telemetry Ingress、OTel Collector、Tempo、Prometheus、Loki 和 Grafana；领域 Event/Receipt 始终是权威事实，OTel 只是最佳努力诊断投影。
 - Web 已交付中文默认的多场景、分 Agent Trace 与视角回放 reference/live 两种只读模式；`live` 失败时显式显示数据缺口，不回退或伪造参训过程。
@@ -82,7 +82,7 @@ pnpm observability:up
 
 ## 项目状态
 
-v2 的契约、纯领域核心、内存 HTTP 协作纵切、数据库 schema/RLS、Skill、17 个 MCP 工具、Submission 安全恢复、确定性评价/返工/背书闭环和认证观测链路已经可验证；[WorkBuddy TDD Cookbook](./cookbooks/workbuddy-yongding-tdd/README.md) 提供可重复的四智能体本机入口。持久化接线仍在进行。v1 Episode 保留为**显式兼容协议**，目前仍是独立实现，而不是已完成的 v2 facade。范围与验收标准记录在 [`docs/roadmap.md`](./docs/roadmap.md)，完整设计见 [`docs/design/v2-multi-scenario-multi-agent-observability.md`](./docs/design/v2-multi-scenario-multi-agent-observability.md)，贡献约定见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
+v2 的契约、纯领域核心、内存 HTTP 协作纵切、数据库 schema/RLS、Skill、18 个 MCP 工具、Submission 安全恢复、确定性评价/返工/背书闭环和认证观测链路已经可验证；[WorkBuddy TDD Cookbook](./cookbooks/workbuddy-yongding-tdd/README.md) 提供可重复的四智能体本机入口。持久化接线仍在进行。v1 Episode 保留为**显式兼容协议**，目前仍是独立实现，而不是已完成的 v2 facade。范围与验收标准记录在 [`docs/roadmap.md`](./docs/roadmap.md)，完整设计见 [`docs/design/v2-multi-scenario-multi-agent-observability.md`](./docs/design/v2-multi-scenario-multi-agent-observability.md)，贡献约定见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
 
 ## 许可
 

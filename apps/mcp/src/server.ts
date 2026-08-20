@@ -101,6 +101,18 @@ const V2SyncInputSchema = RunSyncRequestSchema.safeExtend({
   idempotencyKey: IdempotencyKeySchema,
 });
 
+const V2WaitAndSyncInputSchema = V2SyncInputSchema.extend({
+  waitSeconds: z
+    .number()
+    .int()
+    .min(1)
+    .max(30)
+    .default(15)
+    .describe(
+      '在发出一次普通 sync 前等待的墙钟秒数；不推进虚拟时钟。 / Wall-clock seconds to wait before one ordinary sync; never advances virtual time.',
+    ),
+});
+
 const V2TaskClaimInputSchema = TaskClaimRequestSchema.safeExtend({
   taskId: TaskIdSchema,
   runAgentId: RunAgentIdSchema,
@@ -1215,6 +1227,51 @@ function createAgentExconV2McpServer(http: AgentExconHttpClient): McpServer {
         },
         v2SuccessCopy.sync,
       ),
+  );
+
+  server.registerTool(
+    'excon_wait_and_sync',
+    {
+      title: bilingual({
+        'zh-CN': '有界等待后同步 RunAgent 资源',
+        en: 'Wait Then Sync RunAgent Resources',
+      }),
+      description: bilingual({
+        'zh-CN':
+          '先按墙钟有界等待，再执行恰好一次与 excon_sync 相同的发放/确认请求。用于 Barrier 等待，减少空轮询的模型 turns；不会推进 Run 虚拟时钟，也不会改变 Receipt 语义。',
+        en: 'Wait for a bounded wall-clock interval, then perform exactly one issuance/acknowledgement request identical to excon_sync. Use it while waiting at Barriers to reduce empty model turns; it never advances Run virtual time or changes Receipt semantics.',
+      }),
+      inputSchema: V2WaitAndSyncInputSchema,
+      outputSchema: ToolOutputSchema,
+      annotations: idempotentWriteAnnotations,
+    },
+    async ({
+      runId,
+      runAgentId,
+      idempotencyKey,
+      afterReceiptSeq,
+      ack,
+      maxItems,
+      waitSeconds,
+    }) => {
+      await new Promise<void>((resolveWait) => {
+        globalThis.setTimeout(resolveWait, waitSeconds * 1_000);
+      });
+      return callHttp(
+        http,
+        {
+          method: 'POST',
+          path: `/runs/${pathId(runId)}/sync`,
+          headers: participantHeaders(runAgentId, idempotencyKey),
+          body: {
+            afterReceiptSeq,
+            ...(ack === undefined ? {} : { ack }),
+            maxItems,
+          },
+        },
+        v2SuccessCopy.sync,
+      );
+    },
   );
 
   for (const resource of [

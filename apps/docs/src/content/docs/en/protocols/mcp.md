@@ -1,13 +1,13 @@
 ---
 title: MCP integration
-description: Participate in a multi-agent Run through 17 implemented v2 stdio Tools while isolating explicit v1 compatibility.
+description: Participate in a multi-agent Run through 18 implemented v2 stdio Tools while isolating explicit v1 compatibility.
 ---
 
 ## An HTTP adapter
 
 The MCP server calls only the public HTTP API. It does not duplicate state machines, authorization, Receipts, or adjudication; it never connects directly to PostgreSQL or holds a service-role credential. The default is multi-scenario, multi-agent **v2** with `/api/v2/` as the API base.
 
-The server uses the stable v1 line of `@modelcontextprotocol/sdk` and stdio transport. Inputs are strict Zod schemas. Successful calls provide concise Chinese-first `content` and machine-readable `structuredContent`; machine logic reads `structuredContent.data` and never parses the summary back into fields.
+The server uses the stable v1 line of `@modelcontextprotocol/sdk` and stdio transport. Inputs are strict Zod schemas. Successful calls mirror compact `MACHINE_DATA` in Chinese-first `content` and preserve the same machine-readable `structuredContent`, including for Agent clients that display only text.
 
 ## Configuration
 
@@ -27,25 +27,26 @@ Never place the token in Tool arguments, Messages, Artifacts, Submissions, logs,
 
 This table matches `apps/mcp/src/server.ts` and the current Fastify routes. HTTP operations are relative to `/api/v2/`.
 
-| MCP Tool                         | HTTP operation                                 | Actual effect                                                         |
-| -------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
-| `excon_get_assignment`           | `GET runs/{runId}/me`                          | Reconcile the credential-bound RunAgent, role, and sync cursor        |
-| `excon_sync`                     | `POST runs/{runId}/sync`                       | Issue new resources and optionally acknowledge the prior Receipt head |
-| `excon_list_tasks`               | `GET runs/{runId}/tasks`                       | Recover issued Tasks                                                  |
-| `excon_list_messages`            | `GET runs/{runId}/messages`                    | Recover issued Messages                                               |
-| `excon_list_artifacts`           | `GET runs/{runId}/artifacts`                   | Recover issued Artifact grants                                        |
-| `excon_list_submissions`         | `GET runs/{runId}/submissions`                 | Recover exact issued immutable Submission revisions                   |
-| `excon_claim_task`               | `POST tasks/{taskId}:claim`                    | Claim a fenced Task lease; only this Tool returns its opaque token    |
-| `excon_begin_task`               | `POST tasks/{taskId}:begin`                    | Begin under the current lease                                         |
-| `excon_heartbeat_task`           | `POST tasks/{taskId}:heartbeat`                | Request a bounded lease renewal                                       |
-| `excon_release_task`             | `POST tasks/{taskId}:release`                  | Release the lease and invalidate its old token                        |
-| `excon_submit_task_result`       | `POST tasks/{taskId}/submissions`              | Create an immutable Receipt/ArtifactVersion-backed result             |
-| `excon_post_message`             | `POST runs/{runId}/messages`                   | Send a Message to an immutable recipient snapshot                     |
-| `excon_publish_artifact`         | `POST runs/{runId}/artifacts`                  | Publish an Artifact and immutable first version                       |
-| `excon_publish_artifact_version` | `POST artifacts/{artifactId}/versions`         | Append from an exact `baseVersionId`                                  |
-| `excon_endorse_submission`       | `POST submissions/{submissionId}/endorsements` | Consume a matching ActionGrant for the exact revision                 |
-| `excon_get_feedback`             | `GET runs/{runId}/feedback`                    | Recover issued layered Feedback/ActionGrants                          |
-| `excon_get_replay_cursor`        | `GET runs/{runId}/replay`                      | Read only this agent's `issued`/`acknowledged` perspective            |
+| MCP Tool                         | HTTP operation                                 | Actual effect                                                           |
+| -------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
+| `excon_get_assignment`           | `GET runs/{runId}/me`                          | Reconcile the credential-bound RunAgent, role, and sync cursor          |
+| `excon_sync`                     | `POST runs/{runId}/sync`                       | Issue new resources and optionally acknowledge the prior Receipt head   |
+| `excon_wait_and_sync`            | `POST runs/{runId}/sync`                       | Wait on wall time, then perform one normal sync without virtual advance |
+| `excon_list_tasks`               | `GET runs/{runId}/tasks`                       | Recover issued Tasks                                                    |
+| `excon_list_messages`            | `GET runs/{runId}/messages`                    | Recover issued Messages                                                 |
+| `excon_list_artifacts`           | `GET runs/{runId}/artifacts`                   | Recover issued Artifact grants                                          |
+| `excon_list_submissions`         | `GET runs/{runId}/submissions`                 | Recover exact issued immutable Submission revisions                     |
+| `excon_claim_task`               | `POST tasks/{taskId}:claim`                    | Claim a fenced Task lease; only this Tool returns its opaque token      |
+| `excon_begin_task`               | `POST tasks/{taskId}:begin`                    | Begin under the current lease                                           |
+| `excon_heartbeat_task`           | `POST tasks/{taskId}:heartbeat`                | Request a bounded lease renewal                                         |
+| `excon_release_task`             | `POST tasks/{taskId}:release`                  | Release the lease and invalidate its old token                          |
+| `excon_submit_task_result`       | `POST tasks/{taskId}/submissions`              | Create an immutable Receipt/ArtifactVersion-backed result               |
+| `excon_post_message`             | `POST runs/{runId}/messages`                   | Send a Message to an immutable recipient snapshot                       |
+| `excon_publish_artifact`         | `POST runs/{runId}/artifacts`                  | Publish an Artifact and immutable first version                         |
+| `excon_publish_artifact_version` | `POST artifacts/{artifactId}/versions`         | Append from an exact `baseVersionId`                                    |
+| `excon_endorse_submission`       | `POST submissions/{submissionId}/endorsements` | Consume a matching ActionGrant for the exact revision                   |
+| `excon_get_feedback`             | `GET runs/{runId}/feedback`                    | Recover issued layered Feedback/ActionGrants                            |
+| `excon_get_replay_cursor`        | `GET runs/{runId}/replay`                      | Read only this agent's `issued`/`acknowledged` perspective              |
 
 `excon_list_submissions` recovers only exact immutable revisions receipted to the current RunAgent through `excon_sync`. It cannot reveal unissued Submissions or another agent's view; recover and review the target revision with this Tool before endorsement.
 
@@ -58,7 +59,7 @@ This table matches `apps/mcp/src/server.ts` and the current Fastify routes. HTTP
 5. Use Messages for explicit requests and Artifacts/ArtifactVersions for reusable evidence. A successful write is not recipient knowledge until their own sync issues a Receipt.
 6. `excon_submit_task_result` cites at least one verified own Receipt or authorized ArtifactVersion.
 7. Receive the Submission Receipt through `excon_sync`, then recover and review the exact immutable revision with `excon_list_submissions`. Endorse only after receiving a matching ActionGrant.
-8. Continue bounded sync while waiting for Feedback or downstream Barrier work. Participants have no Run-clock advance or Barrier-release Tool.
+8. Use `excon_wait_and_sync` for bounded waits on Feedback or downstream Barrier work. Participants have no Run-clock advance or Barrier-release Tool.
 9. Handoff through `excon_get_replay_cursor`, keeping authoritative Event/Receipt facts separate from best-effort telemetry gaps.
 
 `/sync` is the only operation that issues a new Task, Message, Artifact grant, Submission, or Feedback. The five recovery Tools never turn eligible content into issued content.
@@ -68,10 +69,10 @@ This table matches `apps/mcp/src/server.ts` and the current Fastify routes. HTTP
 - Every write Tool requires a UUID `idempotencyKey`. After an ambiguous failure, retry only the identical actor, Tool/path, body, and key.
 - The caller keeps Task lease tokens in local state; MCP does not persist them for the caller.
 - API failures become `isError: true` results with a stable `code`, safe message, next action, and optional trace ID. API `details` are not forwarded to the agent.
-- API JSON over 32,000 characters returns `MCP_RESPONSE_TOO_LARGE`. Narrow `sync.maxItems` or the replay cursor; never treat a truncated payload as complete fact.
+- A complete MCP response over 32,000 characters returns `MCP_RESPONSE_TOO_LARGE`. Narrow `sync.maxItems` or the replay cursor; never treat a truncated payload as complete fact.
 - The RunAgent replay Tool does not expose operator/team/role/eligible perspectives.
 
-The complete evaluator → rework → resubmit orchestration is not delivered. Revision and ActionGrant fields in the Tool schema do not imply that the backend already generates the full evaluation sequence.
+The local v2 Lab delivers the deterministic evaluator → rework → resubmit and team-endorsement loop. It remains a non-durable development profile and does not imply that the PostgreSQL adapter is complete.
 
 ## Resource
 

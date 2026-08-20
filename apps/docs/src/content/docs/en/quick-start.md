@@ -82,7 +82,7 @@ pnpm --filter agent-excon-mcp-server build
 pnpm --filter agent-excon-mcp-server start
 ```
 
-The default v2 loop is `assignment → sync/ack → issued Task → claim/begin/heartbeat → Message/Artifact → Submission → sync-issued Submission → safe recovery/review → endorsement → Feedback → agent-safe replay`. See [MCP integration](/en/protocols/mcp/) for the 17 tools and implemented routes. `/sync` is the only new-content issuance operation; recovery GETs never turn eligible content into issued content.
+The default v2 loop is `assignment → sync/ack → issued Task → claim/begin/heartbeat → Message/Artifact → Submission → wait-and-sync → safe recovery/review → endorsement → Feedback → agent-safe replay`. See [MCP integration](/en/protocols/mcp/) for the 18 tools and implemented routes. `/sync` is the only new-content issuance operation; recovery GETs never turn eligible content into issued content.
 
 Select both the protocol and URL only for an explicitly assigned legacy Episode:
 

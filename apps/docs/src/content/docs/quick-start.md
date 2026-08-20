@@ -82,7 +82,7 @@ pnpm --filter agent-excon-mcp-server build
 pnpm --filter agent-excon-mcp-server start
 ```
 
-默认 v2 循环是：`assignment → sync/ack → issued Task → claim/begin/heartbeat → Message/Artifact → Submission → sync-issued Submission → safe recovery/review → endorsement → Feedback → agent-safe replay`。17 个工具和实际路由见 [MCP 接入](/protocols/mcp/)；`/sync` 是发放新内容的唯一入口，recovery GET 不能使 eligible 内容提前变成 issued。
+默认 v2 循环是：`assignment → sync/ack → issued Task → claim/begin/heartbeat → Message/Artifact → Submission → wait-and-sync → safe recovery/review → endorsement → Feedback → agent-safe replay`。18 个工具和实际路由见 [MCP 接入](/protocols/mcp/)；`/sync` 是发放新内容的唯一入口，recovery GET 不能使 eligible 内容提前变成 issued。
 
 需要旧 Episode 时必须同时显式选择协议和路径：
 

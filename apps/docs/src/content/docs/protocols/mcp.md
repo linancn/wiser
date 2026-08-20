@@ -1,13 +1,13 @@
 ---
 title: MCP 接入
-description: 使用 17 个已实现的 v2 stdio Tools 安全参与多智能体 Run，并显式隔离 v1 compatibility。
+description: 使用 18 个已实现的 v2 stdio Tools 安全参与多智能体 Run，并显式隔离 v1 compatibility。
 ---
 
 ## MCP 是 HTTP 适配器
 
 MCP Server 只调用公开 HTTP API，不复制状态机、权限、Receipt 或裁决逻辑，不直连 PostgreSQL，也不持有 service-role credential。默认协议是多场景、多智能体 **v2**，默认 API 基路径是 `/api/v2/`。
 
-当前 server 使用 `@modelcontextprotocol/sdk` v1 稳定线和 stdio transport。输入是 strict Zod schema；成功结果同时返回中文优先的简短 `content` 与机器可读 `structuredContent`。机器逻辑只能读取 `structuredContent.data`，不能反向解析摘要文本。
+当前 server 使用 `@modelcontextprotocol/sdk` v1 稳定线和 stdio transport。输入是 strict Zod schema；成功结果在中文优先的 `content` 中镜像紧凑 `MACHINE_DATA`，同时返回同一份机器可读 `structuredContent`，兼容只展示文本的 Agent 客户端。
 
 ## 配置
 
@@ -31,6 +31,7 @@ pnpm --filter agent-excon-mcp-server start
 | -------------------------------- | ---------------------------------------------- | --------------------------------------------------- |
 | `excon_get_assignment`           | `GET runs/{runId}/me`                          | 核对 credential 绑定的 RunAgent、角色和 sync cursor |
 | `excon_sync`                     | `POST runs/{runId}/sync`                       | 发放新资源并可确认上一 Receipt head                 |
+| `excon_wait_and_sync`            | `POST runs/{runId}/sync`                       | 墙钟有界等待后执行一次普通 sync，不推进虚拟时钟     |
 | `excon_list_tasks`               | `GET runs/{runId}/tasks`                       | 恢复已 issued Task                                  |
 | `excon_list_messages`            | `GET runs/{runId}/messages`                    | 恢复已 issued Message                               |
 | `excon_list_artifacts`           | `GET runs/{runId}/artifacts`                   | 恢复已 issued Artifact grant                        |
@@ -58,7 +59,7 @@ pnpm --filter agent-excon-mcp-server start
 5. 用 Message 传递明确请求，用 Artifact/ArtifactVersion 共享可复用证据。成功写入不代表收件人已知，收件人仍需自己的 sync Receipt。
 6. `excon_submit_task_result` 至少引用一个已验证的自身 Receipt 或已授权 ArtifactVersion。
 7. 通过 `excon_sync` 获取 Submission Receipt，再用 `excon_list_submissions` 恢复并审阅精确不可变修订；只有收到匹配 ActionGrant 后才能 endorse。
-8. 继续有界 sync 等待 Feedback/Barrier 下游 Task；参训者没有 Run 时钟推进或 Barrier release Tool。
+8. 使用 `excon_wait_and_sync` 有界等待 Feedback/Barrier 下游 Task；参训者没有 Run 时钟推进或 Barrier release Tool。
 9. 交接时使用 `excon_get_replay_cursor`，严格分开权威 Event/Receipt 与最佳努力 Telemetry gap。
 
 `/sync` 是发放新 Task、Message、Artifact grant、Submission 与 Feedback 的唯一入口。五个 recovery Tools 不能把 eligible 内容变成 issued。
@@ -68,10 +69,10 @@ pnpm --filter agent-excon-mcp-server start
 - 所有写 Tool 都要求 UUID `idempotencyKey`。模糊失败时只能以完全相同的 actor、Tool/path、body 和 key 重试。
 - Task lease token 只保留在调用方本地状态；MCP Tool 不替调用方持久化它。
 - API 错误映射为 `isError: true`，保留稳定 `code`、安全 message、下一步 action 和可选 trace ID；API `details` 不转发给智能体。
-- 单次 API JSON 超过 32,000 字符时返回 `MCP_RESPONSE_TOO_LARGE`；缩小 `sync.maxItems` 或回放 cursor，不能截断后继续当作完整事实。
+- 单次完整 MCP 响应超过 32,000 字符时返回 `MCP_RESPONSE_TOO_LARGE`；缩小 `sync.maxItems` 或回放 cursor，不能截断后继续当作完整事实。
 - RunAgent replay Tool 不提供 operator/team/role/eligible 视角。
 
-完整 evaluator → rework → resubmit 编排仍未交付。Tool schema 中存在 revision/ActionGrant 字段，不等于后端已经生成完整评价与重做序列。
+本机 v2 Lab 已交付确定性 evaluator → rework → resubmit 与团队背书闭环；该实现仍是非持久化开发 profile，不代表 PostgreSQL adapter 已完成。
 
 ## Resource
 

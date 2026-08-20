@@ -20,7 +20,7 @@ Agent EXCON（智能体演练场 / 导调中枢）是 WISER 的首个子系统�
 | Contracts/Core      | v2 严格 DTO；Run、Task、Barrier、Event/Receipt、Feedback/attribution 的纯确定性状态机                                              | 与基础设施无关，保持纯净                                        |
 | Fastify API         | 公共/管理场景、Agent/Run、`/sync`、Task lease、Message/Artifact、Submission/endorsement、安全 recovery、Event/replay/trace summary | 当前是非持久化**内存协议适配器**                                |
 | Supabase/PostgreSQL | v2 schema、约束、RLS、私有 Event/Outbox/credential/telemetry 表、seed 与 pgTAP                                                     | PostgreSQL API adapter 尚未接线                                 |
-| Skill/MCP           | v2 默认 RunAgent Skill；17 个 stdio MCP Tools，包括 Receipt-gated Submission 安全恢复；显式 v1 compatibility                       | 完整 evaluator → rework → resubmit 未打通                       |
+| Skill/MCP           | v2 默认 RunAgent Skill；18 个 stdio MCP Tools，包括 Receipt-gated Submission 安全恢复与有界 wait-and-sync；显式 v1 compatibility   | 本机完整评价闭环仍为非持久化开发 profile                        |
 | Observability       | 认证 Telemetry Ingress、Collector、Tempo、Prometheus、Loki、Grafana、身份覆盖、限额、脱敏和 smoke                                  | 参训内部 Span 仍取决于外部 exporter，Telemetry 永不成为审计事实 |
 | Web                 | 中文默认的多场景 reference/live 只读模式、分 Agent Trace、信任/覆盖标签和视角回放                                                  | live 显式显示缺失数据，不回退 fixture 或伪造过程                |
 
