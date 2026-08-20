@@ -34,7 +34,11 @@ export default tseslint.config(
     ...tseslint.configs.disableTypeChecked,
     languageOptions: {
       globals: {
+        Buffer: 'readonly',
+        URL: 'readonly',
+        fetch: 'readonly',
         process: 'readonly',
+        setTimeout: 'readonly',
       },
     },
   },
