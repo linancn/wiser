@@ -86,35 +86,37 @@ describe('scripted four-agent Yongding lab', () => {
       headers: { authorization: `Bearer ${server.lab.operatorToken}` },
     });
     expect(evaluations.statusCode).toBe(200);
-    expect(
-      RunEvaluationListSchema.parse(evaluations.json()).items.map(
-        ({ roleSlotId, targetScope, verdict }) => ({
-          roleSlotId,
-          targetScope,
-          verdict,
-        }),
-      ),
-    ).toEqual([
-      {
-        roleSlotId: 'water-evidence',
-        targetScope: 'role',
-        verdict: 'ACCEPTED',
-      },
-      {
-        roleSlotId: 'hydraulic-constraints',
-        targetScope: 'role',
-        verdict: 'ACCEPTED',
-      },
-      {
-        roleSlotId: 'ecological-target',
-        targetScope: 'role',
-        verdict: 'ACCEPTED',
-      },
-      {
-        roleSlotId: 'dispatch-coordination',
-        targetScope: 'team',
-        verdict: 'ACCEPTED',
-      },
-    ]);
+    const evaluationSummary = RunEvaluationListSchema.parse(
+      evaluations.json(),
+    ).items.map(({ roleSlotId, targetScope, verdict }) => ({
+      roleSlotId,
+      targetScope,
+      verdict,
+    }));
+    expect(evaluationSummary).toHaveLength(4);
+    expect(evaluationSummary).toEqual(
+      expect.arrayContaining([
+        {
+          roleSlotId: 'water-evidence',
+          targetScope: 'role',
+          verdict: 'ACCEPTED',
+        },
+        {
+          roleSlotId: 'hydraulic-constraints',
+          targetScope: 'role',
+          verdict: 'ACCEPTED',
+        },
+        {
+          roleSlotId: 'ecological-target',
+          targetScope: 'role',
+          verdict: 'ACCEPTED',
+        },
+        {
+          roleSlotId: 'dispatch-coordination',
+          targetScope: 'team',
+          verdict: 'ACCEPTED',
+        },
+      ]),
+    );
   }, 40_000);
 });

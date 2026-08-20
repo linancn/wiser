@@ -5,7 +5,7 @@ export interface LaunchWorkBuddyRolesOptions {
   readonly launchManifestPath: string;
   readonly maxOutputBytes?: number;
   readonly maxTurns?: number;
-  readonly mode: 'fake' | 'workbuddy';
+  readonly mode: 'fake' | 'scripted' | 'workbuddy';
   readonly repositoryRoot: string;
   readonly timeoutMs?: number;
 }

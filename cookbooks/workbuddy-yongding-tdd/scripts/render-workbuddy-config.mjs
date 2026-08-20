@@ -141,6 +141,20 @@ export async function renderWorkBuddyRuntime(options) {
     options.repositoryRoot,
   );
   const workBuddyCli = requireAbsolute('workBuddyCli', options.workBuddyCli);
+  const mcpCommand =
+    options.mcpCommand === undefined
+      ? nodeExecutable
+      : requireAbsolute('mcpCommand', options.mcpCommand);
+  const mcpArguments =
+    options.mcpArguments === undefined
+      ? [join(repositoryRoot, 'apps/mcp/dist/index.js')]
+      : [...options.mcpArguments];
+  if (
+    mcpArguments.length === 0 ||
+    mcpArguments.some((argument) => typeof argument !== 'string')
+  ) {
+    throw new Error('mcpArguments must contain at least one string.');
+  }
   const manifest = JSON.parse(await readFile(labManifestPath, 'utf8'));
   assertManifest(manifest);
 
@@ -181,8 +195,8 @@ export async function renderWorkBuddyRuntime(options) {
         mcpServers: {
           'agent-excon': {
             type: 'stdio',
-            command: nodeExecutable,
-            args: [join(repositoryRoot, 'apps/mcp/dist/index.js')],
+            command: mcpCommand,
+            args: mcpArguments,
             env: {
               AGENT_EXCON_PROTOCOL_VERSION: env.AGENT_EXCON_PROTOCOL_VERSION,
               AGENT_EXCON_API_URL: env.AGENT_EXCON_API_URL,

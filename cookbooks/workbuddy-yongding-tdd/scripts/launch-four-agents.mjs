@@ -12,6 +12,10 @@ const roles = [
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const cookbookRoot = resolve(scriptDirectory, '..');
 const fakeWorkBuddyPath = join(scriptDirectory, 'fake-workbuddy.mjs');
+const scriptedParticipantPath = join(
+  scriptDirectory,
+  'scripted-participant.mjs',
+);
 const roleResultSchemaPath = join(
   cookbookRoot,
   'schemas',
@@ -104,6 +108,8 @@ function cleanEnvironment(source, role, repositoryRoot) {
   environment.WISER_ROLE_SLOT_ID = role.roleSlotId;
   environment.WISER_EXPECTED_RUN_ID = source.WISER_EXPECTED_RUN_ID;
   environment.WISER_EXPECTED_RUN_AGENT_ID = role.runAgentId;
+  environment.WISER_REPOSITORY_ROOT = repositoryRoot;
+  environment.WISER_TEAM_ROSTER_JSON = source.WISER_TEAM_ROSTER_JSON;
   return environment;
 }
 
@@ -360,8 +366,8 @@ export async function launchWorkBuddyRoles(options) {
     options.repositoryRoot,
   );
   const mode = options.mode;
-  if (!['fake', 'workbuddy'].includes(mode)) {
-    throw new Error('mode must be fake or workbuddy.');
+  if (!['fake', 'scripted', 'workbuddy'].includes(mode)) {
+    throw new Error('mode must be fake, scripted, or workbuddy.');
   }
   if (mode === 'workbuddy' && options.environment?.WORKBUDDY_LIVE !== '1') {
     throw new Error('Real WorkBuddy execution requires WORKBUDDY_LIVE=1.');
@@ -386,13 +392,26 @@ export async function launchWorkBuddyRoles(options) {
       schema,
       maxTurns,
     });
-    const command = mode === 'fake' ? process.execPath : manifest.workBuddyCli;
+    const localDriver =
+      mode === 'fake'
+        ? fakeWorkBuddyPath
+        : mode === 'scripted'
+          ? scriptedParticipantPath
+          : undefined;
+    const command =
+      localDriver === undefined ? manifest.workBuddyCli : process.execPath;
     const args =
-      mode === 'fake' ? [fakeWorkBuddyPath, ...commonArgs] : commonArgs;
+      localDriver === undefined ? commonArgs : [localDriver, ...commonArgs];
     const environment = cleanEnvironment(
       {
         ...sourceEnvironment,
         WISER_EXPECTED_RUN_ID: manifest.runId,
+        WISER_TEAM_ROSTER_JSON: JSON.stringify(
+          manifest.roles.map(({ roleSlotId, runAgentId }) => ({
+            roleSlotId,
+            runAgentId,
+          })),
+        ),
       },
       role,
       repositoryRoot,
@@ -418,7 +437,7 @@ export async function launchWorkBuddyRoles(options) {
   const results = await Promise.all(executions);
   const report = {
     schemaVersion: 1,
-    profile: mode === 'fake' ? 'scripted-ci' : 'workbuddy-live-tdd',
+    profile: mode === 'workbuddy' ? 'workbuddy-live-tdd' : 'scripted-ci',
     protocolVersion: 'v2',
     runId: manifest.runId,
     scenarioVersionId: manifest.scenarioVersionId,

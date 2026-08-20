@@ -6,6 +6,8 @@ export type WorkBuddyRoleSlotId =
 
 export interface RenderWorkBuddyRuntimeOptions {
   readonly labManifestPath: string;
+  readonly mcpArguments?: readonly string[];
+  readonly mcpCommand?: string;
   readonly nodeExecutable: string;
   readonly outputDirectory: string;
   readonly repositoryRoot: string;
