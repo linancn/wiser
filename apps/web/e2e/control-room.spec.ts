@@ -52,6 +52,17 @@ test('observes parallel agents, cross-agent links, and perspective replay', asyn
     page.getByRole('heading', { name: '多智能体协作 Trace' }),
   ).toBeVisible();
   await expect(page.getByTestId('agent-lane')).toHaveCount(5);
+  await expect(
+    page.getByRole('heading', { name: '诊断与确定性评测' }),
+  ).toBeVisible();
+  await expect(page.locator('.authority-track')).toContainText('4 / 4');
+  await expect(page.locator('[data-source="telemetry"]')).toHaveCount(5);
+  await expect(page.getByText('OUTPUT_SCHEMA_ADDITIONAL_PROPERTY')).toHaveCount(
+    2,
+  );
+  await expect(
+    page.getByRole('heading', { name: 'Signal coverage matrix' }),
+  ).toBeVisible();
   await page.getByRole('button', { name: /调度协调/ }).click();
   await expect(page.getByTestId('span-inspector')).toContainText('Agent');
 
@@ -70,6 +81,9 @@ test('keeps the operator workspace usable on a narrow screen', async ({
 
   await expect(
     page.getByRole('heading', { name: '多智能体协作 Trace' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: '诊断与确定性评测' }),
   ).toBeVisible();
   const overflow = await page.evaluate(
     () =>
