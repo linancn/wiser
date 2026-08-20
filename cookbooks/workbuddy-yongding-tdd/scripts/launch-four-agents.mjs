@@ -272,6 +272,8 @@ function standardArguments({ mcpConfigPath, prompt, schema, maxTurns }) {
     'default',
     '--tools',
     'ToolSearch,DeferExecuteTool,Skill,ListMcpResources,ReadMcpResource',
+    '--allowedTools',
+    'DeferExecuteTool',
     '--strict-mcp-config',
     '--mcp-config',
     mcpConfigPath,
