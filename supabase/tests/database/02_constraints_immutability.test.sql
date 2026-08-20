@@ -1,6 +1,6 @@
 begin;
 
-select plan(22);
+select plan(23);
 
 insert into public.episodes (
   id,
@@ -46,6 +46,28 @@ select lives_ok(
     set state = 'evaluating'
     where id = 'd0000000-0000-4000-8000-000000000020'$$,
   'a worker can start a queued evaluation'
+);
+
+insert into public.episodes (
+  id,
+  scenario_version_id,
+  participant_version_id,
+  state,
+  virtual_time
+)
+values (
+  'd0000000-0000-4000-8000-000000000021',
+  '30000000-0000-4000-8000-000000000001',
+  '40000000-0000-4000-8000-000000000001',
+  'feedback_available',
+  '2023-03-22T07:10:00Z'
+);
+
+select lives_ok(
+  $$update public.episodes
+    set state = 'waiting_for_submission'
+    where id = 'd0000000-0000-4000-8000-000000000021'$$,
+  'feedback can reopen the same checkpoint for an immutable revision'
 );
 
 select throws_ok(

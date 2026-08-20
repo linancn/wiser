@@ -87,18 +87,18 @@ const workItem: EvaluationWorkItem = {
     evidenceTimestamps: [
       {
         informationId: 'official-flow-20230322-guanting',
-        accessedTime: '2023-03-22T07:01:00.000Z',
+        accessedVirtualTime: '2023-03-22T07:01:00.000Z',
       },
       {
         informationId: 'simulated-source-limit-20230322-south-water',
-        accessedTime: '2023-03-22T07:02:00.000Z',
+        accessedVirtualTime: '2023-03-22T07:02:00.000Z',
       },
       {
         informationId: 'simulated-source-limit-20230322-reclaimed-lower',
-        accessedTime: '2023-03-22T07:03:00.000Z',
+        accessedVirtualTime: '2023-03-22T07:03:00.000Z',
       },
     ],
-    submittedAt: '2023-03-22T07:10:00.000Z',
+    submittedVirtualTime: '2023-03-22T07:10:00.000Z',
   },
 };
 

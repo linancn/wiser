@@ -190,13 +190,16 @@ export function parseEvaluationInput(value: unknown): EvaluationInput {
           timestamp.informationId,
           'evidenceTimestamp.informationId',
         ),
-        accessedTime: string(
-          timestamp.accessedTime,
-          'evidenceTimestamp.accessedTime',
+        accessedVirtualTime: string(
+          timestamp.accessedVirtualTime,
+          'evidenceTimestamp.accessedVirtualTime',
         ),
       };
     }),
-    submittedAt: string(input.submittedAt, 'evaluationInput.submittedAt'),
+    submittedVirtualTime: string(
+      input.submittedVirtualTime,
+      'evaluationInput.submittedVirtualTime',
+    ),
   };
 }
 
@@ -285,7 +288,7 @@ export function resolveEvaluationInput(
         isFinal: storedPayload.isFinal ?? data.isFinal,
       },
       evidenceTimestamps: data.evidenceTimestamps,
-      submittedAt: data.submittedVirtualAt,
+      submittedVirtualTime: data.submittedVirtualAt,
     });
   }
 
@@ -296,6 +299,6 @@ export function resolveEvaluationInput(
     transferModel: DEFAULT_TRANSFER_MODEL,
     totalReleaseLimitM3s: 30,
     evidenceTimestamps: data.evidenceTimestamps,
-    submittedAt: data.submittedVirtualAt,
+    submittedVirtualTime: data.submittedVirtualAt,
   };
 }

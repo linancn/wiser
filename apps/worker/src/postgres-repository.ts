@@ -90,7 +90,7 @@ const LOAD_SQL = `
         select jsonb_agg(
           jsonb_build_object(
             'informationId', ii.id::text,
-            'accessedTime', o.accessed_virtual_at
+            'accessedVirtualTime', o.accessed_virtual_at
           ) order by o.accessed_virtual_at, o.id
         )
         from public.observations as o
@@ -188,7 +188,7 @@ function parseAllocationItems(
 
 function parseEvidenceTimestamps(
   value: unknown,
-): readonly { informationId: string; accessedTime: string }[] {
+): readonly { informationId: string; accessedVirtualTime: string }[] {
   return asArray(value, 'evidence_timestamps').map((raw) => {
     const timestamp = asRecord(raw, 'evidence_timestamp');
     if (typeof timestamp.informationId !== 'string') {
@@ -199,7 +199,10 @@ function parseEvidenceTimestamps(
     }
     return {
       informationId: timestamp.informationId,
-      accessedTime: asDate(timestamp.accessedTime, 'evidence.accessedTime'),
+      accessedVirtualTime: asDate(
+        timestamp.accessedVirtualTime,
+        'evidence.accessedVirtualTime',
+      ),
     };
   });
 }

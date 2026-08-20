@@ -21,7 +21,7 @@ Treat the exercise service as the environment and this Skill as the participant 
 ## Non-negotiable boundaries
 
 - Use HTTP or MCP only. Never connect to PostgreSQL, use a Supabase service-role key, or read `excon_private` data.
-- Keep `event_time`, `observed_time`, `ingested_time`, `released_time`, and `accessed_time` distinct. Evidence eligibility depends on release, access, Episode membership, and submission virtual time.
+- Keep wire fields `eventTime`, `observedTime`, `ingestedTime`, `releasedTime`, `accessedTime`, and `accessedVirtualTime` distinct. Evidence eligibility compares release/access virtual time with the Episode submission virtual time; wall-clock `accessedTime` remains an audit timestamp.
 - Treat submissions as immutable. Revisions create new submissions linked to the previous one.
 - Never let an LLM overwrite deterministic scores or verdicts. AI-written summaries are explanatory only.
 - Do not retry a write under a new idempotency key after an ambiguous timeout.

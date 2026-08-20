@@ -22,7 +22,9 @@ pnpm --filter agent-excon-mcp-server start
 - `excon_start_episode` → `POST /episodes`
 - `excon_get_episode` → `GET /episodes/{episodeId}`
 - `excon_observe` → `POST /episodes/{episodeId}/observe`（记录实际访问）
+- `excon_list_observations` → `GET /episodes/{episodeId}/observations`
 - `excon_submit_allocation_plan` → `POST /episodes/{episodeId}/submissions`
+- `excon_get_evaluation` → `GET /submissions/{submissionId}/evaluation`
 - `excon_get_feedback` → `GET /episodes/{episodeId}/feedback`
 - `excon_advance` → `POST /episodes/{episodeId}/advance`
 - `excon_get_events` → `GET /episodes/{episodeId}/events`

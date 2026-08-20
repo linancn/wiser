@@ -61,7 +61,7 @@ export interface YongdingTransferModel {
 
 export interface EvidenceTimestamp {
   readonly informationId: string;
-  readonly accessedTime: string;
+  readonly accessedVirtualTime: string;
 }
 
 export interface EvaluationResult {
@@ -265,6 +265,18 @@ export function publishFeedback(
   });
 }
 
+export function reopenEpisodeForRevision(
+  episode: Episode,
+  expectedVersion: number,
+): Episode {
+  assertVersion(episode, expectedVersion);
+  assertState(episode, 'feedback_available');
+  return nextEpisode(episode, {
+    state: 'waiting_for_submission',
+    version: episode.version + 1,
+  });
+}
+
 export function advanceEpisode(
   episode: Episode,
   input: { expectedVersion: number; nextCheckpoint: string },
@@ -306,9 +318,12 @@ export function evaluateWaterAllocationPlan(input: {
   transferModel: YongdingTransferModel;
   totalReleaseLimitM3s: number;
   evidenceTimestamps: readonly EvidenceTimestamp[];
-  submittedAt: string;
+  submittedVirtualTime: string;
 }): EvaluationResult {
-  const submittedAt = toEpoch(input.submittedAt, 'submittedAt');
+  const submittedVirtualTime = toEpoch(
+    input.submittedVirtualTime,
+    'submittedVirtualTime',
+  );
   const releases = new Map(
     input.submission.sourceReleases.map((release) => [
       release.sourceId,
@@ -392,9 +407,10 @@ export function evaluateWaterAllocationPlan(input: {
     input.submission.sourceReleases.flatMap(({ evidenceRefs }) => evidenceRefs),
   );
   const timeTravelViolations = input.evidenceTimestamps.filter(
-    ({ informationId, accessedTime }) =>
+    ({ informationId, accessedVirtualTime }) =>
       referencedEvidence.has(informationId) &&
-      toEpoch(accessedTime, 'evidence.accessedTime') > submittedAt,
+      toEpoch(accessedVirtualTime, 'evidence.accessedVirtualTime') >
+        submittedVirtualTime,
   ).length;
   const totalScore =
     constraintCompliance * 40 +

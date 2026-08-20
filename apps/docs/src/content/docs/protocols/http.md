@@ -18,6 +18,7 @@ HTTP API 是唯一业务协议底座。Web、客户端 SDK、Skill 脚本和 MCP
 | `POST` | `/episodes/{episodeId}/observe`          | 交付已释放信息并记录实际访问    |
 | `GET`  | `/episodes/{episodeId}/observations`     | 获取当前参与者已经获得的观察    |
 | `POST` | `/episodes/{episodeId}/submissions`      | 创建不可变提交版本              |
+| `GET`  | `/submissions/{submissionId}`            | 获取指定不可变修订              |
 | `GET`  | `/submissions/{submissionId}/evaluation` | 获取评价状态与结果              |
 | `GET`  | `/episodes/{episodeId}/feedback`         | 获取当前可见反馈                |
 | `POST` | `/episodes/{episodeId}/advance`          | 授权推进虚拟时间或阶段          |

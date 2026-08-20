@@ -54,12 +54,22 @@ export type ExpectedSectionFlow = z.infer<typeof ExpectedSectionFlowSchema>;
 export const AllocationPlanSubmissionSchema = z
   .object({
     stage: z.number().int().min(1).max(2),
-    sourceReleases: z.array(SourceReleaseDecisionSchema).min(1).max(3),
+    sourceReleases: z.array(SourceReleaseDecisionSchema).length(3),
     expectedSectionFlows: z.array(ExpectedSectionFlowSchema).length(4),
     isFinal: z.boolean(),
   })
   .strict()
   .superRefine((plan, context) => {
+    if (
+      (plan.stage === 1 && plan.isFinal) ||
+      (plan.stage === 2 && !plan.isFinal)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['isFinal'],
+        message: 'stage 1 must be revisable and stage 2 must be final',
+      });
+    }
     const sourceIds = plan.sourceReleases.map(({ sourceId }) => sourceId);
     if (new Set(sourceIds).size !== sourceIds.length) {
       context.addIssue({
@@ -119,6 +129,8 @@ export const ObservationSchema = z
     ingestedTime: z.string().datetime({ offset: true }),
     releasedTime: z.string().datetime({ offset: true }),
     accessedTime: z.string().datetime({ offset: true }),
+    accessedVirtualTime: z.string().datetime({ offset: true }),
+    supersedesInformationId: z.string().min(3).max(128).optional(),
     payload: z.record(z.string(), z.unknown()),
     sourceUrl: z.string().url().optional(),
     isSynthetic: z.boolean(),
@@ -150,6 +162,21 @@ export const FeedbackSchema = z
     level: z.number().int().min(0).max(6),
     evaluation: EvaluationResultSchema,
     summary: LocalizedTextSchema,
+    issues: z.array(
+      z
+        .object({
+          type: z.enum([
+            'constraint_violation',
+            'ecological_target_gap',
+            'evidence_gap',
+            'time_travel',
+          ]),
+          severity: z.enum(['low', 'medium', 'high']),
+          target: z.string().min(1).max(128).optional(),
+          message: LocalizedTextSchema,
+        })
+        .strict(),
+    ),
     guidance: z.array(LocalizedTextSchema).max(20),
     allowedActions: z.array(
       z.enum(['observe', 'revise_submission', 'advance', 'finalize']),

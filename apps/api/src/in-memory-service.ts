@@ -14,6 +14,7 @@ import {
   queueSubmission,
   recordObservation,
   releaseInformation,
+  reopenEpisodeForRevision,
   startEvaluation,
   type Episode,
   type EvaluationResult,
@@ -52,6 +53,7 @@ interface StoredEpisode {
   readonly observations: Map<string, ObservationDto>;
   readonly events: EpisodeEvent[];
   latestSubmissionId: string | undefined;
+  nextRevisionNo: number;
 }
 
 interface StoredSubmission {
@@ -206,6 +208,51 @@ function feedbackCopy(
   };
 }
 
+function feedbackIssues(result: EvaluationResult): FeedbackDto['issues'] {
+  const issues: FeedbackDto['issues'][number][] = [];
+  if (result.metrics.constraintCompliance < 1) {
+    issues.push({
+      type: 'constraint_violation',
+      severity: 'high',
+      message: {
+        'zh-CN': '方案存在水源、总量、步长或断面模型约束冲突。',
+        en: 'The plan conflicts with a source, total, increment, or section-model constraint.',
+      },
+    });
+  }
+  if (result.metrics.ecologicalCoverage < 1) {
+    issues.push({
+      type: 'ecological_target_gap',
+      severity: 'high',
+      message: {
+        'zh-CN': '至少一个合成生态控制断面未达到当前目标。',
+        en: 'At least one synthetic ecological control section misses its current target.',
+      },
+    });
+  }
+  if (result.metrics.evidenceCoverage < 1) {
+    issues.push({
+      type: 'evidence_gap',
+      severity: 'medium',
+      message: {
+        'zh-CN': '至少一个水源决策缺少已观测证据引用。',
+        en: 'At least one source decision lacks an observed evidence reference.',
+      },
+    });
+  }
+  if (result.metrics.timeTravelViolations > 0) {
+    issues.push({
+      type: 'time_travel',
+      severity: 'high',
+      message: {
+        'zh-CN': '方案引用了提交虚拟时点之后才访问的信息。',
+        en: 'The plan cites information accessed after its submission virtual time.',
+      },
+    });
+  }
+  return issues;
+}
+
 /**
  * Demo/test adapter for a complete Skill-driven walking slice. It deliberately
  * has no durability or cross-process guarantees. A PostgreSQL implementation
@@ -252,6 +299,16 @@ export class InMemoryExerciseService implements ExerciseService {
               { field: 'scenarioVersionId' },
             );
           }
+          if (
+            !participant.participantVersionIds.includes(
+              input.participantVersionId,
+            )
+          ) {
+            throw new ExerciseServiceError(
+              'NOT_AUTHORIZED',
+              '参与者版本不属于当前身份。 / The participant version does not belong to the current identity.',
+            );
+          }
           const episode = createEpisode({
             id: this.#idFactory(),
             scenarioVersionId: input.scenarioVersionId,
@@ -264,6 +321,7 @@ export class InMemoryExerciseService implements ExerciseService {
             observations: new Map(),
             events: [],
             latestSubmissionId: undefined,
+            nextRevisionNo: 1,
           };
           this.#episodes.set(episode.id, stored);
           this.appendEvent(stored, 'episode.created', episode, {
@@ -341,7 +399,12 @@ export class InMemoryExerciseService implements ExerciseService {
             if (!stored.observations.has(information.id)) {
               stored.observations.set(
                 information.id,
-                this.toObservation(episodeId, information, accessedAt),
+                this.toObservation(
+                  episodeId,
+                  information,
+                  accessedAt,
+                  stored.episode.virtualTime,
+                ),
               );
             }
           }
@@ -396,10 +459,36 @@ export class InMemoryExerciseService implements ExerciseService {
               { expectedStage: stored.episode.stageIndex + 1 },
             );
           }
+          const previousSubmissionId = stored.latestSubmissionId;
+          let submissionBase = stored.episode;
+          let queueExpectedVersion = input.episodeVersion;
+          if (submissionBase.state === 'feedback_available') {
+            if (previousSubmissionId === undefined) {
+              throw new ExerciseServiceError(
+                'EPISODE_STATE_CONFLICT',
+                '反馈状态缺少前一提交。 / Feedback state is missing its prior submission.',
+              );
+            }
+            const previous = this.ownedSubmission(
+              participant,
+              previousSubmissionId,
+            );
+            if (previous.evaluation.verdict === 'pass') {
+              throw new ExerciseServiceError(
+                'EPISODE_STATE_CONFLICT',
+                '已通过的方案应按 allowedActions 推进。 / A passing plan must follow its allowedActions and advance.',
+              );
+            }
+            submissionBase = reopenEpisodeForRevision(
+              submissionBase,
+              input.episodeVersion,
+            );
+            queueExpectedVersion = submissionBase.version;
+          }
           const queued = queueSubmission(
-            stored.episode,
+            submissionBase,
             input.plan,
-            input.episodeVersion,
+            queueExpectedVersion,
           );
           const evaluating = startEvaluation(queued, queued.version);
           const submittedAt = this.timestamp();
@@ -407,31 +496,38 @@ export class InMemoryExerciseService implements ExerciseService {
             submission: input.plan,
             ...rulesForStage(input.plan.stage),
             evidenceTimestamps: [...stored.observations.values()].map(
-              ({ informationId, accessedTime }) => ({
+              ({ informationId, accessedVirtualTime }) => ({
                 informationId,
-                accessedTime,
+                accessedVirtualTime,
               }),
             ),
-            submittedAt,
+            submittedVirtualTime: stored.episode.virtualTime,
           });
           const published = publishFeedback(evaluating, evaluating.version);
           const submissionId = this.#idFactory();
           const feedbackCopyValue = feedbackCopy(evaluation.verdict);
-          const allowedActions: FeedbackDto['allowedActions'] = input.plan
-            .isFinal
-            ? ['finalize']
-            : ['advance'];
+          const allowedActions: FeedbackDto['allowedActions'] =
+            evaluation.verdict === 'pass'
+              ? input.plan.isFinal
+                ? ['finalize']
+                : ['advance']
+              : ['revise_submission'];
           const feedback: FeedbackDto = Object.freeze({
             id: this.#idFactory(),
             submissionId,
             level: 2,
             evaluation,
             ...feedbackCopyValue,
+            issues: feedbackIssues(evaluation),
             allowedActions,
           });
           const submission: SubmissionView = Object.freeze({
             id: submissionId,
             episodeId,
+            revisionNo: stored.nextRevisionNo,
+            ...(previousSubmissionId === undefined
+              ? {}
+              : { revisionOf: previousSubmissionId }),
             episodeVersion: input.episodeVersion,
             submittedAt,
             plan: input.plan,
@@ -444,9 +540,14 @@ export class InMemoryExerciseService implements ExerciseService {
           };
           this.#submissions.set(submissionId, storedSubmission);
           stored.latestSubmissionId = submissionId;
+          stored.nextRevisionNo += 1;
           stored.episode = published;
           this.appendEvent(stored, 'submission.created', queued, {
             submissionId,
+            revisionNo: submission.revisionNo,
+            ...(submission.revisionOf === undefined
+              ? {}
+              : { revisionOf: submission.revisionOf }),
             stage: input.plan.stage,
             isFinal: input.plan.isFinal,
           });
@@ -480,6 +581,15 @@ export class InMemoryExerciseService implements ExerciseService {
       feedback: submission.feedback,
       links: submissionLinks(submission.view.episodeId, submissionId),
     });
+  }
+
+  getSubmission(
+    participant: ParticipantPrincipal,
+    submissionId: string,
+  ): Promise<SubmissionView> {
+    return Promise.resolve(
+      this.ownedSubmission(participant, submissionId).view,
+    );
   }
 
   getFeedback(
@@ -526,6 +636,12 @@ export class InMemoryExerciseService implements ExerciseService {
             );
           }
           const submission = this.ownedSubmission(participant, submissionId);
+          if (submission.evaluation.verdict !== 'pass') {
+            throw new ExerciseServiceError(
+              'EPISODE_STATE_CONFLICT',
+              '未通过的方案必须先修订，不能推进。 / A non-passing plan must be revised before advancing.',
+            );
+          }
           let next: Episode;
           let eventType: 'episode.advanced' | 'episode.completed';
           if (submission.view.plan.isFinal) {
@@ -666,6 +782,7 @@ export class InMemoryExerciseService implements ExerciseService {
     episodeId: string,
     information: ScenarioInformation,
     accessedTime: string,
+    accessedVirtualTime: string,
   ): ObservationDto {
     return Object.freeze({
       id: this.#idFactory(),
@@ -677,6 +794,10 @@ export class InMemoryExerciseService implements ExerciseService {
       ingestedTime: information.ingestedTime,
       releasedTime: information.releasedTime,
       accessedTime,
+      accessedVirtualTime,
+      ...(information.supersedesInformationId === undefined
+        ? {}
+        : { supersedesInformationId: information.supersedesInformationId }),
       payload: information.payload,
       ...(information.sourceUrl === undefined
         ? {}

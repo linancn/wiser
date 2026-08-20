@@ -593,6 +593,7 @@ begin
         ('evaluating', 'feedback_available'),
         ('evaluating', 'completed'),
         ('feedback_available', 'running'),
+        ('feedback_available', 'waiting_for_submission'),
         ('final_submitted', 'waiting_for_outcome'),
         ('final_submitted', 'evaluating'),
         ('waiting_for_outcome', 'evaluating'),

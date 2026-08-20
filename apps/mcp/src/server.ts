@@ -55,6 +55,9 @@ const EpisodeIdSchema = z
   .string()
   .uuid('episodeId 必须是 UUID。 / episodeId must be a UUID.')
   .describe(descriptions.episodeId);
+const SubmissionIdSchema = z
+  .string()
+  .uuid('submissionId 必须是 UUID。 / submissionId must be a UUID.');
 const IdempotencyKeySchema = z
   .string()
   .uuid('幂等键必须是 UUID。 / The idempotency key must be a UUID.')
@@ -89,6 +92,11 @@ export const ObserveInputSchema = z.strictObject({
     ),
 });
 
+export const ListObservationsInputSchema = z.strictObject({
+  episodeId: EpisodeIdSchema,
+  limit: z.number().int().min(1).max(100).default(50),
+});
+
 export const SubmitAllocationPlanInputSchema = z.strictObject({
   episodeId: EpisodeIdSchema,
   idempotencyKey: IdempotencyKeySchema,
@@ -102,6 +110,10 @@ export const SubmitAllocationPlanInputSchema = z.strictObject({
 
 export const GetFeedbackInputSchema = z.strictObject({
   episodeId: EpisodeIdSchema,
+});
+
+export const GetEvaluationInputSchema = z.strictObject({
+  submissionId: SubmissionIdSchema,
 });
 
 export const AdvanceInputSchema = z.strictObject({
@@ -185,6 +197,10 @@ const successCopy: Readonly<Record<string, BilingualCopy>> = {
     'zh-CN': '已获取当前参与者可见的观察。',
     en: 'Participant-visible observations were retrieved.',
   },
+  observations: {
+    'zh-CN': '已获取此前交付的完整 Observation 记录。',
+    en: 'Previously delivered full Observation records were retrieved.',
+  },
   submit: {
     'zh-CN': '分配方案已作为不可变提交保存。',
     en: 'The allocation plan was saved as an immutable submission.',
@@ -192,6 +208,10 @@ const successCopy: Readonly<Record<string, BilingualCopy>> = {
   feedback: {
     'zh-CN': '已获取当前可见反馈。',
     en: 'Currently visible feedback was retrieved.',
+  },
+  evaluation: {
+    'zh-CN': '已获取该提交的确定性评价状态。',
+    en: 'The deterministic evaluation status for the submission was retrieved.',
   },
   advance: {
     'zh-CN': '演练时间或阶段已推进。',
@@ -452,6 +472,34 @@ export function createAgentExconMcpServer(
   );
 
   server.registerTool(
+    'excon_list_observations',
+    {
+      title: bilingual({
+        'zh-CN': '列出已交付观察',
+        en: 'List Delivered Observations',
+      }),
+      description: bilingual({
+        'zh-CN':
+          '通过 GET /episodes/{episodeId}/observations 恢复当前参与者此前获得的完整 Observation 与时间字段。',
+        en: 'Recover the current participant’s previously delivered full Observation records and timestamps through GET /episodes/{episodeId}/observations.',
+      }),
+      inputSchema: ListObservationsInputSchema,
+      outputSchema: ToolOutputSchema,
+      annotations: readAnnotations,
+    },
+    async ({ episodeId, limit }) =>
+      callHttp(
+        http,
+        {
+          method: 'GET',
+          path: `/episodes/${pathId(episodeId)}/observations`,
+          query: { limit },
+        },
+        successCopy.observations!,
+      ),
+  );
+
+  server.registerTool(
     'excon_submit_allocation_plan',
     {
       title: bilingual({
@@ -477,6 +525,33 @@ export function createAgentExconMcpServer(
           body: { episodeVersion: expectedVersion, plan },
         },
         successCopy.submit!,
+      ),
+  );
+
+  server.registerTool(
+    'excon_get_evaluation',
+    {
+      title: bilingual({
+        'zh-CN': '获取提交评价',
+        en: 'Get Submission Evaluation',
+      }),
+      description: bilingual({
+        'zh-CN':
+          '通过 GET /submissions/{submissionId}/evaluation 对账确定性评价；异步实现可能返回 pending。',
+        en: 'Reconcile deterministic evaluation through GET /submissions/{submissionId}/evaluation; asynchronous implementations may return pending.',
+      }),
+      inputSchema: GetEvaluationInputSchema,
+      outputSchema: ToolOutputSchema,
+      annotations: readAnnotations,
+    },
+    async ({ submissionId }) =>
+      callHttp(
+        http,
+        {
+          method: 'GET',
+          path: `/submissions/${encodeURIComponent(submissionId)}/evaluation`,
+        },
+        successCopy.evaluation!,
       ),
   );
 

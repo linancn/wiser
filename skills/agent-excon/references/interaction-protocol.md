@@ -54,7 +54,11 @@ Every write sends `Idempotency-Key`. Observe, submission, and advance also send 
 
 Use the complete plan shape from `yongding-allocation.md`; the abbreviated arrays above show only the envelope. Start, observe, submit, and advance responses all return the updated `episode`. Submission also returns `submissionId`, deterministic `evaluation`, `feedback`, and links for reconciliation. The service assigns revision numbers and immutable predecessor links; the participant does not send `revisionOf` in this protocol version.
 
+When feedback returns `revise_submission`, send the revised plan to the same submissions endpoint with the current `feedback_available` Episode version and a new idempotency key. Keep the same stage and set `isFinal` according to that stage. The response increments `revisionNo` and sets `revisionOf`; it never overwrites the earlier plan.
+
 `allowedActions` values are `observe`, `revise_submission`, `advance`, and `finalize`. Stage 1 normally returns `advance`; a valid stage-2 final plan returns `finalize`, which is executed through the same advance endpoint with the latest version.
+
+MCP write tools name the version argument `expectedVersion` and the header value `idempotencyKey`; the adapter converts them to the HTTP envelope above. MCP results use `structuredContent: { "ok": true, "data": <HTTP response> }` or `{ "ok": false, "error": ... }`. Read machine fields from `data`, never from the bilingual text summary.
 
 ## Response discipline
 

@@ -38,7 +38,7 @@ export interface ScenarioDocument {
 
 export interface ScenarioInformation extends Omit<
   ObservationDto,
-  'accessedTime' | 'episodeId' | 'id'
+  'accessedTime' | 'accessedVirtualTime' | 'episodeId' | 'id'
 > {
   readonly id: string;
 }
@@ -208,6 +208,7 @@ export const SCENARIO_INFORMATION: readonly ScenarioInformation[] =
       observedTime: '2023-03-23T00:20:00.000Z',
       ingestedTime: '2023-03-23T03:09:00.000Z',
       releasedTime: '2023-03-23T03:10:00.000Z',
+      supersedesInformationId: 'simulated-rules-20230322-stage-1',
       payload: {
         constraintVersion: 'yongding-stage-2-v1',
         sources: [

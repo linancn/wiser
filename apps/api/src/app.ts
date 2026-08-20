@@ -181,7 +181,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const authenticator =
     options.authenticator ??
     new StaticParticipantAuthenticator({
-      'local-demo-participant-token': 'local-demo-participant',
+      'local-demo-participant-token': {
+        id: 'local-demo-participant',
+        participantVersionIds: ['40000000-0000-4000-8000-000000000001'],
+      },
     });
   const app = fastify({
     logger: options.logger ?? true,
@@ -321,6 +324,25 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
             body,
           );
           return reply.code(201).send(result);
+        },
+      );
+
+      api.get(
+        '/submissions/:submissionId',
+        {
+          schema: {
+            tags: ['exercise'],
+            summary: 'Get an immutable submission revision',
+            security: [{ bearerAuth: [] }],
+            params: jsonSchema(SubmissionIdParamsSchema),
+          },
+        },
+        async (request) => {
+          const { submissionId } = parse(
+            SubmissionIdParamsSchema,
+            request.params,
+          );
+          return service.getSubmission(principal(request), submissionId);
         },
       );
 

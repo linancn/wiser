@@ -26,6 +26,13 @@ function participantToken(environment: NodeJS.ProcessEnv): string {
   return 'local-demo-participant-token';
 }
 
+function participantVersionId(environment: NodeJS.ProcessEnv): string {
+  return (
+    environment['AGENT_EXCON_PARTICIPANT_VERSION_ID'] ??
+    '40000000-0000-4000-8000-000000000001'
+  );
+}
+
 async function main(): Promise<void> {
   const token = participantToken(process.env);
   const origins = process.env['API_CORS_ORIGIN']
@@ -36,7 +43,10 @@ async function main(): Promise<void> {
     // Demo-only walking slice. Replace this adapter with PostgreSQL in durable deployments.
     service: new InMemoryExerciseService(),
     authenticator: new StaticParticipantAuthenticator({
-      [token]: 'local-demo-participant',
+      [token]: {
+        id: 'local-demo-participant',
+        participantVersionIds: [participantVersionId(process.env)],
+      },
     }),
     ...(origins === undefined || origins.length === 0
       ? {}

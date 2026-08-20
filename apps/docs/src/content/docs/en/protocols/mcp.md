@@ -11,15 +11,17 @@ Use the stable `@modelcontextprotocol/sdk` v1 line. The first slice ships a loca
 
 ## Tools
 
-| Tool                           | HTTP operation         | Behavior                          |
-| ------------------------------ | ---------------------- | --------------------------------- |
-| `excon_start_episode`          | `POST /episodes`       | Idempotent non-destructive write  |
-| `excon_get_episode`            | `GET /episodes/{id}`   | Read-only state reconciliation    |
-| `excon_observe`                | `POST .../observe`     | Idempotent access-recording write |
-| `excon_submit_allocation_plan` | `POST .../submissions` | Idempotent write                  |
-| `excon_get_feedback`           | `GET .../feedback`     | Read-only                         |
-| `excon_advance`                | `POST .../advance`     | Idempotent irreversible advance   |
-| `excon_get_events`             | `GET .../events`       | Read-only paginated trace         |
+| Tool                           | HTTP operation         | Behavior                            |
+| ------------------------------ | ---------------------- | ----------------------------------- |
+| `excon_start_episode`          | `POST /episodes`       | Idempotent non-destructive write    |
+| `excon_get_episode`            | `GET /episodes/{id}`   | Read-only state reconciliation      |
+| `excon_observe`                | `POST .../observe`     | Idempotent access-recording write   |
+| `excon_list_observations`      | `GET .../observations` | Read-only full evidence recovery    |
+| `excon_submit_allocation_plan` | `POST .../submissions` | Idempotent write                    |
+| `excon_get_evaluation`         | `GET .../evaluation`   | Read-only evaluation reconciliation |
+| `excon_get_feedback`           | `GET .../feedback`     | Read-only                           |
+| `excon_advance`                | `POST .../advance`     | Idempotent irreversible advance     |
+| `excon_get_events`             | `GET .../events`       | Read-only paginated trace           |
 
 Input and `structuredContent` derive from shared Zod schemas. Text content is a short human summary and must not become a second machine format.
 

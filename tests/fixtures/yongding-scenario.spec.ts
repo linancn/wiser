@@ -11,7 +11,7 @@ interface StageFixture {
   readonly rules: Parameters<
     typeof evaluateWaterAllocationPlan
   >[0] extends infer Input
-    ? Omit<Input, 'submission' | 'evidenceTimestamps' | 'submittedAt'>
+    ? Omit<Input, 'submission' | 'evidenceTimestamps' | 'submittedVirtualTime'>
     : never;
   readonly canonicalPlan: unknown;
 }
@@ -34,7 +34,7 @@ describe('Yongding River scenario fixtures', () => {
         ({ evidenceRefs }) =>
           evidenceRefs.map((informationId) => ({
             informationId,
-            accessedTime:
+            accessedVirtualTime:
               stage === 1
                 ? '2023-03-22T07:05:00.000Z'
                 : '2023-03-23T03:09:30.000Z',
@@ -44,7 +44,7 @@ describe('Yongding River scenario fixtures', () => {
         submission: plan,
         ...fixture.rules,
         evidenceTimestamps,
-        submittedAt:
+        submittedVirtualTime:
           stage === 1 ? '2023-03-22T07:10:00.000Z' : '2023-03-23T03:10:00.000Z',
       });
 

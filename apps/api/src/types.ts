@@ -31,6 +31,7 @@ export class ExerciseServiceError extends Error {
 
 export interface ParticipantPrincipal {
   readonly id: string;
+  readonly participantVersionIds: readonly string[];
 }
 
 export interface ParticipantAuthenticator {
@@ -61,6 +62,8 @@ export interface EpisodeEvent {
 export interface SubmissionView {
   readonly id: string;
   readonly episodeId: string;
+  readonly revisionNo: number;
+  readonly revisionOf?: string;
   readonly episodeVersion: number;
   readonly submittedAt: string;
   readonly plan: AllocationPlanSubmission;
@@ -175,6 +178,10 @@ export interface ExerciseService {
     idempotencyKey: string,
     input: SubmitPlanInput,
   ): Promise<SubmitPlanResult>;
+  getSubmission(
+    participant: ParticipantPrincipal,
+    submissionId: string,
+  ): Promise<SubmissionView>;
   getSubmissionEvaluation(
     participant: ParticipantPrincipal,
     submissionId: string,

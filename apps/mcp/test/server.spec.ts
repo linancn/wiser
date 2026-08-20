@@ -15,6 +15,7 @@ import {
 
 const EPISODE_ID = '11111111-1111-4111-8111-111111111111';
 const PARTICIPANT_VERSION_ID = '22222222-2222-4222-8222-222222222222';
+const SUBMISSION_ID = '44444444-4444-4444-8444-444444444444';
 const IDEMPOTENCY_KEY = '33333333-3333-4333-8333-333333333333';
 
 class RecordingHttpClient implements AgentExconHttpClient {
@@ -55,7 +56,7 @@ async function connect(client: AgentExconHttpClient) {
 }
 
 describe('Agent EXCON MCP server', () => {
-  it('registers the seven workflow tools with accurate annotations', async () => {
+  it('registers the nine workflow tools with accurate annotations', async () => {
     const mcpClient = await connect(new RecordingHttpClient());
 
     const { tools } = await mcpClient.listTools();
@@ -64,7 +65,9 @@ describe('Agent EXCON MCP server', () => {
       'excon_start_episode',
       'excon_get_episode',
       'excon_observe',
+      'excon_list_observations',
       'excon_submit_allocation_plan',
+      'excon_get_evaluation',
       'excon_get_feedback',
       'excon_advance',
       'excon_get_events',
@@ -101,6 +104,16 @@ describe('Agent EXCON MCP server', () => {
           flowM3s: 12.3,
           evidenceRefs: ['observation:t00-source-snapshot'],
         },
+        {
+          sourceId: 'south-water',
+          flowM3s: 1,
+          evidenceRefs: ['observation:t00-south-water'],
+        },
+        {
+          sourceId: 'reclaimed-lower',
+          flowM3s: 2,
+          evidenceRefs: ['observation:t00-reclaimed-water'],
+        },
       ],
       expectedSectionFlows: [
         { sectionId: 'sanjiadian', flowM3s: 11.8 },
@@ -134,6 +147,10 @@ describe('Agent EXCON MCP server', () => {
         },
       }),
       mcpClient.callTool({
+        name: 'excon_list_observations',
+        arguments: { episodeId: EPISODE_ID, limit: 30 },
+      }),
+      mcpClient.callTool({
         name: 'excon_submit_allocation_plan',
         arguments: {
           episodeId: EPISODE_ID,
@@ -141,6 +158,10 @@ describe('Agent EXCON MCP server', () => {
           expectedVersion: 2,
           plan,
         },
+      }),
+      mcpClient.callTool({
+        name: 'excon_get_evaluation',
+        arguments: { submissionId: SUBMISSION_ID },
       }),
       mcpClient.callTool({
         name: 'excon_get_feedback',
@@ -160,7 +181,7 @@ describe('Agent EXCON MCP server', () => {
       }),
     ]);
 
-    expect(results).toHaveLength(7);
+    expect(results).toHaveLength(9);
     expect(
       results.every(
         ({ structuredContent }) =>
@@ -170,7 +191,7 @@ describe('Agent EXCON MCP server', () => {
           structuredContent.ok === true,
       ),
     ).toBe(true);
-    expect(http.requests).toHaveLength(7);
+    expect(http.requests).toHaveLength(9);
     expect(http.requests).toEqual(
       expect.arrayContaining([
         {
@@ -185,6 +206,11 @@ describe('Agent EXCON MCP server', () => {
             scenarioVersionId: 'jjj-yongding-replenishment-2023-v1',
             participantVersionId: PARTICIPANT_VERSION_ID,
           },
+        },
+        {
+          method: 'GET',
+          path: `/episodes/${EPISODE_ID}/observations`,
+          query: { limit: 30 },
         },
         {
           method: 'POST',
@@ -204,6 +230,10 @@ describe('Agent EXCON MCP server', () => {
         {
           method: 'GET',
           path: `/episodes/${EPISODE_ID}/feedback`,
+        },
+        {
+          method: 'GET',
+          path: `/submissions/${SUBMISSION_ID}/evaluation`,
         },
         {
           method: 'POST',

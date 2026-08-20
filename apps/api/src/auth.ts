@@ -11,10 +11,8 @@ import type {
 export class StaticParticipantAuthenticator implements ParticipantAuthenticator {
   readonly #participants: ReadonlyMap<string, ParticipantPrincipal>;
 
-  constructor(tokens: Readonly<Record<string, string>>) {
-    this.#participants = new Map(
-      Object.entries(tokens).map(([token, id]) => [token, { id }]),
-    );
+  constructor(tokens: Readonly<Record<string, ParticipantPrincipal>>) {
+    this.#participants = new Map(Object.entries(tokens));
   }
 
   authenticate(token: string): Promise<ParticipantPrincipal | null> {

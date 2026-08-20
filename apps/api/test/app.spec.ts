@@ -48,9 +48,17 @@ const SubmissionResponseSchema = z.looseObject({
   feedback: FeedbackSchema,
   links: z.looseObject({
     episode: z.string(),
+    submission: z.string(),
     feedback: z.string(),
     evaluation: z.string(),
   }),
+});
+const SubmissionViewResponseSchema = z.looseObject({
+  id: z.string().uuid(),
+  episodeId: z.string().uuid(),
+  revisionNo: z.number().int().positive(),
+  revisionOf: z.string().uuid().optional(),
+  plan: AllocationPlanSubmissionSchema,
 });
 const EvaluationResponseSchema = z.looseObject({
   status: z.literal('ready'),
@@ -96,8 +104,14 @@ function app(options: Partial<BuildAppOptions> = {}) {
     authenticator:
       options.authenticator ??
       new StaticParticipantAuthenticator({
-        [participantToken]: 'participant-a',
-        [secondParticipantToken]: 'participant-b',
+        [participantToken]: {
+          id: 'participant-a',
+          participantVersionIds: [participantVersionId],
+        },
+        [secondParticipantToken]: {
+          id: 'participant-b',
+          participantVersionIds: ['33333333-3333-4333-8333-333333333333'],
+        },
       }),
   });
   closeCallbacks.push(() => instance.close());
@@ -280,6 +294,7 @@ describe('Agent EXCON HTTP walking slice', () => {
       expect.objectContaining({
         informationId: 'official-flow-20230322-guanting',
         accessedTime: '2026-08-20T08:00:00.000Z',
+        accessedVirtualTime: '2023-03-22T07:00:00.000Z',
       }),
     );
 
@@ -463,6 +478,83 @@ describe('Agent EXCON HTTP walking slice', () => {
       version: 11,
     });
   });
+
+  it('creates an immutable linked revision after non-passing feedback', async () => {
+    const instance = app();
+    const created = await startEpisode(
+      instance,
+      '10000000-0000-4000-8000-000000000050',
+    );
+    const episodeId = EpisodeEnvelopeSchema.parse(json(created)).episode.id;
+    await instance.inject({
+      method: 'POST',
+      url: `/api/v1/episodes/${episodeId}/observe`,
+      headers: {
+        ...headers,
+        'idempotency-key': '10000000-0000-4000-8000-000000000051',
+      },
+      payload: { episodeVersion: 1 },
+    });
+    const invalidPlan = {
+      ...canonicalPlan,
+      sourceReleases: canonicalPlan.sourceReleases.map((release) =>
+        release.sourceId === 'guanting' ? { ...release, flowM3s: 25 } : release,
+      ),
+    };
+    const rejected = await instance.inject({
+      method: 'POST',
+      url: `/api/v1/episodes/${episodeId}/submissions`,
+      headers: {
+        ...headers,
+        'idempotency-key': '10000000-0000-4000-8000-000000000052',
+      },
+      payload: { episodeVersion: 2, plan: invalidPlan },
+    });
+    const rejectedBody = SubmissionResponseSchema.parse(json(rejected));
+    expect(rejectedBody).toMatchObject({
+      episode: { state: 'feedback_available', version: 5 },
+      evaluation: { verdict: 'fail' },
+      feedback: {
+        allowedActions: ['revise_submission'],
+      },
+      submission: { revisionNo: 1 },
+    });
+    expect(rejectedBody.feedback.issues.map(({ type }) => type)).toContain(
+      'constraint_violation',
+    );
+
+    const revised = await instance.inject({
+      method: 'POST',
+      url: `/api/v1/episodes/${episodeId}/submissions`,
+      headers: {
+        ...headers,
+        'idempotency-key': '10000000-0000-4000-8000-000000000053',
+      },
+      payload: { episodeVersion: 5, plan: canonicalPlan },
+    });
+    const revisedBody = SubmissionResponseSchema.parse(json(revised));
+    expect(revisedBody).toMatchObject({
+      episode: { state: 'feedback_available', version: 9 },
+      evaluation: { verdict: 'pass' },
+      submission: {
+        revisionNo: 2,
+        revisionOf: rejectedBody.submissionId,
+      },
+    });
+
+    const readRevision = await instance.inject({
+      method: 'GET',
+      url: revisedBody.links.submission,
+      headers,
+    });
+    expect(readRevision.statusCode).toBe(200);
+    expect(
+      SubmissionViewResponseSchema.parse(json(readRevision)),
+    ).toMatchObject({
+      revisionNo: 2,
+      revisionOf: rejectedBody.submissionId,
+    });
+  });
 });
 
 describe('validation, ownership, versions, and idempotency', () => {
@@ -520,6 +612,26 @@ describe('validation, ownership, versions, and idempotency', () => {
     expect(response.statusCode).toBe(404);
     expect(ApiErrorSchema.parse(json(response))).toMatchObject({
       error: { code: 'EPISODE_NOT_FOUND' },
+    });
+  });
+
+  it('rejects a participant version outside the bearer identity', async () => {
+    const response = await app().inject({
+      method: 'POST',
+      url: '/api/v1/episodes',
+      headers: {
+        ...headers,
+        'idempotency-key': '10000000-0000-4000-8000-000000000025',
+      },
+      payload: {
+        scenarioVersionId: DEFAULT_SCENARIO_VERSION_ID,
+        participantVersionId: '33333333-3333-4333-8333-333333333333',
+      },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(ApiErrorSchema.parse(json(response))).toMatchObject({
+      error: { code: 'NOT_AUTHORIZED' },
     });
   });
 

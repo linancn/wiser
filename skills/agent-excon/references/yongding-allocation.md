@@ -107,4 +107,4 @@ qujiadian      = cuizhihuiyingToQujiadian × cuizhihuiying
 
 Evidence attaches to each source release. Expected section flows are deterministic derivations of those releases and the cited current rule Observation; they do not carry a second citation field. Stage 1 is revisable (`isFinal: false`); stage 2 is final (`isFinal: true`).
 
-The baseline objective is feasibility: meet every published source, total-release, model, ecological-target, and evidence constraint. The deterministic score does not claim a real operational optimum. When several plans are feasible, prefer the lowest total synthetic release as a transparent tie-breaker; never trade away a published target to reduce it.
+The baseline objective is feasibility: meet every published source, total-release, model, ecological-target, and evidence constraint. Any feasible plan may pass; the deterministic score does not claim or enforce a real operational optimum. If the task later requests optimization, it must publish a separate versioned objective and tie-break rules before the agent optimizes.

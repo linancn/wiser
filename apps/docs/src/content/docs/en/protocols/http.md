@@ -16,6 +16,7 @@ HTTP is the only business protocol foundation. Web clients, SDKs, Skill scripts,
 | `POST` | `/episodes/{episodeId}/observe`          | Deliver released data and record access |
 | `GET`  | `/episodes/{episodeId}/observations`     | Read participant observations           |
 | `POST` | `/episodes/{episodeId}/submissions`      | Create an immutable revision            |
+| `GET`  | `/submissions/{submissionId}`            | Read one immutable revision             |
 | `GET`  | `/submissions/{submissionId}/evaluation` | Read evaluation status/result           |
 | `GET`  | `/episodes/{episodeId}/feedback`         | Read visible feedback                   |
 | `POST` | `/episodes/{episodeId}/advance`          | Authorized virtual-time advance         |

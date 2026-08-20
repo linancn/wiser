@@ -8,6 +8,7 @@ import {
   publishFeedback,
   queueSubmission,
   recordObservation,
+  reopenEpisodeForRevision,
   releaseInformation,
   startEvaluation,
   type AllocationPlanSubmission,
@@ -136,6 +137,24 @@ describe('Jing-Jin-Ji water-system exercise loop', () => {
       virtualTime: secondCheckpoint,
       version: 6,
     });
+  });
+
+  it('reopens the same checkpoint for an immutable feedback-driven revision', () => {
+    const observed = recordObservation(episode(), [
+      'official-flow-20230322-guanting',
+    ]);
+    const queued = queueSubmission(observed, firstPlan, observed.version);
+    const evaluating = startEvaluation(queued, queued.version);
+    const feedback = publishFeedback(evaluating, evaluating.version);
+    const reopened = reopenEpisodeForRevision(feedback, feedback.version);
+    const revised = queueSubmission(reopened, firstPlan, reopened.version);
+
+    expect(reopened).toMatchObject({
+      state: 'waiting_for_submission',
+      stageIndex: 0,
+      version: 6,
+    });
+    expect(revised).toMatchObject({ state: 'evaluation_queued', version: 7 });
   });
 
   it('completes only after final feedback is ready', () => {
