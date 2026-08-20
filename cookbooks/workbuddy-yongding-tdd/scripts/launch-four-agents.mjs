@@ -271,7 +271,7 @@ function standardArguments({ mcpConfigPath, prompt, schema, maxTurns }) {
     '--subagent-permission-mode',
     'default',
     '--tools',
-    'ToolSearch,Skill,ListMcpResources,ReadMcpResource',
+    'ToolSearch,DeferExecuteTool,Skill,ListMcpResources,ReadMcpResource',
     '--strict-mcp-config',
     '--mcp-config',
     mcpConfigPath,
