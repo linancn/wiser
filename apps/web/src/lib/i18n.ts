@@ -10,8 +10,9 @@ export function isLocale(value: string): value is Locale {
 
 const zhCN = {
   meta: {
-    title: 'Agent EXCON｜智能体演练场',
-    description: '面向智能体开发与评估的可运行、可裁决、可回放真实任务环境。',
+    title: 'WISER 水地图｜Agent EXCON 智能体演练场',
+    description:
+      '水地图：AI 赋能的水智能系统与重构引擎；当前展示可运行、可裁决、可回放的 Agent EXCON 环境。',
   },
   a11y: {
     skip: '跳到主要内容',
@@ -21,9 +22,9 @@ const zhCN = {
     network: '京津冀永定河补水链路',
   },
   brand: {
-    name: 'Agent EXCON',
-    product: '智能体演练场',
-    role: '导调中枢',
+    name: 'WISER',
+    product: '水地图 · Agent EXCON',
+    role: '智能体演练场',
     environment: '本地可信开发',
   },
   nav: {
@@ -111,16 +112,16 @@ const zhCN = {
     eventList: '事件列表',
   },
   footer: {
-    note: 'Agent EXCON · MIT 开源 · 合成演练环境',
+    note: 'WISER 水地图 · Agent EXCON · MIT 开源',
     architecture: 'HTTP API 是界面与演练内核之间的唯一边界',
   },
 };
 
 const en: typeof zhCN = {
   meta: {
-    title: 'Agent EXCON | Exercise control room',
+    title: 'WISER | Agent EXCON observability',
     description:
-      'A runnable, judgeable and replayable environment for developing and evaluating agents.',
+      'Water Intelligence System & Engine for Reconfiguration, empowered by AI; showing the runnable and replayable Agent EXCON environment.',
   },
   a11y: {
     skip: 'Skip to main content',
@@ -130,9 +131,9 @@ const en: typeof zhCN = {
     network: 'Yongding River replenishment network',
   },
   brand: {
-    name: 'Agent EXCON',
-    product: 'Agent Exercise Field',
-    role: 'Exercise control',
+    name: 'WISER',
+    product: 'Water Map · Agent EXCON',
+    role: 'Agent exercise field',
     environment: 'Trusted local development',
   },
   nav: {
@@ -220,7 +221,7 @@ const en: typeof zhCN = {
     eventList: 'Event list',
   },
   footer: {
-    note: 'Agent EXCON · MIT licensed · Synthetic exercise environment',
+    note: 'WISER Water Map · Agent EXCON · MIT licensed',
     architecture:
       'The HTTP API is the only boundary between the interface and exercise core',
   },

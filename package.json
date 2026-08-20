@@ -1,9 +1,9 @@
 {
-  "name": "agent-excon",
+  "name": "wiser",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Agent Exercise Control Infrastructure",
+  "description": "WISER — Water Intelligence System & Engine for Reconfiguration, empowered by AI",
   "license": "MIT",
   "packageManager": "pnpm@11.22.0",
   "engines": {

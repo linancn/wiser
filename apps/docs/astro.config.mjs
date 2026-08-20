@@ -35,8 +35,9 @@ const sidebar = [
 export default defineConfig({
   integrations: [
     starlight({
-      title: 'Agent EXCON',
-      description: '智能体演练场：可运行、可裁决、可回放的真实任务环境。',
+      title: 'WISER · Agent EXCON',
+      description:
+        '水地图：AI 赋能的水智能系统与重构引擎；当前核心为可运行、可裁决、可回放的智能体演练场。',
       favicon: '/favicon.svg',
       defaultLocale: 'root',
       locales: {

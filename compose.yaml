@@ -1,4 +1,4 @@
-name: agent-excon
+name: wiser
 
 x-app: &app
   image: agent-excon-dev:local
