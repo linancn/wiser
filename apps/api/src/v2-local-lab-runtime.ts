@@ -26,6 +26,7 @@ export interface LocalLabRuntimeManifest extends Omit<
   'roster'
 > {
   readonly apiBaseUrl: string;
+  readonly operatorCredentialEnvFile: string;
   readonly roster: readonly LocalLabRuntimeRosterEntry[];
 }
 
@@ -33,6 +34,7 @@ export interface LocalLabRuntimeBundle {
   readonly runtimeDirectory: string;
   readonly manifestPath: string;
   readonly credentialFiles: readonly string[];
+  readonly operatorCredentialFile: string;
 }
 
 function validationError(message: string): ExerciseServiceError {
@@ -130,9 +132,28 @@ export async function writeV2LocalLabRuntimeBundle(
       runtimeRoster.push({ ...roster, credentialEnvFile });
     }
 
+    const operatorCredentialEnvFile = 'credentials/operator.env';
+    const operatorCredentialFile = join(
+      runtimeDirectory,
+      operatorCredentialEnvFile,
+    );
+    const operatorContent = [
+      envLine('AGENT_EXCON_PROTOCOL_VERSION', 'v2'),
+      envLine('AGENT_EXCON_API_URL', apiBaseUrl),
+      envLine('AGENT_EXCON_OPERATOR_API_KEY', lab.operatorToken),
+      envLine('WISER_RUN_ID', lab.manifest.runId),
+      '',
+    ].join('\n');
+    await writeFile(operatorCredentialFile, operatorContent, {
+      encoding: 'utf8',
+      flag: 'wx',
+      mode: 0o600,
+    });
+
     const manifest: LocalLabRuntimeManifest = {
       ...lab.manifest,
       apiBaseUrl,
+      operatorCredentialEnvFile,
       roster: runtimeRoster,
     };
     const manifestPath = join(runtimeDirectory, 'manifest.json');
@@ -145,6 +166,7 @@ export async function writeV2LocalLabRuntimeBundle(
       runtimeDirectory,
       manifestPath,
       credentialFiles,
+      operatorCredentialFile,
     };
   } catch (error) {
     await rm(runtimeDirectory, { force: true, recursive: true });
