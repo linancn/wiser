@@ -276,6 +276,13 @@ export function beginRunTaskEvaluation(
   );
 }
 
+export function releaseBlockedRunTask(
+  task: RunTask,
+  expectedVersion: number,
+): RunTask {
+  return transitionUnclaimedRunTask(task, expectedVersion, 'BLOCKED', 'READY');
+}
+
 export function requireRunTaskRework(
   task: RunTask,
   expectedVersion: number,

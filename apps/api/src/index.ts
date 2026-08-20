@@ -35,6 +35,12 @@ export {
   type V2LocalLabServerConfig,
 } from './v2-local-lab-server.js';
 export {
+  evaluateYongdingV2RoleOutput,
+  type EvaluateYongdingV2RoleOutputInput,
+  type YongdingV2EvaluationIssue,
+  type YongdingV2RoleEvaluation,
+} from './yongding-v2-evaluator.js';
+export {
   DEFAULT_SCENARIO,
   DEFAULT_SCENARIO_VERSION_ID,
   type ScenarioDocument,
