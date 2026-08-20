@@ -41,7 +41,11 @@ import type {
 import type { ParticipantPrincipal } from './types.js';
 
 export type IssuedRunResource =
-  RunTaskDto | RunMessageDto | RunArtifactDto | RunFeedbackDto;
+  | RunTaskDto
+  | RunMessageDto
+  | RunArtifactDto
+  | RunFeedbackDto
+  | RunSubmissionDto;
 
 export interface V2ExerciseService {
   isReady(): Promise<boolean>;
@@ -147,7 +151,7 @@ export interface V2ExerciseService {
     principal: ParticipantPrincipal,
     runId: string,
     runAgentId: string,
-    resourceType: 'task' | 'message' | 'artifact' | 'feedback',
+    resourceType: 'task' | 'message' | 'artifact' | 'feedback' | 'submission',
   ): Promise<readonly IssuedRunResource[]>;
   claimTask(
     principal: ParticipantPrincipal,

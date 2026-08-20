@@ -21,7 +21,7 @@ export const YONGDING_SCENARIO_MARKDOWN = `# 京津冀永定河生态补水与�
 2. \`excon_sync\` 发放新资源，并在后续调用中确认前一个链头。
 3. \`excon_list_tasks\` 恢复已发放 Task，然后 claim、begin，必要时 heartbeat。
 4. 用 Message 与 ArtifactVersion 协作，用 Receipt/ArtifactVersion 证据提交 Task 结果。
-5. 通过 sync 处理分层 Feedback；只用匹配 ActionGrant 修订或背书。
+5. 背书前先 sync Submission Receipt，再用 \`excon_list_submissions\` 恢复并审阅精确不可变修订；之后只用匹配的分层 Feedback ActionGrant。
 6. 交接时使用 \`excon_get_replay_cursor\` 请求自身 issued/acknowledged 视角。
 
 ---
@@ -46,7 +46,7 @@ This is a fact-anchored synthetic exercise. The water-system topology and source
 2. Use \`excon_sync\` to issue new resources and acknowledge the prior chain head on a later call.
 3. Recover issued Tasks, then claim, begin, and heartbeat when needed.
 4. Collaborate with Messages and ArtifactVersions; submit Task results with Receipt/ArtifactVersion evidence.
-5. Process layered Feedback through sync and use only matching ActionGrants for revision or endorsement.
+5. For endorsement, sync the Submission Receipt, recover and review the exact immutable revision with \`excon_list_submissions\`, then use only the matching layered-Feedback ActionGrant.
 6. Handoff with \`excon_get_replay_cursor\` using only the agent's own issued/acknowledged perspective.
 `;
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   AgentIdentitySchema,
+  AgentViewReceiptSchema,
   AgentVersionSchema,
   ApiErrorCodeSchema,
   BestEffortTelemetryOverlaySchema,
@@ -14,7 +15,9 @@ import {
   PublicScenarioSummarySchema,
   RunAgentSchema,
   RunAuthoritativeProjectionSchema,
+  RunResourceSchema,
   RunSchema,
+  RunSubmissionSchema,
   RunSyncRequestSchema,
   RunTaskSchema,
   SyncDeliveryBatchSchema,
@@ -370,5 +373,64 @@ describe('Agent EXCON v2 contracts', () => {
         version: 1,
       }).success,
     ).toBe(true);
+  });
+
+  it('models an immutable Submission as a receipt-gated issued resource', () => {
+    const submission = RunSubmissionSchema.parse({
+      id: '00000000-0000-4000-8000-000000000020',
+      runId: '00000000-0000-4000-8000-000000000003',
+      taskId: '00000000-0000-4000-8000-000000000005',
+      actorRunAgentId: '00000000-0000-4000-8000-000000000004',
+      targetScope: 'team',
+      roleSlotId: 'water-evidence',
+      revisionNo: 1,
+      submissionType: 'water-evidence-result',
+      isFinal: false,
+      payload: { conclusion: 'synthetic evidence ready' },
+      payloadHash:
+        'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      receiptRefs: [
+        {
+          receiptId: '00000000-0000-4000-8000-000000000011',
+          receiptHash:
+            'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        },
+      ],
+      artifactVersionRefs: [],
+      endorsementRecipientRunAgentIds: ['00000000-0000-4000-8000-000000000014'],
+      submittedVirtualAt: '2023-03-22T07:00:00.000Z',
+      submittedAt: '2026-08-20T08:00:00.000Z',
+      createdRunSeq: 12,
+    });
+
+    expect(RunResourceSchema.parse(submission)).toEqual(submission);
+    expect(
+      AgentViewReceiptSchema.parse({
+        id: '00000000-0000-4000-8000-000000000021',
+        runId: submission.runId,
+        runAgentId: '00000000-0000-4000-8000-000000000014',
+        agentReceiptSeq: 5,
+        deliveryBatchId: '00000000-0000-4000-8000-000000000022',
+        sourceEventId: '00000000-0000-4000-8000-000000000023',
+        sourceRunSeq: submission.createdRunSeq,
+        issuedEventId: '00000000-0000-4000-8000-000000000024',
+        issuedRunSeq: 14,
+        viewKind: 'submission',
+        resourceType: 'submission',
+        resourceId: submission.id,
+        resourceVersion: String(submission.revisionNo),
+        availableVirtualAt: submission.submittedVirtualAt,
+        issuedVirtualAt: submission.submittedVirtualAt,
+        issuedAt: submission.submittedAt,
+        schemaVersion: 1,
+        contentSnapshot: submission,
+        contentHash:
+          'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        previousReceiptHash:
+          'sha256:0000000000000000000000000000000000000000000000000000000000000000',
+        receiptHash:
+          'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+      }).contentSnapshot,
+    ).toEqual(submission);
   });
 });

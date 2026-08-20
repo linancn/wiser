@@ -1,6 +1,6 @@
 begin;
 
-select plan(63);
+select plan(73);
 
 select has_table('public', 'role_definitions', 'v2 role definitions exist');
 select has_table('public', 'agent_identities', 'v2 agent identities exist');
@@ -506,6 +506,358 @@ select is(
   'a satisfied barrier releases exactly once'
 );
 
+insert into public.run_submissions (
+  id,
+  run_id,
+  task_id,
+  actor_run_agent_id,
+  target_scope,
+  revision_no,
+  submission_type,
+  is_final,
+  payload,
+  payload_hash,
+  submitted_virtual_at,
+  submitted_at
+)
+values (
+  '5d000000-0000-4000-8000-000000000001',
+  '51000000-0000-4000-8000-000000000001',
+  '55000000-0000-4000-8000-000000000001',
+  '53000000-0000-4000-8000-000000000001',
+  'individual',
+  1,
+  'pgtap-submission',
+  false,
+  '{"conclusion":"receipt-gated review"}'::jsonb,
+  repeat('a', 64),
+  '2023-03-22T07:00:00Z',
+  '2026-08-20T01:30:00Z'
+);
+
+select * from excon_private.append_run_event(
+  '51000000-0000-4000-8000-000000000001',
+  'submission.created',
+  'submission',
+  '5d000000-0000-4000-8000-000000000001',
+  'run_agent',
+  '53000000-0000-4000-8000-000000000001',
+  'participant_reported',
+  null,
+  'submission',
+  '2023-03-22T07:00:00Z',
+  '{"submissionId":"5d000000-0000-4000-8000-000000000001","revisionNo":1}'::jsonb,
+  null,
+  '5d000000-0000-4000-8000-000000000002'
+);
+
+insert into public.event_disclosures (
+  id,
+  run_id,
+  run_agent_id,
+  source_event_id,
+  source_run_seq,
+  granted_event_id,
+  granted_run_seq,
+  resource_type,
+  resource_id,
+  resource_version,
+  available_virtual_at
+)
+select
+  recipient.disclosure_id,
+  event.run_id,
+  recipient.run_agent_id,
+  event.event_id,
+  event.run_seq,
+  event.event_id,
+  event.run_seq,
+  'submission',
+  '5d000000-0000-4000-8000-000000000001',
+  '1',
+  '2023-03-22T07:00:00Z'
+from (
+  values
+    (
+      '5d000000-0000-4000-8000-000000000003'::uuid,
+      '53000000-0000-4000-8000-000000000001'::uuid
+    ),
+    (
+      '5d000000-0000-4000-8000-000000000004'::uuid,
+      '53000000-0000-4000-8000-000000000002'::uuid
+    )
+) as recipient(disclosure_id, run_agent_id)
+cross join excon_private.run_events as event
+where event.event_id = '5d000000-0000-4000-8000-000000000002';
+
+select * from excon_private.append_run_event(
+  '51000000-0000-4000-8000-000000000001',
+  'receipt.issued',
+  'receipt',
+  '5d000000-0000-4000-8000-000000000009',
+  'system',
+  null,
+  'platform_observed',
+  '5d000000-0000-4000-8000-000000000002',
+  'receipt',
+  '2023-03-22T07:00:00Z',
+  '{"runAgentId":"53000000-0000-4000-8000-000000000001","resourceType":"submission"}'::jsonb,
+  null,
+  '5d000000-0000-4000-8000-000000000005'
+);
+
+select * from excon_private.append_run_event(
+  '51000000-0000-4000-8000-000000000001',
+  'receipt.issued',
+  'receipt',
+  '5d000000-0000-4000-8000-00000000000a',
+  'system',
+  null,
+  'platform_observed',
+  '5d000000-0000-4000-8000-000000000002',
+  'receipt',
+  '2023-03-22T07:00:00Z',
+  '{"runAgentId":"53000000-0000-4000-8000-000000000002","resourceType":"submission"}'::jsonb,
+  null,
+  '5d000000-0000-4000-8000-000000000006'
+);
+
+insert into public.delivery_batches (
+  id,
+  run_id,
+  run_agent_id,
+  idempotency_key,
+  request_hash,
+  after_receipt_seq,
+  run_cursor,
+  has_more,
+  created_at
+)
+select
+  batch.batch_id,
+  event.run_id,
+  batch.run_agent_id,
+  batch.idempotency_key,
+  decode(repeat(batch.request_hash_byte, 32), 'hex'),
+  batch.after_receipt_seq,
+  event.run_seq,
+  false,
+  '2026-08-20T01:31:00Z'
+from (
+  values
+    (
+      '5d000000-0000-4000-8000-000000000007'::uuid,
+      '53000000-0000-4000-8000-000000000001'::uuid,
+      'submission-sync-author',
+      'a1',
+      1::bigint,
+      '5d000000-0000-4000-8000-000000000005'::uuid
+    ),
+    (
+      '5d000000-0000-4000-8000-000000000008'::uuid,
+      '53000000-0000-4000-8000-000000000002'::uuid,
+      'submission-sync-recipient',
+      'a2',
+      0::bigint,
+      '5d000000-0000-4000-8000-000000000006'::uuid
+    )
+) as batch(
+  batch_id,
+  run_agent_id,
+  idempotency_key,
+  request_hash_byte,
+  after_receipt_seq,
+  issued_event_id
+)
+join excon_private.run_events as event
+  on event.event_id = batch.issued_event_id;
+
+insert into public.agent_view_receipts (
+  id,
+  run_id,
+  run_agent_id,
+  agent_receipt_seq,
+  delivery_batch_id,
+  disclosure_id,
+  source_event_id,
+  source_run_seq,
+  issued_event_id,
+  issued_run_seq,
+  view_kind,
+  resource_type,
+  resource_id,
+  resource_version,
+  available_virtual_at,
+  issued_virtual_at,
+  issued_at,
+  content_snapshot,
+  content_hash,
+  previous_receipt_hash,
+  receipt_hash
+)
+select
+  receipt.receipt_id,
+  source_event.run_id,
+  receipt.run_agent_id,
+  receipt.agent_receipt_seq,
+  receipt.delivery_batch_id,
+  receipt.disclosure_id,
+  source_event.event_id,
+  source_event.run_seq,
+  issued_event.event_id,
+  issued_event.run_seq,
+  'submission',
+  'submission',
+  submission.id,
+  submission.revision_no::text,
+  submission.submitted_virtual_at,
+  submission.submitted_virtual_at,
+  '2026-08-20T01:31:00Z',
+  jsonb_build_object(
+    'id', submission.id,
+    'runId', submission.run_id,
+    'taskId', submission.task_id,
+    'actorRunAgentId', submission.actor_run_agent_id,
+    'targetScope', submission.target_scope,
+    'revisionNo', submission.revision_no,
+    'submissionType', submission.submission_type,
+    'isFinal', submission.is_final,
+    'payload', submission.payload,
+    'payloadHash', submission.payload_hash,
+    'receiptRefs', '[]'::jsonb,
+    'artifactVersionRefs', '[]'::jsonb,
+    'endorsementRecipientRunAgentIds',
+      '["53000000-0000-4000-8000-000000000002"]'::jsonb,
+    'submittedVirtualAt', submission.submitted_virtual_at,
+    'submittedAt', submission.submitted_at,
+    'createdRunSeq', source_event.run_seq
+  ),
+  repeat('0', 64),
+  case
+    when receipt.agent_receipt_seq = 1 then null
+    else head.head_hash
+  end,
+  decode(repeat('00', 32), 'hex')
+from (
+  values
+    (
+      '5d000000-0000-4000-8000-000000000009'::uuid,
+      '53000000-0000-4000-8000-000000000001'::uuid,
+      2::bigint,
+      '5d000000-0000-4000-8000-000000000007'::uuid,
+      '5d000000-0000-4000-8000-000000000003'::uuid,
+      '5d000000-0000-4000-8000-000000000005'::uuid
+    ),
+    (
+      '5d000000-0000-4000-8000-00000000000a'::uuid,
+      '53000000-0000-4000-8000-000000000002'::uuid,
+      1::bigint,
+      '5d000000-0000-4000-8000-000000000008'::uuid,
+      '5d000000-0000-4000-8000-000000000004'::uuid,
+      '5d000000-0000-4000-8000-000000000006'::uuid
+    )
+) as receipt(
+  receipt_id,
+  run_agent_id,
+  agent_receipt_seq,
+  delivery_batch_id,
+  disclosure_id,
+  issued_event_id
+)
+join public.run_submissions as submission
+  on submission.id = '5d000000-0000-4000-8000-000000000001'
+join excon_private.run_events as source_event
+  on source_event.event_id = '5d000000-0000-4000-8000-000000000002'
+join excon_private.run_events as issued_event
+  on issued_event.event_id = receipt.issued_event_id
+join excon_private.agent_receipt_heads as head
+  on head.run_agent_id = receipt.run_agent_id
+order by receipt.agent_receipt_seq desc;
+
+select is(
+  (
+    select count(*)
+    from public.event_disclosures
+    where resource_type = 'submission'
+      and resource_id = '5d000000-0000-4000-8000-000000000001'
+  ),
+  2::bigint,
+  'the immutable submission is disclosed only to its author and endorsement recipient'
+);
+select results_eq(
+  $$select run_agent_id
+      from public.event_disclosures
+      where resource_type = 'submission'
+      order by run_agent_id$$,
+  $$values
+      ('53000000-0000-4000-8000-000000000001'::uuid),
+      ('53000000-0000-4000-8000-000000000002'::uuid)$$,
+  'submission disclosure freezes the exact recipient snapshot'
+);
+select is(
+  (
+    select count(*)
+    from public.agent_view_receipts
+    where view_kind = 'submission'
+      and resource_type = 'submission'
+  ),
+  2::bigint,
+  'submission is a supported receipt view and resource kind'
+);
+select is(
+  (
+    select agent_receipt_seq
+    from public.agent_view_receipts
+    where id = '5d000000-0000-4000-8000-000000000009'
+  ),
+  2::bigint,
+  'the author submission Receipt extends its existing private chain'
+);
+select is(
+  (
+    select agent_receipt_seq
+    from public.agent_view_receipts
+    where id = '5d000000-0000-4000-8000-00000000000a'
+  ),
+  1::bigint,
+  'the endorsement recipient starts an independent private Receipt chain'
+);
+select is(
+  (
+    select count(distinct content_snapshot)
+    from public.agent_view_receipts
+    where resource_type = 'submission'
+      and content_snapshot ->> 'id' = '5d000000-0000-4000-8000-000000000001'
+      and content_snapshot #>> '{payload,conclusion}' = 'receipt-gated review'
+  ),
+  1::bigint,
+  'author and recipient receive the same exact immutable Submission snapshot'
+);
+select is(
+  (
+    select count(*)
+    from public.agent_view_receipts
+    where resource_type = 'submission'
+      and content_hash = encode(
+        extensions.digest(
+          convert_to(content_snapshot::text, 'UTF8'),
+          'sha256'
+        ),
+        'hex'
+      )
+  ),
+  2::bigint,
+  'each submission Receipt binds the canonical snapshot content hash'
+);
+select throws_ok(
+  $$update public.agent_view_receipts
+      set content_snapshot = '{"tampered":true}'::jsonb
+    where id = '5d000000-0000-4000-8000-00000000000a'$$,
+  '55000'::char(5),
+  'public.agent_view_receipts is append-only',
+  'a receipted Submission snapshot cannot be rewritten'
+);
+
 select throws_ok(
   $$update public.agent_view_receipts
       set content_snapshot = '{}'::jsonb
@@ -546,6 +898,15 @@ select is(
   1::bigint,
   'the operator can read its own v2 run'
 );
+select is(
+  (
+    select count(*)
+    from public.agent_view_receipts
+    where resource_type = 'submission'
+  ),
+  2::bigint,
+  'the run owner can audit both submission receipts through RLS'
+);
 
 select set_config(
   'request.jwt.claim.sub',
@@ -561,6 +922,15 @@ select is(
   (select count(*) from public.agent_view_receipts),
   0::bigint,
   'an external agent owner cannot read receipts through the Data API'
+);
+select is(
+  (
+    select count(*)
+    from public.agent_view_receipts
+    where resource_type = 'submission'
+  ),
+  0::bigint,
+  'an external agent owner cannot read submission snapshots through RLS'
 );
 select throws_ok(
   $$insert into public.run_messages (

@@ -33,30 +33,31 @@ Cursor reconciliation is conservative:
 
 ## Operation map
 
-| Intent                   | HTTP                                                   | Recommended MCP tool             | Mutation |
-| ------------------------ | ------------------------------------------------------ | -------------------------------- | -------- |
-| Reconcile assignment     | `GET /api/v2/runs/{runId}/me`                          | `excon_get_assignment`           | No       |
-| Receive and acknowledge  | `POST /api/v2/runs/{runId}/sync`                       | `excon_sync`                     | Yes      |
-| Recover issued Tasks     | `GET /api/v2/runs/{runId}/tasks`                       | `excon_list_tasks`               | No       |
-| Claim Task lease         | `POST /api/v2/tasks/{taskId}:claim`                    | `excon_claim_task`               | Yes      |
-| Begin claimed Task       | `POST /api/v2/tasks/{taskId}:begin`                    | `excon_begin_task`               | Yes      |
-| Renew active lease       | `POST /api/v2/tasks/{taskId}:heartbeat`                | `excon_heartbeat_task`           | Yes      |
-| Release active lease     | `POST /api/v2/tasks/{taskId}:release`                  | `excon_release_task`             | Yes      |
-| Send explicit Message    | `POST /api/v2/runs/{runId}/messages`                   | `excon_post_message`             | Yes      |
-| Recover issued Messages  | `GET /api/v2/runs/{runId}/messages`                    | structured list result           | No       |
-| Publish Artifact         | `POST /api/v2/runs/{runId}/artifacts`                  | `excon_publish_artifact`         | Yes      |
-| Append ArtifactVersion   | `POST /api/v2/artifacts/{artifactId}/versions`         | `excon_publish_artifact_version` | Yes      |
-| Recover issued Artifacts | `GET /api/v2/runs/{runId}/artifacts`                   | structured list result           | No       |
-| Submit Task result       | `POST /api/v2/tasks/{taskId}/submissions`              | `excon_submit_task_result`       | Yes      |
-| Endorse exact Submission | `POST /api/v2/submissions/{submissionId}/endorsements` | `excon_endorse_submission`       | Yes      |
-| Recover issued Feedback  | `GET /api/v2/runs/{runId}/feedback`                    | `excon_get_feedback`             | No       |
-| Read own replay cursor   | `GET /api/v2/runs/{runId}/replay`                      | `excon_get_replay_cursor`        | No       |
+| Intent                     | HTTP                                                   | Recommended MCP tool             | Mutation |
+| -------------------------- | ------------------------------------------------------ | -------------------------------- | -------- |
+| Reconcile assignment       | `GET /api/v2/runs/{runId}/me`                          | `excon_get_assignment`           | No       |
+| Receive and acknowledge    | `POST /api/v2/runs/{runId}/sync`                       | `excon_sync`                     | Yes      |
+| Recover issued Tasks       | `GET /api/v2/runs/{runId}/tasks`                       | `excon_list_tasks`               | No       |
+| Claim Task lease           | `POST /api/v2/tasks/{taskId}:claim`                    | `excon_claim_task`               | Yes      |
+| Begin claimed Task         | `POST /api/v2/tasks/{taskId}:begin`                    | `excon_begin_task`               | Yes      |
+| Renew active lease         | `POST /api/v2/tasks/{taskId}:heartbeat`                | `excon_heartbeat_task`           | Yes      |
+| Release active lease       | `POST /api/v2/tasks/{taskId}:release`                  | `excon_release_task`             | Yes      |
+| Send explicit Message      | `POST /api/v2/runs/{runId}/messages`                   | `excon_post_message`             | Yes      |
+| Recover issued Messages    | `GET /api/v2/runs/{runId}/messages`                    | structured list result           | No       |
+| Publish Artifact           | `POST /api/v2/runs/{runId}/artifacts`                  | `excon_publish_artifact`         | Yes      |
+| Append ArtifactVersion     | `POST /api/v2/artifacts/{artifactId}/versions`         | `excon_publish_artifact_version` | Yes      |
+| Recover issued Artifacts   | `GET /api/v2/runs/{runId}/artifacts`                   | structured list result           | No       |
+| Submit Task result         | `POST /api/v2/tasks/{taskId}/submissions`              | `excon_submit_task_result`       | Yes      |
+| Recover issued Submissions | `GET /api/v2/runs/{runId}/submissions`                 | `excon_list_submissions`         | No       |
+| Endorse exact Submission   | `POST /api/v2/submissions/{submissionId}/endorsements` | `excon_endorse_submission`       | Yes      |
+| Recover issued Feedback    | `GET /api/v2/runs/{runId}/feedback`                    | `excon_get_feedback`             | No       |
+| Read own replay cursor     | `GET /api/v2/runs/{runId}/replay`                      | `excon_get_replay_cursor`        | No       |
 
 MCP must call these HTTP operations rather than read PostgreSQL. Read machine fields from `structuredContent.data`; bilingual text is a summary, not a state carrier.
 
 ## `/sync`: the only new-content entry
 
-`/sync` is the only operation that can issue a new Task assignment, Inject/message, Artifact grant, or Feedback to this RunAgent. Recovery GETs return only resources already represented in this Agent's Receipt chain.
+`/sync` is the only operation that can issue a new Task assignment, Inject/message, Artifact grant, Submission, or Feedback to this RunAgent. Recovery GETs return only resources already represented in this Agent's Receipt chain.
 
 First request:
 
@@ -201,7 +202,7 @@ Task submission:
 }
 ```
 
-At least one `receiptRefs` or `artifactVersionRefs` entry is required, and every ArtifactVersion reference must match an artifact Receipt already issued to this RunAgent. A feedback-driven successor adds both `revisionOfId` and `feedbackActionGrantId`; neither may appear alone. A team Submission names the exact RunAgents whose endorsement is required, without including the submitter in that recipient list.
+At least one `receiptRefs` or `artifactVersionRefs` entry is required, and every ArtifactVersion reference must match an artifact Receipt already issued to this RunAgent. A feedback-driven successor adds both `revisionOfId` and `feedbackActionGrantId`; neither may appear alone. A team Submission names the exact RunAgents whose endorsement is required, without including the submitter in that recipient list. Creation makes one immutable Submission snapshot eligible to the author and those endorsement recipients; each RunAgent must obtain its own Submission Receipt through `/sync` before `GET /api/v2/runs/{runId}/submissions` or `excon_list_submissions` can recover it.
 
 Endorse the immutable Submission named in Feedback with:
 
@@ -211,7 +212,7 @@ Endorse the immutable Submission named in Feedback with:
 
 The grant is mandatory for endorsement and is consumed against the exact actor, Task, Submission/evaluation, action, scope, expiry, and use count.
 
-Review the exact revision and all authorized ArtifactVersions before endorsing. If the negotiated contract exposes the ADR's issued-submission read, use `GET /api/v2/runs/{runId}/submissions`; otherwise cross-check Feedback `subjectSubmissionId`, the grant's `predecessorSubmissionId`, and the explicitly shared review ArtifactVersions. If the reviewed content is unavailable, do not endorse from an ID alone—use an implemented clarification action or wait for operator guidance.
+Before endorsing, process both the Submission and Feedback Receipts, call `GET /api/v2/runs/{runId}/submissions` or `excon_list_submissions`, select the exact `subjectSubmissionId`/`predecessorSubmissionId`, and verify its revision, actor, Task, payload hash, evidence references, and recipient snapshot. Review that immutable content and its authorized ArtifactVersions. If the exact snapshot is absent, `/sync` with bounded backoff and stop without consuming the grant; never substitute operator replay, a Feedback ID, or a future endpoint.
 
 Record every returned Message ID, Artifact/version ID, Submission ID, Task version, and domain cursor. A successful Message or Artifact write does not make it visible to recipients until their own `/sync` issues a Receipt.
 

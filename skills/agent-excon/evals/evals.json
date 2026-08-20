@@ -29,12 +29,13 @@
     },
     {
       "id": 3,
-      "prompt": "一个 v2 团队汇流 Task 已拿到三个明确共享的 ArtifactVersion，协调方发布了 team Submission revision 2。我的角色收到 role Feedback，团队收到 team Feedback，我本人另有 individual Feedback；其中只有 role Feedback 带一个允许 endorse 的 feedbackActionGrantId，且指定 revision 2。请说明如何核验、endorse、处理三层反馈并等待 Barrier；如果协调方随后发布 revision 3 应怎么做。",
-      "expected_output": "A scoped feedback and endorsement plan that preserves attribution, consumes only the matching grant, targets the immutable reviewed revision, and waits safely for EXCON's Barrier decision.",
+      "prompt": "一个 v2 团队汇流 Task 已拿到三个明确共享的 ArtifactVersion，协调方发布了 team Submission revision 2。最新 /sync 尚未处理，我目前只从通知中知道 Submission ID；我的角色收到 role Feedback，团队收到 team Feedback，我本人另有 individual Feedback，其中只有 role Feedback 带一个允许 endorse 的 feedbackActionGrantId，且指定 revision 2。请说明如何通过 HTTP/MCP 核验、endorse、处理三层反馈并等待 Barrier；如果协调方随后发布 revision 3 应怎么做。",
+      "expected_output": "A receipt-gated scoped feedback and endorsement plan that recovers and reviews the exact immutable Submission snapshot, preserves attribution, consumes only the matching grant, and waits safely for EXCON's Barrier decision.",
       "files": [],
       "expectations": [
         "The response keeps individual, role, and team feedback and attribution separate instead of averaging team results into the individual.",
-        "The endorsement verifies the exact immutable revision 2 and matching grant actor, Task, action, predecessor/evaluation scope, expiry, revocation, and uses.",
+        "The response first syncs the Submission and Feedback Receipts, then uses GET /runs/{runId}/submissions or excon_list_submissions to recover and review exact immutable revision 2; an ID, operator replay, or shared Artifact fallback is rejected.",
+        "The endorsement verifies the recovered snapshot's actor, Task, revision, payload hash, evidence references, and recipient snapshot plus the matching grant actor, action, predecessor/evaluation scope, expiry, revocation, and uses.",
         "The response carries feedbackActionGrantId on the protected endorsement and does not treat allowedActions text alone as authorization.",
         "Revision 3 is not implicitly endorsed; it requires a fresh review and any grant required by the current feedback contract.",
         "The response waits through bounded /sync and never releases the Barrier or advances the global virtual clock."

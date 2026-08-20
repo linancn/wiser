@@ -533,7 +533,8 @@ create table public.agent_view_receipts (
   issued_event_id uuid not null,
   issued_run_seq bigint not null check (issued_run_seq > 0),
   view_kind text not null check (view_kind in (
-    'inject', 'task', 'message', 'artifact', 'feedback', 'role_assignment', 'system'
+    'inject', 'task', 'message', 'artifact', 'feedback', 'submission',
+    'role_assignment', 'system'
   )),
   resource_type text not null check (length(resource_type) between 1 and 64),
   resource_id uuid not null,

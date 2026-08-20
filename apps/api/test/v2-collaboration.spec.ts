@@ -59,6 +59,7 @@ interface TestResponseBody {
     readonly tasks: readonly RunTaskDto[];
     readonly events: readonly RunEventDto[];
     readonly receipts: readonly unknown[];
+    readonly manifest: { readonly atRunSeq: number };
   };
   readonly task: RunTaskDto;
   readonly lease: {
@@ -245,6 +246,12 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
     const taskId = json(operatorReplay).authoritativeProjection.tasks.find(
       (task) => task.assignedRunAgentId === runAgentIds[0],
     )!.id;
+    expect(
+      json(operatorReplay).authoritativeProjection.events.some(
+        ({ eventType, streamId }) =>
+          eventType === 'task.ready' && streamId === taskId,
+      ),
+    ).toBe(true);
 
     const teamReplay = await instance.inject({
       method: 'GET',
@@ -276,6 +283,14 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
       headers: agentHeaders(0),
     });
     expect(json(replayBeforeSync).authoritativeProjection.tasks).toEqual([]);
+    expect(
+      json(replayBeforeSync).authoritativeProjection.events.some(
+        ({ streamType }) =>
+          streamType === 'task' ||
+          streamType === 'message' ||
+          streamType === 'artifact',
+      ),
+    ).toBe(false);
 
     const firstBatch = await sync(instance, runId, 0, 101);
     const taskReceipt = firstBatch.receipts.find(
@@ -340,7 +355,7 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
     const thirdTaskId = json(operatorReplay).authoritativeProjection.tasks.find(
       (task) => task.assignedRunAgentId === runAgentIds[2],
     )!.id;
-    await sync(instance, runId, 2, 113);
+    const thirdInitialBatch = await sync(instance, runId, 2, 113);
     const thirdClaim = await instance.inject({
       method: 'POST',
       url: `/api/v2/tasks/${thirdTaskId}:claim`,
@@ -436,6 +451,14 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
     });
     expect(heartbeat.body).not.toContain(claim.lease.leaseToken);
 
+    const replayBeforeSubmission = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/replay?perspective=operator`,
+      headers: operatorHeaders(),
+    });
+    const beforeSubmissionRunSeq = json(replayBeforeSubmission)
+      .authoritativeProjection.manifest.atRunSeq;
+
     const submitted = await instance.inject({
       method: 'POST',
       url: `/api/v2/tasks/${taskId}/submissions`,
@@ -474,7 +497,118 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
     });
     expect(submitted.body).not.toContain(claim.lease.leaseToken);
 
+    const operatorAfterSubmission = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/events?after=${beforeSubmissionRunSeq}&limit=100`,
+      headers: operatorHeaders(),
+    });
+    expect(
+      (json(operatorAfterSubmission).items as readonly RunEventDto[]).filter(
+        ({ eventType, streamId }) =>
+          eventType === 'submission.created' && streamId === submission.id,
+      ),
+    ).toHaveLength(1);
+
+    for (const agentIndex of [0, 1, 2]) {
+      const beforeSubmissionReceipt = await instance.inject({
+        method: 'GET',
+        url: `/api/v2/runs/${runId}/submissions`,
+        headers: agentHeaders(agentIndex),
+      });
+      expect(beforeSubmissionReceipt.statusCode).toBe(200);
+      expect(json(beforeSubmissionReceipt).items).toEqual([]);
+    }
+
+    const recipientReplayBeforeSync = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/replay?perspective=agent&subjectId=${runAgentIds[1]}&deliverySemantics=issued`,
+      headers: agentHeaders(1),
+    });
+    expect(recipientReplayBeforeSync.body).not.toContain(submission.id);
+    expect(recipientReplayBeforeSync.body).not.toContain(
+      'The synthetic evidence register is ready.',
+    );
+    const authorReplayBeforeSubmissionSync = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/replay?perspective=agent&subjectId=${runAgentIds[0]}&deliverySemantics=issued`,
+      headers: agentHeaders(0),
+    });
+    expect(
+      json(authorReplayBeforeSubmissionSync).authoritativeProjection.events,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          streamType: 'submission',
+          streamId: submission.id,
+          eventType: 'submission.created',
+        }),
+      ]),
+    );
+
     const secondBatch = await sync(instance, runId, 1, 109);
+    const submissionReceipt = secondBatch.receipts.find(
+      ({ resourceType, resourceId }) =>
+        resourceType === 'submission' && resourceId === submission.id,
+    );
+    expect(submissionReceipt).toMatchObject({
+      viewKind: 'submission',
+      resourceVersion: '1',
+      contentSnapshot: submission,
+    });
+
+    const recipientSubmissions = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/submissions`,
+      headers: agentHeaders(1),
+    });
+    expect(recipientSubmissions.statusCode).toBe(200);
+    expect(json(recipientSubmissions).items).toEqual([submission]);
+
+    const authorStillNeedsOwnSync = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/submissions`,
+      headers: agentHeaders(0),
+    });
+    expect(json(authorStillNeedsOwnSync).items).toEqual([]);
+
+    const authorSubmissionBatch = await sync(
+      instance,
+      runId,
+      0,
+      116,
+      firstBatch.throughReceiptSeq,
+    );
+    expect(
+      authorSubmissionBatch.receipts.find(
+        ({ resourceType, resourceId }) =>
+          resourceType === 'submission' && resourceId === submission.id,
+      )?.contentSnapshot,
+    ).toEqual(submission);
+    const authorSubmissions = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/submissions`,
+      headers: agentHeaders(0),
+    });
+    expect(json(authorSubmissions).items).toEqual([submission]);
+
+    await sync(instance, runId, 2, 117, thirdInitialBatch.throughReceiptSeq);
+    const nonRecipientSubmissions = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/submissions`,
+      headers: agentHeaders(2),
+    });
+    expect(json(nonRecipientSubmissions).items).toEqual([]);
+
+    const historicalRecipientReplay = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/replay?perspective=agent&subjectId=${runAgentIds[1]}&deliverySemantics=issued&atRunSeq=${beforeSubmissionRunSeq}`,
+      headers: agentHeaders(1),
+    });
+    expect(historicalRecipientReplay.body).not.toContain(submission.id);
+    expect(historicalRecipientReplay.body).not.toContain(
+      'The synthetic evidence register is ready.',
+    );
+
     const grant = secondBatch.receipts
       .filter(({ resourceType }) => resourceType === 'feedback')
       .flatMap(({ contentSnapshot }) => {
@@ -636,6 +770,15 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
       ),
     ).toHaveLength(1);
 
+    const recipientMessageReplayBeforeSync = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/replay?perspective=agent&subjectId=${runAgentIds[1]}&deliverySemantics=issued`,
+      headers: agentHeaders(1),
+    });
+    expect(recipientMessageReplayBeforeSync.body).not.toContain(
+      json(postedMessage).message.id,
+    );
+
     const changedMessage = await instance.inject({
       method: 'POST',
       url: `/api/v2/runs/${runId}/messages`,
@@ -694,6 +837,21 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
       authorId: runAgentIds[0],
       recipientRunAgentIds: [runAgentIds[0], runAgentIds[1]],
     });
+
+    const recipientArtifactReplayBeforeSync = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/replay?perspective=agent&subjectId=${runAgentIds[1]}&deliverySemantics=issued`,
+      headers: agentHeaders(1),
+    });
+    expect(recipientArtifactReplayBeforeSync.body).not.toContain(
+      firstArtifact.id,
+    );
+    const authorArtifactReplayBeforeSync = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/replay?perspective=agent&subjectId=${runAgentIds[0]}&deliverySemantics=issued`,
+      headers: agentHeaders(0),
+    });
+    expect(authorArtifactReplayBeforeSync.body).toContain(firstArtifact.id);
 
     const artifactBatch = await sync(
       instance,

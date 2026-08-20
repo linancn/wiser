@@ -680,6 +680,7 @@ export function registerV2Routes(
           ['messages', 'message'],
           ['artifacts', 'artifact'],
           ['feedback', 'feedback'],
+          ['submissions', 'submission'],
         ] as const) {
           protectedApi.get(
             `/runs/:runId/${path}`,

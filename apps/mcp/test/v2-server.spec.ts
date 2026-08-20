@@ -70,6 +70,7 @@ describe('WISER Agent EXCON v2 MCP adapter', () => {
       'excon_list_tasks',
       'excon_list_messages',
       'excon_list_artifacts',
+      'excon_list_submissions',
       'excon_claim_task',
       'excon_begin_task',
       'excon_heartbeat_task',
@@ -134,15 +135,16 @@ describe('WISER Agent EXCON v2 MCP adapter', () => {
           maxItems: 25,
         },
       }),
-      ...(['tasks', 'messages', 'artifacts', 'feedback'] as const).map(
-        (resource) =>
-          mcpClient.callTool({
-            name:
-              resource === 'feedback'
-                ? 'excon_get_feedback'
-                : `excon_list_${resource}`,
-            arguments: { runId: RUN_ID, runAgentId: RUN_AGENT_ID },
-          }),
+      ...(
+        ['tasks', 'messages', 'artifacts', 'submissions', 'feedback'] as const
+      ).map((resource) =>
+        mcpClient.callTool({
+          name:
+            resource === 'feedback'
+              ? 'excon_get_feedback'
+              : `excon_list_${resource}`,
+          arguments: { runId: RUN_ID, runAgentId: RUN_AGENT_ID },
+        }),
       ),
       mcpClient.callTool({
         name: 'excon_claim_task',
@@ -260,7 +262,7 @@ describe('WISER Agent EXCON v2 MCP adapter', () => {
       }),
     ]);
 
-    expect(results).toHaveLength(16);
+    expect(results).toHaveLength(17);
     expect(
       results.every(
         ({ structuredContent }) =>
@@ -286,13 +288,13 @@ describe('WISER Agent EXCON v2 MCP adapter', () => {
           maxItems: 25,
         },
       },
-      ...(['tasks', 'messages', 'artifacts', 'feedback'] as const).map(
-        (resource) => ({
-          method: 'GET' as const,
-          path: `/runs/${RUN_ID}/${resource}`,
-          headers: identityHeaders,
-        }),
-      ),
+      ...(
+        ['tasks', 'messages', 'artifacts', 'submissions', 'feedback'] as const
+      ).map((resource) => ({
+        method: 'GET' as const,
+        path: `/runs/${RUN_ID}/${resource}`,
+        headers: identityHeaders,
+      })),
       {
         method: 'POST',
         path: `/tasks/${TASK_ID}:claim`,
@@ -514,6 +516,34 @@ describe('WISER Agent EXCON v2 MCP adapter', () => {
           '请缩小 sync maxItems，或使用更窄的回放游标后重试。 / Reduce sync maxItems or retry with a narrower replay cursor.',
       },
     });
+    expect(JSON.stringify(result).length).toBeLessThan(2_000);
+  });
+
+  it('bounds oversized Submission recovery without returning a partial revision', async () => {
+    const http = new RecordingHttpClient();
+    http.nextData = {
+      items: [{ id: SUBMISSION_ID, payload: 'x'.repeat(40_000) }],
+    };
+    const mcpClient = await connect(http);
+
+    const result = await mcpClient.callTool({
+      name: 'excon_list_submissions',
+      arguments: { runId: RUN_ID, runAgentId: RUN_AGENT_ID },
+    });
+
+    expect(http.requests).toEqual([
+      {
+        method: 'GET',
+        path: `/runs/${RUN_ID}/submissions`,
+        headers: { 'X-Run-Agent-Id': RUN_AGENT_ID },
+      },
+    ]);
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent).toMatchObject({
+      ok: false,
+      error: { code: 'MCP_RESPONSE_TOO_LARGE' },
+    });
+    expect(JSON.stringify(result)).not.toContain(SUBMISSION_ID);
     expect(JSON.stringify(result).length).toBeLessThan(2_000);
   });
 

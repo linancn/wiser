@@ -43,6 +43,7 @@ export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v1/
 | `excon_list_tasks`               | `GET runs/{runId}/tasks`                       | Recover already-issued Tasks                                          |
 | `excon_list_messages`            | `GET runs/{runId}/messages`                    | Recover already-issued Messages                                       |
 | `excon_list_artifacts`           | `GET runs/{runId}/artifacts`                   | Recover already-issued Artifacts                                      |
+| `excon_list_submissions`         | `GET runs/{runId}/submissions`                 | Recover exact already-issued immutable Submission revisions           |
 | `excon_claim_task`               | `POST tasks/{taskId}:claim`                    | Claim a fenced Task lease                                             |
 | `excon_begin_task`               | `POST tasks/{taskId}:begin`                    | Begin work under the current lease                                    |
 | `excon_heartbeat_task`           | `POST tasks/{taskId}:heartbeat`                | Request a bounded lease renewal                                       |
@@ -55,9 +56,9 @@ export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v1/
 | `excon_get_feedback`             | `GET runs/{runId}/feedback`                    | Recover already-issued layered Feedback and grants                    |
 | `excon_get_replay_cursor`        | `GET runs/{runId}/replay`                      | Read only this agent's `issued` or `acknowledged` perspective         |
 
-`/sync` 是发放新 Task、Message、Artifact grant 和 Feedback 的唯一入口。四个 recovery GET 只返回已有 Receipt 的资源，不会使 `eligible` 内容提前可见。
+`/sync` 是发放新 Task、Message、Artifact grant、Submission 和 Feedback 的唯一入口。五个 recovery GET 只返回已有 Receipt 的资源，不会使 `eligible` 内容提前可见。
 
-`/sync` is the only entry that issues new Tasks, Messages, Artifact grants, and Feedback. The four recovery GETs return only already-receipted resources and never make `eligible` content visible early.
+`/sync` is the only entry that issues new Tasks, Messages, Artifact grants, Submissions, and Feedback. The five recovery GETs return only already-receipted resources and never make `eligible` content visible early.
 
 ## 工作流示例 / Workflow examples
 
@@ -77,9 +78,9 @@ export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v1/
 3. **多智能体协作与回放 / Multi-agent collaboration and replay**
 
    - 使用 `excon_post_message` 传递明确请求，使用 `excon_publish_artifact`/`excon_publish_artifact_version` 共享不可变证据。
-   - 仅在 Feedback 发放匹配 ActionGrant 且已审阅精确 Submission 修订后调用 `excon_endorse_submission`。
+   - 先通过 `excon_sync` 获取 Submission Receipt，再用 `excon_list_submissions` 恢复并审阅精确不可变修订；仅在 Feedback 发放匹配 ActionGrant 后调用 `excon_endorse_submission`。
    - 交接时用 `excon_get_replay_cursor` 请求自身 `agent` 视角；工具不允许 operator/team/role/eligible 视角。
-   - Use explicit Messages and immutable ArtifactVersions to collaborate. Endorse only after matching Feedback grants the action and the exact revision was reviewed. Handoff with the agent-safe replay tool, which never exposes operator/team/role/eligible perspectives.
+   - Use explicit Messages and immutable ArtifactVersions to collaborate. Before endorsement, issue the Submission Receipt with `excon_sync`, recover and review the exact immutable revision with `excon_list_submissions`, and require matching Feedback to grant the action. Handoff with the agent-safe replay tool, which never exposes operator/team/role/eligible perspectives.
 
 ## 安全与响应边界 / Safety and response bounds
 
@@ -89,3 +90,13 @@ export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v1/
 - 单次 API JSON 超过 32,000 字符时，适配器返回 `MCP_RESPONSE_TOO_LARGE`，并要求缩小 `sync.maxItems` 或回放游标。 / API JSON over 32,000 characters returns `MCP_RESPONSE_TOO_LARGE` with guidance to narrow `sync.maxItems` or the replay cursor.
 
 Resource `excon://scenarios/jing-jin-ji-yongding-river` 提供中英文的京津冀永定河合成多智能体演练说明。 / The resource provides the bilingual guide for the synthetic Jing-Jin-Ji Yongding River multi-agent exercise.
+
+## 当前后端边界 / Current backend boundary
+
+这 17 个 v2 Tools 已实现并由 MCP `listTools()` 与 HTTP request-mapping 测试验证，但 MCP 只是适配器。当前 Fastify v2 服务使用不持久化的内存协议实现；Supabase v2 schema/RLS 尚未通过 PostgreSQL API adapter 接入。交互式运行还需要受信运行时提供绑定到具体 RunAgent 的 credential。
+
+These 17 v2 Tools are implemented and verified by MCP `listTools()` and HTTP request-mapping tests, but MCP remains only an adapter. The current Fastify v2 service uses a non-durable in-memory protocol implementation; the Supabase v2 schema/RLS is not yet connected through a PostgreSQL API adapter. An interactive Run also requires a trusted runtime to provision a credential bound to the concrete RunAgent.
+
+完整 evaluator → rework → resubmit 编排仍未交付。参训者安全的 `GET runs/{runId}/submissions` 与 `excon_list_submissions` 只恢复自身已 Receipt 的不可变快照；不得用 operator replay 替代。
+
+The complete evaluator → rework → resubmit orchestration is not delivered. Participant-safe `GET runs/{runId}/submissions` and `excon_list_submissions` recover only immutable snapshots already receipted to the caller; never substitute operator replay.

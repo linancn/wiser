@@ -680,6 +680,7 @@ export const RunResourceSchema = z.union([
   RunMessageSchema,
   RunArtifactSchema,
   RunFeedbackSchema,
+  RunSubmissionSchema,
 ]);
 export const RunResourceListSchema = z.strictObject({
   items: z.array(RunResourceSchema),
@@ -690,12 +691,14 @@ export const ReceiptResourceTypeSchema = z.enum([
   'message',
   'artifact',
   'feedback',
+  'submission',
 ]);
 export const ReceiptViewKindSchema = z.enum([
   'task_assignment',
   'message',
   'artifact_grant',
   'feedback',
+  'submission',
 ]);
 
 export const ReceiptAcknowledgementRequestSchema = z.strictObject({

@@ -951,6 +951,10 @@ const v2SuccessCopy = {
     'zh-CN': '已恢复该 RunAgent 已发放的 Artifact。',
     en: 'Artifacts already issued to this RunAgent were recovered.',
   },
+  submissions: {
+    'zh-CN': '已恢复该 RunAgent 已发放的精确不可变 Submission 修订。',
+    en: 'Exact immutable Submission revisions already issued to this RunAgent were recovered.',
+  },
   feedbackV2: {
     'zh-CN': '已恢复该 RunAgent 已发放的分层 Feedback 与 ActionGrant。',
     en: 'Layered Feedback and ActionGrants already issued to this RunAgent were recovered.',
@@ -998,7 +1002,8 @@ const v2SuccessCopy = {
   },
 } as const;
 
-type IssuedResourceName = 'artifacts' | 'feedback' | 'messages' | 'tasks';
+type IssuedResourceName =
+  'artifacts' | 'feedback' | 'messages' | 'submissions' | 'tasks';
 
 function registerIssuedResourceTool(
   server: McpServer,
@@ -1027,6 +1032,14 @@ function registerIssuedResourceTool(
       },
       success: v2SuccessCopy.artifacts,
     },
+    submissions: {
+      name: 'excon_list_submissions',
+      title: {
+        'zh-CN': '列出已发放 Submission',
+        en: 'List Issued Submissions',
+      },
+      success: v2SuccessCopy.submissions,
+    },
     feedback: {
       name: 'excon_get_feedback',
       title: {
@@ -1042,10 +1055,17 @@ function registerIssuedResourceTool(
     selected.name,
     {
       title: bilingual(selected.title),
-      description: bilingual({
-        'zh-CN': `通过 GET /runs/{runId}/${resource} 只恢复当前 RunAgent 已有 Receipt 的资源；该读操作不会发放新内容，新内容必须使用 excon_sync。`,
-        en: `Recover only resources already receipted to the current RunAgent through GET /runs/{runId}/${resource}; this read never issues new content, which requires excon_sync.`,
-      }),
+      description:
+        resource === 'submissions'
+          ? bilingual({
+              'zh-CN':
+                '通过 GET /runs/{runId}/submissions 只恢复当前 RunAgent 已通过 excon_sync 获得 Receipt 的精确不可变 Submission 快照。背书前必须用本工具读取并审阅目标修订；不得仅凭 Feedback 中的 Submission ID 背书。',
+              en: 'Recover only exact immutable Submission snapshots receipted to the current RunAgent by excon_sync through GET /runs/{runId}/submissions. Read and review the target revision with this tool before endorsement; never endorse from the Submission ID in Feedback alone.',
+            })
+          : bilingual({
+              'zh-CN': `通过 GET /runs/{runId}/${resource} 只恢复当前 RunAgent 已有 Receipt 的资源；该读操作不会发放新内容，新内容必须使用 excon_sync。`,
+              en: `Recover only resources already receipted to the current RunAgent through GET /runs/{runId}/${resource}; this read never issues new content, which requires excon_sync.`,
+            }),
       inputSchema: V2RunAgentInputSchema,
       outputSchema: ToolOutputSchema,
       annotations: readAnnotations,
@@ -1158,8 +1178,8 @@ function createAgentExconV2McpServer(http: AgentExconHttpClient): McpServer {
       }),
       description: bilingual({
         'zh-CN':
-          'POST /runs/{runId}/sync 是发放新 Task、Message、Artifact grant 和 Feedback 的唯一入口。使用 afterReceiptSeq，并在后续调用中用精确序号与链头哈希确认前一批。',
-        en: 'POST /runs/{runId}/sync is the only entry that issues new Tasks, Messages, Artifact grants, and Feedback. Use afterReceiptSeq and acknowledge the prior batch with its exact sequence and chain-head hash on the next call.',
+          'POST /runs/{runId}/sync 是发放新 Task、Message、Artifact grant、Submission 和 Feedback 的唯一入口。使用 afterReceiptSeq，并在后续调用中用精确序号与链头哈希确认前一批。',
+        en: 'POST /runs/{runId}/sync is the only entry that issues new Tasks, Messages, Artifact grants, Submissions, and Feedback. Use afterReceiptSeq and acknowledge the prior batch with its exact sequence and chain-head hash on the next call.',
       }),
       inputSchema: V2SyncInputSchema,
       outputSchema: ToolOutputSchema,
@@ -1189,7 +1209,12 @@ function createAgentExconV2McpServer(http: AgentExconHttpClient): McpServer {
       ),
   );
 
-  for (const resource of ['tasks', 'messages', 'artifacts'] as const) {
+  for (const resource of [
+    'tasks',
+    'messages',
+    'artifacts',
+    'submissions',
+  ] as const) {
     registerIssuedResourceTool(server, http, resource);
   }
 
@@ -1428,8 +1453,8 @@ function createAgentExconV2McpServer(http: AgentExconHttpClient): McpServer {
       }),
       description: bilingual({
         'zh-CN':
-          '通过 POST /submissions/{submissionId}/endorsements 消费匹配的 Feedback ActionGrant，对已审阅的精确不可变 Submission 修订背书。不得仅凭 ID 或把背书自动延伸到后续修订。',
-        en: 'Consume the matching Feedback ActionGrant through POST /submissions/{submissionId}/endorsements to endorse the exact immutable Submission revision reviewed. Never endorse from an ID alone or extend an endorsement to later revisions.',
+          '先用 excon_sync 发放、再用 excon_list_submissions 恢复并审阅精确不可变 Submission 快照；随后通过 POST /submissions/{submissionId}/endorsements 消费匹配的 Feedback ActionGrant。不得仅凭 ID 或把背书自动延伸到后续修订。',
+        en: 'First issue the exact immutable Submission snapshot with excon_sync, then recover and review it with excon_list_submissions; only then consume the matching Feedback ActionGrant through POST /submissions/{submissionId}/endorsements. Never endorse from an ID alone or extend an endorsement to later revisions.',
       }),
       inputSchema: V2EndorsementInputSchema,
       outputSchema: ToolOutputSchema,

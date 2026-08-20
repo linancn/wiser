@@ -71,6 +71,7 @@ try {
       'runAgentId',
       'afterReceiptSeq',
       'ArtifactVersion',
+      'excon_list_submissions',
       'feedbackActionGrantId',
       'Barrier',
       'v1-compatibility.md',
@@ -90,6 +91,8 @@ try {
       'POST /api/v2/runs/{runId}/messages',
       'POST /api/v2/runs/{runId}/artifacts',
       'POST /api/v2/tasks/{taskId}/submissions',
+      'GET /api/v2/runs/{runId}/submissions',
+      'excon_list_submissions',
       'POST /api/v2/submissions/{submissionId}/endorsements',
       'GET /api/v2/runs/{runId}/feedback',
       'GET /api/v2/runs/{runId}/replay',
@@ -118,6 +121,8 @@ try {
       'agentReceiptSeq',
       'issued',
       'acknowledged',
+      'resourceType: submission',
+      'excon_list_submissions',
     ],
     'evidence rules',
   );
@@ -134,6 +139,7 @@ try {
       'TASK_LEASE_STALE',
       'ARTIFACT_BASE_CONFLICT',
       'FEEDBACK_GRANT_SCOPE_MISMATCH',
+      'excon_list_submissions',
       'IDEMPOTENCY_CONFLICT',
       'FORBIDDEN',
     ],
@@ -164,6 +170,12 @@ try {
   assert(
     !interaction.includes('/api/v2/runs/{runId}:advance'),
     'the RunAgent protocol must not expose a global clock-advance command',
+  );
+  assert(
+    !/otherwise cross-check|if the negotiated contract exposes/i.test(
+      interaction,
+    ),
+    'Submission review must not retain the missing-endpoint fallback',
   );
   for (const role of [
     '水情与证据智能体',
@@ -224,6 +236,15 @@ try {
       `eval ${evaluation.id} needs objective expectations`,
     );
   }
+  const endorsementEvaluation = evals.evals.find(
+    (evaluation) => evaluation.id === 3,
+  );
+  assert(
+    endorsementEvaluation?.expectations.some((expectation) =>
+      expectation.includes('excon_list_submissions'),
+    ),
+    'endorsement eval must require receipt-gated Submission recovery',
+  );
 
   process.stdout.write(
     `${JSON.stringify({ valid: true, checks: 9, evals: evals.evals.length })}\n`,

@@ -4,10 +4,12 @@ Use this reference whenever a Task asks for evidence, provenance, a derived clai
 
 ## What can enter the evidence set
 
-The v2 evidence set has two durable units:
+The v2 evidence set has two durable units, while endorsement adds one receipt-gated review object:
 
 1. An `AgentViewReceipt` from this RunAgent's verified receipt chain. The Receipt binds `agentReceiptSeq`, resource identity/version, `contentSnapshot`, `contentHash`, source and issuance `run_seq`, virtual availability/issuance times, and the previous/next chain hashes.
 2. An immutable `ArtifactVersion` that this RunAgent authored through an accepted command or received through an artifact-grant Receipt. Cite the exact version and `contentHash`, not a mutable Artifact label. The current v2 submission boundary additionally requires a matching Artifact Receipt even for the author.
+
+An immutable Submission snapshot is reviewable only after this RunAgent receives its `resourceType: submission`, `viewKind: submission` Receipt. Recover it with `GET /api/v2/runs/{runId}/submissions` or `excon_list_submissions` and require its `contentSnapshot`, `contentHash`, `resourceVersion`/revision number, Task, actor, payload hash, evidence references, and recipient snapshot to agree before endorsement. A Feedback `subjectSubmissionId` or ActionGrant predecessor ID locates the target but never supplies its content.
 
 An accepted command authored by this RunAgent can explain provenance for its own Message, ArtifactVersion, or Submission. It does not grant access to another participant's source material.
 
@@ -43,3 +45,5 @@ If evidence is missing, call `/sync` with bounded backoff. If it remains unavail
 ## Submission note
 
 Use the evidence-reference shape declared by the assigned Task output schema. The current v2 submission envelope binds Receipts as `{ receiptId, receiptHash }` in `receiptRefs` and Artifact versions as `{ artifactId, artifactVersionId, contentHash }` in `artifactVersionRefs`. Resolve every entry against the verified local ledger before sending. Derived calculations should record their inputs and deterministic method; do not expose hidden reasoning or free-form chain of thought.
+
+For endorsement, first verify the Submission Receipt in the local chain, then recover the exact immutable snapshot from the participant-safe Submission list. Do not endorse a payload reconstructed from Feedback prose, an ID, operator replay, telemetry, or a mutable local copy.
