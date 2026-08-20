@@ -2,6 +2,8 @@ import { randomBytes } from 'node:crypto';
 
 const collectorUrl =
   process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://127.0.0.1:4318';
+const collectorHealthUrl =
+  process.env.WISER_OTEL_COLLECTOR_HEALTH_URL ?? 'http://127.0.0.1:13133/';
 const ingressUrl =
   process.env.WISER_TELEMETRY_INGRESS_URL ?? 'http://127.0.0.1:14318';
 const ingressToken =
@@ -101,6 +103,25 @@ async function poll(label, operation, timeoutMs = 30_000) {
     `${label} was not observable before timeout${lastError instanceof Error ? `: ${lastError.message}` : ''}`,
   );
 }
+
+await Promise.all([
+  poll(
+    'Telemetry Ingress readiness',
+    async () => {
+      const response = await fetch(`${ingressUrl}/health/ready`);
+      return response.ok || undefined;
+    },
+    60_000,
+  ),
+  poll(
+    'OTel Collector readiness',
+    async () => {
+      const response = await fetch(collectorHealthUrl);
+      return response.ok || undefined;
+    },
+    60_000,
+  ),
+]);
 
 await Promise.all([
   postOtlp(
