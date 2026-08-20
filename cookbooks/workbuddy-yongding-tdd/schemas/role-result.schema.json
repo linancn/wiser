@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wiser.local/schemas/workbuddy-role-result.schema.json",
+  "title": "WISER WorkBuddy role result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "roleSlotId",
+    "runId",
+    "runAgentId",
+    "status",
+    "lastReceiptSeq",
+    "submissionId",
+    "summary"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "roleSlotId": {
+      "enum": [
+        "water-evidence",
+        "hydraulic-constraints",
+        "ecological-target",
+        "dispatch-coordination"
+      ]
+    },
+    "runId": { "type": "string", "format": "uuid" },
+    "runAgentId": { "type": "string", "format": "uuid" },
+    "status": { "enum": ["completed", "blocked", "failed"] },
+    "lastReceiptSeq": {
+      "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }]
+    },
+    "submissionId": {
+      "oneOf": [{ "type": "string", "format": "uuid" }, { "type": "null" }]
+    },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 240 }
+  }
+}
