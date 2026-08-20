@@ -15,6 +15,7 @@ import {
   PublicScenarioSummarySchema,
   RunAgentSchema,
   RunAuthoritativeProjectionSchema,
+  RunEvaluationListSchema,
   RunResourceSchema,
   RunSchema,
   RunSubmissionSchema,
@@ -432,5 +433,27 @@ describe('Agent EXCON v2 contracts', () => {
           'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
       }).contentSnapshot,
     ).toEqual(submission);
+  });
+
+  it('models deterministic v2 evaluations for operator diagnostics', () => {
+    const evaluation = {
+      id: '00000000-0000-4000-8000-000000000040',
+      runId: '00000000-0000-4000-8000-000000000003',
+      submissionId: '00000000-0000-4000-8000-000000000020',
+      taskId: '00000000-0000-4000-8000-000000000005',
+      runAgentId: '00000000-0000-4000-8000-000000000004',
+      roleSlotId: 'water-evidence',
+      targetScope: 'role',
+      verdict: 'ACCEPTED',
+      issueCodes: [],
+      deterministic: true,
+      evaluatorVersion: 'yongding-role-output-v1',
+      createdRunSeq: 15,
+      createdAt: '2026-08-20T08:00:00.000Z',
+    } as const;
+
+    expect(RunEvaluationListSchema.parse({ items: [evaluation] })).toEqual({
+      items: [evaluation],
+    });
   });
 });
