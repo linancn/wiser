@@ -1,0 +1,37 @@
+schemaVersion: 1
+id: workbuddy-yongding-four-agent-tdd
+name: WISER 永定河四智能体 WorkBuddy TDD Cookbook
+defaultLocale: zh-CN
+supportedLocales:
+  - zh-CN
+  - en
+protocolVersion: v2
+scenarioVersionId: jjj-yongding-collaboration-2023-v2
+profile: ephemeral-local-tdd
+storageBackend: memory
+restartPolicy: abort-run
+minDistinctRequiredAgents: 4
+roles:
+  - water-evidence
+  - hydraulic-constraints
+  - ecological-target
+  - dispatch-coordination
+commands:
+  scripted: pnpm cookbook:scripted
+  rework: pnpm cookbook:rework
+  workbuddy: WORKBUDDY_LIVE=1 pnpm cookbook:workbuddy
+authoritativeGates:
+  latestEvaluation: ACCEPTED
+  barriers:
+    - analysis-ready
+    - endorsement-ready
+forbidden:
+  - --swarm
+  - -y
+  - bypassPermissions
+  - shared-token-environment
+  - workbuddy-business-mailbox
+outputs:
+  report: cookbook-report.json
+  roleResults: workbuddy/results
+  rolePrompts: workbuddy/prompts

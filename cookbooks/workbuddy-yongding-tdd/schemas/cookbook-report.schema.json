@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wiser.local/schemas/workbuddy-cookbook-report.schema.json",
+  "title": "WISER WorkBuddy Cookbook report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "cookbookId",
+    "profile",
+    "protocolVersion",
+    "status",
+    "runId",
+    "scenarioVersionId",
+    "participantResults",
+    "authoritative",
+    "tddCycle",
+    "artifacts",
+    "diagnostic"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "cookbookId": { "const": "workbuddy-yongding-four-agent-tdd" },
+    "profile": { "enum": ["scripted-ci", "workbuddy-live-tdd"] },
+    "protocolVersion": { "const": "v2" },
+    "status": { "enum": ["passed", "failed"] },
+    "runId": { "type": ["string", "null"] },
+    "scenarioVersionId": { "type": ["string", "null"] },
+    "participantResults": { "type": "array", "maxItems": 4 },
+    "authoritative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evaluations",
+        "releasedBarriers",
+        "eventCount",
+        "lastRunSeq"
+      ],
+      "properties": {
+        "evaluations": { "type": "array", "minItems": 0 },
+        "releasedBarriers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "eventCount": { "type": "integer", "minimum": 0 },
+        "lastRunSeq": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "tddCycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["injectedFault", "reworkObserved", "greenAccepted"],
+      "properties": {
+        "injectedFault": {
+          "enum": [null, "water-evidence-schema-once"]
+        },
+        "reworkObserved": { "type": "boolean" },
+        "greenAccepted": { "type": "boolean" }
+      }
+    },
+    "artifacts": { "type": "object" },
+    "diagnostic": { "type": ["string", "null"] }
+  }
+}

@@ -29,15 +29,17 @@ Agents load [`skills/agent-excon`](./skills/agent-excon/SKILL.md) and participat
 - Fastify exposes a development `/api/v2` slice for multi-scenario management, Run staffing, Receipt `/sync`, Task leases, collaboration artifacts, submissions/endorsements, and safe replay. It currently uses an **in-memory protocol adapter**, so state does not survive a process restart.
 - Supabase includes the v2 PostgreSQL schema, constraints, RLS, private Event/Outbox/credential/telemetry tables, and pgTAP coverage, but Fastify is not yet connected through a PostgreSQL API adapter.
 - The Agent EXCON Skill defaults to the v2 RunAgent loop. The stdio MCP server implements 17 v2 participant tools aligned with the HTTP routes, including Receipt-gated safe Submission recovery. v1 is enabled only through explicit compatibility selection and never by automatic fallback.
+- The local WorkBuddy Cookbook runs the real Yongding v2 collaboration flow in four isolated top-level processes. Its scripted and fault-injection profiles traverse the real MCP boundary and cover deterministic evaluation, scoped rework, three exact endorsements, and both barriers; live WorkBuddy starts only after explicit opt-in.
 - The Compose `observability` profile includes the authenticated Telemetry Ingress, OTel Collector, Tempo, Prometheus, Loki, and Grafana. Domain Events/Receipts remain authoritative; OTel is a best-effort diagnostic projection.
 - Web delivers Chinese-default multi-scenario, per-agent trace, and perspective-replay views in read-only reference and live modes. `live` reports data gaps explicitly and never falls back to or fabricates participant activity.
 
-Important unfinished boundaries are the PostgreSQL API adapter, the v1-to-v2 compatibility facade, and the complete evaluator → rework → resubmit loop. The current v2 is therefore a protocol/TDD/local-debugging slice, not a durable production platform.
+Important unfinished boundaries are the PostgreSQL API adapter and the v1-to-v2 compatibility facade. The current v2 is therefore a protocol/TDD/local-debugging slice, not a durable production platform.
 
 ## Intended workspace
 
 ```text
 apps/          HTTP API, read-only Web, worker, MCP, and Starlight documentation
+cookbooks/     Local multi-agent TDD, WorkBuddy launch, and redacted reports
 packages/      Contracts, pure domain core, and infrastructure adapters
 scenarios/     Versioned scenarios and provenance manifests
 skills/        Independently publishable Agent EXCON Skill
@@ -80,7 +82,7 @@ Codex subscription auth is host-only for trusted local development. Containers a
 
 ## Project status
 
-The v2 contracts, pure domain core, in-memory HTTP collaboration slice, database schema/RLS, Skill, 17 MCP tools, safe Submission recovery, and authenticated observability path are verifiable; durable wiring and the full evaluation migration remain in progress. The v1 Episode is an **explicit compatibility protocol** and is still a separate implementation, not a completed v2 facade. Scope and acceptance criteria live in [`docs/roadmap.md`](./docs/roadmap.md), with the complete design in [`docs/design/v2-multi-scenario-multi-agent-observability.md`](./docs/design/v2-multi-scenario-multi-agent-observability.md). Contribution rules are in [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+The v2 contracts, pure domain core, in-memory HTTP collaboration slice, database schema/RLS, Skill, 17 MCP tools, safe Submission recovery, deterministic evaluation/rework/endorsement loop, and authenticated observability path are verifiable today. The [WorkBuddy TDD Cookbook](./cookbooks/workbuddy-yongding-tdd/README.md) provides a repeatable local four-agent entrypoint. Durable wiring is still in progress. The v1 Episode is an **explicit compatibility protocol** and is still a separate implementation, not a completed v2 facade. Scope and acceptance criteria live in [`docs/roadmap.md`](./docs/roadmap.md), with the complete design in [`docs/design/v2-multi-scenario-multi-agent-observability.md`](./docs/design/v2-multi-scenario-multi-agent-observability.md). Contribution rules are in [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ## License
 
