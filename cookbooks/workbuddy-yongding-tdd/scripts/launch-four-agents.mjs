@@ -140,16 +140,25 @@ function redactText(source, sensitiveValues) {
   return result;
 }
 
-function parseJson(value) {
+export function parseWorkBuddyJson(value) {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
   try {
     return JSON.parse(trimmed);
   } catch {
-    const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-    if (fenced === null) return undefined;
+    const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (fenced !== null) {
+      try {
+        return JSON.parse(fenced[1]);
+      } catch {
+        return undefined;
+      }
+    }
+    const objectStart = trimmed.indexOf('{');
+    const objectEnd = trimmed.lastIndexOf('}');
+    if (objectStart < 0 || objectEnd <= objectStart) return undefined;
     try {
-      return JSON.parse(fenced[1]);
+      return JSON.parse(trimmed.slice(objectStart, objectEnd + 1));
     } catch {
       return undefined;
     }
@@ -157,7 +166,7 @@ function parseJson(value) {
 }
 
 function resultEnvelope(stdout) {
-  const parsed = parseJson(stdout.trim());
+  const parsed = parseWorkBuddyJson(stdout.trim());
   if (parsed === undefined) {
     throw new Error('WorkBuddy stdout is not valid JSON.');
   }
@@ -179,7 +188,7 @@ function structuredResult(envelope) {
     envelope.result,
   ];
   for (const candidate of candidates) {
-    const parsed = parseJson(candidate);
+    const parsed = parseWorkBuddyJson(candidate);
     if (parsed !== undefined && parsed !== null && typeof parsed === 'object') {
       return parsed;
     }

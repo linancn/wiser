@@ -57,3 +57,10 @@ export function runWorkBuddyCookbook(
   readonly report: WorkBuddyCookbookReport;
   readonly reportPath: string;
 }>;
+
+export function collectOperatorEvents<T extends { readonly runSeq: number }>(
+  readPage: (
+    after: number,
+    limit: number,
+  ) => Promise<{ readonly items: readonly T[] }>,
+): Promise<{ readonly items: readonly T[] }>;

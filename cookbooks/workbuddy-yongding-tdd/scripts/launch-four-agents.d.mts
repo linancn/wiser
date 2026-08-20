@@ -51,3 +51,5 @@ export interface WorkBuddyLaunchResult {
 export function launchWorkBuddyRoles(
   options: LaunchWorkBuddyRolesOptions,
 ): Promise<WorkBuddyLaunchResult>;
+
+export function parseWorkBuddyJson(value: unknown): unknown;

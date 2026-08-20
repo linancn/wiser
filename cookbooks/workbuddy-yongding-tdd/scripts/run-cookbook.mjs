@@ -70,6 +70,39 @@ async function operatorGet(operator, path) {
   return response.json();
 }
 
+export async function collectOperatorEvents(readPage) {
+  const items = [];
+  let after = 0;
+  const limit = 200;
+  for (let page = 0; page < 100; page += 1) {
+    const response = await readPage(after, limit);
+    if (
+      response === null ||
+      typeof response !== 'object' ||
+      !Array.isArray(response.items)
+    ) {
+      throw new Error('Event page is invalid.');
+    }
+    if (response.items.length === 0) return { items };
+    let priorRunSeq = after;
+    for (const event of response.items) {
+      if (
+        event === null ||
+        typeof event !== 'object' ||
+        !Number.isInteger(event.runSeq) ||
+        event.runSeq <= priorRunSeq
+      ) {
+        throw new Error('Event page does not advance a contiguous cursor.');
+      }
+      priorRunSeq = event.runSeq;
+      items.push(event);
+    }
+    after = priorRunSeq;
+    if (response.items.length < limit) return { items };
+  }
+  throw new Error('Event pagination exceeded the safety limit.');
+}
+
 function publicEvaluations(value) {
   if (
     value === null ||
@@ -227,9 +260,11 @@ export async function runWorkBuddyCookbook(options) {
     }
     const [evaluationResponse, eventResponse] = await Promise.all([
       operatorGet(operator, `runs/${operator.WISER_RUN_ID}/evaluations`),
-      operatorGet(
-        operator,
-        `runs/${operator.WISER_RUN_ID}/events?after=0&limit=200`,
+      collectOperatorEvents((after, limit) =>
+        operatorGet(
+          operator,
+          `runs/${operator.WISER_RUN_ID}/events?after=${after}&limit=${limit}`,
+        ),
       ),
     ]);
     evaluations = publicEvaluations(evaluationResponse);

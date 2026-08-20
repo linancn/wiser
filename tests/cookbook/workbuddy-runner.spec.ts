@@ -29,11 +29,11 @@ describe('WorkBuddy Yongding cookbook runner', () => {
       payload: index === 228 ? { definitionKey: 'endorsement-ready' } : {},
     }));
 
-    const result = await collectOperatorEvents(async (after, limit) => {
+    const result = await collectOperatorEvents((after, limit) => {
       calls.push(after);
-      return {
+      return Promise.resolve({
         items: events.filter(({ runSeq }) => runSeq > after).slice(0, limit),
-      };
+      });
     });
 
     expect(calls).toEqual([0, 200]);

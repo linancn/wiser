@@ -89,6 +89,16 @@ function rolePrompt({ manifest, role, roleInstructions }) {
     roleSlotId,
     runAgentId,
   }));
+  const finalTemplate = {
+    schemaVersion: 1,
+    roleSlotId: role.roleSlotId,
+    runId: manifest.runId,
+    runAgentId: role.runAgentId,
+    status: 'completed',
+    lastReceiptSeq: null,
+    submissionId: null,
+    summary: `${role.roleSlotId} completed the WISER role obligation.`,
+  };
   return `# WISER WorkBuddy participant assignment
 
 Act as exactly one external RunAgent. The \`agent-excon\` Skill directory is already injected into this session and the complete live execution order is repeated below. Do not call \`Read\`, Bash, a browser, or any repository tool to load instructions. Before the first use of every named \`excon_*\` tool, call \`ToolSearch\` with that exact tool name, then invoke the returned \`agent-excon\` tool through the approved deferred executor. Keep a discovered tool available for later repeated calls; one broad search is not a substitute for exact first-use discovery.
@@ -124,6 +134,14 @@ Do not reorder or skip these phases. Machine fields come from the latest structu
 8. **Final response.** Return the launcher JSON only after the role obligation above is complete. Use the latest Receipt sequence, your accepted Submission ID, and \`status=completed\`. If a stable error or the bounded wait budget is exhausted, return \`blocked\` or \`failed\`; do not claim success.
 
 ${roleInstructions.trim()}
+
+## Exact final JSON template
+
+Copy this exact object shape for the final answer. Preserve the four identity fields exactly. Replace each \`null\` only when the corresponding positive Receipt sequence or accepted Submission UUID is known; otherwise leave it \`null\`. Keep the summary under 240 characters. Return the object without a code fence.
+
+\`\`\`json
+${JSON.stringify(finalTemplate, null, 2)}
+\`\`\`
 
 Hard boundaries:
 
