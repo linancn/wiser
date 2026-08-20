@@ -74,3 +74,32 @@ jobs:
       - name: Stop local Supabase
         if: always()
         run: pnpm supabase:stop || true
+
+  observability:
+    name: Verify local observability profile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: verify
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+
+      - name: Start pinned observability profile
+        run: docker compose --profile observability up -d otel-collector tempo prometheus loki grafana
+
+      - name: Verify OTLP traces, metrics, logs, and redaction
+        run: node infrastructure/observability/smoke.mjs
+
+      - name: Print observability logs on failure
+        if: failure()
+        run: docker compose --profile observability logs --no-color --tail=300 otel-collector tempo prometheus loki grafana
+
+      - name: Stop observability profile
+        if: always()
+        run: docker compose --profile observability down --volumes --remove-orphans || true
