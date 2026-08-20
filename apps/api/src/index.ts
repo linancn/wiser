@@ -1,0 +1,32 @@
+export { buildApp, type BuildAppOptions } from './app.js';
+export { StaticParticipantAuthenticator } from './auth.js';
+export {
+  InMemoryExerciseService,
+  type InMemoryExerciseServiceOptions,
+} from './in-memory-service.js';
+export {
+  DEFAULT_SCENARIO,
+  DEFAULT_SCENARIO_VERSION_ID,
+  type ScenarioDocument,
+} from './scenario.js';
+export {
+  ExerciseServiceError,
+  type AdvanceEpisodeInput,
+  type AdvanceEpisodeResult,
+  type ApiErrorCode,
+  type CreateEpisodeResult,
+  type EpisodeEvent,
+  type EpisodeLinks,
+  type EpisodeView,
+  type EvaluationQueryResult,
+  type ExerciseService,
+  type FeedbackQueryResult,
+  type ObserveEpisodeInput,
+  type ObserveEpisodeResult,
+  type ParticipantAuthenticator,
+  type ParticipantPrincipal,
+  type SubmissionLinks,
+  type SubmissionView,
+  type SubmitPlanInput,
+  type SubmitPlanResult,
+} from './types.js';
