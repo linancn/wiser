@@ -2,8 +2,11 @@
 .next
 .astro
 coverage
+dist
 node_modules
 playwright-report
 test-results
+supabase/.branches
+supabase/.temp
 *.log
 .env*

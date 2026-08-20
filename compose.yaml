@@ -1,0 +1,101 @@
+name: agent-excon
+
+x-app: &app
+  image: agent-excon-dev:local
+  build:
+    context: .
+    dockerfile: infrastructure/docker/Dockerfile.dev
+  init: true
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  extra_hosts:
+    - host.docker.internal:host-gateway
+  networks:
+    - excon
+
+services:
+  api:
+    <<: *app
+    command: pnpm --filter @agent-excon/api dev
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 3001
+      AI_PROVIDER: fake
+      AGENT_EXCON_PARTICIPANT_TOKEN: local-demo-participant-token
+    ports:
+      - 127.0.0.1:3001:3001
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3001/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  web:
+    <<: *app
+    command: pnpm --filter @agent-excon/web exec next dev --hostname 0.0.0.0 --port 3000
+    environment:
+      AGENT_EXCON_API_INTERNAL_URL: http://api:3001/api/v1
+    ports:
+      - 127.0.0.1:3000:3000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/zh-CN').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+
+  worker:
+    <<: *app
+    command: pnpm --filter @agent-excon/worker dev
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@host.docker.internal:56322/postgres
+      WORKER_HEALTH_HOST: 0.0.0.0
+      WORKER_HEALTH_PORT: 8081
+      WORKER_ID: compose-worker-1
+    ports:
+      - 127.0.0.1:3002:8081
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:8081/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  docs:
+    <<: *app
+    command: pnpm --filter @agent-excon/docs exec astro dev --host 0.0.0.0 --port 4321
+    ports:
+      - 127.0.0.1:4321:4321
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:4321/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+
+networks:
+  excon:
+    driver: bridge

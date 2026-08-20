@@ -78,19 +78,19 @@ export class FakeAiProvider implements AiProvider {
 
   constructor(private readonly fixture: unknown) {}
 
-  async generateJson<Output>(
+  generateJson<Output>(
     request: JsonGenerationRequest<Output>,
   ): Promise<JsonGenerationResult<Output>> {
     const startedAt = performance.now();
     const raw = JSON.stringify(this.fixture);
-    return {
+    return Promise.resolve({
       output: parseJson(raw, request.schema),
       provider: this.kind,
       model: 'deterministic-fixture',
       usage: {},
       latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
       rawResponseHash: hashRawResponse(raw),
-    };
+    });
   }
 }
 
@@ -212,7 +212,7 @@ export class TrustedLocalCodexProvider implements AiProvider {
     const execute = this.options.execute ?? executeLocalCodex;
     const raw = await execute({
       prompt: buildPrompt(request),
-      schema: z.toJSONSchema(request.schema) as Record<string, unknown>,
+      schema: z.toJSONSchema(request.schema),
       timeoutMs: request.timeoutMs ?? 120_000,
       ...(this.options.model === undefined
         ? {}
@@ -304,7 +304,7 @@ export class OpenAiCompatibleProvider implements AiProvider {
     const startedAt = performance.now();
     const completion = await this.execute({
       prompt: buildPrompt(request),
-      schema: z.toJSONSchema(request.schema) as Record<string, unknown>,
+      schema: z.toJSONSchema(request.schema),
       timeoutMs: request.timeoutMs ?? 60_000,
     });
     return {

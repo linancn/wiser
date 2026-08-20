@@ -12,19 +12,24 @@
   },
   "scripts": {
     "build": "pnpm -r --if-present build",
-    "dev": "pnpm --parallel --filter './apps/*' --if-present dev",
+    "dev": "pnpm --parallel --filter @agent-excon/api --filter @agent-excon/web --filter @agent-excon/docs dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "vitest run && pnpm --recursive --if-present --filter './apps/*' test",
     "test:watch": "vitest",
     "typecheck": "pnpm -r --if-present typecheck",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm compose:config",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset",
+    "supabase:test": "supabase test db",
+    "supabase:verify": "supabase db reset --local && supabase test db && supabase db lint --local --level warning --fail-on warning && supabase db advisors --local --type all --level warn --fail-on warn",
+    "compose:config": "docker compose config --quiet",
     "compose:up": "docker compose up --build --wait",
-    "compose:down": "docker compose down"
+    "compose:down": "docker compose down",
+    "stack:up": "pnpm supabase:start && pnpm compose:up",
+    "stack:down": "pnpm compose:down && pnpm supabase:stop"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

@@ -6,6 +6,8 @@ Agent EXCON is an interactive task environment and exercise-control infrastructu
 
 The repository starts with one testable vertical slice: coordinated ecological water replenishment and multi-source allocation for the Yongding River system across Beijing, Tianjin, and Hebei. A participant only sees information released by the current virtual time and actually observed by that participant. Structured allocation plans receive deterministic checks for water balance, source limits, transfer capacity, and ecological targets before the exercise advances.
 
+Agents load [`skills/agent-excon`](./skills/agent-excon/SKILL.md) and participate through HTTP or MCP. Web never submits or advances an Episode; it visualizes the case, water-system status, evaluation, evidence, and Trace/Event replay.
+
 ## Engineering principles
 
 - Real-use-case Red → Green → Refactor: tests define behavior before implementation.
@@ -18,7 +20,7 @@ The repository starts with one testable vertical slice: coordinated ecological w
 ## Intended workspace
 
 ```text
-apps/          Web, worker, MCP, and Starlight documentation
+apps/          HTTP API, read-only Web, worker, MCP, and Starlight documentation
 packages/      Contracts, pure domain core, and infrastructure adapters
 scenarios/     Versioned scenarios and provenance manifests
 skills/        Independently publishable Agent EXCON Skill
@@ -41,7 +43,15 @@ pnpm install
 pnpm verify
 ```
 
-Supabase, Compose, and scenario runbooks will land with the vertical slice under `apps/docs`. Never commit `~/.codex/auth.json`, Supabase service-role keys, or other credentials.
+Start the complete development stack:
+
+```bash
+pnpm stack:up
+```
+
+Supabase CLI first starts Auth/PostgreSQL 17/Storage/Studio, then Compose starts API, read-only Web, worker, and docs. Defaults are Web `:3000`, API `:3001`, worker health `:3002`, docs `:4321`, and Supabase Studio `:56323`. Stop with `pnpm stack:down`.
+
+Codex subscription auth is host-only for trusted local development. Containers and CI default to the fake provider. Never commit or mount `~/.codex/auth.json`, Supabase service-role keys, or other credentials.
 
 ## Project status
 

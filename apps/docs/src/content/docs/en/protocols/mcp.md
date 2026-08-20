@@ -7,25 +7,25 @@ description: Expose stable HTTP operations as discoverable, constrained MCP Tool
 
 The MCP server calls the public HTTP API. It does not duplicate authorization, state, or adjudication and does not bypass the participant protocol with a database service role.
 
-Use the stable `@modelcontextprotocol/sdk` v1 line. Remote deployments use Streamable HTTP; locally spawned servers use stdio. Do not add a new legacy HTTP+SSE implementation.
+Use the stable `@modelcontextprotocol/sdk` v1 line. The first slice ships a locally spawned stdio server only. A future remote deployment uses Streamable HTTP; do not add a legacy HTTP+SSE implementation.
 
 ## Tools
 
-| Tool                     | HTTP operation         | Behavior                  |
-| ------------------------ | ---------------------- | ------------------------- |
-| `excon_start_episode`    | `POST /episodes`       | Idempotent write          |
-| `excon_get_observation`  | `GET .../observations` | Read-only                 |
-| `excon_submit_result`    | `POST .../submissions` | Idempotent write          |
-| `excon_get_evaluation`   | `GET .../evaluation`   | Read-only                 |
-| `excon_get_feedback`     | `GET .../feedback`     | Read-only                 |
-| `excon_advance_episode`  | `POST .../advance`     | Authorized write          |
-| `excon_finalize_episode` | `POST .../finalize`    | Explicit finalizing write |
+| Tool                           | HTTP operation         | Behavior                          |
+| ------------------------------ | ---------------------- | --------------------------------- |
+| `excon_start_episode`          | `POST /episodes`       | Idempotent non-destructive write  |
+| `excon_get_episode`            | `GET /episodes/{id}`   | Read-only state reconciliation    |
+| `excon_observe`                | `POST .../observe`     | Idempotent access-recording write |
+| `excon_submit_allocation_plan` | `POST .../submissions` | Idempotent write                  |
+| `excon_get_feedback`           | `GET .../feedback`     | Read-only                         |
+| `excon_advance`                | `POST .../advance`     | Idempotent irreversible advance   |
+| `excon_get_events`             | `GET .../events`       | Read-only paginated trace         |
 
 Input and `structuredContent` derive from shared Zod schemas. Text content is a short human summary and must not become a second machine format.
 
 ## Resources and credentials
 
-Read-only URIs may include `excon://episodes/{episodeId}` and `excon://submissions/{submissionId}/evaluation`. Hidden Outcomes, full rules, and unreleased Injects are never Resources.
+The first slice exposes one bilingual read-only Resource: `excon://scenarios/jing-jin-ji-yongding-river`. Episode, evaluation, and trace data remain behind authenticated HTTP operations and response links. Hidden Outcomes, full private rules, and unreleased Injects are never Resources.
 
 Remote MCP uses HTTP-equivalent OAuth/token scopes. stdio reads a short-lived token from its environment; credentials never enter Tool arguments or model context.
 

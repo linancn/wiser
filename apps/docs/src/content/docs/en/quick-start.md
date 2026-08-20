@@ -5,7 +5,7 @@ description: Start the first runnable Agent EXCON loop locally.
 
 ## Baseline
 
-Use Node.js 24 LTS, pnpm 11, Docker Compose v2+, and a local Codex CLI signed in with ChatGPT.
+Use Node.js 24 LTS, pnpm 11, Docker Compose v5, and a local Codex CLI signed in with ChatGPT.
 
 ```bash
 node --version
@@ -18,9 +18,7 @@ codex login status
 
 ```bash
 pnpm install
-pnpm typecheck
-pnpm test
-pnpm build
+pnpm verify
 ```
 
 Run only the documentation app with `pnpm --filter @agent-excon/docs dev`.
@@ -28,16 +26,16 @@ Run only the documentation app with `pnpm --filter @agent-excon/docs dev`.
 ## Start support services
 
 ```bash
-pnpm compose:up
+pnpm stack:up
 ```
 
-The repository pins the official Supabase Compose bundle as a unit: PostgreSQL 17, Envoy, Auth, PostgREST, Realtime, Storage, and Studio. Do not copy legacy Kong service names or a PostgreSQL 15 override into a new deployment.
+Supabase CLI manages the official compatible local platform containers; Compose manages API, read-only Web, Worker, and docs. The local stack binds to loopback and must not be exposed publicly. Production uses Supabase Platform or an atomically pinned complete official self-host stack.
 
 Use the workspace Supabase CLI for migrations and generated types:
 
 ```bash
 pnpm exec supabase migration list --local
-pnpm exec supabase gen types typescript --local
+pnpm exec supabase gen types --lang typescript --local
 ```
 
 ## Select an AI mode
@@ -60,4 +58,4 @@ The participant loads `skills/agent-excon` and runs the exercise through HTTP or
 
 See the [HTTP protocol](/en/protocols/http/) for payloads and the [Yongding River dispatch](/en/scenarios/yongding-river-dispatch/) for acceptance criteria.
 
-Stop services with `pnpm compose:down`. Normal shutdown retains named volumes; data deletion must remain an explicit maintenance operation.
+Stop services with `pnpm stack:down`. Normal shutdown retains named volumes; data deletion must remain an explicit maintenance operation.

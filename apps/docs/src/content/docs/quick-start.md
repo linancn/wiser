@@ -9,7 +9,7 @@ description: 在本机启动 Agent EXCON 的首个可运行闭环。
 | ---------------- | ------------------- | ---------------------------- |
 | Node.js          | 24 LTS              | Web、API、Worker、SDK 和文档 |
 | pnpm             | 11                  | workspace 和精确锁定依赖     |
-| Docker + Compose | Compose v2+         | Supabase 与应用支持服务      |
+| Docker + Compose | Compose v5          | 本地 Supabase 与应用服务     |
 | Codex CLI        | 已通过 ChatGPT 登录 | 本机开发和调试的默认 AI 算力 |
 
 先确认本机状态：
@@ -25,9 +25,7 @@ codex login status
 
 ```bash
 pnpm install
-pnpm typecheck
-pnpm test
-pnpm build
+pnpm verify
 ```
 
 单独运行文档站：
@@ -38,19 +36,19 @@ pnpm --filter @agent-excon/docs dev
 
 ## 启动支持服务
 
-仓库使用 Compose 统一编排支持服务：
+Supabase CLI 管理官方兼容的本地平台容器，Compose 管理 API、只读 Web、Worker 和文档：
 
 ```bash
-pnpm compose:up
+pnpm stack:up
 ```
 
-Supabase 自托管组件必须作为一套固定版本升级。当前边界是 PostgreSQL 17、Envoy、Auth、PostgREST、Realtime、Storage 和 Studio；不要把旧教程里的 Kong 服务名或 PostgreSQL 15 override 带入新部署。
+本地栈只绑定回环地址，不得暴露到公网。生产采用 Supabase Platform，或整体锁定官方 self-host Compose；不能手工拼装、单独升级其中某个组件。
 
 数据库迁移和类型生成使用仓库固定的 Supabase CLI：
 
 ```bash
 pnpm exec supabase migration list --local
-pnpm exec supabase gen types typescript --local
+pnpm exec supabase gen types --lang typescript --local
 ```
 
 ## 选择 AI 运行方式
@@ -78,7 +76,7 @@ pnpm exec supabase gen types typescript --local
 ## 停止环境
 
 ```bash
-pnpm compose:down
+pnpm stack:down
 ```
 
 默认停止操作保留命名卷；清除数据必须使用显式、单独的维护命令，不能藏在普通 `down` 中。

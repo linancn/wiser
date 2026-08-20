@@ -10,6 +10,7 @@ export default tseslint.config(
       '**/dist/**',
       '**/node_modules/**',
       '**/playwright-report/**',
+      '**/supabase/.temp/**',
       '**/test-results/**',
     ],
   },
@@ -29,7 +30,12 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.config.{js,mjs,cjs}'],
+    files: ['**/*.{js,mjs,cjs}'],
     ...tseslint.configs.disableTypeChecked,
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+      },
+    },
   },
 );
