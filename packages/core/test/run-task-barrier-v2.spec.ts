@@ -12,6 +12,7 @@ import {
   heartbeatRunTask,
   readyRunTaskRevision,
   recordRunBarrierInput,
+  releaseBlockedRunTask,
   releaseRunBarrier,
   releaseRunTask,
   requireRunTaskRework,
@@ -34,6 +35,28 @@ function task(id = 'task-evidence', reassignable = true) {
 }
 
 describe('RunTask lease state machine', () => {
+  it('releases a blocked downstream Task only with its current version', () => {
+    const blocked = createRunTask({
+      id: 'task-dispatch',
+      runId: 'run-yongding-001',
+      initialState: 'BLOCKED',
+      reassignable: false,
+    });
+    const ready = releaseBlockedRunTask(blocked, blocked.version);
+
+    expect(ready).toMatchObject({ state: 'READY', version: 2 });
+    expect(() => releaseBlockedRunTask(blocked, 99)).toThrowError(
+      expect.objectContaining<Partial<DomainError>>({
+        code: 'TASK_VERSION_CONFLICT',
+      }),
+    );
+    expect(() => releaseBlockedRunTask(ready, ready.version)).toThrowError(
+      expect.objectContaining<Partial<DomainError>>({
+        code: 'TASK_STATE_CONFLICT',
+      }),
+    );
+  });
+
   it('claims, begins, heartbeats and releases with a bounded lease', () => {
     const ready = task();
     const claimed = claimRunTask(ready, {
