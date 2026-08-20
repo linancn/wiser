@@ -1,7 +1,10 @@
 import {
   RunEvaluationListSchema,
   type AgentViewReceiptDto,
+  type JsonObject,
   type RunArtifactDto,
+  type RunFeedbackDto,
+  type RunSubmissionDto,
   type RunTaskDto,
 } from '@agent-excon/contracts';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -25,6 +28,11 @@ interface ClaimedTask {
     readonly claimEpoch: number;
     readonly leaseToken: string;
   };
+}
+
+interface TaskSubmissionResult {
+  readonly submission: RunSubmissionDto;
+  readonly task: RunTaskDto;
 }
 
 const closeCallbacks: Array<() => Promise<void>> = [];
@@ -97,7 +105,14 @@ async function completeSpecialistTask(
   },
   coordinator: LocalLabCredential,
   initial: SyncBatch,
-) {
+  payload: JsonObject = outputPayloads[credential.roleSlotId],
+  expectedState: RunTaskDto['state'] = 'ACCEPTED',
+): Promise<{
+  readonly result: TaskSubmissionResult;
+  readonly artifact: RunArtifactDto;
+  readonly caseInputReceipt: AgentViewReceiptDto;
+  readonly cursor: SyncBatch;
+}> {
   const taskReceipt = initial.receipts.find(
     ({ resourceType }) => resourceType === 'task',
   )!;
@@ -150,7 +165,7 @@ async function completeSpecialistTask(
         'zh-CN': `${credential.roleSlotId} 输出`,
         en: `${credential.roleSlotId} output`,
       },
-      content: outputPayloads[credential.roleSlotId],
+      content: payload,
       recipientRunAgentIds: [credential.runAgentId, coordinator.runAgentId],
     },
   });
@@ -198,7 +213,7 @@ async function completeSpecialistTask(
       leaseToken: claim.lease.leaseToken,
       submissionType: outputArtifactKeys[credential.roleSlotId],
       targetScope: 'role',
-      payload: outputPayloads[credential.roleSlotId],
+      payload,
       receiptRefs: [
         {
           receiptId: caseInputReceipt.id,
@@ -216,9 +231,14 @@ async function completeSpecialistTask(
     },
   });
   expect(submissionResponse.statusCode).toBe(201);
-  expect(submissionResponse.json<{ task: RunTaskDto }>().task.state).toBe(
-    'ACCEPTED',
-  );
+  const result = submissionResponse.json<TaskSubmissionResult>();
+  expect(result.task.state).toBe(expectedState);
+  return {
+    result,
+    artifact,
+    caseInputReceipt,
+    cursor: artifactSync,
+  };
 }
 
 describe('v2 local lab deterministic evaluation and analysis barrier', () => {
@@ -333,5 +353,145 @@ describe('v2 local lab deterministic evaluation and analysis barrier', () => {
       { roleSlotId: 'hydraulic-constraints', verdict: 'ACCEPTED' },
       { roleSlotId: 'ecological-target', verdict: 'ACCEPTED' },
     ]);
+  });
+
+  it('issues a scoped resubmit grant and accepts an immutable successor', async () => {
+    const lab = await createV2LocalLab({ environment: { NODE_ENV: 'test' } });
+    const app = buildApp({
+      logger: false,
+      v2Service: lab.v2Service,
+      authenticator: lab.authenticator,
+    });
+    closeCallbacks.push(() => app.close());
+    const water = lab.credentials.find(
+      ({ roleSlotId }) => roleSlotId === 'water-evidence',
+    ) as LocalLabCredential & { readonly roleSlotId: 'water-evidence' };
+    const coordinator = lab.credentials.find(
+      ({ roleSlotId }) => roleSlotId === 'dispatch-coordination',
+    )!;
+    const initial = await initialSync(app, lab, water);
+
+    const first = await completeSpecialistTask(
+      app,
+      lab,
+      water,
+      coordinator,
+      initial,
+      { evidenceRegister: [] },
+      'READY',
+    );
+    expect(first.result.submission.revisionNo).toBe(1);
+
+    const feedbackSyncResponse = await app.inject({
+      method: 'POST',
+      url: `/api/v2/runs/${lab.manifest.runId}/sync`,
+      headers: {
+        ...participantHeaders(water),
+        'idempotency-key': commandKey(),
+      },
+      payload: {
+        afterReceiptSeq: first.cursor.throughReceiptSeq,
+        ack: {
+          throughReceiptSeq: first.cursor.throughReceiptSeq,
+          headHash: first.cursor.receiptHeadHash,
+        },
+        maxItems: 50,
+      },
+    });
+    expect(feedbackSyncResponse.statusCode).toBe(200);
+    const feedbackSync = feedbackSyncResponse.json<SyncBatch>();
+    const individualFeedback = feedbackSync.receipts
+      .filter(({ resourceType }) => resourceType === 'feedback')
+      .map(
+        ({ contentSnapshot }) => contentSnapshot as unknown as RunFeedbackDto,
+      )
+      .find(({ targetScope }) => targetScope === 'individual')!;
+    expect(individualFeedback.allowedActions).toEqual(['resubmit']);
+    const grant = individualFeedback.actionGrants?.find(
+      ({ action }) => action === 'resubmit',
+    );
+    expect(grant).toBeDefined();
+
+    const claimResponse = await app.inject({
+      method: 'POST',
+      url: `/api/v2/tasks/${first.result.task.id}:claim`,
+      headers: {
+        ...participantHeaders(water),
+        'idempotency-key': commandKey(),
+      },
+      payload: {
+        expectedVersion: first.result.task.lockVersion,
+        leaseSeconds: 120,
+      },
+    });
+    expect(claimResponse.statusCode).toBe(200);
+    const claim = claimResponse.json<ClaimedTask>();
+    const beginResponse = await app.inject({
+      method: 'POST',
+      url: `/api/v2/tasks/${first.result.task.id}:begin`,
+      headers: {
+        ...participantHeaders(water),
+        'idempotency-key': commandKey(),
+      },
+      payload: {
+        expectedVersion: claim.task.lockVersion,
+        claimEpoch: claim.lease.claimEpoch,
+        leaseToken: claim.lease.leaseToken,
+      },
+    });
+    expect(beginResponse.statusCode).toBe(200);
+    const begunTask = beginResponse.json<{ task: RunTaskDto }>().task;
+
+    const revisionResponse = await app.inject({
+      method: 'POST',
+      url: `/api/v2/tasks/${first.result.task.id}/submissions`,
+      headers: {
+        ...participantHeaders(water),
+        'idempotency-key': commandKey(),
+      },
+      payload: {
+        expectedVersion: begunTask.lockVersion,
+        claimEpoch: claim.lease.claimEpoch,
+        leaseToken: claim.lease.leaseToken,
+        submissionType: outputArtifactKeys['water-evidence'],
+        targetScope: 'role',
+        payload: outputPayloads['water-evidence'],
+        receiptRefs: [
+          {
+            receiptId: first.caseInputReceipt.id,
+            receiptHash: first.caseInputReceipt.receiptHash,
+          },
+        ],
+        artifactVersionRefs: [
+          {
+            artifactId: first.artifact.id,
+            artifactVersionId: first.artifact.versionId,
+            contentHash: first.artifact.contentHash,
+          },
+        ],
+        revisionOfId: first.result.submission.id,
+        feedbackActionGrantId: grant!.id,
+        endorsementRecipientRunAgentIds: [],
+      },
+    });
+    expect(revisionResponse.statusCode).toBe(201);
+    expect(revisionResponse.json<TaskSubmissionResult>()).toMatchObject({
+      submission: {
+        revisionNo: 2,
+        revisionOfId: first.result.submission.id,
+      },
+      task: { state: 'ACCEPTED' },
+    });
+
+    const evaluations = await app.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${lab.manifest.runId}/evaluations`,
+      headers: { authorization: `Bearer ${lab.operatorToken}` },
+    });
+    expect(
+      RunEvaluationListSchema.parse(evaluations.json()).items.map(
+        ({ verdict }) => verdict,
+      ),
+    ).toEqual(['REWORK_REQUIRED', 'ACCEPTED']);
   });
 });
