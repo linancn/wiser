@@ -61,6 +61,10 @@ import {
 
 import { ExerciseServiceError, type ParticipantPrincipal } from './types.js';
 import type { IssuedRunResource, V2ExerciseService } from './v2-types.js';
+import {
+  YONGDING_V2_CASE_PACK,
+  type YongdingV2CaseRoleKey,
+} from './yongding-v2-case.js';
 
 export const DEFAULT_V2_SCENARIO_ID = 'jing-jin-ji-yongding-river';
 export const DEFAULT_V2_SCENARIO_VERSION_ID =
@@ -2360,11 +2364,20 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
     runAgentId: string,
   ): void {
     const createdAt = this.timestamp();
+    const roleCase =
+      YONGDING_V2_CASE_PACK.roles[role.id as YongdingV2CaseRoleKey];
+    if (roleCase === undefined) {
+      throw new ExerciseServiceError(
+        'INTERNAL_ERROR',
+        `Yongding v2 case input is missing for role ${role.id}.`,
+      );
+    }
     const taskId = this.#idFactory();
     const taskEvent = this.appendRunEvent(stored, {
       streamType: 'task',
       streamId: taskId,
-      eventType: 'task.ready',
+      eventType:
+        roleCase.initialTaskState === 'READY' ? 'task.ready' : 'task.blocked',
       actorType: 'system',
       actorId: 'excon',
       assertionClass: 'platform_observed',
@@ -2375,10 +2388,10 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
       runId: stored.run.id,
       roleSlotId: role.id,
       assignedRunAgentId: runAgentId,
-      definitionKey: `analyze-${role.id}`,
-      title: role.name,
-      objective: role.mission,
-      state: 'READY',
+      definitionKey: roleCase.taskDefinitionKey,
+      title: roleCase.title,
+      objective: roleCase.objective,
+      state: roleCase.initialTaskState,
       lockVersion: 1,
       claimEpoch: 0,
       createdRunSeq: taskEvent.runSeq,
@@ -2389,7 +2402,7 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
       createRunTask({
         id: task.id,
         runId: stored.run.id,
-        initialState: 'READY',
+        initialState: roleCase.initialTaskState,
         reassignable: true,
       }),
     );
@@ -2437,17 +2450,25 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
       payload: { roleSlotId: role.id, recipientRunAgentIds: [runAgentId] },
     });
     const content = {
-      'zh-CN': `交付目标：${role.expectedArtifact['zh-CN']}`,
-      en: `Expected artifact: ${role.expectedArtifact.en}`,
+      schemaVersion: YONGDING_V2_CASE_PACK.schemaVersion,
+      caseId: YONGDING_V2_CASE_PACK.caseId,
+      scenarioVersionId: YONGDING_V2_CASE_PACK.scenarioVersionId,
+      stage: YONGDING_V2_CASE_PACK.stage,
+      availableVirtualAt: YONGDING_V2_CASE_PACK.availableVirtualAt,
+      roleSlotId: role.id,
+      simulationOnly: YONGDING_V2_CASE_PACK.simulationOnly,
+      notForOperationalUse: YONGDING_V2_CASE_PACK.notForOperationalUse,
+      taskOutputSchema: roleCase.taskOutputSchema,
+      inputs: roleCase.inputs,
     };
     const artifact: RunArtifactDto = {
       id: artifactId,
       runId: stored.run.id,
-      artifactKey: `role-brief-${role.id}`,
+      artifactKey: roleCase.artifactKey,
       versionId: this.#idFactory(),
       versionNo: 1,
-      artifactType: 'role-brief',
-      title: role.expectedArtifact,
+      artifactType: 'case-input',
+      title: roleCase.artifactTitle,
       content,
       contentHash: hash(content),
       authorType: 'EXCON',

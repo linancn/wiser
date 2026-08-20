@@ -1,0 +1,205 @@
+{
+  "schemaVersion": 1,
+  "caseId": "jjj-yongding-replenishment-2023",
+  "protocolVersion": "v2",
+  "scenarioVersionId": "jjj-yongding-collaboration-2023-v2",
+  "stage": 1,
+  "availableVirtualAt": "2023-03-22T15:00:00+08:00",
+  "simulationOnly": true,
+  "notForOperationalUse": true,
+  "roles": {
+    "water-evidence": {
+      "initialTaskState": "READY",
+      "taskDefinitionKey": "stage-1-water-evidence",
+      "title": {
+        "zh-CN": "核验 Stage 1 水情与来源证据",
+        "en": "Verify Stage 1 water and provenance evidence"
+      },
+      "objective": {
+        "zh-CN": "形成带时态、来源、修订关系和不确定性的证据清单。",
+        "en": "Produce an evidence register with timing, provenance, supersession, and uncertainty."
+      },
+      "artifactKey": "stage-1-water-evidence-input",
+      "artifactTitle": {
+        "zh-CN": "Stage 1 水情证据输入",
+        "en": "Stage 1 water evidence input"
+      },
+      "taskOutputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["evidenceRegister", "inflowSummary", "evidenceRefs"],
+        "properties": {
+          "evidenceRegister": { "type": "array", "minItems": 3 },
+          "inflowSummary": { "type": "object" },
+          "evidenceRefs": { "type": "array", "minItems": 1 }
+        }
+      },
+      "inputs": {
+        "officialFacts": [
+          {
+            "id": "official-flows-2023-03-22-0800-cst",
+            "sourceId": "beijing-water-authority-2023-03-22",
+            "publishedAt": "2023-03-22T14:56:00+08:00",
+            "value": {
+              "unit": "m3/s",
+              "guanting": 20.7,
+              "sanjiadian": 0.8,
+              "lugouqiao": 15.2,
+              "cuizhihuiying": 18.5
+            }
+          },
+          {
+            "id": "qujiadian-gate-opened",
+            "sourceId": "beijing-water-authority-2023-03-22",
+            "value": "2023-03-22T12:00:00+08:00"
+          }
+        ],
+        "sourceAvailability": [
+          {
+            "sourceId": "guanting",
+            "maximumFlowM3s": 24,
+            "evidenceClass": "synthetic-constraint"
+          },
+          {
+            "sourceId": "south-water",
+            "maximumFlowM3s": 10,
+            "evidenceClass": "synthetic-constraint"
+          },
+          {
+            "sourceId": "reclaimed-lower",
+            "maximumFlowM3s": 6,
+            "evidenceClass": "synthetic-constraint"
+          }
+        ]
+      }
+    },
+    "hydraulic-constraints": {
+      "initialTaskState": "READY",
+      "taskDefinitionKey": "stage-1-hydraulic-constraints",
+      "title": {
+        "zh-CN": "复算 Stage 1 水动力约束",
+        "en": "Recompute Stage 1 hydraulic constraints"
+      },
+      "objective": {
+        "zh-CN": "按固定拓扑、容量、传递系数和精度规则形成断面响应包络。",
+        "en": "Build a section-response envelope from the fixed topology, capacities, coefficients, and precision rules."
+      },
+      "artifactKey": "stage-1-hydraulic-constraints-input",
+      "artifactTitle": {
+        "zh-CN": "Stage 1 水动力输入",
+        "en": "Stage 1 hydraulic input"
+      },
+      "taskOutputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sectionResponse", "constraints", "evidenceRefs"],
+        "properties": {
+          "sectionResponse": { "type": "array", "minItems": 4 },
+          "constraints": { "type": "object" },
+          "evidenceRefs": { "type": "array", "minItems": 1 }
+        }
+      },
+      "inputs": {
+        "topology": [
+          "guanting",
+          "sanjiadian",
+          "lugouqiao",
+          "cuizhihuiying",
+          "qujiadian"
+        ],
+        "sources": [
+          { "sourceId": "guanting", "maximumFlowM3s": 24 },
+          { "sourceId": "south-water", "maximumFlowM3s": 10 },
+          { "sourceId": "reclaimed-lower", "maximumFlowM3s": 6 }
+        ],
+        "transferModel": {
+          "guantingToSanjiadian": 0.9,
+          "sanjiadianToLugouqiao": 0.88,
+          "lugouqiaoToCuizhihuiying": 0.82,
+          "cuizhihuiyingToQujiadian": 0.9
+        },
+        "totalReleaseLimitM3s": 30,
+        "releaseIncrementM3s": 0.1,
+        "sectionFlowToleranceM3s": 0.01
+      }
+    },
+    "ecological-target": {
+      "initialTaskState": "READY",
+      "taskDefinitionKey": "stage-1-ecological-target",
+      "title": {
+        "zh-CN": "核验 Stage 1 生态目标",
+        "en": "Verify Stage 1 ecological targets"
+      },
+      "objective": {
+        "zh-CN": "形成控制断面目标、风险优先级和不确定性清单。",
+        "en": "Produce control-section targets, risk priorities, and uncertainty."
+      },
+      "artifactKey": "stage-1-ecological-target-input",
+      "artifactTitle": {
+        "zh-CN": "Stage 1 生态目标输入",
+        "en": "Stage 1 ecological target input"
+      },
+      "taskOutputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["targetRegister", "riskPriorities", "evidenceRefs"],
+        "properties": {
+          "targetRegister": { "type": "array", "minItems": 4 },
+          "riskPriorities": { "type": "array", "minItems": 1 },
+          "evidenceRefs": { "type": "array", "minItems": 1 }
+        }
+      },
+      "inputs": {
+        "sectionTargets": [
+          { "sectionId": "sanjiadian", "minimumFlowM3s": 10 },
+          { "sectionId": "lugouqiao", "minimumFlowM3s": 16 },
+          { "sectionId": "cuizhihuiying", "minimumFlowM3s": 15 },
+          { "sectionId": "qujiadian", "minimumFlowM3s": 12 }
+        ],
+        "continuityRequirement": "all-sections-at-or-above-minimum",
+        "waterQualityBoundary": "synthetic-baseline-only"
+      }
+    },
+    "dispatch-coordination": {
+      "initialTaskState": "BLOCKED",
+      "taskDefinitionKey": "stage-1-dispatch-coordination",
+      "title": {
+        "zh-CN": "汇聚 Stage 1 团队方案",
+        "en": "Converge the Stage 1 team plan"
+      },
+      "objective": {
+        "zh-CN": "仅在 analysis-ready Barrier 释放后，使用三份已 Receipt 工件形成团队方案。",
+        "en": "After the analysis-ready Barrier releases, form a team plan only from three receipted artifacts."
+      },
+      "artifactKey": "stage-1-dispatch-coordination-input",
+      "artifactTitle": {
+        "zh-CN": "Stage 1 团队汇聚合同",
+        "en": "Stage 1 team convergence contract"
+      },
+      "taskOutputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["candidatePlan", "artifactVersionRefs", "evidenceRefs"],
+        "properties": {
+          "candidatePlan": { "type": "object" },
+          "artifactVersionRefs": { "type": "array", "minItems": 3 },
+          "evidenceRefs": { "type": "array", "minItems": 1 }
+        }
+      },
+      "inputs": {
+        "barrierDefinitionKey": "analysis-ready",
+        "requiredArtifactKeys": [
+          "water-evidence-register",
+          "hydraulic-constraint-envelope",
+          "ecological-priority-register"
+        ],
+        "requiredEndorsementRoleKeys": [
+          "water-evidence",
+          "hydraulic-constraints",
+          "ecological-target"
+        ],
+        "minimumDistinctContributors": 3
+      }
+    }
+  }
+}
