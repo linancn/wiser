@@ -122,6 +122,8 @@ describe('four-process WorkBuddy launcher', () => {
       expect(command.args.at(-1)).toContain('"schemaVersion"');
       const toolsIndex = command.args.indexOf('--tools');
       expect(command.args[toolsIndex + 1]).toContain('DeferExecuteTool');
+      const allowedToolsIndex = command.args.indexOf('--allowedTools');
+      expect(command.args[allowedToolsIndex + 1]).toBe('DeferExecuteTool');
       expect(command.args).not.toContain('--swarm');
       expect(command.args).not.toContain('-y');
       expect(command.args).not.toContain('bypassPermissions');
