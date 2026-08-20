@@ -1,4 +1,9 @@
 import type { Locale } from './i18n';
+import {
+  buildRunDiagnostics,
+  type DiagnosticEvaluation,
+  type RunDiagnostics,
+} from './run-diagnostics';
 
 export type LocalizedText = Readonly<Record<Locale, string>>;
 
@@ -169,6 +174,7 @@ export interface ExerciseRun {
   readonly spans: readonly ExerciseSpan[];
   readonly traceSummaries: readonly TraceSummary[];
   readonly replayReceipts: readonly ReplayReceipt[];
+  readonly diagnostics: RunDiagnostics;
 }
 
 export const PLATFORM_DATA_SOURCE = 'demo-static-read-model' as const;
@@ -942,6 +948,129 @@ function participantForRole(
   };
 }
 
+const yongdingEvaluations: readonly DiagnosticEvaluation[] = [
+  {
+    id: 'eval-inflow-r1',
+    roleSlotId: 'inflow-analysis',
+    targetScope: 'role',
+    verdict: 'REWORK_REQUIRED',
+    issueCodes: ['OUTPUT_SCHEMA_ADDITIONAL_PROPERTY'],
+    submissionId: 'submission-inflow-r1',
+    deterministic: true,
+    evaluatorVersion: 'yongding-role-output-v1',
+    createdRunSeq: 91,
+    createdAt: '2026-08-20T10:31:48.000+08:00',
+  },
+  {
+    id: 'eval-inflow-r2',
+    roleSlotId: 'inflow-analysis',
+    targetScope: 'role',
+    verdict: 'ACCEPTED',
+    issueCodes: [],
+    submissionId: 'submission-inflow-r2',
+    deterministic: true,
+    evaluatorVersion: 'yongding-role-output-v1',
+    createdRunSeq: 112,
+    createdAt: '2026-08-20T10:31:52.000+08:00',
+  },
+  {
+    id: 'eval-hydraulic-r1',
+    roleSlotId: 'hydraulic-constraints',
+    targetScope: 'role',
+    verdict: 'ACCEPTED',
+    issueCodes: [],
+    submissionId: 'submission-hydraulic-r1',
+    deterministic: true,
+    evaluatorVersion: 'yongding-role-output-v1',
+    createdRunSeq: 119,
+    createdAt: '2026-08-20T10:31:53.000+08:00',
+  },
+  {
+    id: 'eval-ecology-r1',
+    roleSlotId: 'ecological-targets',
+    targetScope: 'role',
+    verdict: 'REWORK_REQUIRED',
+    issueCodes: ['OUTPUT_SCHEMA_ADDITIONAL_PROPERTY'],
+    submissionId: 'submission-ecology-r1',
+    deterministic: true,
+    evaluatorVersion: 'yongding-role-output-v1',
+    createdRunSeq: 126,
+    createdAt: '2026-08-20T10:31:54.000+08:00',
+  },
+  {
+    id: 'eval-ecology-r2',
+    roleSlotId: 'ecological-targets',
+    targetScope: 'role',
+    verdict: 'ACCEPTED',
+    issueCodes: [],
+    submissionId: 'submission-ecology-r2',
+    deterministic: true,
+    evaluatorVersion: 'yongding-role-output-v1',
+    createdRunSeq: 148,
+    createdAt: '2026-08-20T10:31:56.000+08:00',
+  },
+  {
+    id: 'eval-team-r1',
+    roleSlotId: 'dispatch-coordination',
+    targetScope: 'team',
+    verdict: 'ACCEPTED',
+    issueCodes: [],
+    submissionId: 'submission-team-r1',
+    deterministic: true,
+    evaluatorVersion: 'yongding-role-output-v1',
+    createdRunSeq: 229,
+    createdAt: '2026-08-20T10:32:05.000+08:00',
+  },
+];
+
+const yongdingDiagnostics = buildRunDiagnostics({
+  requiredRoleIds: yongdingRoles.map(({ id }) => id),
+  evaluations: yongdingEvaluations,
+  releasedBarrierKeys: ['analysis-ready', 'endorsement-ready'],
+  telemetry: {
+    boundaryCoverage: 1,
+    participantMode: 'instrumented',
+    platformSpanCount: yongdingSpans.filter(
+      ({ telemetryTrust }) => telemetryTrust === 'platform_observed',
+    ).length,
+    participantSpanCount: yongdingSpans.filter(
+      ({ telemetryTrust }) => telemetryTrust === 'participant_reported',
+    ).length,
+    traceSummaryCount: new Set(yongdingSpans.map(({ traceId }) => traceId))
+      .size,
+    spanDetailCount: yongdingSpans.length,
+    droppedSpanCount: 2,
+    lateSpanCount: 1,
+    logRecordCount: yongdingSpans.flatMap(({ events }) => events).length,
+    metricSeriesCount: 0,
+  },
+});
+
+function emptyDiagnostics(
+  roles: readonly RoleSlot[],
+  telemetry: {
+    readonly boundaryCoverage: number;
+    readonly participantMode: 'none' | 'partial' | 'instrumented';
+    readonly droppedSpanCount: number;
+    readonly lateSpanCount: number;
+  },
+): RunDiagnostics {
+  return buildRunDiagnostics({
+    requiredRoleIds: roles.map(({ id }) => id),
+    evaluations: [],
+    releasedBarrierKeys: [],
+    telemetry: {
+      ...telemetry,
+      platformSpanCount: 0,
+      participantSpanCount: 0,
+      traceSummaryCount: 0,
+      spanDetailCount: 0,
+      logRecordCount: 0,
+      metricSeriesCount: 0,
+    },
+  });
+}
+
 export const exerciseRuns: readonly ExerciseRun[] = [
   {
     id: 'run-yongding-spring-042',
@@ -970,6 +1099,7 @@ export const exerciseRuns: readonly ExerciseRun[] = [
     spans: yongdingSpans,
     traceSummaries: [],
     replayReceipts: yongdingReplayReceipts,
+    diagnostics: yongdingDiagnostics,
   },
   {
     id: 'run-baiyangdian-draft-007',
@@ -993,6 +1123,12 @@ export const exerciseRuns: readonly ExerciseRun[] = [
     spans: [],
     traceSummaries: [],
     replayReceipts: [],
+    diagnostics: emptyDiagnostics(baiyangdianRoles, {
+      boundaryCoverage: 0.55,
+      participantMode: 'none',
+      droppedSpanCount: 0,
+      lateSpanCount: 0,
+    }),
   },
   {
     id: 'run-haihe-quality-011',
@@ -1016,6 +1152,12 @@ export const exerciseRuns: readonly ExerciseRun[] = [
     spans: [],
     traceSummaries: [],
     replayReceipts: [],
+    diagnostics: emptyDiagnostics(haiheRoles, {
+      boundaryCoverage: 0.96,
+      participantMode: 'partial',
+      droppedSpanCount: 3,
+      lateSpanCount: 0,
+    }),
   },
 ] as const;
 

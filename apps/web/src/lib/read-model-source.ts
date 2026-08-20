@@ -13,6 +13,10 @@ import {
   type ScenarioVersion,
   type TraceSummary,
 } from './platform';
+import {
+  buildRunDiagnostics,
+  type DiagnosticEvaluation,
+} from './run-diagnostics';
 
 export type WebDataMode = 'reference' | 'live';
 
@@ -190,6 +194,13 @@ interface ApiRunEvent {
   readonly eventHash: string;
   readonly traceId?: string;
   readonly spanId?: string;
+  readonly payload?: Readonly<Record<string, unknown>>;
+}
+
+interface ApiRunEvaluation extends DiagnosticEvaluation {
+  readonly runId: string;
+  readonly taskId: string;
+  readonly runAgentId: string;
 }
 
 interface ApiAgentReceipt {
@@ -507,8 +518,34 @@ function isApiRunEvent(value: unknown): value is ApiRunEvent {
       value.actorType === 'run_agent' ||
       value.actorType === 'system') &&
     value.schemaVersion === 1 &&
+    (value.payload === undefined || isRecord(value.payload)) &&
     (value.traceId === undefined || isString(value.traceId)) &&
     (value.spanId === undefined || isString(value.spanId))
+  );
+}
+
+function isApiRunEvaluation(value: unknown): value is ApiRunEvaluation {
+  if (!isRecord(value)) return false;
+  return (
+    hasStringFields(value, [
+      'id',
+      'runId',
+      'submissionId',
+      'taskId',
+      'runAgentId',
+      'roleSlotId',
+      'evaluatorVersion',
+      'createdAt',
+    ]) &&
+    (value.targetScope === 'individual' ||
+      value.targetScope === 'role' ||
+      value.targetScope === 'team') &&
+    (value.verdict === 'ACCEPTED' || value.verdict === 'REWORK_REQUIRED') &&
+    Array.isArray(value.issueCodes) &&
+    value.issueCodes.every(isString) &&
+    value.deterministic === true &&
+    Number.isInteger(value.createdRunSeq) &&
+    Number(value.createdRunSeq) > 0
   );
 }
 
@@ -793,6 +830,7 @@ function runToReadModel(
   telemetry: ApiTelemetryOverlay = emptyTelemetry(),
   replayEvents: readonly ApiRunEvent[] = [],
   replayReceipts: readonly ApiAgentReceipt[] = [],
+  evaluations: readonly ApiRunEvaluation[] = [],
 ): ExerciseRun {
   const replay = [
     ...replayEvents.map(eventToReceipt),
@@ -824,6 +862,26 @@ function runToReadModel(
     spans: [],
     traceSummaries: telemetry.traces,
     replayReceipts: replay,
+    diagnostics: buildRunDiagnostics({
+      requiredRoleIds: scenario.requiredRoles.map(({ id }) => id),
+      evaluations,
+      releasedBarrierKeys: replayEvents
+        .filter(({ eventType }) => eventType === 'barrier.released')
+        .map(({ payload }) => payload?.['definitionKey'])
+        .filter((key): key is string => typeof key === 'string'),
+      telemetry: {
+        boundaryCoverage: telemetry.coverage.boundaryCoverage,
+        participantMode: telemetry.coverage.participantTelemetryMode,
+        platformSpanCount: telemetry.trust.platformObservedSpanCount,
+        participantSpanCount: telemetry.trust.participantReportedSpanCount,
+        traceSummaryCount: telemetry.traces.length,
+        spanDetailCount: 0,
+        droppedSpanCount: telemetry.coverage.droppedSpanCount,
+        lateSpanCount: telemetry.coverage.lateSpanCount,
+        logRecordCount: 0,
+        metricSeriesCount: 0,
+      },
+    }),
   };
 }
 
@@ -1035,10 +1093,11 @@ class LiveReadModelSource implements WebReadModelSource {
           `Run ${runId} references a scenario version missing from /api/v2/scenarios.`,
         );
       }
-      const [agents, replay, telemetry] = await Promise.all([
+      const [agents, replay, telemetry, evaluations] = await Promise.all([
         this.runAgents(runId),
         this.replay(runId),
         this.telemetry(runId),
+        this.evaluations(runId),
       ]);
       if (replay.authoritativeProjection.run.id !== apiRun.id) {
         throw new ReadModelSourceError(
@@ -1062,7 +1121,8 @@ class LiveReadModelSource implements WebReadModelSource {
         ) ||
         replay.bestEffortTelemetryOverlay.traces.some(
           (trace) => trace.runId !== runId,
-        )
+        ) ||
+        evaluations.some((evaluation) => evaluation.runId !== runId)
       ) {
         throw new ReadModelSourceError(
           'contract',
@@ -1076,6 +1136,7 @@ class LiveReadModelSource implements WebReadModelSource {
         telemetry,
         replay.authoritativeProjection.events,
         replay.authoritativeProjection.receipts,
+        evaluations,
       );
       const gaps = replay.authoritativeProjection.manifest.verified
         ? liveRunGaps
@@ -1274,6 +1335,20 @@ class LiveReadModelSource implements WebReadModelSource {
       );
     }
     return value;
+  }
+
+  private async evaluations(
+    runId: string,
+  ): Promise<readonly ApiRunEvaluation[]> {
+    const path = `/api/v2/runs/${encodeURIComponent(runId)}/evaluations`;
+    const value = await this.request(path, true);
+    if (!isItems(value, isApiRunEvaluation)) {
+      throw new ReadModelSourceError(
+        'contract',
+        `${path} did not match the expected deterministic evaluation-list contract.`,
+      );
+    }
+    return value.items;
   }
 }
 
