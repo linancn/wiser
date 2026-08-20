@@ -34,6 +34,13 @@ describe('multi-scenario exercise platform read model', () => {
       const staffedRoles = new Set(
         run.participants.map((agent) => agent.roleId),
       );
+      const distinctAgentInstances = new Set(
+        run.participants.map((agent) => agent.id),
+      );
+      expect(distinctAgentInstances.size).toBe(run.participants.length);
+      expect(distinctAgentInstances.size).toBeGreaterThanOrEqual(
+        scenario?.requiredRoles.length ?? 0,
+      );
       for (const role of scenario?.requiredRoles ?? []) {
         expect(staffedRoles.has(role.id)).toBe(true);
       }
