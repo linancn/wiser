@@ -81,6 +81,26 @@ const runAgent = {
   joinedAt: '2026-08-20T00:01:00.000Z',
 } as const;
 
+const evaluations = {
+  items: [
+    {
+      id: '7d9ddab4-01d1-4e55-af4c-e4f2ba8fb042',
+      runId: RUN_ID,
+      submissionId: '624ad4c2-0981-4b65-a2d5-c0cfdb603762',
+      taskId: '63f611ed-c020-4bc6-b38d-cfa2c2142605',
+      runAgentId: RUN_AGENT_ID,
+      roleSlotId: 'inflow-analysis',
+      targetScope: 'role',
+      verdict: 'ACCEPTED',
+      issueCodes: [],
+      deterministic: true,
+      evaluatorVersion: 'live-evaluator-v1',
+      createdRunSeq: 3,
+      createdAt: '2026-08-20T00:05:03.000Z',
+    },
+  ],
+} as const;
+
 const event = {
   eventId: 'd37c450a-8f80-4714-84fb-19242719ad61',
   runId: RUN_ID,
@@ -227,6 +247,9 @@ function liveFetch(overrides: LiveFetchOverrides = {}) {
     if (url.pathname === `/api/v2/runs/${RUN_ID}/traces`) {
       return Promise.resolve(response(replay.bestEffortTelemetryOverlay));
     }
+    if (url.pathname === `/api/v2/runs/${RUN_ID}/evaluations`) {
+      return Promise.resolve(response(evaluations));
+    }
     return Promise.resolve(response({ code: 'NOT_FOUND' }, 404));
   });
 }
@@ -283,6 +306,15 @@ describe('Web read-model sources', () => {
     expect(result.data.run.participants).toHaveLength(1);
     expect(result.data.run.spans).toEqual([]);
     expect(result.data.run.traceSummaries).toHaveLength(1);
+    expect(result.data.run.diagnostics.evaluationLanes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          roleSlotId: 'inflow-analysis',
+          latestVerdict: 'ACCEPTED',
+        }),
+      ]),
+    );
+    expect(result.data.run.diagnostics.status).toBe('incomplete');
     expect(result.data.replayByPerspective.operator).toHaveLength(2);
     expect(result.data.replayByPerspective.operator[1]).toMatchObject({
       category: 'receipt',

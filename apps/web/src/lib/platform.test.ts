@@ -59,6 +59,13 @@ describe('multi-scenario exercise platform read model', () => {
     expect(
       evaluation?.links.every((link) => link.relation === 'depends_on'),
     ).toBe(true);
+    expect(run?.diagnostics.status).toBe('passed_with_gaps');
+    expect(run?.diagnostics.authoritative).toMatchObject({
+      acceptedRoleCount: 4,
+      requiredRoleCount: 4,
+      releasedBarrierCount: 2,
+    });
+    expect(run?.diagnostics.evaluationLanes).toHaveLength(4);
   });
 
   it('replays the receipt captured at the time instead of recomputing visibility', () => {
