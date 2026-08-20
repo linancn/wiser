@@ -1,32 +1,70 @@
 import { expect, test } from '@playwright/test';
 
-test('redirects to the Chinese control room and switches language', async ({
+test('opens the Chinese scenario center and preserves the route in English', async ({
   page,
 }) => {
   await page.goto('/');
-  await expect(page).toHaveURL(/\/zh-CN$/);
-  await expect(
-    page.getByRole('heading', {
-      name: '2023 永定河春季生态补水——京津冀多水源联合调度（事实锚定合成版）',
-    }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/zh-CN\/scenarios$/);
+  await expect(page.getByRole('heading', { name: '场景中心' })).toBeVisible();
+  await expect(page.getByTestId('scenario-card')).toHaveCount(3);
 
   await page.getByRole('link', { name: 'English' }).click();
-  await expect(page).toHaveURL(/\/en$/);
+  await expect(page).toHaveURL(/\/en\/scenarios$/);
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(
-    page.getByRole('heading', { name: /Yongding River/i }),
+    page.getByRole('heading', { name: 'Scenario center' }),
   ).toBeVisible();
 });
 
-test('exposes all three operator experiences', async ({ page }) => {
-  await page.goto('/zh-CN');
+test('separates scenario management from active multi-agent runs', async ({
+  page,
+}) => {
+  await page.goto('/zh-CN/scenarios');
+  await page
+    .getByTestId('scenario-card')
+    .filter({ hasText: '永定河联合调度' })
+    .getByRole('link', { name: '管理场景' })
+    .click();
 
-  await expect(page.getByRole('heading', { name: '场景说明' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '导调控制台' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '事件回放' })).toBeVisible();
-  await page.getByRole('button', { name: '反馈返回', exact: true }).click();
-  const trace = page.getByRole('list', { name: '智能体运行链路' });
-  await expect(trace.getByText('L2 反馈返回')).toBeVisible();
-  await expect(trace.getByText('首轮方案提交')).toBeHidden();
+  await expect(page.getByRole('heading', { name: '场景编排' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: '角色与协作契约' }),
+  ).toBeVisible();
+  await expect(page.getByTestId('role-slot')).toHaveCount(4);
+});
+
+test('observes parallel agents, cross-agent links, and perspective replay', async ({
+  page,
+}) => {
+  await page.goto('/zh-CN/runs/run-yongding-spring-042/trace');
+
+  await expect(
+    page.getByRole('heading', { name: '多智能体协作 Trace' }),
+  ).toBeVisible();
+  await expect(page.getByTestId('agent-lane')).toHaveCount(5);
+  await page.getByRole('button', { name: /调度协调/ }).click();
+  await expect(page.getByTestId('span-inspector')).toContainText('Agent');
+
+  await page.getByRole('link', { name: '事件回放' }).click();
+  await expect(page).toHaveURL(/\/replay$/);
+  await page.getByLabel('回放视角').selectOption('agent-ecology');
+  await expect(page.getByText('生态目标智能体当时可见')).toBeVisible();
+  await expect(page.getByTestId('replay-event')).toHaveCount(5);
+});
+
+test('keeps the operator workspace usable on a narrow screen', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/zh-CN/runs/run-yongding-spring-042/trace');
+
+  await expect(
+    page.getByRole('heading', { name: '多智能体协作 Trace' }),
+  ).toBeVisible();
+  const overflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
 });

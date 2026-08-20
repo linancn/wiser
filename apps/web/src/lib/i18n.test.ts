@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_LOCALE, dictionaries, isLocale, LOCALES } from './i18n';
-import { yongdingScenario } from './scenario';
+import { scenarios } from './platform';
 
 function keysOf(value: unknown, prefix = ''): string[] {
   if (Array.isArray(value)) {
@@ -32,13 +32,13 @@ describe('bilingual product contract', () => {
     );
   });
 
-  it('anchors the demo to the 2023 Yongding River ecological replenishment exercise', () => {
-    expect(yongdingScenario.id).toBe('yongding-2023-ecological-replenishment');
-    expect(yongdingScenario.title['zh-CN']).toBe(
+  it('keeps Yongding as the first case inside a multi-scenario catalog', () => {
+    expect(scenarios[0]?.id).toBe('yongding-2023-ecological-replenishment');
+    expect(scenarios[0]?.title['zh-CN']).toBe(
       '2023 永定河春季生态补水——京津冀多水源联合调度（事实锚定合成版）',
     );
-    expect(yongdingScenario.sources).toHaveLength(4);
-    expect(JSON.stringify({ dictionaries, yongdingScenario })).not.toContain(
+    expect(scenarios.length).toBeGreaterThanOrEqual(3);
+    expect(JSON.stringify({ dictionaries, scenarios })).not.toContain(
       ['防', '汛'].join(''),
     );
   });
