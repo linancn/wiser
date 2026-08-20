@@ -1,3 +1,8 @@
+import { DomainError } from './domain-error.js';
+
+export { DomainError } from './domain-error.js';
+export * from './v2/index.js';
+
 export type EpisodeState =
   | 'waiting_for_submission'
   | 'evaluation_queued'
@@ -74,16 +79,6 @@ export interface EvaluationResult {
     readonly timeTravelViolations: number;
     readonly totalScore: number;
   };
-}
-
-export class DomainError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'DomainError';
-  }
 }
 
 function fail(code: string, message: string): never {
