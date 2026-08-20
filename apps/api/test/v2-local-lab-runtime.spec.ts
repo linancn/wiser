@@ -26,7 +26,7 @@ async function temporaryDirectory(): Promise<string> {
 }
 
 describe('v2 local lab runtime bundle', () => {
-  it('writes a redacted manifest and four isolated 0600 credential files', async () => {
+  it('writes a redacted manifest, four isolated credentials, and one host-only operator credential', async () => {
     const parent = await temporaryDirectory();
     const runtimeDirectory = join(parent, 'runtime');
     const lab = await createV2LocalLab({
@@ -42,6 +42,9 @@ describe('v2 local lab runtime bundle', () => {
 
     expect(bundle.manifestPath).toBe(join(runtimeDirectory, 'manifest.json'));
     expect(bundle.credentialFiles).toHaveLength(4);
+    expect(bundle.operatorCredentialFile).toBe(
+      join(runtimeDirectory, 'credentials', 'operator.env'),
+    );
     expect((await stat(runtimeDirectory)).mode & 0o777).toBe(0o700);
     expect(
       (await stat(join(runtimeDirectory, 'credentials'))).mode & 0o777,
@@ -50,12 +53,14 @@ describe('v2 local lab runtime bundle', () => {
     const manifestText = await readFile(bundle.manifestPath, 'utf8');
     const manifest = JSON.parse(manifestText) as {
       readonly apiBaseUrl: string;
+      readonly operatorCredentialEnvFile: string;
       readonly roster: readonly {
         readonly roleSlotId: string;
         readonly credentialEnvFile: string;
       }[];
     };
     expect(manifest.apiBaseUrl).toBe('http://127.0.0.1:3101/api/v2/');
+    expect(manifest.operatorCredentialEnvFile).toBe('credentials/operator.env');
     expect(manifest.roster).toHaveLength(4);
     expect(manifestText).not.toContain(lab.operatorToken);
     for (const { token } of lab.credentials) {
@@ -80,6 +85,24 @@ describe('v2 local lab runtime bundle', () => {
       )) {
         expect(content).not.toContain(other.token);
       }
+    }
+
+    expect((await stat(bundle.operatorCredentialFile)).mode & 0o777).toBe(
+      0o600,
+    );
+    const operatorContent = await readFile(
+      bundle.operatorCredentialFile,
+      'utf8',
+    );
+    expect(operatorContent).toContain(
+      'AGENT_EXCON_API_URL=http://127.0.0.1:3101/api/v2/',
+    );
+    expect(operatorContent).toContain(
+      `AGENT_EXCON_OPERATOR_API_KEY=${lab.operatorToken}`,
+    );
+    expect(operatorContent).toContain(`WISER_RUN_ID=${lab.manifest.runId}`);
+    for (const { token } of lab.credentials) {
+      expect(operatorContent).not.toContain(token);
     }
   });
 
