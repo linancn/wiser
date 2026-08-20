@@ -52,7 +52,7 @@ pnpm exec supabase gen types --lang typescript --local
 pnpm observability:up
 ```
 
-This starts pinned patch releases of OTel Collector, Tempo, Prometheus, Loki, and Grafana. Grafana is available at `http://127.0.0.1:3300`; OTLP binds to loopback ports `4317/4318`. This ingress is for trusted local development only; production external agents cannot connect directly to the Collector.
+This starts the Telemetry Ingress plus pinned patch releases of OTel Collector, Tempo, Prometheus, Loki, and Grafana. Grafana is available at `http://127.0.0.1:3300`; participant OTLP/HTTP enters through `http://127.0.0.1:14318`, while trusted platform OTLP uses `4317/4318`. External agents cannot connect directly to the Collector.
 
 Stop the profile while preserving its named volumes with `pnpm observability:down`.
 

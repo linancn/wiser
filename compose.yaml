@@ -119,6 +119,34 @@ services:
     networks:
       - excon
 
+  telemetry-ingress:
+    <<: *app
+    profiles: [observability]
+    command: pnpm --filter @agent-excon/telemetry-ingress dev
+    environment:
+      TELEMETRY_INGRESS_HOST: 0.0.0.0
+      TELEMETRY_INGRESS_PORT: 3003
+      OTEL_COLLECTOR_INTERNAL_URL: http://otel-collector:4318
+      WISER_TELEMETRY_LOCAL_TOKEN: ${WISER_TELEMETRY_LOCAL_TOKEN:-local-participant-telemetry-token-0001}
+      WISER_TELEMETRY_LOCAL_RUN_ID: 51000000-0000-4000-8000-000000000001
+      WISER_TELEMETRY_LOCAL_RUN_AGENT_ID: 53000000-0000-4000-8000-000000000001
+      WISER_TELEMETRY_LOCAL_ROLE: water-evidence
+    ports:
+      - 127.0.0.1:14318:3003
+    depends_on:
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3003/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
   tempo:
     image: grafana/tempo:3.0.3@sha256:0296560ac66f8a3600d7fb3014a52c189d4d9c3549ad6ff441bf2409855d68d5
     profiles: [observability]

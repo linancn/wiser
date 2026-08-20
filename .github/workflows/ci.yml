@@ -91,14 +91,14 @@ jobs:
           node-version: 24.19.0
 
       - name: Start pinned observability profile
-        run: docker compose --profile observability up -d otel-collector tempo prometheus loki grafana
+        run: docker compose --profile observability up -d --build otel-collector telemetry-ingress tempo prometheus loki grafana
 
       - name: Verify OTLP traces, metrics, logs, and redaction
         run: node infrastructure/observability/smoke.mjs
 
       - name: Print observability logs on failure
         if: failure()
-        run: docker compose --profile observability logs --no-color --tail=300 otel-collector tempo prometheus loki grafana
+        run: docker compose --profile observability logs --no-color --tail=300 telemetry-ingress otel-collector tempo prometheus loki grafana
 
       - name: Stop observability profile
         if: always()

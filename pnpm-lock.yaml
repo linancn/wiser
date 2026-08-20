@@ -128,6 +128,34 @@ importers:
         specifier: 'catalog:'
         version: 6.0.3
 
+  apps/telemetry-ingress:
+    dependencies:
+      fastify:
+        specifier: 5.12.1
+        version: 5.12.1
+      pg:
+        specifier: 8.23.0
+        version: 8.23.0
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
+      tsx:
+        specifier: 4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.11
+        version: 4.1.11(@types/node@24.13.3)(@vitest/coverage-v8@4.1.11)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
+
   apps/web:
     dependencies:
       next:

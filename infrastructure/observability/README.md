@@ -3,10 +3,11 @@
 This optional Compose profile provides a local technical drill-down stack:
 
 ```text
-OTLP gRPC/HTTP → OpenTelemetry Collector
-                 ├─ traces  → Tempo
-                 ├─ metrics → Prometheus
-                 └─ logs    → Loki
+Participant OTLP/HTTP → Authenticated Telemetry Ingress ┐
+Platform OTLP gRPC/HTTP ────────────────────────────────┴→ Collector
+                                                          ├─ traces  → Tempo
+                                                          ├─ metrics → Prometheus
+                                                          └─ logs    → Loki
 
 Grafana ← Tempo + Prometheus + Loki
 ```
@@ -28,10 +29,12 @@ pnpm observability:smoke
 pnpm observability:down
 ```
 
-Grafana listens on <http://127.0.0.1:3300>. OTLP listens on loopback ports `4317` and `4318`. Prometheus listens on <http://127.0.0.1:9090>. Data persists in named volumes until explicitly removed.
+Grafana listens on <http://127.0.0.1:3300>. Participant OTLP/HTTP enters through <http://127.0.0.1:14318>; trusted platform OTLP uses loopback ports `4317` and `4318`. Prometheus listens on <http://127.0.0.1:9090>. Data persists in named volumes until explicitly removed.
 
 ## Trust boundary
 
-This profile is for trusted local development only. Loopback binding prevents LAN exposure, but the Collector endpoint itself is not the production authentication boundary. Production participant telemetry must first pass through the WISER Telemetry Ingress, which binds a short-lived credential to `run_agent_id`, overwrites identity attributes, applies quotas, and rejects sensitive content.
+The participant-facing ingress validates an opaque credential, binds it to one `run_agent_id`, overwrites identity attributes, applies body/record/request quotas, and rejects sensitive content before forwarding OTLP to the internal Collector. Compose uses an explicit local token; production verifies the HMAC token hash, expiry, revocation, Agent lifecycle, and `telemetry:write` scope against PostgreSQL.
+
+The direct Collector ports remain available only for trusted local platform instrumentation. They bind to loopback and are not the participant endpoint.
 
 The Collector deletes known prompt, completion, tool-body, submission, feedback, and hidden-outcome attributes as a second line of defense. Applications must still avoid emitting those values in the first place. Telemetry remains best-effort and never replaces PostgreSQL RunEvent/Receipt audit facts.

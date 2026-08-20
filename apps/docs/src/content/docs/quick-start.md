@@ -67,7 +67,7 @@ pnpm exec supabase gen types --lang typescript --local
 pnpm observability:up
 ```
 
-这会启动固定 patch 版本的 OTel Collector、Tempo、Prometheus、Loki 和 Grafana。Grafana 位于 `http://127.0.0.1:3300`，OTLP 位于回环端口 `4317/4318`。该入口只用于可信本机开发；生产外部 Agent 不能直连 Collector。
+这会启动固定 patch 版本的 Telemetry Ingress、OTel Collector、Tempo、Prometheus、Loki 和 Grafana。Grafana 位于 `http://127.0.0.1:3300`；外部 Agent 的 OTLP/HTTP 进入 `http://127.0.0.1:14318`，平台可信 OTLP 使用 `4317/4318`。外部 Agent 不能直连 Collector。
 
 停止但保留数据卷：
 

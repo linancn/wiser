@@ -29,9 +29,9 @@
     "compose:up": "docker compose up --build --wait",
     "compose:down": "docker compose down",
     "observability:config": "docker compose --profile observability config --quiet",
-    "observability:up": "docker compose --profile observability up -d otel-collector tempo prometheus loki grafana",
+    "observability:up": "docker compose --profile observability up -d --build otel-collector telemetry-ingress tempo prometheus loki grafana",
     "observability:smoke": "node infrastructure/observability/smoke.mjs",
-    "observability:down": "docker compose --profile observability stop otel-collector tempo prometheus loki grafana",
+    "observability:down": "docker compose --profile observability stop telemetry-ingress otel-collector tempo prometheus loki grafana",
     "stack:up": "pnpm supabase:start && pnpm compose:up",
     "stack:down": "pnpm compose:down && pnpm supabase:stop"
   },

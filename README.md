@@ -63,7 +63,7 @@ pnpm stack:up
 pnpm observability:up
 ```
 
-它在回环地址提供 OTLP `:4317/:4318`、Grafana `:3300` 和 Prometheus `:9090`，并用 Tempo/Loki 保存本地 Trace/Log。`pnpm observability:down` 只停止这些服务并保留命名卷。Collector 是可信本地入口；生产参训者 Telemetry 仍必须经过绑定 RunAgent 身份的认证 Ingress。
+它在回环地址提供参训者 OTLP/HTTP Ingress `:14318`、平台 OTLP `:4317/:4318`、Grafana `:3300` 和 Prometheus `:9090`，并用 Tempo/Loki 保存本地 Trace/Log。Ingress 绑定 RunAgent、覆盖自报身份、限流并拒绝敏感字段；`pnpm observability:down` 只停止这些服务并保留命名卷。
 
 本机 Codex 订阅只供可信开发调试，运行在宿主机；容器和 CI 默认使用 fake provider。切勿提交或挂载 `~/.codex/auth.json`、Supabase service-role key 或其他凭据。
 

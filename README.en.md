@@ -63,7 +63,7 @@ Start the optional local technical-observability stack with:
 pnpm observability:up
 ```
 
-It exposes loopback-only OTLP on `:4317/:4318`, Grafana on `:3300`, and Prometheus on `:9090`, with local Trace/Log storage in Tempo/Loki. `pnpm observability:down` stops only these services and preserves named volumes. The Collector is a trusted local ingress; production participant telemetry must still pass through an authenticated RunAgent-bound ingress.
+It exposes a participant OTLP/HTTP ingress on loopback `:14318`, trusted platform OTLP on `:4317/:4318`, Grafana on `:3300`, and Prometheus on `:9090`, with local Trace/Log storage in Tempo/Loki. The ingress binds RunAgent identity, overwrites reported identity, applies quotas, and rejects sensitive fields. `pnpm observability:down` stops only these services and preserves named volumes.
 
 Codex subscription auth is host-only for trusted local development. Containers and CI default to the fake provider. Never commit or mount `~/.codex/auth.json`, Supabase service-role keys, or other credentials.
 
