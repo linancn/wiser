@@ -15,12 +15,12 @@ HTTP API 是唯一业务协议底座。Web、客户端 SDK、Skill 脚本和 MCP
 | ------ | ---------------------------------------- | ------------------------------- |
 | `POST` | `/episodes`                              | 从固定 ScenarioVersion 创建演练 |
 | `GET`  | `/episodes/{episodeId}`                  | 获取状态与当前虚拟时间          |
+| `POST` | `/episodes/{episodeId}/observe`          | 交付已释放信息并记录实际访问    |
 | `GET`  | `/episodes/{episodeId}/observations`     | 获取当前参与者已经获得的观察    |
 | `POST` | `/episodes/{episodeId}/submissions`      | 创建不可变提交版本              |
 | `GET`  | `/submissions/{submissionId}/evaluation` | 获取评价状态与结果              |
 | `GET`  | `/episodes/{episodeId}/feedback`         | 获取当前可见反馈                |
 | `POST` | `/episodes/{episodeId}/advance`          | 授权推进虚拟时间或阶段          |
-| `POST` | `/episodes/{episodeId}/finalize`         | 锁定最终提交                    |
 | `GET`  | `/episodes/{episodeId}/events`           | 分页读取可见事件流              |
 
 ## 创建 Episode
@@ -34,13 +34,45 @@ Content-Type: application/json
 
 ```json
 {
-  "scenarioVersionId": "018f...",
-  "participantVersion": "dispatch-agent@1.3.0",
-  "mode": "exercise"
+  "scenarioVersionId": "jjj-yongding-replenishment-2023-v1",
+  "participantVersionId": "22222222-2222-4222-8222-222222222222"
 }
 ```
 
 成功返回 `201`；相同主体、路径和幂等键重试返回同一资源。幂等键复用但请求体不同，返回 `409`。
+
+## Observe、提交与推进
+
+三类写操作都携带 UUID `Idempotency-Key` 和最近一次返回的 Episode version：
+
+```json
+// POST /episodes/{id}/observe
+{ "episodeVersion": 1 }
+
+// POST /episodes/{id}/submissions
+{
+  "episodeVersion": 2,
+  "plan": {
+    "stage": 1,
+    "sourceReleases": [
+      {
+        "sourceId": "guanting",
+        "flowM3s": 20,
+        "evidenceRefs": ["official-flow-20230322-guanting"]
+      }
+    ],
+    "expectedSectionFlows": [
+      { "sectionId": "sanjiadian", "flowM3s": 18 }
+    ],
+    "isFinal": false
+  }
+}
+
+// POST /episodes/{id}/advance
+{ "episodeVersion": 5 }
+```
+
+上例为 envelope 示意；实际方案必须包含三个水源和四个断面，并通过共享 Zod 契约。第二阶段最终方案仍通过 `advance` 完成 Episode，不另设 finalize 路由。提交响应包含 `submissionId`、同步确定性 `evaluation`、`feedback` 和对账链接；可用 `GET /submissions/{id}/evaluation` 安全重试查询。
 
 ## 响应与错误
 
@@ -63,17 +95,16 @@ Content-Type: application/json
 
 | 状态码 | 含义                             |
 | ------ | -------------------------------- |
-| `400`  | Schema 或字段范围错误            |
 | `401`  | 缺少或无效身份                   |
 | `403`  | 已知资源上的操作不被允许         |
 | `404`  | 资源不存在或调用方无权知道其存在 |
 | `409`  | 状态转换、版本或幂等冲突         |
-| `422`  | 载荷有效，但违反领域规则         |
+| `422`  | Schema、字段范围或领域规则失败   |
 | `429`  | 限流；附 `Retry-After`           |
 
 ## 并发和一致性
 
-写操作在数据库事务内锁定 Episode 当前版本。响应包含版本/ETag；需要防止覆盖的管理操作使用 `If-Match`。状态变化与 Event 写入同一事务。
+写操作校验 Episode 当前版本；持久化实现必须在数据库事务内锁定对应行，并让状态变化与 Event 同时提交。
 
 列表接口使用稳定 cursor，不使用会因新事件插入而漂移的页码。
 

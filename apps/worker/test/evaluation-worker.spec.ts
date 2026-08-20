@@ -36,17 +36,26 @@ const workItem: EvaluationWorkItem = {
         {
           sourceId: 'guanting',
           flowM3s: 20,
-          evidenceRefs: ['official-flow-20230322-guanting'],
+          evidenceRefs: [
+            'official-flow-20230322-guanting',
+            'simulated-rules-20230322-stage-1',
+          ],
         },
         {
           sourceId: 'south-water',
           flowM3s: 1,
-          evidenceRefs: ['official-flow-20230322-lugouqiao'],
+          evidenceRefs: [
+            'simulated-source-limit-20230322-south-water',
+            'simulated-rules-20230322-stage-1',
+          ],
         },
         {
           sourceId: 'reclaimed-lower',
           flowM3s: 2.5,
-          evidenceRefs: ['official-flow-20230322-cuizhihuiying'],
+          evidenceRefs: [
+            'simulated-source-limit-20230322-reclaimed-lower',
+            'simulated-rules-20230322-stage-1',
+          ],
         },
       ],
       expectedSectionFlows: [
@@ -81,11 +90,11 @@ const workItem: EvaluationWorkItem = {
         accessedTime: '2023-03-22T07:01:00.000Z',
       },
       {
-        informationId: 'official-flow-20230322-lugouqiao',
+        informationId: 'simulated-source-limit-20230322-south-water',
         accessedTime: '2023-03-22T07:02:00.000Z',
       },
       {
-        informationId: 'official-flow-20230322-cuizhihuiying',
+        informationId: 'simulated-source-limit-20230322-reclaimed-lower',
         accessedTime: '2023-03-22T07:03:00.000Z',
       },
     ],

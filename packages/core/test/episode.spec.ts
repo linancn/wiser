@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  DomainError,
+  type DomainError,
   advanceEpisode,
   completeEpisode,
   createEpisode,

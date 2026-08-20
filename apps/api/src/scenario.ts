@@ -108,8 +108,8 @@ export const DEFAULT_SCENARIO: ScenarioDocument =
       {
         id: 'cuizhihuiying',
         name: {
-          'zh-CN': '翠之汇营（合成控制点）',
-          en: 'Cuizhihuiying (synthetic control point)',
+          'zh-CN': '崔指挥营（京冀边界控制断面）',
+          en: 'Cuizhihuiying (Beijing–Hebei boundary control section)',
         },
       },
       { id: 'qujiadian', name: { 'zh-CN': '屈家店', en: 'Qujiadian' } },
@@ -127,16 +127,50 @@ export const SCENARIO_INFORMATION: readonly ScenarioInformation[] =
       ingestedTime: '2023-03-22T06:56:00.000Z',
       releasedTime: '2023-03-22T07:00:00.000Z',
       payload: {
-        sourceId: 'guanting',
-        maximumFlowM3s: 24,
+        sectionId: 'guanting',
+        observedFlowM3s: 20.7,
         unit: 'm3/s',
+        provenance: 'beijing-water-authority-2023-03-22',
+      },
+      sourceUrl:
+        'https://swj.beijing.gov.cn/swdt/ztzl/2023nydhstbsdt/2023bsmrxx/202303/t20230322_2942113.html',
+      isSynthetic: false,
+    },
+    {
+      id: 'simulated-rules-20230322-stage-1',
+      informationId: 'simulated-rules-20230322-stage-1',
+      informationType: 'simulated_constraint',
+      eventTime: '2023-03-22T00:00:00.000Z',
+      observedTime: '2023-03-22T00:00:00.000Z',
+      ingestedTime: '2023-03-22T06:59:00.000Z',
+      releasedTime: '2023-03-22T07:00:00.000Z',
+      payload: {
+        sources: [
+          { sourceId: 'guanting', maximumFlowM3s: 24 },
+          { sourceId: 'south-water', maximumFlowM3s: 10 },
+          { sourceId: 'reclaimed-lower', maximumFlowM3s: 6 },
+        ],
+        sectionTargets: [
+          { sectionId: 'sanjiadian', minimumFlowM3s: 10 },
+          { sectionId: 'lugouqiao', minimumFlowM3s: 16 },
+          { sectionId: 'cuizhihuiying', minimumFlowM3s: 15 },
+          { sectionId: 'qujiadian', minimumFlowM3s: 12 },
+        ],
+        transferModel: {
+          guantingToSanjiadian: 0.9,
+          sanjiadianToLugouqiao: 0.88,
+          lugouqiaoToCuizhihuiying: 0.82,
+          cuizhihuiyingToQujiadian: 0.9,
+        },
+        totalReleaseLimitM3s: 30,
+        simulationOnly: true,
         provenance: 'simulation-only',
       },
       isSynthetic: true,
     },
     {
-      id: 'official-flow-20230322-lugouqiao',
-      informationId: 'official-flow-20230322-lugouqiao',
+      id: 'simulated-source-limit-20230322-south-water',
+      informationId: 'simulated-source-limit-20230322-south-water',
       informationType: 'simulated_constraint',
       eventTime: '2023-03-22T00:00:00.000Z',
       observedTime: '2023-03-22T00:00:00.000Z',
@@ -151,8 +185,8 @@ export const SCENARIO_INFORMATION: readonly ScenarioInformation[] =
       isSynthetic: true,
     },
     {
-      id: 'official-flow-20230322-cuizhihuiying',
-      informationId: 'official-flow-20230322-cuizhihuiying',
+      id: 'simulated-source-limit-20230322-reclaimed-lower',
+      informationId: 'simulated-source-limit-20230322-reclaimed-lower',
       informationType: 'simulated_constraint',
       eventTime: '2023-03-22T00:00:00.000Z',
       observedTime: '2023-03-22T00:00:00.000Z',
@@ -176,6 +210,25 @@ export const SCENARIO_INFORMATION: readonly ScenarioInformation[] =
       releasedTime: '2023-03-23T03:10:00.000Z',
       payload: {
         constraintVersion: 'yongding-stage-2-v1',
+        sources: [
+          { sourceId: 'guanting', maximumFlowM3s: 24 },
+          { sourceId: 'south-water', maximumFlowM3s: 3 },
+          { sourceId: 'reclaimed-lower', maximumFlowM3s: 6 },
+        ],
+        sectionTargets: [
+          { sectionId: 'sanjiadian', minimumFlowM3s: 10 },
+          { sectionId: 'lugouqiao', minimumFlowM3s: 16 },
+          { sectionId: 'cuizhihuiying', minimumFlowM3s: 15 },
+          { sectionId: 'qujiadian', minimumFlowM3s: 15 },
+        ],
+        transferModel: {
+          guantingToSanjiadian: 0.9,
+          sanjiadianToLugouqiao: 0.78,
+          lugouqiaoToCuizhihuiying: 0.82,
+          cuizhihuiyingToQujiadian: 0.9,
+        },
+        totalReleaseLimitM3s: 30,
+        simulationOnly: true,
         note: {
           'zh-CN': '合成通道约束更新已发布，请修订第二阶段方案。',
           en: 'A synthetic corridor constraint update is available; revise the stage-two plan.',

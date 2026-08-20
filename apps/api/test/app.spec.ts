@@ -122,17 +122,26 @@ const canonicalPlan = {
     {
       sourceId: 'guanting',
       flowM3s: 20,
-      evidenceRefs: ['official-flow-20230322-guanting'],
+      evidenceRefs: [
+        'official-flow-20230322-guanting',
+        'simulated-rules-20230322-stage-1',
+      ],
     },
     {
       sourceId: 'south-water',
       flowM3s: 1,
-      evidenceRefs: ['official-flow-20230322-lugouqiao'],
+      evidenceRefs: [
+        'simulated-source-limit-20230322-south-water',
+        'simulated-rules-20230322-stage-1',
+      ],
     },
     {
       sourceId: 'reclaimed-lower',
       flowM3s: 2.5,
-      evidenceRefs: ['official-flow-20230322-cuizhihuiying'],
+      evidenceRefs: [
+        'simulated-source-limit-20230322-reclaimed-lower',
+        'simulated-rules-20230322-stage-1',
+      ],
     },
   ],
   expectedSectionFlows: [
@@ -142,6 +151,37 @@ const canonicalPlan = {
     { sectionId: 'qujiadian', flowM3s: 14.18436 },
   ],
   isFinal: false,
+} as const;
+
+const canonicalStageTwoPlan = {
+  stage: 2,
+  sourceReleases: [
+    {
+      sourceId: 'guanting',
+      flowM3s: 23.3,
+      evidenceRefs: [
+        'official-flow-20230322-guanting',
+        'simulated-rules-20230322-stage-1',
+      ],
+    },
+    {
+      sourceId: 'south-water',
+      flowM3s: 0,
+      evidenceRefs: ['simulated-update-20230323-corridor'],
+    },
+    {
+      sourceId: 'reclaimed-lower',
+      flowM3s: 4,
+      evidenceRefs: ['simulated-update-20230323-corridor'],
+    },
+  ],
+  expectedSectionFlows: [
+    { sectionId: 'sanjiadian', flowM3s: 20.97 },
+    { sectionId: 'lugouqiao', flowM3s: 16.3566 },
+    { sectionId: 'cuizhihuiying', flowM3s: 16.692412 },
+    { sectionId: 'qujiadian', flowM3s: 15.0231708 },
+  ],
+  isFinal: true,
 } as const;
 
 describe('Agent EXCON HTTP walking slice', () => {
@@ -227,7 +267,7 @@ describe('Agent EXCON HTTP walking slice', () => {
     expect(observed.statusCode).toBe(200);
     const observedBody = ObserveResponseSchema.parse(json(observed));
     expect(observedBody.episode.version).toBe(2);
-    expect(observedBody.observations).toHaveLength(3);
+    expect(observedBody.observations).toHaveLength(4);
 
     const listed = await instance.inject({
       method: 'GET',
@@ -332,6 +372,97 @@ describe('Agent EXCON HTTP walking slice', () => {
       'episode.advanced',
     ]);
   });
+
+  it('runs the second checkpoint to a completed final plan', async () => {
+    const instance = app();
+    const created = await startEpisode(
+      instance,
+      '10000000-0000-4000-8000-000000000040',
+    );
+    const episodeId = EpisodeEnvelopeSchema.parse(json(created)).episode.id;
+    const observed = await instance.inject({
+      method: 'POST',
+      url: `/api/v1/episodes/${episodeId}/observe`,
+      headers: {
+        ...headers,
+        'idempotency-key': '10000000-0000-4000-8000-000000000041',
+      },
+      payload: { episodeVersion: 1 },
+    });
+    expect(ObserveResponseSchema.parse(json(observed)).episode.version).toBe(2);
+    const firstSubmitted = await instance.inject({
+      method: 'POST',
+      url: `/api/v1/episodes/${episodeId}/submissions`,
+      headers: {
+        ...headers,
+        'idempotency-key': '10000000-0000-4000-8000-000000000042',
+      },
+      payload: { episodeVersion: 2, plan: canonicalPlan },
+    });
+    expect(
+      SubmissionResponseSchema.parse(json(firstSubmitted)).episode.version,
+    ).toBe(5);
+    const firstAdvanced = await instance.inject({
+      method: 'POST',
+      url: `/api/v1/episodes/${episodeId}/advance`,
+      headers: {
+        ...headers,
+        'idempotency-key': '10000000-0000-4000-8000-000000000043',
+      },
+      payload: { episodeVersion: 5 },
+    });
+    expect(
+      EpisodeEnvelopeSchema.parse(json(firstAdvanced)).episode.version,
+    ).toBe(6);
+    const secondObserved = await instance.inject({
+      method: 'POST',
+      url: `/api/v1/episodes/${episodeId}/observe`,
+      headers: {
+        ...headers,
+        'idempotency-key': '10000000-0000-4000-8000-000000000044',
+      },
+      payload: { episodeVersion: 6 },
+    });
+    const secondObservedBody = ObserveResponseSchema.parse(
+      json(secondObserved),
+    );
+    expect(secondObservedBody.episode.version).toBe(7);
+    expect(secondObservedBody.observations).toContainEqual(
+      expect.objectContaining({
+        informationId: 'simulated-update-20230323-corridor',
+      }),
+    );
+    const finalSubmitted = await instance.inject({
+      method: 'POST',
+      url: `/api/v1/episodes/${episodeId}/submissions`,
+      headers: {
+        ...headers,
+        'idempotency-key': '10000000-0000-4000-8000-000000000045',
+      },
+      payload: { episodeVersion: 7, plan: canonicalStageTwoPlan },
+    });
+    const finalSubmittedBody = SubmissionResponseSchema.parse(
+      json(finalSubmitted),
+    );
+    expect(finalSubmittedBody).toMatchObject({
+      episode: { state: 'feedback_available', version: 10 },
+      evaluation: { verdict: 'pass', metrics: { totalScore: 100 } },
+      feedback: { allowedActions: ['finalize'] },
+    });
+    const completed = await instance.inject({
+      method: 'POST',
+      url: `/api/v1/episodes/${episodeId}/advance`,
+      headers: {
+        ...headers,
+        'idempotency-key': '10000000-0000-4000-8000-000000000046',
+      },
+      payload: { episodeVersion: 10 },
+    });
+    expect(EpisodeEnvelopeSchema.parse(json(completed)).episode).toMatchObject({
+      state: 'completed',
+      version: 11,
+    });
+  });
 });
 
 describe('validation, ownership, versions, and idempotency', () => {
@@ -408,7 +539,7 @@ describe('validation, ownership, versions, and idempotency', () => {
       },
       payload: { episodeVersion: 1, plan: canonicalPlan },
     });
-    expect(unseen.statusCode).toBe(409);
+    expect(unseen.statusCode).toBe(422);
     expect(ApiErrorSchema.parse(json(unseen))).toMatchObject({
       error: { code: 'EVIDENCE_NOT_OBSERVED' },
     });

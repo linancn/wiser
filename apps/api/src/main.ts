@@ -4,7 +4,7 @@ import { InMemoryExerciseService } from './in-memory-service.js';
 import { ExerciseServiceError } from './types.js';
 
 function port(value: string | undefined): number {
-  const parsed = Number(value ?? '3000');
+  const parsed = Number(value ?? '3001');
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65_535) {
     throw new ExerciseServiceError(
       'VALIDATION_FAILED',

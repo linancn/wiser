@@ -71,7 +71,7 @@ export interface InMemoryExerciseServiceOptions {
   readonly now?: () => Date;
 }
 
-const STAGE_RULES = Object.freeze({
+const STAGE_ONE_RULES = Object.freeze({
   sources: Object.freeze([
     Object.freeze({ sourceId: 'guanting', maximumFlowM3s: 24 }),
     Object.freeze({ sourceId: 'south-water', maximumFlowM3s: 10 }),
@@ -91,6 +91,31 @@ const STAGE_RULES = Object.freeze({
   }),
   totalReleaseLimitM3s: 30,
 });
+
+const STAGE_TWO_RULES = Object.freeze({
+  sources: Object.freeze([
+    Object.freeze({ sourceId: 'guanting', maximumFlowM3s: 24 }),
+    Object.freeze({ sourceId: 'south-water', maximumFlowM3s: 3 }),
+    Object.freeze({ sourceId: 'reclaimed-lower', maximumFlowM3s: 6 }),
+  ]),
+  sectionTargets: Object.freeze([
+    Object.freeze({ sectionId: 'sanjiadian', minimumFlowM3s: 10 }),
+    Object.freeze({ sectionId: 'lugouqiao', minimumFlowM3s: 16 }),
+    Object.freeze({ sectionId: 'cuizhihuiying', minimumFlowM3s: 15 }),
+    Object.freeze({ sectionId: 'qujiadian', minimumFlowM3s: 15 }),
+  ]),
+  transferModel: Object.freeze({
+    guantingToSanjiadian: 0.9,
+    sanjiadianToLugouqiao: 0.78,
+    lugouqiaoToCuizhihuiying: 0.82,
+    cuizhihuiyingToQujiadian: 0.9,
+  }),
+  totalReleaseLimitM3s: 30,
+});
+
+function rulesForStage(stage: number) {
+  return stage === 2 ? STAGE_TWO_RULES : STAGE_ONE_RULES;
+}
 
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -380,7 +405,7 @@ export class InMemoryExerciseService implements ExerciseService {
           const submittedAt = this.timestamp();
           const evaluation = evaluateWaterAllocationPlan({
             submission: input.plan,
-            ...STAGE_RULES,
+            ...rulesForStage(input.plan.stage),
             evidenceTimestamps: [...stored.observations.values()].map(
               ({ informationId, accessedTime }) => ({
                 informationId,
