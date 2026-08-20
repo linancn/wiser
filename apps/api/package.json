@@ -11,7 +11,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsx src/main.ts",
+    "lab": "tsx src/local-lab-main.ts",
     "start": "node dist/main.js",
+    "start:lab": "node dist/local-lab-main.js",
     "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

@@ -28,6 +28,13 @@ export {
   type WriteV2LocalLabRuntimeBundleOptions,
 } from './v2-local-lab-runtime.js';
 export {
+  resolveV2LocalLabServerConfig,
+  startV2LocalLabServer,
+  type StartV2LocalLabServerOptions,
+  type V2LocalLabServer,
+  type V2LocalLabServerConfig,
+} from './v2-local-lab-server.js';
+export {
   DEFAULT_SCENARIO,
   DEFAULT_SCENARIO_VERSION_ID,
   type ScenarioDocument,
