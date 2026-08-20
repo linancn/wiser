@@ -1,0 +1,205 @@
+:root {
+  --excon-ink: #082f49;
+  --excon-water: #0891b2;
+  --excon-cyan: #22d3ee;
+  --excon-signal: #fbbf24;
+  --excon-mist: #e6f7fb;
+  --excon-paper: #f7fbfc;
+  --sl-font:
+    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'PingFang SC', 'Noto Sans CJK SC', sans-serif;
+  --sl-font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  --sl-color-accent-low: #083e56;
+  --sl-color-accent: #22d3ee;
+  --sl-color-accent-high: #bdf5ff;
+  --sl-color-bg-nav: color-mix(
+    in srgb,
+    var(--sl-color-bg) 92%,
+    var(--excon-ink)
+  );
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent-low: #d7f4f8;
+  --sl-color-accent: #087f98;
+  --sl-color-accent-high: #083d52;
+  --sl-color-bg: var(--excon-paper);
+  --sl-color-bg-nav: rgba(247, 251, 252, 0.92);
+  --sl-color-bg-sidebar: #f0f8fa;
+}
+
+body {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--excon-water) 5%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--excon-water) 5%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 40px 40px;
+  background-attachment: fixed;
+}
+
+.site-title {
+  letter-spacing: 0.045em;
+  font-weight: 780;
+}
+
+.hero h1 {
+  max-width: 14ch;
+  letter-spacing: -0.045em;
+  line-height: 1.03;
+}
+
+.hero .tagline {
+  max-width: 42rem;
+  line-height: 1.8;
+}
+
+.time-rail {
+  margin: 2.5rem 0 3rem;
+  border: 1px solid
+    color-mix(in srgb, var(--excon-water) 45%, var(--sl-color-hairline));
+  border-radius: 1.15rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--sl-color-bg) 92%, var(--excon-water));
+  box-shadow: 0 18px 55px color-mix(in srgb, var(--excon-ink) 14%, transparent);
+}
+
+.time-rail__lead {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.35fr) 1fr;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 1.25rem 1.4rem;
+  color: #e8fbff;
+  background: var(--excon-ink);
+}
+
+.time-rail__lead p {
+  margin: 0;
+  color: var(--excon-cyan);
+  font-family: var(--sl-font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.time-rail__lead strong {
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+}
+
+.time-rail ol {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.time-rail li {
+  position: relative;
+  display: grid;
+  gap: 0.55rem;
+  min-height: 8.6rem;
+  padding: 1.15rem;
+  border-inline-end: 1px solid var(--sl-color-hairline-light);
+}
+
+.time-rail li:last-child {
+  border-inline-end: 0;
+}
+
+.time-rail li::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 2rem;
+  inset-inline-start: -0.3rem;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--excon-cyan);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--excon-cyan) 18%, transparent);
+}
+
+.time-rail li:first-child::before {
+  display: none;
+}
+
+.time-rail__index {
+  color: var(--excon-water);
+  font-family: var(--sl-font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.time-rail code {
+  padding: 0;
+  color: var(--sl-color-text-accent);
+  background: transparent;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.time-rail li > span:last-child {
+  color: var(--sl-color-gray-2);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.sl-markdown-content h2 {
+  border-block-start: 1px solid
+    color-mix(in srgb, var(--excon-water) 28%, var(--sl-color-hairline));
+  padding-block-start: 1.35rem;
+}
+
+.sl-markdown-content table {
+  font-size: 0.9rem;
+}
+
+.sl-markdown-content code {
+  font-variant-ligatures: none;
+}
+
+@media (max-width: 52rem) {
+  .time-rail__lead {
+    grid-template-columns: 1fr;
+  }
+
+  .time-rail ol {
+    grid-template-columns: 1fr;
+  }
+
+  .time-rail li {
+    min-height: auto;
+    grid-template-columns: 2.5rem minmax(8rem, 0.45fr) 1fr;
+    align-items: baseline;
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--sl-color-hairline-light);
+  }
+
+  .time-rail li::before {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .time-rail {
+    animation: rail-arrive 420ms ease-out both;
+  }
+
+  @keyframes rail-arrive {
+    from {
+      opacity: 0;
+      transform: translateY(0.6rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

@@ -9,3 +9,8 @@ catalog:
   '@types/node': 24.13.3
   typescript: 6.0.3
   zod: 4.4.3
+
+minimumReleaseAgeExclude:
+  - '@astrojs/internal-helpers@0.10.4'
+  - '@astrojs/markdown-satteri@0.3.7'
+  - astro@7.2.4

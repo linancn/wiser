@@ -1,0 +1,70 @@
+---
+title: Agent Exercise Control Infrastructure
+description: Agent EXCON turns real-world task structure, time, rules, and verifiable outcomes into runnable, adjudicable, replayable agent environments.
+template: splash
+hero:
+  title: Exercise agents in a verifiable world
+  tagline: Agent EXCON controls task time and information visibility, accepts structured work, adjudicates it against evidence, and returns traceable feedback.
+  actions:
+    - text: Run the first loop
+      link: /en/quick-start/
+      variant: primary
+    - text: Explore the Yongding River dispatch
+      link: /en/scenarios/yongding-river-dispatch/
+      variant: secondary
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import HomeTimeline from '../../../components/HomeTimeline.astro';
+
+<HomeTimeline locale="en" />
+
+> The platform is designed for real projects and historical facts. Its current default is an isolated exercise that combines real water-system relationships with entirely synthetic operating data and never issues commands to operational systems.
+
+## A closed loop, not a collection of demo endpoints
+
+<CardGrid>
+  <Card title="Environment control">
+    Pin scenario versions and virtual time, then release observations without
+    hindsight leakage.
+  </Card>
+  <Card title="Fact-based adjudication">
+    Deterministic rules come first; statistical, model, and human evaluators
+    retain evidence and versions.
+  </Card>
+  <Card title="Open protocols">
+    HTTP is the foundation. SDKs, file-based Skills, and MCP share the same Zod
+    contracts.
+  </Card>
+  <Card title="Complete replay">
+    Injects, observations, submissions, evaluations, feedback, interventions,
+    and outcomes form an immutable event trail.
+  </Card>
+</CardGrid>
+
+## Choose a path
+
+<CardGrid stagger>
+  <LinkCard
+    title="Quick start"
+    href="/en/quick-start/"
+    description="Start support services and run Episode → Feedback."
+  />
+  <LinkCard
+    title="Architecture"
+    href="/en/architecture/overview/"
+    description="Understand the control plane, protocol API, database, and AI boundaries."
+  />
+  <LinkCard
+    title="HTTP protocol"
+    href="/en/protocols/http/"
+    description="Review resources, state, idempotency, and errors."
+  />
+  <LinkCard
+    title="TDD guide"
+    href="/en/contributing/tdd/"
+    description="Drive small commits from a fact-anchored synthetic water-system exercise."
+  />
+</CardGrid>
+
+> The current milestone is the first runnable vertical slice. These docs distinguish implemented behavior, protocol decisions, and later roadmap work.
