@@ -24,30 +24,42 @@ The real basin also extends upstream into Inner Mongolia and Shanxi. This exerci
 
 Official rates are historical Observation anchors, not prescribed decisions. The repository does not copy pages, images, or complete monitoring series; see the scenario `PROVENANCE.md`.
 
-## Participant task
+## Team decision task
 
-Under staged information, propose a 24-hour joint dispatch plan that allocates synthetic sources, defines a Guanting/downstream release combination, satisfies synthetic ecological-flow and quality targets, respects availability/capacity/travel-time/mass-balance constraints, and revises the plan when new Injects arrive.
+Multiple agents receive staged, differentiated information and jointly propose a 24-hour dispatch plan. The team allocates synthetic sources, defines a Guanting/downstream release combination, satisfies synthetic ecological-flow and quality targets, respects availability/capacity/travel-time/mass-balance constraints, and revises its plan as Injects arrive.
 
-The objective is not a real optimal solution. It is a reproducible test of whether an agent can build an explainable, recomputable plan from information available at the time.
+The objective is not a real optimal solution. It tests whether an agent team can build an explainable, recomputable plan through explicit collaboration using only information each member had received.
+
+## Multi-agent roles
+
+| Role                        | Responsibility                                                | Explicit deliverable                  |
+| --------------------------- | ------------------------------------------------------------- | ------------------------------------- |
+| Evidence and inflow agent   | Verify provenance, time, supersession, and inflow data        | Evidence register and inflow summary  |
+| Hydraulic constraints agent | Calculate transfer loss, section response, and capacity       | Section-constraint artifact           |
+| Ecological target agent     | Analyze target bands, continuity, and risk                    | Ecological priority and risk artifact |
+| Dispatch coordinator        | Integrate shared artifacts into candidate plans and revisions | Team Submission                       |
+
+The first three roles work in parallel and converge at an `analysis-ready` Barrier. The coordinator may consume explicit shared artifacts but never another agent's private context.
 
 ## Synthetic fixture
 
 The repository-safe fixture separates attributed official anchors from stage-one and stage-two synthetic rules, feasible plans, and generated Outcomes.
 
-Observation DTOs retain `eventTime`, `observedTime`, `ingestedTime`, `releasedTime`, wall-clock `accessedTime`, virtual `accessedVirtualTime`, and optional `supersedesInformationId`.
+Observation DTOs retain `eventTime`, `observedTime`, `ingestedTime`, `releasedTime`, wall-clock `accessedTime`, virtual `accessedVirtualTime`, and optional `supersedesInformationId`. v2 also freezes the exact view issued to every RunAgent as an immutable receipt.
 
 ## Timeline
 
 ```text
-2023-03-22 15:00 CST  Release stage-one anchors and complete synthetic rules
-                         Observe, submit, receive deterministic feedback, and revise if needed
+2023-03-22 15:00 CST  Release differentiated stage-one receipts to each role
+                         Run parallel Tasks, publish Artifacts, and converge at a Barrier
+                         Submit a team plan; deliver individual and team Feedback
 2023-03-23 11:10 CST  Release a complete superseding rule update
-                         Observe again, submit the stage-two final plan, and complete
+                         Revise in parallel and submit the stage-two team plan
 ```
 
 A revision increments `revisionNo` and links through `revisionOf`; it never overwrites the first plan.
 
-## Minimum submission
+## v1 compatibility submission
 
 ```json
 {
@@ -67,6 +79,8 @@ A revision increments `revisionNo` and links through `revisionOf`; it never over
 }
 ```
 
+The envelope above belongs to the existing single-agent compatibility slice. A v2 team Submission additionally references the Task, contributing RunAgents, ArtifactVersions, receipts, and endorsements.
+
 ## Deterministic adjudication
 
 The baseline checks schema, state, evidence visibility, three source limits, total release, 0.1 m³/s increments, the fixed four-section transfer model, 0.01 m³/s declared-flow tolerance, ecological targets, evidence coverage, and time travel.
@@ -79,5 +93,7 @@ Values use an abstract `scenario-volume-unit`, preventing synthetic quantities f
 - Plans exceeding synthetic availability or channel capacity return a locatable constraint error.
 - One idempotency key creates one Submission and one Event.
 - Original and revised plans remain queryable and comparable.
-- The Event stream rebuilds state and the visible dataset at each point in time.
+- RunEvents and AgentViewReceipts rebuild state and each agent's historical view.
 - A fixed scenario version and seed reproduce the same synthetic Outcome and score.
+- Parallel analysis Tasks continue while another Task is being evaluated.
+- Evaluation uses Span Links to reference contributing traces; domain replay still works after traces are removed.

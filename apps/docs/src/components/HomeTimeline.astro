@@ -11,14 +11,14 @@ const labels =
         ['observed_time', 'A source observes it'],
         ['ingested_time', 'The platform receives it'],
         ['released_time', 'EXCON releases it'],
-        ['accessed_time', 'The agent accesses it'],
+        ['acknowledged_time', 'The agent confirms a prior issued receipt'],
       ]
     : [
         ['event_time', '事件真实发生'],
         ['observed_time', '设备或人员观察'],
         ['ingested_time', '数据进入平台'],
         ['released_time', '导调中枢开放'],
-        ['accessed_time', '智能体实际获取'],
+        ['acknowledged_time', '智能体确认此前发放的 Receipt'],
       ];
 ---
 
@@ -31,8 +31,8 @@ const labels =
     <strong>
       {
         locale === 'en'
-          ? 'An agent can only use what EXCON has released.'
-          : '智能体只能使用导调中枢已经开放的信息。'
+          ? 'Each agent can only use information proven by its own receipt history.'
+          : '每个智能体只能使用自身 Receipt 历史可证明的信息。'
       }
     </strong>
   </div>

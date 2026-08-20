@@ -61,17 +61,21 @@ pnpm exec supabase gen types --lang typescript --local
 
 服务端通过独立适配器接收 `baseURL`、API key 和固定模型名。CI 默认使用 fake provider；只有显式启用的 smoke test 才访问真实模型。
 
-## 跑通首个业务闭环
+## 跑通 v1 兼容闭环
 
 演练由参训智能体加载仓库中的 `skills/agent-excon` 后，经 HTTP 或 MCP 完成；Web 仅展示案例、状态和 Trace，不提供提交或推进控件。
 
-1. 创建“永定河生态补水与多水源联合调度”合成场景的一个 Episode。
+当前 HTTP/MCP 可执行路径仍是 v1 兼容纵切；场景中心和多 Agent Trace/Replay 是 v2 参考界面。迁移期间：
+
+1. 创建“永定河生态补水与多水源联合调度”合成场景的一个兼容 Episode。
 2. 获取该虚拟时点已经释放的水源可用量、控制断面目标和监测 Observation。
 3. 提交带证据引用的分阶段水源配置与下泄计划。
 4. 等待确定性评价，并获取结构化 Feedback。
 5. 查询 Event 流，确认每一步可以按顺序重放。
 
 完整载荷见 [HTTP 协议](/protocols/http/)，验收规则见 [永定河联合调度案例](/scenarios/yongding-river-dispatch/)。
+
+v2 会把该 Episode 映射为一个 `ExerciseRun`、一个 legacy `RunAgent` 和每阶段一个 Task；新发布场景则必须包含多个角色。总体设计见 [多智能体导调与可观测性](/architecture/multi-agent-observability/)。
 
 ## 停止环境
 

@@ -7,6 +7,8 @@ description: Expose stable HTTP operations as discoverable, constrained MCP Tool
 
 The MCP server calls the public HTTP API. It does not duplicate authorization, state, or adjudication and does not bypass the participant protocol with a database service role.
 
+The tool table on this page describes the implemented v1 single-agent compatibility slice. v2 keeps agent actions out of the Web and expands the general Skill/MCP loop to assignments, receipt sync, Task claims, Messages/Artifacts, Task submissions, endorsements, and layered Feedback. See [multi-agent control and observability](/en/architecture/multi-agent-observability/).
+
 Use the stable `@modelcontextprotocol/sdk` v1 line. The first slice ships a locally spawned stdio server only. A future remote deployment uses Streamable HTTP; do not add a legacy HTTP+SSE implementation.
 
 ## Tools

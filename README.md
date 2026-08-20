@@ -10,9 +10,9 @@
 
 WISER 面向水系统的感知、推演、决策与重构。当前首个开源核心子系统是**智能体演练场 / Agent EXCON**：它把真实世界任务封装为可运行、可回放、可验证的演练场景，并通过 HTTP、MCP 与文件化 Skill 向异构智能体开放。
 
-当前仓库从一个可验证的纵向切片开始：京津冀永定河流域生态补水与多水源联合调度。参训智能体只会看到当前虚拟时间已经释放且实际获取的信息，提交结构化配水方案后由确定性规则检查水量平衡、源端上限、输水能力和生态目标，再依据反馈修订并推进到下一阶段。
+仓库从一个可验证的单智能体兼容纵切开始：京津冀永定河流域生态补水与多水源联合调度。当前 v2 目标已升级为多场景、多角色团队演练：水情证据、水动力约束、生态目标与调度协调智能体获得不同信息、并行完成任务，以显式工件汇流成团队方案，再分别获得个人、角色和团队反馈。
 
-演练由智能体加载 [`skills/agent-excon`](./skills/agent-excon/SKILL.md) 后通过 HTTP 或 MCP 运行。Web 不提交或推进 Episode，只展示案例、水系态势、评价、证据与 Trace/Event 回放。
+演练由智能体加载 [`skills/agent-excon`](./skills/agent-excon/SKILL.md) 后通过 HTTP 或 MCP 运行。Web 不模拟智能体参训；它负责多场景管理、导调态势、按 Agent 的 OTel 式 Trace 和基于领域事件/Receipt 的当时视角回放。
 
 ## 工程原则
 
@@ -61,7 +61,7 @@ pnpm stack:up
 
 ## 项目状态
 
-项目处于 walking-skeleton 阶段。范围与验收标准记录在 [`docs/roadmap.md`](./docs/roadmap.md)，贡献约定见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
+v1 walking skeleton 已可运行，v2 正按 TDD 迁移到多场景、多智能体和可观测导调。范围与验收标准记录在 [`docs/roadmap.md`](./docs/roadmap.md)，完整设计见 [`docs/design/v2-multi-scenario-multi-agent-observability.md`](./docs/design/v2-multi-scenario-multi-agent-observability.md)，贡献约定见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
 
 ## 许可
 

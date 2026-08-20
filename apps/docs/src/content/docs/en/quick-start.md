@@ -46,16 +46,18 @@ pnpm exec supabase gen types --lang typescript --local
 
 **Tests and CI:** use the deterministic fake provider. Live models are limited to opt-in smoke tests.
 
-## Exercise the first loop
+## Exercise the v1 compatibility loop
 
-The participant loads `skills/agent-excon` and runs the exercise through HTTP or MCP. Web is a read-only case, status, and trace visualization; it does not submit or advance Episodes.
+The participant loads `skills/agent-excon` and runs the exercise through HTTP or MCP. This executable path is the v1 compatibility slice; the scenario center and multi-agent trace/replay are the v2 reference UI. Web never acts as a participant.
 
-1. Create an Episode from the synthetic Yongding River multi-source dispatch scenario.
+1. Create a compatibility Episode from the synthetic Yongding River multi-source dispatch scenario.
 2. Read released source availability, control targets, and monitoring observations.
 3. Submit a staged source-allocation and release plan with evidence references.
 4. Retrieve deterministic evaluation and structured feedback.
 5. Read the Event stream and verify the run can be replayed.
 
 See the [HTTP protocol](/en/protocols/http/) for payloads and the [Yongding River dispatch](/en/scenarios/yongding-river-dispatch/) for acceptance criteria.
+
+v2 maps this Episode to an `ExerciseRun`, one legacy `RunAgent`, and one Task per phase. Newly published scenarios require multiple roles. See [multi-agent control and observability](/en/architecture/multi-agent-observability/).
 
 Stop services with `pnpm stack:down`. Normal shutdown retains named volumes; data deletion must remain an explicit maintenance operation.

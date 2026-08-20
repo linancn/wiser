@@ -7,6 +7,8 @@ description: 将稳定 HTTP 操作暴露为可发现、可约束的 MCP Tools �
 
 MCP Server 调用公开 HTTP API，不复制状态机、权限或裁决逻辑，也不使用数据库 service-role 绕开参训协议。这样 HTTP、SDK 与 MCP 得到相同结果和审计事件。
 
+本页工具表描述已实现的 v1 单 Agent 兼容纵切。v2 不会让前端代替智能体操作，而会把通用 Skill/MCP 循环升级为 assignment、sync Receipt、Task claim、Message/Artifact、Task Submission、endorsement 和分层 Feedback；设计见[多智能体导调与可观测性](/architecture/multi-agent-observability/)。
+
 当前采用 `@modelcontextprotocol/sdk` v1 稳定线，首个切片只交付由本地客户端拉起的 stdio Server。未来远程部署采用 Streamable HTTP；旧 HTTP+SSE transport 不用于新实现。
 
 ## 核心 Tools

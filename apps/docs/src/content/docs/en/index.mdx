@@ -21,7 +21,7 @@ import HomeTimeline from '../../../components/HomeTimeline.astro';
 
 > The default combines real water-system relationships and a few sourced historical observations with isolated synthetic capacities, targets, rules, plans, and outcomes. It never issues commands to operational systems.
 
-## A closed loop, not a collection of demo endpoints
+## A multi-agent environment, not a collection of demo endpoints
 
 <CardGrid>
   <Card title="Environment control">
@@ -36,9 +36,13 @@ import HomeTimeline from '../../../components/HomeTimeline.astro';
     HTTP is the foundation. SDKs, file-based Skills, and MCP share the same Zod
     contracts.
   </Card>
-  <Card title="Complete replay">
-    Injects, observations, submissions, evaluations, feedback, interventions,
-    and outcomes form an immutable event trail.
+  <Card title="Multi-agent collaboration">
+    Roles execute parallel Tasks, converge through explicit artifacts, and
+    receive distinct individual, role, and team feedback.
+  </Card>
+  <Card title="Historical-perspective replay">
+    Events and Agent receipts reconstruct what each member actually received;
+    OTel traces diagnose technology but do not define audit truth.
   </Card>
 </CardGrid>
 
@@ -53,7 +57,7 @@ import HomeTimeline from '../../../components/HomeTimeline.astro';
   <LinkCard
     title="Architecture"
     href="/en/architecture/overview/"
-    description="Understand the control plane, protocol API, database, and AI boundaries."
+    description="Understand multi-scenario, multi-agent, replay, and OTel boundaries."
   />
   <LinkCard
     title="HTTP protocol"
@@ -67,4 +71,4 @@ import HomeTimeline from '../../../components/HomeTimeline.astro';
   />
 </CardGrid>
 
-> The current milestone is the first runnable vertical slice. These docs distinguish implemented behavior, protocol decisions, and later roadmap work.
+> The implemented single-agent Episode is now a v1 compatibility slice. v2 targets multi-scenario, multi-role Runs. These docs distinguish delivered behavior, v2 decisions, and later milestones.

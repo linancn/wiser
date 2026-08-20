@@ -10,9 +10,9 @@ English · [中文（默认）](./README.md)
 
 WISER supports perception, simulation, decision-making, and reconfiguration for water systems. Its first open-source core subsystem is **Agent Exercise Control Infrastructure / Agent EXCON**, which packages real-world work as runnable, replayable, and verifiable scenarios exposed through HTTP, MCP, and versioned file-based Skills.
 
-The repository starts with one testable vertical slice: coordinated ecological water replenishment and multi-source allocation for the Yongding River system across Beijing, Tianjin, and Hebei. A participant only sees information released by the current virtual time and actually observed by that participant. Structured allocation plans receive deterministic checks for water balance, source limits, transfer capacity, and ecological targets before the exercise advances.
+The repository began with a testable single-agent compatibility slice for ecological replenishment and multi-source allocation in the Yongding River system. The v2 target is now a multi-scenario, multi-role team exercise: evidence, hydraulic, ecology, and dispatch-coordination agents receive different information, execute Tasks concurrently, converge through explicit artifacts, and receive distinct individual, role, and team feedback.
 
-Agents load [`skills/agent-excon`](./skills/agent-excon/SKILL.md) and participate through HTTP or MCP. Web never submits or advances an Episode; it visualizes the case, water-system status, evaluation, evidence, and Trace/Event replay.
+Agents load [`skills/agent-excon`](./skills/agent-excon/SKILL.md) and participate through HTTP or MCP. Web never impersonates a participant; it provides multi-scenario management, run status, per-agent OTel-style traces, and historical-perspective replay backed by domain events and receipts.
 
 ## Engineering principles
 
@@ -61,7 +61,7 @@ Codex subscription auth is host-only for trusted local development. Containers a
 
 ## Project status
 
-This project is at the walking-skeleton stage. Scope and acceptance criteria live in [`docs/roadmap.md`](./docs/roadmap.md); contribution rules are in [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+The v1 walking skeleton is runnable; v2 is migrating through TDD to multi-scenario, multi-agent, observable control. Scope and acceptance criteria live in [`docs/roadmap.md`](./docs/roadmap.md), with the complete design in [`docs/design/v2-multi-scenario-multi-agent-observability.md`](./docs/design/v2-multi-scenario-multi-agent-observability.md). Contribution rules are in [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ## License
 

@@ -21,7 +21,7 @@ import HomeTimeline from '../../components/HomeTimeline.astro';
 
 > 当前默认案例使用真实水系统关系和少量有来源的历史观测作事实锚点；容量、目标、规则、方案和结果均为隔离合成数据，不向现实控制系统发出指令。
 
-## 一个闭环，而不是一组演示接口
+## 一个多智能体环境，而不是一组演示接口
 
 <CardGrid>
   <Card title="环境控制">
@@ -34,8 +34,13 @@ import HomeTimeline from '../../components/HomeTimeline.astro';
     HTTP 是统一底座，TypeScript SDK、文件化 Skill 和 MCP Server 都建立在同一份
     Zod 合约上。
   </Card>
-  <Card title="全过程回放">
-    注入、观察、提交、评价、反馈、人工干预和现实结果都写入不可变事件记录。
+  <Card title="多智能体协作">
+    多个角色并行完成
+    Task，以显式工件汇流成团队提交，并分别获得个人、角色和团队反馈。
+  </Card>
+  <Card title="当时视角回放">
+    事件与 Agent Receipt 重建每个智能体实际获得的信息；OTel Trace
+    用于技术诊断而非审计事实。
   </Card>
 </CardGrid>
 
@@ -50,7 +55,7 @@ import HomeTimeline from '../../components/HomeTimeline.astro';
   <LinkCard
     title="架构边界"
     href="/architecture/overview/"
-    description="了解控制面、协议 API、数据库和 AI 适配器的职责。"
+    description="了解多场景、多智能体、权威回放和 OTel 的职责边界。"
   />
   <LinkCard
     title="HTTP 协议"
@@ -64,4 +69,4 @@ import HomeTimeline from '../../components/HomeTimeline.astro';
   />
 </CardGrid>
 
-> 当前建设目标是首个可运行纵向切片。文档会明确区分“已经实现”“接口约定”和“后续扩展”，避免把路线图写成现状。
+> v1 单 Agent Episode 是已实现的兼容纵切；v2 目标是多场景、多角色 Run。文档明确区分已实现能力、v2 接口约定与后续里程碑。

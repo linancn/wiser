@@ -8,8 +8,8 @@ const sidebar = [
     items: [{ slug: 'quick-start' }],
   },
   {
-    label: '演练案例',
-    translations: { en: 'Exercise scenario' },
+    label: '场景目录',
+    translations: { en: 'Scenario catalog' },
     items: [{ slug: 'scenarios/yongding-river-dispatch' }],
   },
   {
@@ -17,6 +17,8 @@ const sidebar = [
     translations: { en: 'Design boundaries' },
     items: [
       { slug: 'architecture/overview' },
+      { slug: 'architecture/multi-agent-observability' },
+      { slug: 'architecture/migration-tdd' },
       { slug: 'architecture/security' },
     ],
   },
