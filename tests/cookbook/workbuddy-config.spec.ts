@@ -144,6 +144,13 @@ describe('WorkBuddy role-isolated runtime renderer', () => {
       expect(prompt.indexOf('`excon_claim_task`')).toBeLessThan(
         prompt.indexOf('`excon_publish_artifact`'),
       );
+      if (role.roleSlotId === 'dispatch-coordination') {
+        expect(prompt).toContain('`submissionType=candidate-joint-plan`');
+        expect(prompt).toContain('`targetScope=team`');
+      } else {
+        expect(prompt).toContain('`targetScope=role`');
+        expect(prompt).toContain('`endorsementRecipientRunAgentIds=[]`');
+      }
     }
   });
 
