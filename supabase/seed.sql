@@ -37,6 +37,7 @@ values (
 insert into public.scenario_versions (
   id,
   scenario_id,
+  owner_user_id,
   version_no,
   status,
   public_manifest,
@@ -48,14 +49,20 @@ insert into public.scenario_versions (
 values (
   '30000000-0000-4000-8000-000000000001',
   '20000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
   1,
-  'published',
+  'draft',
   '{"caseType":"multi_source_ecological_replenishment","defaultLocale":"zh-CN","supportedLocales":["zh-CN","en"],"requiredSubmission":"allocation_plan","factAnchored":true,"simulationOnly":true,"notForOperationalUse":true}'::jsonb,
   '2023-03-22T07:00:00Z',
   '2023-06-15T08:00:00Z',
   repeat('a', 64),
-  '2026-08-20T00:00:00Z'
+  null
 );
+
+update public.scenario_versions
+set status = 'published',
+    published_at = '2026-08-20T00:00:00Z'
+where id = '30000000-0000-4000-8000-000000000001';
 
 insert into public.participant_versions (
   id,
@@ -372,4 +379,781 @@ values (
   '{"submissionType":"allocation_plan","revisionNo":1}'::jsonb,
   null,
   decode(repeat('11', 32), 'hex')
+);
+
+-- v2 multi-scenario / multi-agent vertical slice ----------------------------
+
+insert into auth.users (
+  id,
+  email,
+  raw_app_meta_data,
+  raw_user_meta_data
+)
+values
+  (
+    '10000000-0000-4000-8000-000000000003',
+    'participant-c@agent-excon.test',
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{}'::jsonb
+  ),
+  (
+    '10000000-0000-4000-8000-000000000004',
+    'participant-d@agent-excon.test',
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{}'::jsonb
+  ),
+  (
+    '10000000-0000-4000-8000-000000000005',
+    'operator@agent-excon.test',
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{}'::jsonb
+  )
+on conflict (id) do nothing;
+
+insert into public.scenario_versions (
+  id,
+  scenario_id,
+  owner_user_id,
+  version_no,
+  status,
+  public_manifest,
+  replay_start_at,
+  replay_end_at,
+  content_hash,
+  min_distinct_required_agents,
+  compatibility_mode
+)
+values (
+  '30000000-0000-4000-8000-000000000002',
+  '20000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  2,
+  'draft',
+  '{"caseType":"multi_agent_yongding_replenishment","defaultLocale":"zh-CN","supportedLocales":["zh-CN","en"],"requiredRoles":["evidence_analyst","hydraulic_analyst","ecology_analyst","dispatch_coordinator"],"simulationOnly":true,"notForOperationalUse":true}'::jsonb,
+  '2023-03-22T07:00:00Z',
+  '2023-06-15T08:00:00Z',
+  repeat('2', 64),
+  4,
+  'multi_agent'
+);
+
+insert into public.scenario_version_lifecycle_events (
+  id,
+  scenario_version_id,
+  lifecycle_seq,
+  from_state,
+  to_state,
+  actor_user_id,
+  reason,
+  occurred_at
+)
+values (
+  '30100000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000002',
+  1,
+  null,
+  'draft',
+  '10000000-0000-4000-8000-000000000001',
+  'Seed the Yongding River four-role exercise draft',
+  '2026-08-20T01:00:00Z'
+);
+
+insert into public.role_definitions (
+  id,
+  scenario_version_id,
+  role_key,
+  title_i18n,
+  description_i18n,
+  is_required,
+  min_slots,
+  max_slots,
+  capability_requirements,
+  ordinal
+)
+values
+  (
+    '31000000-0000-4000-8000-000000000001',
+    '30000000-0000-4000-8000-000000000002',
+    'evidence_analyst',
+    '{"zh-CN":"水情与证据智能体","en":"Hydrology and Evidence Agent"}'::jsonb,
+    '{"zh-CN":"核验公开水情、来源、时态与修订。","en":"Verifies public hydrology, provenance, timing, and revisions."}'::jsonb,
+    true,
+    1,
+    1,
+    '["evidence_provenance","hydrology"]'::jsonb,
+    10
+  ),
+  (
+    '31000000-0000-4000-8000-000000000002',
+    '30000000-0000-4000-8000-000000000002',
+    'hydraulic_analyst',
+    '{"zh-CN":"水动力约束智能体","en":"Hydraulic Constraint Agent"}'::jsonb,
+    '{"zh-CN":"分析河道、断面、容量、损失和传播约束。","en":"Analyzes channel, cross-section, capacity, loss, and routing constraints."}'::jsonb,
+    true,
+    1,
+    1,
+    '["hydraulics","constraint_analysis"]'::jsonb,
+    20
+  ),
+  (
+    '31000000-0000-4000-8000-000000000003',
+    '30000000-0000-4000-8000-000000000002',
+    'ecology_analyst',
+    '{"zh-CN":"生态目标智能体","en":"Ecological Target Agent"}'::jsonb,
+    '{"zh-CN":"分析生态目标区间、连续性和水质边界。","en":"Analyzes ecological target ranges, continuity, and water-quality boundaries."}'::jsonb,
+    true,
+    1,
+    1,
+    '["ecology","risk_prioritization"]'::jsonb,
+    30
+  ),
+  (
+    '31000000-0000-4000-8000-000000000004',
+    '30000000-0000-4000-8000-000000000002',
+    'dispatch_coordinator',
+    '{"zh-CN":"调度协调智能体","en":"Dispatch Coordination Agent"}'::jsonb,
+    '{"zh-CN":"基于显式共享工件形成联合调度方案。","en":"Builds a joint allocation plan from explicitly shared artifacts."}'::jsonb,
+    true,
+    1,
+    1,
+    '["coordination","water_allocation"]'::jsonb,
+    40
+  );
+
+update public.scenario_versions
+set status = 'published',
+    published_at = '2026-08-20T01:05:00Z'
+where id = '30000000-0000-4000-8000-000000000002';
+
+insert into public.scenario_version_lifecycle_events (
+  id,
+  scenario_version_id,
+  lifecycle_seq,
+  from_state,
+  to_state,
+  actor_user_id,
+  reason,
+  occurred_at
+)
+values (
+  '30100000-0000-4000-8000-000000000002',
+  '30000000-0000-4000-8000-000000000002',
+  2,
+  'draft',
+  'published',
+  '10000000-0000-4000-8000-000000000001',
+  'Publish the validated four-role exercise blueprint',
+  '2026-08-20T01:05:00Z'
+);
+
+insert into public.agent_identities (
+  id,
+  owner_user_id,
+  agent_key,
+  display_name_i18n,
+  description_i18n,
+  lifecycle_state
+)
+values
+  (
+    '41000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000001',
+    'yongding-evidence-agent',
+    '{"zh-CN":"永定河水情证据智能体","en":"Yongding Evidence Agent"}'::jsonb,
+    '{"zh-CN":"演练用证据核验实例。","en":"Exercise evidence-verification identity."}'::jsonb,
+    'active'
+  ),
+  (
+    '41000000-0000-4000-8000-000000000002',
+    '10000000-0000-4000-8000-000000000002',
+    'yongding-hydraulic-agent',
+    '{"zh-CN":"永定河水动力智能体","en":"Yongding Hydraulic Agent"}'::jsonb,
+    '{"zh-CN":"演练用水动力约束实例。","en":"Exercise hydraulic-constraint identity."}'::jsonb,
+    'active'
+  ),
+  (
+    '41000000-0000-4000-8000-000000000003',
+    '10000000-0000-4000-8000-000000000003',
+    'yongding-ecology-agent',
+    '{"zh-CN":"永定河生态目标智能体","en":"Yongding Ecology Agent"}'::jsonb,
+    '{"zh-CN":"演练用生态目标实例。","en":"Exercise ecological-target identity."}'::jsonb,
+    'active'
+  ),
+  (
+    '41000000-0000-4000-8000-000000000004',
+    '10000000-0000-4000-8000-000000000004',
+    'yongding-coordinator-agent',
+    '{"zh-CN":"永定河调度协调智能体","en":"Yongding Dispatch Coordinator"}'::jsonb,
+    '{"zh-CN":"演练用联合调度实例。","en":"Exercise joint-dispatch identity."}'::jsonb,
+    'active'
+  ),
+  (
+    '41000000-0000-4000-8000-000000000005',
+    '10000000-0000-4000-8000-000000000005',
+    'revoked-lifecycle-test-agent',
+    '{"zh-CN":"已撤销生命周期测试智能体","en":"Revoked Lifecycle Test Agent"}'::jsonb,
+    '{"zh-CN":"只用于验证撤销终态，不参与任何 Run。","en":"Tests terminal revocation and never joins a Run."}'::jsonb,
+    'active'
+  );
+
+insert into public.agent_identity_lifecycle_events (
+  agent_identity_id,
+  lifecycle_seq,
+  from_state,
+  to_state,
+  actor_user_id,
+  reason,
+  occurred_at
+)
+select
+  id,
+  1,
+  null,
+  'active',
+  '10000000-0000-4000-8000-000000000005',
+  'Register the seeded exercise agent identity',
+  '2026-08-20T01:10:00Z'
+from public.agent_identities
+where id in (
+  '41000000-0000-4000-8000-000000000001',
+  '41000000-0000-4000-8000-000000000002',
+  '41000000-0000-4000-8000-000000000003',
+  '41000000-0000-4000-8000-000000000004',
+  '41000000-0000-4000-8000-000000000005'
+);
+
+insert into public.agent_versions (
+  id,
+  agent_identity_id,
+  owner_user_id,
+  version,
+  lifecycle_state,
+  provider_kind,
+  model_ref,
+  protocol_version,
+  skill_manifest,
+  capabilities,
+  telemetry_capabilities,
+  content_hash,
+  published_at
+)
+values
+  (
+    '42000000-0000-4000-8000-000000000001',
+    '41000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000001',
+    '1.0.0',
+    'draft',
+    'local_codex_subscription',
+    'local-codex-subscription',
+    'excon-v2',
+    '{"skill":"wiser-excon","version":"2.0.0"}'::jsonb,
+    '["evidence_provenance","hydrology"]'::jsonb,
+    '{"otlp":true}'::jsonb,
+    repeat('4', 64),
+    null
+  ),
+  (
+    '42000000-0000-4000-8000-000000000002',
+    '41000000-0000-4000-8000-000000000002',
+    '10000000-0000-4000-8000-000000000002',
+    '1.0.0',
+    'draft',
+    'openai_compatible',
+    'openai-compatible/test-hydraulic',
+    'excon-v2',
+    '{"skill":"wiser-excon","version":"2.0.0"}'::jsonb,
+    '["hydraulics","constraint_analysis"]'::jsonb,
+    '{"otlp":true}'::jsonb,
+    repeat('5', 64),
+    null
+  ),
+  (
+    '42000000-0000-4000-8000-000000000003',
+    '41000000-0000-4000-8000-000000000003',
+    '10000000-0000-4000-8000-000000000003',
+    '1.0.0',
+    'draft',
+    'openai_compatible',
+    'openai-compatible/test-ecology',
+    'excon-v2',
+    '{"skill":"wiser-excon","version":"2.0.0"}'::jsonb,
+    '["ecology","risk_prioritization"]'::jsonb,
+    '{"otlp":true}'::jsonb,
+    repeat('6', 64),
+    null
+  ),
+  (
+    '42000000-0000-4000-8000-000000000004',
+    '41000000-0000-4000-8000-000000000004',
+    '10000000-0000-4000-8000-000000000004',
+    '1.0.0',
+    'draft',
+    'openai_compatible',
+    'openai-compatible/test-coordinator',
+    'excon-v2',
+    '{"skill":"wiser-excon","version":"2.0.0"}'::jsonb,
+    '["coordination","water_allocation"]'::jsonb,
+    '{"otlp":true}'::jsonb,
+    repeat('7', 64),
+    null
+  );
+
+update public.agent_versions
+set lifecycle_state = 'published',
+    published_at = '2026-08-20T01:15:00Z'
+where id in (
+  '42000000-0000-4000-8000-000000000001',
+  '42000000-0000-4000-8000-000000000002',
+  '42000000-0000-4000-8000-000000000003',
+  '42000000-0000-4000-8000-000000000004'
+);
+
+insert into public.agent_version_lifecycle_events (
+  agent_version_id,
+  lifecycle_seq,
+  from_state,
+  to_state,
+  actor_user_id,
+  reason,
+  occurred_at
+)
+select
+  id,
+  1,
+  'draft',
+  'published',
+  '10000000-0000-4000-8000-000000000005',
+  'Publish the seeded reproducible agent version',
+  '2026-08-20T01:15:00Z'
+from public.agent_versions
+where id in (
+  '42000000-0000-4000-8000-000000000001',
+  '42000000-0000-4000-8000-000000000002',
+  '42000000-0000-4000-8000-000000000003',
+  '42000000-0000-4000-8000-000000000004'
+);
+
+insert into public.exercise_runs (
+  id,
+  scenario_version_id,
+  created_by,
+  state,
+  current_phase_key,
+  virtual_time
+)
+values (
+  '51000000-0000-4000-8000-000000000001',
+  '30000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000005',
+  'forming',
+  'parallel-analysis',
+  '2023-03-22T07:10:00Z'
+);
+
+insert into public.run_human_members (run_id, user_id, member_role)
+values (
+  '51000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000005',
+  'operator'
+);
+
+insert into public.run_teams (id, run_id, team_key, title_i18n)
+values (
+  '52000000-0000-4000-8000-000000000001',
+  '51000000-0000-4000-8000-000000000001',
+  'joint-dispatch',
+  '{"zh-CN":"永定河联合调度组","en":"Yongding Joint Dispatch Team"}'::jsonb
+);
+
+insert into public.run_agents (
+  id,
+  run_id,
+  agent_version_id,
+  owner_user_id,
+  team_id,
+  instance_key,
+  state,
+  joined_at
+)
+values
+  (
+    '53000000-0000-4000-8000-000000000001',
+    '51000000-0000-4000-8000-000000000001',
+    '42000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000001',
+    '52000000-0000-4000-8000-000000000001',
+    'evidence-instance-01',
+    'ready',
+    '2026-08-20T01:20:00Z'
+  ),
+  (
+    '53000000-0000-4000-8000-000000000002',
+    '51000000-0000-4000-8000-000000000001',
+    '42000000-0000-4000-8000-000000000002',
+    '10000000-0000-4000-8000-000000000002',
+    '52000000-0000-4000-8000-000000000001',
+    'hydraulic-instance-01',
+    'ready',
+    '2026-08-20T01:20:00Z'
+  ),
+  (
+    '53000000-0000-4000-8000-000000000003',
+    '51000000-0000-4000-8000-000000000001',
+    '42000000-0000-4000-8000-000000000003',
+    '10000000-0000-4000-8000-000000000003',
+    '52000000-0000-4000-8000-000000000001',
+    'ecology-instance-01',
+    'ready',
+    '2026-08-20T01:20:00Z'
+  ),
+  (
+    '53000000-0000-4000-8000-000000000004',
+    '51000000-0000-4000-8000-000000000001',
+    '42000000-0000-4000-8000-000000000004',
+    '10000000-0000-4000-8000-000000000004',
+    '52000000-0000-4000-8000-000000000001',
+    'coordinator-instance-01',
+    'ready',
+    '2026-08-20T01:20:00Z'
+  );
+
+insert into public.run_role_assignments (
+  id,
+  run_id,
+  run_agent_id,
+  role_definition_id,
+  slot_no,
+  assignment_kind,
+  counts_toward_quorum
+)
+values
+  (
+    '54000000-0000-4000-8000-000000000001',
+    '51000000-0000-4000-8000-000000000001',
+    '53000000-0000-4000-8000-000000000001',
+    '31000000-0000-4000-8000-000000000001',
+    1,
+    'primary',
+    true
+  ),
+  (
+    '54000000-0000-4000-8000-000000000002',
+    '51000000-0000-4000-8000-000000000001',
+    '53000000-0000-4000-8000-000000000002',
+    '31000000-0000-4000-8000-000000000002',
+    1,
+    'primary',
+    true
+  ),
+  (
+    '54000000-0000-4000-8000-000000000003',
+    '51000000-0000-4000-8000-000000000001',
+    '53000000-0000-4000-8000-000000000003',
+    '31000000-0000-4000-8000-000000000003',
+    1,
+    'primary',
+    true
+  ),
+  (
+    '54000000-0000-4000-8000-000000000004',
+    '51000000-0000-4000-8000-000000000001',
+    '53000000-0000-4000-8000-000000000004',
+    '31000000-0000-4000-8000-000000000004',
+    1,
+    'primary',
+    true
+  );
+
+update public.exercise_runs
+set state = 'ready'
+where id = '51000000-0000-4000-8000-000000000001';
+
+insert into public.run_tasks (
+  id,
+  run_id,
+  task_key,
+  eligible_role_definition_id,
+  title_i18n,
+  state,
+  input_payload,
+  output_schema,
+  priority,
+  available_virtual_at
+)
+values
+  (
+    '55000000-0000-4000-8000-000000000001',
+    '51000000-0000-4000-8000-000000000001',
+    'analyze.evidence',
+    '31000000-0000-4000-8000-000000000001',
+    '{"zh-CN":"核验水情证据","en":"Verify hydrology evidence"}'::jsonb,
+    'ready',
+    '{"sourceSet":"official-2023-anchor"}'::jsonb,
+    '{"type":"object"}'::jsonb,
+    30,
+    '2023-03-22T07:00:00Z'
+  ),
+  (
+    '55000000-0000-4000-8000-000000000002',
+    '51000000-0000-4000-8000-000000000001',
+    'analyze.hydraulics',
+    '31000000-0000-4000-8000-000000000002',
+    '{"zh-CN":"分析水动力约束","en":"Analyze hydraulic constraints"}'::jsonb,
+    'ready',
+    '{"network":"yongding-synthetic-v2"}'::jsonb,
+    '{"type":"object"}'::jsonb,
+    20,
+    '2023-03-22T07:00:00Z'
+  ),
+  (
+    '55000000-0000-4000-8000-000000000003',
+    '51000000-0000-4000-8000-000000000001',
+    'analyze.ecology',
+    '31000000-0000-4000-8000-000000000003',
+    '{"zh-CN":"分析生态目标","en":"Analyze ecological targets"}'::jsonb,
+    'ready',
+    '{"targetSet":"ecology-synthetic-v2"}'::jsonb,
+    '{"type":"object"}'::jsonb,
+    10,
+    '2023-03-22T07:00:00Z'
+  ),
+  (
+    '55000000-0000-4000-8000-000000000004',
+    '51000000-0000-4000-8000-000000000001',
+    'coordinate.joint-plan',
+    '31000000-0000-4000-8000-000000000004',
+    '{"zh-CN":"形成联合调度方案","en":"Build the joint dispatch plan"}'::jsonb,
+    'blocked',
+    '{"requiresBarrier":"analysis-ready"}'::jsonb,
+    '{"type":"object"}'::jsonb,
+    40,
+    '2023-03-22T07:10:00Z'
+  );
+
+insert into public.run_barriers (
+  id,
+  run_id,
+  barrier_key,
+  barrier_type,
+  required_count,
+  state
+)
+values (
+  '56000000-0000-4000-8000-000000000001',
+  '51000000-0000-4000-8000-000000000001',
+  'analysis-ready',
+  'all_required',
+  3,
+  'closed'
+);
+
+select * from excon_private.append_run_event(
+  '51000000-0000-4000-8000-000000000001',
+  'run.ready',
+  'run',
+  '51000000-0000-4000-8000-000000000001',
+  'human_member',
+  '10000000-0000-4000-8000-000000000005',
+  'operator_asserted',
+  null,
+  'staffing',
+  '2023-03-22T07:00:00Z',
+  '{"requiredRoles":4,"distinctRunAgents":4}'::jsonb,
+  null,
+  '57000000-0000-4000-8000-000000000001'
+);
+
+insert into public.event_disclosures (
+  id,
+  run_id,
+  run_agent_id,
+  source_event_id,
+  source_run_seq,
+  granted_event_id,
+  granted_run_seq,
+  resource_type,
+  resource_id,
+  resource_version,
+  available_virtual_at
+)
+values (
+  '58000000-0000-4000-8000-000000000001',
+  '51000000-0000-4000-8000-000000000001',
+  '53000000-0000-4000-8000-000000000001',
+  '57000000-0000-4000-8000-000000000001',
+  1,
+  '57000000-0000-4000-8000-000000000001',
+  1,
+  'run_task',
+  '55000000-0000-4000-8000-000000000001',
+  'lock:0',
+  '2023-03-22T07:00:00Z'
+);
+
+insert into public.delivery_batches (
+  id,
+  run_id,
+  run_agent_id,
+  idempotency_key,
+  request_hash,
+  after_receipt_seq,
+  run_cursor,
+  has_more,
+  created_at
+)
+values (
+  '59000000-0000-4000-8000-000000000001',
+  '51000000-0000-4000-8000-000000000001',
+  '53000000-0000-4000-8000-000000000001',
+  'seed-sync-batch-0001',
+  decode(repeat('91', 32), 'hex'),
+  0,
+  1,
+  false,
+  '2026-08-20T01:25:00Z'
+);
+
+insert into public.agent_view_receipts (
+  id,
+  run_id,
+  run_agent_id,
+  agent_receipt_seq,
+  delivery_batch_id,
+  disclosure_id,
+  source_event_id,
+  source_run_seq,
+  issued_event_id,
+  issued_run_seq,
+  view_kind,
+  resource_type,
+  resource_id,
+  resource_version,
+  available_virtual_at,
+  issued_virtual_at,
+  issued_at,
+  content_snapshot,
+  content_hash,
+  previous_receipt_hash,
+  receipt_hash
+)
+values (
+  '5a000000-0000-4000-8000-000000000001',
+  '51000000-0000-4000-8000-000000000001',
+  '53000000-0000-4000-8000-000000000001',
+  1,
+  '59000000-0000-4000-8000-000000000001',
+  '58000000-0000-4000-8000-000000000001',
+  '57000000-0000-4000-8000-000000000001',
+  1,
+  '57000000-0000-4000-8000-000000000001',
+  1,
+  'task',
+  'run_task',
+  '55000000-0000-4000-8000-000000000001',
+  'lock:0',
+  '2023-03-22T07:00:00Z',
+  '2023-03-22T07:00:00Z',
+  '2026-08-20T01:25:00Z',
+  '{"taskId":"55000000-0000-4000-8000-000000000001","taskKey":"analyze.evidence","lockVersion":0}'::jsonb,
+  repeat('0', 64),
+  null,
+  decode(repeat('00', 32), 'hex')
+);
+
+insert into public.acknowledgements (
+  id,
+  run_id,
+  run_agent_id,
+  delivery_batch_id,
+  through_receipt_seq,
+  acknowledged_head_hash,
+  acknowledged_event_id,
+  acknowledged_run_seq,
+  command_receipt_key,
+  acknowledged_at
+)
+select
+  '5b000000-0000-4000-8000-000000000001',
+  receipt.run_id,
+  receipt.run_agent_id,
+  receipt.delivery_batch_id,
+  receipt.agent_receipt_seq,
+  receipt.receipt_hash,
+  receipt.issued_event_id,
+  receipt.issued_run_seq,
+  'seed-sync-ack-0001',
+  '2026-08-20T01:26:00Z'
+from public.agent_view_receipts as receipt
+where receipt.id = '5a000000-0000-4000-8000-000000000001';
+
+insert into excon_private.run_agent_credentials (
+  id,
+  run_agent_id,
+  run_id,
+  token_key_id,
+  token_hash,
+  scopes,
+  issued_at,
+  expires_at,
+  created_by
+)
+values (
+  '5c000000-0000-4000-8000-000000000001',
+  '53000000-0000-4000-8000-000000000001',
+  '51000000-0000-4000-8000-000000000001',
+  'seed-key-01',
+  decode(repeat('a1', 32), 'hex'),
+  array['run:sync', 'task:claim', 'telemetry:write'],
+  '2026-08-20T01:20:00Z',
+  '2026-08-20T03:20:00Z',
+  '10000000-0000-4000-8000-000000000005'
+);
+
+insert into excon_private.telemetry_sessions (
+  id,
+  run_id,
+  run_agent_id,
+  credential_id,
+  session_key,
+  trust_class,
+  resource_attributes,
+  started_at,
+  last_seen_at
+)
+values (
+  '5d000000-0000-4000-8000-000000000001',
+  '51000000-0000-4000-8000-000000000001',
+  '53000000-0000-4000-8000-000000000001',
+  '5c000000-0000-4000-8000-000000000001',
+  'seed-otel-session-01',
+  'participant_reported',
+  '{"wiser.excon.run.id":"51000000-0000-4000-8000-000000000001","wiser.excon.run_agent.id":"53000000-0000-4000-8000-000000000001"}'::jsonb,
+  '2026-08-20T01:24:00Z',
+  '2026-08-20T01:25:00Z'
+);
+
+update public.agent_identities
+set lifecycle_state = 'revoked'
+where id = '41000000-0000-4000-8000-000000000005';
+
+insert into public.agent_identity_lifecycle_events (
+  id,
+  agent_identity_id,
+  lifecycle_seq,
+  from_state,
+  to_state,
+  actor_user_id,
+  reason,
+  occurred_at
+)
+values (
+  '41100000-0000-4000-8000-000000000005',
+  '41000000-0000-4000-8000-000000000005',
+  2,
+  'active',
+  'revoked',
+  '10000000-0000-4000-8000-000000000005',
+  'Seed a terminal identity lifecycle fixture for negative tests',
+  '2026-08-20T01:30:00Z'
 );

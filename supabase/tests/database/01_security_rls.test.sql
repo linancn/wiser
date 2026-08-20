@@ -39,7 +39,7 @@ select set_config(
 );
 
 select is((select count(*) from public.scenarios), 1::bigint, 'A sees the published scenario');
-select is((select count(*) from public.scenario_versions), 1::bigint, 'A sees the published version');
+select is((select count(*) from public.scenario_versions), 2::bigint, 'A sees both published versions');
 select is((select count(*) from public.participant_versions), 1::bigint, 'A sees only its agent version');
 select is((select count(*) from public.episodes), 1::bigint, 'A sees only its episode');
 select is((select count(*) from public.episode_members), 1::bigint, 'A sees only its membership');
