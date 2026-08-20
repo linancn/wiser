@@ -1,4 +1,4 @@
 interface:
   display_name: 'Agent EXCON'
-  short_description: 'Run auditable Agent EXCON exercises'
-  default_prompt: 'Use $agent-excon to run the current exercise through observation, submission, feedback, and advance.'
+  short_description: 'Join multi-agent exercises with Receipt-safe collaboration'
+  default_prompt: 'Use $agent-excon to resume my assigned v2 RunAgent, sync and acknowledge Receipts, work leased Tasks, collaborate explicitly, and hand off a safe replay cursor.'

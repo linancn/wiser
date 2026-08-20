@@ -1,0 +1,57 @@
+{
+  "skill_name": "agent-excon",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "你正在恢复一个 WISER v2 参训进程。可信启动信息给出 runId=7f5b32b1-340e-47d7-9fc3-b914abc9338d、runAgentId=ad1eb622-a9d7-4629-b078-0a18e78d0523，本地最后完整保存 afterReceiptSeq=17 和 receiptHeadHash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa。上一次 POST /sync 使用的 UUID 幂等键和请求正文都还在，但客户端在收到响应前断线；期间导调员可能又发了 Inject。请给出下一步 HTTP/MCP 操作顺序、状态持久化点和停止条件，不要实际调用服务。",
+      "expected_output": "A safe v2 recovery plan that reconciles identity, replays the ambiguous sync exactly, verifies the per-Agent Receipt chain, and resumes without exposing or advancing global state.",
+      "files": [],
+      "expectations": [
+        "The plan reconciles the returned runId and runAgentId against the trusted bootstrap before processing content.",
+        "The ambiguous sync is retried with the identical method, body, actor, and original idempotency key rather than a fresh key.",
+        "The plan validates contiguous receipt sequence, previous hash, content hash, final head, and runCursor before persisting the new cursor.",
+        "The plan states that recovery GET routes cannot issue the newer Inject and that only a subsequent new /sync may receive it.",
+        "The plan never advances the Run clock, requests another Agent perspective, or treats telemetry as Receipt evidence."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "我已被分配到一个非永定河的 WISER v2 场景，角色卡和 Task schema 都在最新 /sync 的 Receipt 中。Task 处于 READY、lockVersion=3，预计分析要 6 分钟；结果需要先以团队可见 Artifact 发布，再发一条 Message 通知两个明确的 RunAgent，最后提交 Task。请写出安全执行清单，说明 claim/begin/heartbeat、证据引用、ArtifactVersion、Message 和 submission 的边界。不要假设其他智能体共享上下文。",
+      "expected_output": "A generic role-neutral Task execution sequence with a valid lease lifecycle and explicit, recipient-scoped collaboration based only on receipted inputs and immutable artifact versions.",
+      "files": [],
+      "expectations": [
+        "The response follows the assigned role card and Task schema and does not import Yongding roles, topology, or payloads.",
+        "The response claims with Task lockVersion 3, begins with the returned claimEpoch and leaseToken, and heartbeats before expiry without exceeding the maximum lease.",
+        "The evidence set is restricted to this RunAgent's verified Receipts, its accepted commands, and explicitly authorized immutable ArtifactVersions.",
+        "The Artifact and Message use explicit permitted recipients, and the response notes recipients receive them as new content only through their own /sync.",
+        "The immutable Task submission cites exact Receipt and ArtifactVersion references and never includes another Agent's private view or chain of thought."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "一个 v2 团队汇流 Task 已拿到三个明确共享的 ArtifactVersion，协调方发布了 team Submission revision 2。我的角色收到 role Feedback，团队收到 team Feedback，我本人另有 individual Feedback；其中只有 role Feedback 带一个允许 endorse 的 feedbackActionGrantId，且指定 revision 2。请说明如何核验、endorse、处理三层反馈并等待 Barrier；如果协调方随后发布 revision 3 应怎么做。",
+      "expected_output": "A scoped feedback and endorsement plan that preserves attribution, consumes only the matching grant, targets the immutable reviewed revision, and waits safely for EXCON's Barrier decision.",
+      "files": [],
+      "expectations": [
+        "The response keeps individual, role, and team feedback and attribution separate instead of averaging team results into the individual.",
+        "The endorsement verifies the exact immutable revision 2 and matching grant actor, Task, action, predecessor/evaluation scope, expiry, revocation, and uses.",
+        "The response carries feedbackActionGrantId on the protected endorsement and does not treat allowedActions text alone as authorization.",
+        "Revision 3 is not implicitly endorsed; it requires a fresh review and any grant required by the current feedback contract.",
+        "The response waits through bounded /sync and never releases the Barrier or advances the global virtual clock."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "operator 明确说明这是尚未迁移的 legacy 练习，只提供以 /api/v1/ 结尾的 AGENT_EXCON_API_URL、participantVersionId 和旧 MCP 工具 excon_start_episode / excon_observe。请给出兼容执行顺序，包含 Episode version、Observation evidence、提交、feedback、advance 和 trace；同时说明哪些条件下绝对不能从 v2 自动降级到这条路径。不要实际调用 API。",
+      "expected_output": "An explicitly isolated v1 compatibility plan that preserves legacy evidence and optimistic-version semantics without contaminating the default v2 RunAgent protocol.",
+      "files": [],
+      "expectations": [
+        "The response activates v1 only because the operator and versioned base explicitly declare it, not as recovery from a v2 failure.",
+        "The legacy sequence uses start, reconcile, observe, recover observations, submit, feedback/evaluation, allowed advance, and participant event trace.",
+        "Each v1 write uses a UUID idempotency key and current Episode version where required; an ambiguous retry reuses the identical key and request.",
+        "Evidence uses only eligible current-participant Observation informationIds and excludes Injects, hidden outcomes, fixtures, and other participant traces.",
+        "The response states that v2 authorization, timeout, conflict, or missing-capability errors never justify silent fallback or identity switching."
+      ]
+    }
+  ]
+}

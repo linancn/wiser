@@ -1,8 +1,23 @@
-# Yongding River coordinated allocation exercise
+# Yongding River four-role collaboration reference
 
-The default case is a fact-anchored synthetic exercise based on the 2023 spring ecological replenishment of the Yongding River across the Beijing–Tianjin–Hebei water system. It is not an operational model.
+Load this reference only when the reconciled assignment pins the versioned Jing-Jin-Ji Yongding River collaboration scenario. It is a fact-anchored synthetic exercise inspired by the 2023 spring ecological replenishment, not an operational dispatch model. All scenario capacities, coefficients, targets, constraint changes, canonical plans, costs, and outcomes are `simulationOnly: true`.
 
-## Topology and sources
+Do not treat this file as current exercise evidence. The assigned Receipts and authorized ArtifactVersions are authoritative for the Run.
+
+## Progressive role routing
+
+Read the shared context below, then only the section matching `roleSlotId` and the Task output schema.
+
+| `roleSlotId`            | Role             | Read next                                 | Expected collaboration boundary                                               |
+| ----------------------- | ---------------- | ----------------------------------------- | ----------------------------------------------------------------------------- |
+| `water-evidence`        | 水情与证据智能体 | Water evidence                            | Publish a versioned evidence register and inflow summary                      |
+| `hydraulic-constraints` | 水动力约束智能体 | Hydraulic constraints                     | Publish section-response and capacity constraints                             |
+| `ecological-target`     | 生态目标智能体   | Ecological target                         | Publish ecological risks and priorities                                       |
+| `dispatch-coordination` | 调度协调智能体   | Dispatch coordination and plan validation | Consume only explicitly shared versions; create the candidate/team submission |
+
+An assignment may revise these duties through its pinned role card. Prefer that immutable assignment over this narrative. Never perform another role's private Task merely because its section is readable here.
+
+## Shared water-system context
 
 ```text
 Guanting Reservoir
@@ -13,43 +28,47 @@ Guanting Reservoir
   → Qujiadian, Tianjin
 ```
 
-The simplified exercise uses three source IDs:
+The simplified exercise uses `guanting`, `south-water`, and `reclaimed-lower`. Source limits, target flows, and transfer coefficients may change between Task phases; use only versions delivered to this RunAgent and applicable at the submission cursor.
 
-- `guanting`: Guanting Reservoir release.
-- `south-water`: Middle Route South-to-North Water Diversion water.
-- `reclaimed-lower`: a synthetic lower-reach reclaimed-water input.
+## Water evidence — `water-evidence`
 
-All capacities, transfer coefficients, ecological targets, constraint changes, canonical plans, costs, and outcomes are synthetic and carry `simulationOnly: true`. Official flow anchors are released as separately sourced Observations.
+1. Verify each supplied source, event/measurement time, ingestion/release sequence, provenance, `simulationOnly` marker, and correction link against its Receipt snapshot.
+2. Keep contradictory or superseded records in the register; mark applicability instead of deleting history.
+3. Separate official fact anchors from synthetic exercise constraints.
+4. Publish the evidence register/inflow summary as an immutable ArtifactVersion to the recipients permitted by the Task. Include Receipt IDs and content hashes, concise participant-safe findings, and uncertainty; do not publish private snapshots wholesale.
+5. Send a short Message naming the ArtifactVersion and what downstream agents may rely on.
 
-The current synthetic rule Observation has this payload shape:
+## Hydraulic constraints — `hydraulic-constraints`
 
-```json
-{
-  "sources": [
-    { "sourceId": "guanting", "maximumFlowM3s": 24 },
-    { "sourceId": "south-water", "maximumFlowM3s": 10 },
-    { "sourceId": "reclaimed-lower", "maximumFlowM3s": 6 }
-  ],
-  "sectionTargets": [
-    { "sectionId": "sanjiadian", "minimumFlowM3s": 10 },
-    { "sectionId": "lugouqiao", "minimumFlowM3s": 16 },
-    { "sectionId": "cuizhihuiying", "minimumFlowM3s": 15 },
-    { "sectionId": "qujiadian", "minimumFlowM3s": 12 }
-  ],
-  "transferModel": {
-    "guantingToSanjiadian": 0.9,
-    "sanjiadianToLugouqiao": 0.88,
-    "lugouqiaoToCuizhihuiying": 0.82,
-    "cuizhihuiyingToQujiadian": 0.9
-  },
-  "totalReleaseLimitM3s": 30,
-  "simulationOnly": true
-}
+1. Assemble only the delivered source caps, total cap, topology, section model, propagation coefficients, and effective-time corrections.
+2. Record the exact Receipt or authorized ArtifactVersion behind each constraint.
+3. Recompute section responses deterministically. Make the method and units reproducible without including hidden reasoning.
+4. Publish the current constraint set and response table as an immutable ArtifactVersion. If a correction arrives, derive a new version from the prior base and preserve both.
+5. Do not choose ecological priorities or a team release plan unless the Task explicitly assigns that output.
+
+## Ecological target — `ecological-target`
+
+1. Verify target sections, minimum/interval values, continuity and water-quality boundaries from the delivered snapshots.
+2. Rank participant-visible risks using only the versioned target rules; never infer hidden outcomes.
+3. Publish a target/risk ArtifactVersion with evidence references, applicability cursor, and explicit uncertainty.
+4. Message the permitted collaborators with the immutable version ID. Do not expose private feedback or another role's unpublished material.
+
+## Dispatch coordination and plan validation — `dispatch-coordination`
+
+Wait until `/sync` issues the required shared ArtifactVersions and the upstream Barrier/Task state permits work. Verify each version/hash and its grant Receipt. A team result must cite those exact inputs; do not claim access to the upstream agents' private ledgers or reasoning.
+
+When the assigned output schema is the Yongding allocation plan below, build `current-rules.json` from the latest applicable verified Receipt snapshots and authorized ArtifactVersions. A partial correction changes only its named fields in a new materialized rules version; omitted values come from the cited predecessor, not from inference.
+
+The deterministic section-flow order is:
+
+```text
+sanjiadian     = guantingToSanjiadian × guanting
+lugouqiao      = sanjiadianToLugouqiao × (sanjiadian + south-water)
+cuizhihuiying  = lugouqiaoToCuizhihuiying × (lugouqiao + reclaimed-lower)
+qujiadian      = cuizhihuiyingToQujiadian × cuizhihuiying
 ```
 
-Use the full arrays from the current Observation. Do not copy the example limits when the Observation differs.
-
-## Allocation payload
+The role tool accepts this plan shape:
 
 ```json
 {
@@ -59,25 +78,19 @@ Use the full arrays from the current Observation. Do not copy the example limits
       "sourceId": "guanting",
       "flowM3s": 20.0,
       "evidenceRefs": [
-        "official-flow-20230322-guanting",
-        "simulated-rules-20230322-stage-1"
+        "<source Receipt id>",
+        "<current-rules ArtifactVersion id>"
       ]
     },
     {
       "sourceId": "south-water",
       "flowM3s": 1.0,
-      "evidenceRefs": [
-        "simulated-source-limit-20230322-south-water",
-        "simulated-rules-20230322-stage-1"
-      ]
+      "evidenceRefs": ["<source Receipt id>", "<rules version id>"]
     },
     {
       "sourceId": "reclaimed-lower",
       "flowM3s": 2.5,
-      "evidenceRefs": [
-        "simulated-source-limit-20230322-reclaimed-lower",
-        "simulated-rules-20230322-stage-1"
-      ]
+      "evidenceRefs": ["<source Receipt id>", "<rules version id>"]
     }
   ],
   "expectedSectionFlows": [
@@ -90,21 +103,16 @@ Use the full arrays from the current Observation. Do not copy the example limits
 }
 ```
 
-Use only constraints present in current Observations. A later `SIMULATED_CONSTRAINT_UPDATE` replaces the named synthetic constraint from its release time onward; it does not rewrite earlier submissions.
+The numbers illustrate the shape only. Replace every value and reference from the current evidence ledger. The plan-local `evidenceRefs` must resolve to Receipt IDs or ArtifactVersion IDs; it is not a place for a URL, Inject ID, display label, or hidden fixture key. These strings do not replace the protocol proof: copy the same evidence into the Task submission's typed `receiptRefs` (`receiptId` + `receiptHash`) and `artifactVersionRefs` (`artifactId` + `artifactVersionId` + `contentHash`).
 
-`evidenceRefs` contains the Observation's stable `informationId`, not its delivery-record `id`, source URL, or Inject ID. Write `current-rules.json` from the `payload` of the latest eligible Observation that contains the complete `sources`, `sectionTargets`, `transferModel`, and `totalReleaseLimitM3s` shape. If an update is partial, materialize a full current rule object by applying only its named fields to the previously observed rule version; do not infer omitted values.
+Run:
 
-The deterministic evaluator recomputes section flows, checks source and total limits, enforces 0.1 m³/s source increments, compares declared and computed section flows within 0.01 m³/s, measures ecological target coverage, and validates evidence timing. Do not invent an alternative transfer model.
-
-Compute the four expected flows from the current coefficients in this fixed order:
-
-```text
-sanjiadian     = guantingToSanjiadian × guanting
-lugouqiao      = sanjiadianToLugouqiao × (sanjiadian + south-water)
-cuizhihuiying  = lugouqiaoToCuizhihuiying × (lugouqiao + reclaimed-lower)
-qujiadian      = cuizhihuiyingToQujiadian × cuizhihuiying
+```bash
+node scripts/validate-allocation-plan.mjs plan.json current-rules.json
 ```
 
-Evidence attaches to each source release. Expected section flows are deterministic derivations of those releases and the cited current rule Observation; they do not carry a second citation field. Stage 1 is revisable (`isFinal: false`); stage 2 is final (`isFinal: true`).
+The validator checks all three sources and four sections, 0.1 m³/s release increments, declared-vs-computed flows within 0.01 m³/s, source and total limits, ecological target coverage, and the fixed transfer model. It checks reference presence and shape but cannot prove authorization, Receipt-chain validity, grant scope, timing, or content hashes; perform those protocol checks separately.
 
-The baseline objective is feasibility: meet every published source, total-release, model, ecological-target, and evidence constraint. Any feasible plan may pass; the deterministic score does not claim or enforce a real operational optimum. If the task later requests optimization, it must publish a separate versioned objective and tie-break rules before the agent optimizes.
+Stage 1 is revisable (`isFinal: false`) and stage 2 is final (`isFinal: true`) only when the assigned Task schema retains those phases. Feasibility is the baseline objective. Do not claim an operational optimum unless the pinned scenario version publishes a separate deterministic objective and tie-break rules.
+
+Publish the candidate plan as an ArtifactVersion if the Task requires team review. Include the coordinator itself only when it must cite that version, `/sync` its artifact Receipt, then create the immutable Task/team Submission. Other roles endorse only the exact revision they reviewed. Team evaluation and feedback never overwrite the individual role artifacts.

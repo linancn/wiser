@@ -10,6 +10,10 @@ const sectionIds = new Set([
   'qujiadian',
 ]);
 
+// This is a role-local shape and hydraulic-feasibility check. The protocol
+// separately proves that each evidenceRefs entry resolves to an authorized
+// Receipt or immutable ArtifactVersion for the assigned RunAgent.
+
 function fail(message) {
   process.stderr.write(`${JSON.stringify({ valid: false, error: message })}\n`);
   process.exitCode = 1;
@@ -64,7 +68,7 @@ if (!file) {
         )
       ) {
         throw new Error(
-          `${release.sourceId}.evidenceRefs must contain observed information IDs`,
+          `${release.sourceId}.evidenceRefs must contain Receipt or ArtifactVersion reference IDs`,
         );
       }
     }
