@@ -269,13 +269,20 @@ describe('v2 local lab deterministic evaluation and analysis barrier', () => {
       );
     }
 
+    const specialistResults = new Map<
+      string,
+      Awaited<ReturnType<typeof completeSpecialistTask>>
+    >();
     for (const credential of specialistCredentials.slice(0, 2)) {
-      await completeSpecialistTask(
-        app,
-        lab,
-        credential,
-        coordinator,
-        initialBatches.get(credential.roleSlotId)!,
+      specialistResults.set(
+        credential.roleSlotId,
+        await completeSpecialistTask(
+          app,
+          lab,
+          credential,
+          coordinator,
+          initialBatches.get(credential.roleSlotId)!,
+        ),
       );
     }
     const coordinatorBeforeRelease = await app.inject({
@@ -288,12 +295,15 @@ describe('v2 local lab deterministic evaluation and analysis barrier', () => {
     ).toMatchObject([{ state: 'BLOCKED' }]);
 
     const finalSpecialist = specialistCredentials[2]!;
-    await completeSpecialistTask(
-      app,
-      lab,
-      finalSpecialist,
-      coordinator,
-      initialBatches.get(finalSpecialist.roleSlotId)!,
+    specialistResults.set(
+      finalSpecialist.roleSlotId,
+      await completeSpecialistTask(
+        app,
+        lab,
+        finalSpecialist,
+        coordinator,
+        initialBatches.get(finalSpecialist.roleSlotId)!,
+      ),
     );
 
     const coordinatorInitial = initialBatches.get('dispatch-coordination')!;
@@ -353,6 +363,278 @@ describe('v2 local lab deterministic evaluation and analysis barrier', () => {
       { roleSlotId: 'hydraulic-constraints', verdict: 'ACCEPTED' },
       { roleSlotId: 'ecological-target', verdict: 'ACCEPTED' },
     ]);
+
+    const coordinatorTask = coordinatorSync.receipts
+      .filter(({ resourceType }) => resourceType === 'task')
+      .map(({ contentSnapshot }) => contentSnapshot as unknown as RunTaskDto)
+      .find(({ state }) => state === 'READY')!;
+    const coordinatorCaseInput = coordinatorInitial.receipts.find(
+      ({ resourceType, contentSnapshot }) =>
+        resourceType === 'artifact' &&
+        contentSnapshot['artifactType'] === 'case-input',
+    )!;
+    const specialistArtifacts = coordinatorSync.receipts
+      .filter(
+        ({ resourceType, contentSnapshot }) =>
+          resourceType === 'artifact' &&
+          contentSnapshot['artifactType'] === 'role-analysis',
+      )
+      .map(
+        ({ contentSnapshot }) => contentSnapshot as unknown as RunArtifactDto,
+      );
+    const coordinatorClaimResponse = await app.inject({
+      method: 'POST',
+      url: `/api/v2/tasks/${coordinatorTask.id}:claim`,
+      headers: {
+        ...participantHeaders(coordinator),
+        'idempotency-key': commandKey(),
+      },
+      payload: {
+        expectedVersion: coordinatorTask.lockVersion,
+        leaseSeconds: 120,
+      },
+    });
+    expect(coordinatorClaimResponse.statusCode).toBe(200);
+    const coordinatorClaim = coordinatorClaimResponse.json<ClaimedTask>();
+    const coordinatorBeginResponse = await app.inject({
+      method: 'POST',
+      url: `/api/v2/tasks/${coordinatorTask.id}:begin`,
+      headers: {
+        ...participantHeaders(coordinator),
+        'idempotency-key': commandKey(),
+      },
+      payload: {
+        expectedVersion: coordinatorClaim.task.lockVersion,
+        claimEpoch: coordinatorClaim.lease.claimEpoch,
+        leaseToken: coordinatorClaim.lease.leaseToken,
+      },
+    });
+    expect(coordinatorBeginResponse.statusCode).toBe(200);
+    const coordinatorBegunTask = coordinatorBeginResponse.json<{
+      task: RunTaskDto;
+    }>().task;
+
+    const teamPayload = {
+      candidatePlan: { stage: 1, simulationOnly: true },
+      artifactVersionRefs: specialistArtifacts.map(({ versionId }) =>
+        String(versionId),
+      ),
+      evidenceRefs: [coordinatorCaseInput.id],
+    };
+    const teamArtifactResponse = await app.inject({
+      method: 'POST',
+      url: `/api/v2/runs/${lab.manifest.runId}/artifacts`,
+      headers: {
+        ...participantHeaders(coordinator),
+        'idempotency-key': commandKey(),
+      },
+      payload: {
+        artifactKey: 'candidate-joint-plan',
+        artifactType: 'team-plan',
+        title: { 'zh-CN': 'Stage 1 团队方案', en: 'Stage 1 team plan' },
+        content: teamPayload,
+        recipientRunAgentIds: lab.credentials.map(
+          ({ runAgentId }) => runAgentId,
+        ),
+      },
+    });
+    expect(teamArtifactResponse.statusCode).toBe(201);
+    const teamArtifact = teamArtifactResponse.json<{
+      artifact: RunArtifactDto;
+    }>().artifact;
+    const teamArtifactSyncResponse = await app.inject({
+      method: 'POST',
+      url: `/api/v2/runs/${lab.manifest.runId}/sync`,
+      headers: {
+        ...participantHeaders(coordinator),
+        'idempotency-key': commandKey(),
+      },
+      payload: {
+        afterReceiptSeq: coordinatorSync.throughReceiptSeq,
+        ack: {
+          throughReceiptSeq: coordinatorSync.throughReceiptSeq,
+          headHash: coordinatorSync.receiptHeadHash,
+        },
+        maxItems: 50,
+      },
+    });
+    expect(teamArtifactSyncResponse.statusCode).toBe(200);
+    const teamArtifactSync = teamArtifactSyncResponse.json<SyncBatch>();
+    expect(
+      teamArtifactSync.receipts.some(
+        ({ resourceType, resourceVersion }) =>
+          resourceType === 'artifact' &&
+          resourceVersion === teamArtifact.versionId,
+      ),
+    ).toBe(true);
+
+    const teamSubmissionResponse = await app.inject({
+      method: 'POST',
+      url: `/api/v2/tasks/${coordinatorTask.id}/submissions`,
+      headers: {
+        ...participantHeaders(coordinator),
+        'idempotency-key': commandKey(),
+      },
+      payload: {
+        expectedVersion: coordinatorBegunTask.lockVersion,
+        claimEpoch: coordinatorClaim.lease.claimEpoch,
+        leaseToken: coordinatorClaim.lease.leaseToken,
+        submissionType: 'candidate-joint-plan',
+        targetScope: 'team',
+        payload: teamPayload,
+        receiptRefs: [
+          {
+            receiptId: coordinatorCaseInput.id,
+            receiptHash: coordinatorCaseInput.receiptHash,
+          },
+        ],
+        artifactVersionRefs: [
+          ...specialistArtifacts.map((artifact) => ({
+            artifactId: artifact.id,
+            artifactVersionId: artifact.versionId,
+            contentHash: artifact.contentHash,
+          })),
+          {
+            artifactId: teamArtifact.id,
+            artifactVersionId: teamArtifact.versionId,
+            contentHash: teamArtifact.contentHash,
+          },
+        ],
+        endorsementRecipientRunAgentIds: specialistCredentials.map(
+          ({ runAgentId }) => runAgentId,
+        ),
+      },
+    });
+    expect(teamSubmissionResponse.statusCode).toBe(201);
+    const teamSubmission = teamSubmissionResponse.json<TaskSubmissionResult>();
+    expect(teamSubmission.task.state).toBe('SUBMITTED');
+
+    for (const specialist of specialistCredentials) {
+      const specialistCursor = specialistResults.get(
+        specialist.roleSlotId,
+      )!.cursor;
+      const reviewSyncResponse = await app.inject({
+        method: 'POST',
+        url: `/api/v2/runs/${lab.manifest.runId}/sync`,
+        headers: {
+          ...participantHeaders(specialist),
+          'idempotency-key': commandKey(),
+        },
+        payload: {
+          afterReceiptSeq: specialistCursor.throughReceiptSeq,
+          ack: {
+            throughReceiptSeq: specialistCursor.throughReceiptSeq,
+            headHash: specialistCursor.receiptHeadHash,
+          },
+          maxItems: 50,
+        },
+      });
+      expect(reviewSyncResponse.statusCode).toBe(200);
+      const reviewSync = reviewSyncResponse.json<SyncBatch>();
+      expect(
+        reviewSync.receipts.some(
+          ({ resourceType, resourceId }) =>
+            resourceType === 'submission' &&
+            resourceId === teamSubmission.submission.id,
+        ),
+      ).toBe(true);
+      const reviewFeedback = reviewSync.receipts
+        .filter(({ resourceType }) => resourceType === 'feedback')
+        .map(
+          ({ contentSnapshot }) => contentSnapshot as unknown as RunFeedbackDto,
+        )
+        .find(
+          ({ subjectSubmissionId, allowedActions }) =>
+            subjectSubmissionId === teamSubmission.submission.id &&
+            allowedActions.includes('endorse'),
+        )!;
+      const grant = reviewFeedback.actionGrants?.find(
+        ({ action }) => action === 'endorse',
+      );
+      expect(grant).toBeDefined();
+
+      const issuedSubmissions = await app.inject({
+        method: 'GET',
+        url: `/api/v2/runs/${lab.manifest.runId}/submissions`,
+        headers: participantHeaders(specialist),
+      });
+      expect(
+        issuedSubmissions
+          .json<{ items: RunSubmissionDto[] }>()
+          .items.some(({ id }) => id === teamSubmission.submission.id),
+      ).toBe(true);
+      const endorsement = await app.inject({
+        method: 'POST',
+        url: `/api/v2/submissions/${teamSubmission.submission.id}/endorsements`,
+        headers: {
+          ...participantHeaders(specialist),
+          'idempotency-key': commandKey(),
+        },
+        payload: { feedbackActionGrantId: grant!.id },
+      });
+      expect(endorsement.statusCode).toBe(201);
+    }
+
+    const teamResultSyncResponse = await app.inject({
+      method: 'POST',
+      url: `/api/v2/runs/${lab.manifest.runId}/sync`,
+      headers: {
+        ...participantHeaders(coordinator),
+        'idempotency-key': commandKey(),
+      },
+      payload: {
+        afterReceiptSeq: teamArtifactSync.throughReceiptSeq,
+        ack: {
+          throughReceiptSeq: teamArtifactSync.throughReceiptSeq,
+          headHash: teamArtifactSync.receiptHeadHash,
+        },
+        maxItems: 50,
+      },
+    });
+    expect(teamResultSyncResponse.statusCode).toBe(200);
+    const teamResultSync = teamResultSyncResponse.json<SyncBatch>();
+    expect(
+      teamResultSync.receipts.some(
+        ({ resourceType, contentSnapshot }) =>
+          resourceType === 'task' && contentSnapshot['state'] === 'ACCEPTED',
+      ),
+    ).toBe(true);
+    expect(
+      teamResultSync.receipts
+        .filter(({ resourceType }) => resourceType === 'feedback')
+        .map(
+          ({ contentSnapshot }) => contentSnapshot as unknown as RunFeedbackDto,
+        )
+        .some(({ targetScope }) => targetScope === 'team'),
+    ).toBe(true);
+
+    const finalEvents = await app.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${lab.manifest.runId}/events?after=0&limit=200`,
+      headers: { authorization: `Bearer ${lab.operatorToken}` },
+    });
+    expect(
+      finalEvents
+        .json<{ items: { eventType: string; payload: unknown }[] }>()
+        .items.filter(
+          ({ eventType, payload }) =>
+            eventType === 'barrier.released' &&
+            (payload as { definitionKey?: string }).definitionKey ===
+              'endorsement-ready',
+        ),
+    ).toHaveLength(1);
+    const finalEvaluations = await app.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${lab.manifest.runId}/evaluations`,
+      headers: { authorization: `Bearer ${lab.operatorToken}` },
+    });
+    expect(
+      RunEvaluationListSchema.parse(finalEvaluations.json()).items.at(-1),
+    ).toMatchObject({
+      roleSlotId: 'dispatch-coordination',
+      targetScope: 'team',
+      verdict: 'ACCEPTED',
+    });
   });
 
   it('issues a scoped resubmit grant and accepts an immutable successor', async () => {
