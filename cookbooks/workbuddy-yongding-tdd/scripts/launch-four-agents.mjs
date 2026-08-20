@@ -110,6 +110,9 @@ function cleanEnvironment(source, role, repositoryRoot) {
   environment.WISER_EXPECTED_RUN_AGENT_ID = role.runAgentId;
   environment.WISER_REPOSITORY_ROOT = repositoryRoot;
   environment.WISER_TEAM_ROSTER_JSON = source.WISER_TEAM_ROSTER_JSON;
+  if (typeof source.WISER_SCRIPTED_FAULT === 'string') {
+    environment.WISER_SCRIPTED_FAULT = source.WISER_SCRIPTED_FAULT;
+  }
   return environment;
 }
 

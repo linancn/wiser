@@ -226,9 +226,15 @@ async function runSpecialist(client, context) {
   }
   const task = taskReceipt.contentSnapshot;
   const { claim, begunTask } = await claimAndBegin(client, identity, task);
-  const payload = specialistPayloads[roleSlotId];
+  const canonicalPayload = specialistPayloads[roleSlotId];
+  const injectSchemaFault =
+    roleSlotId === 'water-evidence' &&
+    process.env.WISER_SCRIPTED_FAULT === 'water-evidence-schema-once';
+  const firstPayload = injectSchemaFault
+    ? { evidenceRegister: [] }
+    : canonicalPayload;
   const artifactKey = artifactKeys[roleSlotId];
-  const published = await tool(client, 'excon_publish_artifact', {
+  let published = await tool(client, 'excon_publish_artifact', {
     ...identity,
     idempotencyKey: randomUUID(),
     artifactKey,
@@ -237,11 +243,11 @@ async function runSpecialist(client, context) {
       'zh-CN': `${roleSlotId} 脚本输出`,
       en: `${roleSlotId} scripted output`,
     },
-    content: payload,
+    content: firstPayload,
     recipientRunAgentIds: [identity.runAgentId, coordinator.runAgentId],
   });
   let cursor = await sync(client, identity, initial);
-  const submitted = await tool(client, 'excon_submit_task_result', {
+  let submitted = await tool(client, 'excon_submit_task_result', {
     taskId: task.id,
     runAgentId: identity.runAgentId,
     idempotencyKey: randomUUID(),
@@ -250,7 +256,7 @@ async function runSpecialist(client, context) {
     leaseToken: claim.lease.leaseToken,
     submissionType: artifactKey,
     targetScope: 'role',
-    payload,
+    payload: firstPayload,
     receiptRefs: [
       {
         receiptId: caseInputReceipt.id,
@@ -266,8 +272,70 @@ async function runSpecialist(client, context) {
     ],
     endorsementRecipientRunAgentIds: [],
   });
-  if (submitted.task.state !== 'ACCEPTED') {
+  if (!injectSchemaFault && submitted.task.state !== 'ACCEPTED') {
     throw new Error('Specialist deterministic evaluation did not accept.');
+  }
+  if (injectSchemaFault) {
+    if (submitted.task.state !== 'READY') {
+      throw new Error('Injected schema fault did not enter scoped rework.');
+    }
+    cursor = await sync(client, identity, cursor);
+    const feedbackList = await tool(client, 'excon_get_feedback', identity);
+    const feedback = feedbackList.items.find(
+      (entry) =>
+        entry.subjectSubmissionId === submitted.submission.id &&
+        entry.allowedActions?.includes('resubmit'),
+    );
+    const grant = feedback?.actionGrants?.find(
+      (entry) => entry.action === 'resubmit',
+    );
+    if (grant === undefined) {
+      throw new Error('Scoped resubmit grant was not issued.');
+    }
+    published = await tool(client, 'excon_publish_artifact_version', {
+      artifactId: published.artifact.id,
+      runAgentId: identity.runAgentId,
+      idempotencyKey: randomUUID(),
+      baseVersionId: published.artifact.versionId,
+      content: canonicalPayload,
+      recipientRunAgentIds: [identity.runAgentId, coordinator.runAgentId],
+    });
+    cursor = await sync(client, identity, cursor);
+    const revisionLease = await claimAndBegin(client, identity, submitted.task);
+    const revisionOfId = submitted.submission.id;
+    submitted = await tool(client, 'excon_submit_task_result', {
+      taskId: task.id,
+      runAgentId: identity.runAgentId,
+      idempotencyKey: randomUUID(),
+      expectedVersion: revisionLease.begunTask.lockVersion,
+      claimEpoch: revisionLease.claim.lease.claimEpoch,
+      leaseToken: revisionLease.claim.lease.leaseToken,
+      submissionType: artifactKey,
+      targetScope: 'role',
+      payload: canonicalPayload,
+      receiptRefs: [
+        {
+          receiptId: caseInputReceipt.id,
+          receiptHash: caseInputReceipt.receiptHash,
+        },
+      ],
+      artifactVersionRefs: [
+        {
+          artifactId: published.artifact.id,
+          artifactVersionId: published.artifact.versionId,
+          contentHash: published.artifact.contentHash,
+        },
+      ],
+      revisionOfId,
+      feedbackActionGrantId: grant.id,
+      endorsementRecipientRunAgentIds: [],
+    });
+    if (
+      submitted.task.state !== 'ACCEPTED' ||
+      submitted.submission.revisionOfId !== revisionOfId
+    ) {
+      throw new Error('Scoped immutable rework successor was not accepted.');
+    }
   }
 
   const review = await waitForSync(

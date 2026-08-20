@@ -2,6 +2,7 @@ import type { WorkBuddyLaunchReport } from './launch-four-agents.mjs';
 
 export interface RunWorkBuddyCookbookOptions {
   readonly environment?: Readonly<Record<string, string | undefined>>;
+  readonly faultInjection?: 'water-evidence-schema-once';
   readonly maxTurns?: number;
   readonly mode: 'scripted' | 'workbuddy';
   readonly outputDirectory: string;
@@ -35,6 +36,11 @@ export interface WorkBuddyCookbookReport {
     readonly releasedBarriers: readonly string[];
     readonly eventCount: number;
     readonly lastRunSeq: number | null;
+  };
+  readonly tddCycle: {
+    readonly injectedFault: 'water-evidence-schema-once' | null;
+    readonly reworkObserved: boolean;
+    readonly greenAccepted: boolean;
   };
   readonly artifacts: {
     readonly participantReport: string | null;

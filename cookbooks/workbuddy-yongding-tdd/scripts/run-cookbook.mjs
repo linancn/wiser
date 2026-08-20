@@ -114,7 +114,12 @@ function eventSummary(value) {
   };
 }
 
-function authoritativePass(launch, evaluations, releasedBarriers) {
+function authoritativePass(
+  launch,
+  evaluations,
+  releasedBarriers,
+  faultInjection,
+) {
   const expected = new Map([
     ['water-evidence', 'role'],
     ['hydraulic-constraints', 'role'],
@@ -123,13 +128,22 @@ function authoritativePass(launch, evaluations, releasedBarriers) {
   ]);
   return (
     launch.exitCode === 0 &&
-    evaluations.length === expected.size &&
-    evaluations.every(
-      ({ roleSlotId, targetScope, verdict, deterministic }) =>
-        expected.get(roleSlotId) === targetScope &&
-        verdict === 'ACCEPTED' &&
-        deterministic === true,
-    ) &&
+    [...expected].every(([roleSlotId, targetScope]) => {
+      const roleEvaluations = evaluations.filter(
+        (evaluation) => evaluation.roleSlotId === roleSlotId,
+      );
+      const latest = roleEvaluations.at(-1);
+      return (
+        latest?.targetScope === targetScope &&
+        latest.verdict === 'ACCEPTED' &&
+        latest.deterministic === true
+      );
+    }) &&
+    (faultInjection === null ||
+      evaluations.some(
+        ({ roleSlotId, verdict }) =>
+          roleSlotId === 'water-evidence' && verdict === 'REWORK_REQUIRED',
+      )) &&
     ['analysis-ready', 'endorsement-ready'].every((barrier) =>
       releasedBarriers.includes(barrier),
     )
@@ -150,6 +164,15 @@ export async function runWorkBuddyCookbook(options) {
     throw new Error('Cookbook mode must be scripted or workbuddy.');
   }
   const environment = options.environment ?? process.env;
+  const faultInjection = options.faultInjection ?? null;
+  if (
+    ![null, 'water-evidence-schema-once'].includes(faultInjection) ||
+    (faultInjection !== null && mode !== 'scripted')
+  ) {
+    throw new Error(
+      'faultInjection is supported only by scripted mode and must use a published fault key.',
+    );
+  }
   const workBuddyCli = requireAbsolute(
     'workBuddyCli',
     options.workBuddyCli ?? defaultWorkBuddyCli,
@@ -184,7 +207,12 @@ export async function runWorkBuddyCookbook(options) {
       mcpArguments: [join(repositoryRoot, 'apps/mcp/src/index.ts')],
     });
     launch = await launchWorkBuddyRoles({
-      environment,
+      environment: {
+        ...environment,
+        ...(faultInjection === null
+          ? {}
+          : { WISER_SCRIPTED_FAULT: faultInjection }),
+      },
       launchManifestPath: rendered.launchManifestPath,
       mode,
       repositoryRoot,
@@ -224,7 +252,15 @@ export async function runWorkBuddyCookbook(options) {
   const passed =
     failure === null &&
     launch !== undefined &&
-    authoritativePass(launch, evaluations, events.releasedBarriers);
+    authoritativePass(
+      launch,
+      evaluations,
+      events.releasedBarriers,
+      faultInjection,
+    );
+  const waterEvaluations = evaluations.filter(
+    ({ roleSlotId }) => roleSlotId === 'water-evidence',
+  );
   const report = {
     schemaVersion: 1,
     cookbookId: 'workbuddy-yongding-four-agent-tdd',
@@ -239,6 +275,13 @@ export async function runWorkBuddyCookbook(options) {
       releasedBarriers: events.releasedBarriers,
       eventCount: events.eventCount,
       lastRunSeq: events.lastRunSeq,
+    },
+    tddCycle: {
+      injectedFault: faultInjection,
+      reworkObserved: waterEvaluations.some(
+        ({ verdict }) => verdict === 'REWORK_REQUIRED',
+      ),
+      greenAccepted: waterEvaluations.at(-1)?.verdict === 'ACCEPTED' && passed,
     },
     artifacts: {
       participantReport:
@@ -266,6 +309,7 @@ function cliOptions(argv) {
   const outputIndex = argv.indexOf('--output');
   const repositoryRoot = resolve(cookbookRoot, '../..');
   const mode = modeIndex < 0 ? 'scripted' : argv[modeIndex + 1];
+  const faultIndex = argv.indexOf('--fault');
   const stamp = new Date().toISOString().replaceAll(/[:.]/g, '-');
   const outputDirectory =
     outputIndex < 0
@@ -274,6 +318,7 @@ function cliOptions(argv) {
   return {
     environment: process.env,
     mode,
+    ...(faultIndex < 0 ? {} : { faultInjection: argv[faultIndex + 1] }),
     outputDirectory,
     repositoryRoot,
     ...(process.env.WORKBUDDY_CLI === undefined

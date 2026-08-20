@@ -33,6 +33,7 @@
     "observability:smoke": "node infrastructure/observability/smoke.mjs",
     "observability:down": "docker compose --profile observability stop telemetry-ingress otel-collector tempo prometheus loki grafana",
     "cookbook:scripted": "tsx cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs --mode scripted",
+    "cookbook:rework": "tsx cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs --mode scripted --fault water-evidence-schema-once",
     "cookbook:workbuddy": "tsx cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs --mode workbuddy",
     "stack:up": "pnpm supabase:start && pnpm compose:up",
     "stack:down": "pnpm compose:down && pnpm supabase:stop"
