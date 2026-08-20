@@ -4,6 +4,15 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@types/node':
+      specifier: 24.13.3
+      version: 24.13.3
+    typescript:
+      specifier: 6.0.3
+      version: 6.0.3
+
 importers:
   .:
     devDependencies:
@@ -37,6 +46,15 @@ importers:
       vitest:
         specifier: 4.1.11
         version: 4.1.11(@types/node@24.13.3)(@vitest/coverage-v8@4.1.11)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(tsx@4.23.12))
+
+  packages/core:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
 
 packages:
   '@babel/helper-string-parser@7.29.7':
