@@ -136,6 +136,9 @@ describe('WorkBuddy role-isolated runtime renderer', () => {
       expect(prompt).not.toContain('test_secret');
       expect(prompt).toContain('Do not call `Read`');
       expect(prompt).toContain(
+        'Before the first use of every named `excon_*` tool, call `ToolSearch` with that exact tool name',
+      );
+      expect(prompt).toContain(
         'must not publish a Message or Artifact before `excon_begin_task` succeeds',
       );
       expect(prompt.indexOf('`excon_claim_task`')).toBeLessThan(
