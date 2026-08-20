@@ -1,11 +1,9 @@
 import Link from 'next/link';
 
 import { getDictionary, type Locale } from '@/lib/i18n';
-import {
-  getRunsForScenario,
-  scenarios,
-  type PlatformScenario,
-} from '@/lib/platform';
+import type { ExerciseRun, PlatformScenario } from '@/lib/platform';
+import { ReadModelGaps } from './read-model-state';
+import type { ReadModelGap, WebDataMode } from '@/lib/read-model-source';
 
 function ScenarioRiver({
   index,
@@ -42,7 +40,19 @@ function ScenarioRiver({
   );
 }
 
-export function ScenarioCenter({ locale }: { locale: Locale }) {
+export function ScenarioCenter({
+  gaps,
+  locale,
+  mode,
+  runs,
+  scenarios,
+}: {
+  gaps: readonly ReadModelGap[];
+  locale: Locale;
+  mode: WebDataMode;
+  runs: readonly ExerciseRun[];
+  scenarios: readonly PlatformScenario[];
+}) {
   const dictionary = getDictionary(locale);
 
   return (
@@ -52,8 +62,14 @@ export function ScenarioCenter({ locale }: { locale: Locale }) {
           <p className="eyebrow">{dictionary.scenarioCenter.eyebrow}</p>
           <h1>{dictionary.scenarioCenter.heading}</h1>
         </div>
-        <p>{dictionary.scenarioCenter.lede}</p>
+        <p>
+          {mode === 'reference'
+            ? dictionary.scenarioCenter.lede
+            : dictionary.scenarioCenter.liveLede}
+        </p>
       </header>
+
+      <ReadModelGaps gaps={gaps} locale={locale} />
 
       <section
         className="catalog-section"
@@ -72,8 +88,10 @@ export function ScenarioCenter({ locale }: { locale: Locale }) {
             const currentVersion = scenario.versions.find(
               (version) => version.id === scenario.currentVersionId,
             );
-            const runs = getRunsForScenario(scenario.id);
-            const firstRun = runs[0];
+            const scenarioRuns = runs.filter(
+              (run) => run.scenarioId === scenario.id,
+            );
+            const firstRun = scenarioRuns[0];
             return (
               <article
                 className="scenario-card"
@@ -118,7 +136,7 @@ export function ScenarioCenter({ locale }: { locale: Locale }) {
                   </div>
                   <div>
                     <dt>{dictionary.scenarioCenter.activeRuns}</dt>
-                    <dd>{runs.length}</dd>
+                    <dd>{scenarioRuns.length}</dd>
                   </div>
                 </dl>
                 <div className="scenario-card-actions">

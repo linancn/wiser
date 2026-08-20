@@ -68,3 +68,41 @@ test('keeps the operator workspace usable on a narrow screen', async ({
   );
   expect(overflow).toBeLessThanOrEqual(1);
 });
+
+test('visually checks the read-only preview at desktop and 390px without browser errors', async ({
+  browser,
+}, testInfo) => {
+  for (const viewport of [
+    { name: 'desktop', width: 1440, height: 1000 },
+    { name: 'mobile-390', width: 390, height: 844 },
+  ]) {
+    const context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+    });
+    const page = await context.newPage();
+    const browserErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') browserErrors.push(message.text());
+    });
+    page.on('pageerror', (error) => browserErrors.push(error.message));
+
+    await page.goto('/zh-CN/runs/run-yongding-spring-042/trace');
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText('设计预览')).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: '多智能体协作 Trace' }),
+    ).toBeVisible();
+    const overflow = await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+    expect(browserErrors).toEqual([]);
+    await page.screenshot({
+      fullPage: true,
+      path: testInfo.outputPath(`${viewport.name}-trace.png`),
+    });
+    await context.close();
+  }
+});

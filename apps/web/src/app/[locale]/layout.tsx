@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { AppShell } from '@/components/app-shell';
 import { getDictionary, isLocale, LOCALES } from '@/lib/i18n';
+import { getWebDataMode } from '@/lib/read-model-source.server';
 
 interface LocaleLayoutProps {
   children: ReactNode;
@@ -41,5 +42,9 @@ export default async function LocaleLayout({
 }: LocaleLayoutProps) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  return <AppShell locale={locale}>{children}</AppShell>;
+  return (
+    <AppShell locale={locale} mode={getWebDataMode()}>
+      {children}
+    </AppShell>
+  );
 }

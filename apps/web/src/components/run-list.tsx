@@ -1,9 +1,21 @@
 import Link from 'next/link';
 
 import { getDictionary, getTelemetryModeLabel, type Locale } from '@/lib/i18n';
-import { exerciseRuns, getScenarioById } from '@/lib/platform';
+import type { ExerciseRun, PlatformScenario } from '@/lib/platform';
+import type { ReadModelGap } from '@/lib/read-model-source';
+import { ReadModelGaps } from './read-model-state';
 
-export function RunList({ locale }: { locale: Locale }) {
+export function RunList({
+  gaps,
+  locale,
+  runs,
+  scenarios,
+}: {
+  gaps: readonly ReadModelGap[];
+  locale: Locale;
+  runs: readonly ExerciseRun[];
+  scenarios: readonly PlatformScenario[];
+}) {
   const dictionary = getDictionary(locale);
 
   return (
@@ -15,9 +27,10 @@ export function RunList({ locale }: { locale: Locale }) {
         </div>
         <p>{dictionary.runList.lede}</p>
       </header>
+      <ReadModelGaps gaps={gaps} locale={locale} />
       <section className="run-register" aria-label={dictionary.runList.heading}>
-        {exerciseRuns.map((run) => {
-          const scenario = getScenarioById(run.scenarioId);
+        {runs.map((run) => {
+          const scenario = scenarios.find(({ id }) => id === run.scenarioId);
           return (
             <article className="run-register-row" key={run.id}>
               <div

@@ -49,6 +49,8 @@ const zhCN = {
     otherLanguage: 'English',
     demo: '设计预览',
     demoDetail: '静态 Operator 管理投影；未连接 API，也不代表生产授权',
+    live: 'v2 实时只读',
+    liveDetail: '服务端使用导调凭据读取 v2 投影；凭据不会发送到浏览器',
     participantBoundary: '智能体入口：Skill + HTTP / MCP',
     observerBoundary: 'Web：场景管理展示、只读导调与回放',
   },
@@ -57,9 +59,15 @@ const zhCN = {
     published: '已发布',
     retired: '已退役',
     draft: '草稿',
+    created: '已创建',
+    forming: '组队中',
+    ready: '已就绪',
     running: '运行中',
     paused: '已暂停',
+    completing: '收尾中',
     completed: '已完成',
+    cancelled: '已取消',
+    failed: '失败',
     roles: '角色',
     runs: '运行',
     version: '版本',
@@ -68,10 +76,40 @@ const zhCN = {
     readonly: '只读观测',
     back: '返回',
   },
+  dataSource: {
+    unavailableEyebrow: '数据源断流',
+    unavailableHeading: '实时只读投影当前不可用',
+    unavailableCopy:
+      '页面已停止渲染业务数据，也没有切换到参考样例。请按下方诊断检查配置或 API。',
+    referenceUnavailableHeading: '参考投影中没有这个资源',
+    referenceUnavailableCopy:
+      '该地址不在已提交的设计预览数据内。返回目录选择一个参考场景或运行。',
+    diagnostic: '诊断',
+    referenceDiagnostic: '参考数据集中没有地址所指向的资源 ID。',
+    reasons: {
+      configuration: 'Web 服务端实时数据配置不完整或取值无效。',
+      authentication: '导调凭据未通过 API 认证（HTTP 401）。',
+      authorization: '导调凭据没有读取该投影的权限（HTTP 403）。',
+      notFound: 'v2 API 没有返回地址中的场景或运行。',
+      request: 'v2 API 无法访问或未就绪。',
+      contract: 'API 响应未通过 Web 的严格 v2 只读契约检查。',
+    },
+    action: '恢复方式',
+    liveAction:
+      '确认 AGENT_EXCON_API_INTERNAL_URL 是 API origin、WISER_WEB_OPERATOR_TOKEN 有效，并检查 /health/ready。',
+    referenceAction: '返回场景中心，或将 Web 切换为 live 模式查询动态 ID。',
+    returnCatalog: '返回场景中心',
+    gapEyebrow: 'API COVERAGE VECTOR',
+    gapHeading: '当前 v2 只读覆盖缺口',
+    gapCopy:
+      '以下字段没有被参考样例补齐。页面只展示 v2 API 实际返回并通过契约检查的数据。',
+  },
   scenarioCenter: {
     eyebrow: '多场景演练目录',
     heading: '场景中心',
     lede: '当前为 Operator 管理投影设计预览。每个场景独立版本化并声明多智能体角色、阶段契约与评价边界；参训行为仍由外部智能体通过 Skill、HTTP 或 MCP 完成。',
+    liveLede:
+      '当前为 v2 Operator 实时只读投影。每个场景独立版本化并声明多智能体角色；参训行为仍由外部智能体通过 Skill、HTTP 或 MCP 完成。',
     catalogLabel: '场景目录',
     currentVersion: '当前版本',
     roleSlots: '必需角色',
@@ -151,6 +189,11 @@ const zhCN = {
     exconService: 'EXCON 服务',
     participantExporter: '参与者 Exporter',
     noTelemetry: '此运行尚无 Agent telemetry；领域事件仍可回放。',
+    traceSummaries: 'Trace 摘要',
+    traceSummariesLede:
+      'v2 端点返回真实 Trace 级覆盖向量；在 Span 明细 DTO 可用前，不绘制调用链、模型或工具 Span。',
+    spanCount: 'Span 数量',
+    unknownModel: '模型信息未进入 RunAgent DTO',
     parallel: '并行',
     converged: '汇聚',
   },
@@ -209,6 +252,9 @@ const en: typeof zhCN = {
     demo: 'Design preview',
     demoDetail:
       'Static operator management projection; no API connection or production authorization is implied',
+    live: 'Live v2 read-only',
+    liveDetail:
+      'The server reads v2 projections with an operator credential; the credential is never sent to the browser',
     participantBoundary: 'Agent entry: Skill + HTTP / MCP',
     observerBoundary:
       'Web: scenario management views, read-only EXCON, and replay',
@@ -218,9 +264,15 @@ const en: typeof zhCN = {
     published: 'Published',
     retired: 'Retired',
     draft: 'Draft',
+    created: 'Created',
+    forming: 'Forming',
+    ready: 'Ready',
     running: 'Running',
     paused: 'Paused',
+    completing: 'Completing',
     completed: 'Completed',
+    cancelled: 'Cancelled',
+    failed: 'Failed',
     roles: 'Roles',
     runs: 'Runs',
     version: 'Version',
@@ -229,10 +281,46 @@ const en: typeof zhCN = {
     readonly: 'Read-only observability',
     back: 'Back',
   },
+  dataSource: {
+    unavailableEyebrow: 'Data source interrupted',
+    unavailableHeading: 'The live read-only projection is unavailable',
+    unavailableCopy:
+      'The page stopped rendering domain data and did not switch to the reference fixture. Use the diagnosis below to check configuration or the API.',
+    referenceUnavailableHeading:
+      'This resource is absent from the reference projection',
+    referenceUnavailableCopy:
+      'The address is not part of the committed design-preview data. Return to the catalog and choose a reference scenario or run.',
+    diagnostic: 'Diagnosis',
+    referenceDiagnostic:
+      'The reference dataset does not contain the resource ID in this URL.',
+    reasons: {
+      configuration:
+        'The Web server live-data configuration is incomplete or invalid.',
+      authentication:
+        'The operator credential failed API authentication (HTTP 401).',
+      authorization:
+        'The operator credential cannot read this projection (HTTP 403).',
+      notFound: 'The v2 API did not return the scenario or run in this URL.',
+      request: 'The v2 API is unreachable or not ready.',
+      contract: "The API response failed Web's strict v2 read-contract checks.",
+    },
+    action: 'Recovery action',
+    liveAction:
+      'Confirm AGENT_EXCON_API_INTERNAL_URL is the API origin, WISER_WEB_OPERATOR_TOKEN is valid, and check /health/ready.',
+    referenceAction:
+      'Return to the scenario center, or switch Web to live mode to query a dynamic ID.',
+    returnCatalog: 'Return to scenario center',
+    gapEyebrow: 'API COVERAGE VECTOR',
+    gapHeading: 'Current v2 read-coverage gaps',
+    gapCopy:
+      'The fields below are not backfilled from the reference fixture. The page shows only data actually returned by the v2 API and accepted by contract checks.',
+  },
   scenarioCenter: {
     eyebrow: 'Multi-scenario exercise catalog',
     heading: 'Scenario center',
     lede: 'This is an operator management-projection preview. Each scenario is independently versioned and declares multi-agent roles, stage contracts, and evaluation boundaries; external agents still participate through Skills, HTTP, or MCP.',
+    liveLede:
+      'This is the live read-only v2 operator projection. Each scenario is independently versioned and declares multi-agent roles; external agents still participate through Skills, HTTP, or MCP.',
     catalogLabel: 'Scenario catalog',
     currentVersion: 'Current version',
     roleSlots: 'Required roles',
@@ -317,6 +405,11 @@ const en: typeof zhCN = {
     participantExporter: 'Participant exporter',
     noTelemetry:
       'This run has no agent telemetry yet; domain events remain replayable.',
+    traceSummaries: 'Trace summaries',
+    traceSummariesLede:
+      'The v2 endpoint returns real trace-level coverage vectors. No call tree, model span, or tool span is drawn until a span-detail DTO exists.',
+    spanCount: 'Span count',
+    unknownModel: 'Model data is absent from the RunAgent DTO',
     parallel: 'Parallel',
     converged: 'Converged',
   },

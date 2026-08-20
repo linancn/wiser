@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 
 import { getDictionary, switchLocalePath, type Locale } from '@/lib/i18n';
+import type { WebDataMode } from '@/lib/read-model-source';
 
 function RiverMark() {
   return (
@@ -22,9 +23,11 @@ function RiverMark() {
 export function AppShell({
   children,
   locale,
+  mode,
 }: {
   children: ReactNode;
   locale: Locale;
+  mode: WebDataMode;
 }) {
   const dictionary = getDictionary(locale);
   const pathname = usePathname();
@@ -51,14 +54,21 @@ export function AppShell({
         <nav className="global-nav" aria-label={dictionary.brand.product}>
           <Link href={`/${locale}/scenarios`}>{dictionary.nav.scenarios}</Link>
           <Link href={`/${locale}/runs`}>{dictionary.nav.runs}</Link>
-          <Link href={`/${locale}/runs/run-yongding-spring-042/trace`}>
-            {dictionary.nav.trace}
-          </Link>
+          <Link href={`/${locale}/runs`}>{dictionary.nav.trace}</Link>
         </nav>
         <div className="header-actions">
-          <span className="demo-source" title={dictionary.shell.demoDetail}>
+          <span
+            className={`demo-source source-${mode}`}
+            title={
+              mode === 'reference'
+                ? dictionary.shell.demoDetail
+                : dictionary.shell.liveDetail
+            }
+          >
             <i aria-hidden="true" />
-            {dictionary.shell.demo}
+            {mode === 'reference'
+              ? dictionary.shell.demo
+              : dictionary.shell.live}
           </span>
           <Link
             className="language-switch"

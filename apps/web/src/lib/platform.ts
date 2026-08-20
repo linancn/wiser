@@ -44,12 +44,36 @@ export interface AgentSession {
   readonly id: string;
   readonly roleId: string;
   readonly displayName: LocalizedText;
-  readonly version: string;
-  readonly model: string;
-  readonly state: 'working' | 'waiting' | 'complete';
+  readonly instanceKey?: string;
+  readonly agentVersionId?: string;
+  readonly version?: string;
+  readonly model?: string;
+  readonly state:
+    | 'joined'
+    | 'ready'
+    | 'working'
+    | 'waiting'
+    | 'waiting-feedback'
+    | 'complete'
+    | 'done'
+    | 'disconnected'
+    | 'removed';
   readonly lastActivity: string;
-  readonly tokenCount: number;
-  readonly toolCalls: number;
+  readonly tokenCount?: number;
+  readonly toolCalls?: number;
+}
+
+export interface TraceSummary {
+  readonly traceId: string;
+  readonly runId: string;
+  readonly runAgentId?: string;
+  readonly name: string;
+  readonly startedAt: string;
+  readonly durationMs: number;
+  readonly status: 'UNSET' | 'OK' | 'ERROR';
+  readonly source: 'excon_service' | 'participant_exporter';
+  readonly trust: 'platform_observed' | 'participant_reported';
+  readonly spanCount: number;
 }
 
 export interface SpanLink {
@@ -121,7 +145,16 @@ export interface ExerciseRun {
   readonly name: LocalizedText;
   readonly scenarioId: string;
   readonly scenarioVersionId: string;
-  readonly state: 'running' | 'paused' | 'completed';
+  readonly state:
+    | 'created'
+    | 'forming'
+    | 'ready'
+    | 'running'
+    | 'paused'
+    | 'completing'
+    | 'completed'
+    | 'cancelled'
+    | 'failed';
   readonly currentVirtualTime: string;
   readonly wallStartedAt: string;
   readonly boundaryCoverage: number;
@@ -134,6 +167,7 @@ export interface ExerciseRun {
   };
   readonly participants: readonly AgentSession[];
   readonly spans: readonly ExerciseSpan[];
+  readonly traceSummaries: readonly TraceSummary[];
   readonly replayReceipts: readonly ReplayReceipt[];
 }
 
@@ -934,6 +968,7 @@ export const exerciseRuns: readonly ExerciseRun[] = [
     },
     participants: yongdingParticipants,
     spans: yongdingSpans,
+    traceSummaries: [],
     replayReceipts: yongdingReplayReceipts,
   },
   {
@@ -956,6 +991,7 @@ export const exerciseRuns: readonly ExerciseRun[] = [
       participantForRole('baiyangdian-agent', role, index),
     ),
     spans: [],
+    traceSummaries: [],
     replayReceipts: [],
   },
   {
@@ -978,6 +1014,7 @@ export const exerciseRuns: readonly ExerciseRun[] = [
       participantForRole('haihe-agent', role, index),
     ),
     spans: [],
+    traceSummaries: [],
     replayReceipts: [],
   },
 ] as const;

@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { ScenarioCenter } from '@/components/scenario-center';
+import { ReadModelUnavailable } from '@/components/read-model-state';
 import { getDictionary, isLocale } from '@/lib/i18n';
+import { getWebReadModelSource } from '@/lib/read-model-source.server';
 
 interface ScenarioCenterPageProps {
   params: Promise<{ locale: string }>;
@@ -21,5 +23,17 @@ export default async function ScenarioCenterPage({
 }: ScenarioCenterPageProps) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  return <ScenarioCenter locale={locale} />;
+  const result = await getWebReadModelSource().readScenarioCatalog();
+  if (result.status === 'unavailable') {
+    return <ReadModelUnavailable locale={locale} {...result} />;
+  }
+  return (
+    <ScenarioCenter
+      gaps={result.gaps}
+      locale={locale}
+      mode={result.mode}
+      runs={result.data.runs}
+      scenarios={result.data.scenarios}
+    />
+  );
 }

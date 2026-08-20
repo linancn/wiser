@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
 import { getDictionary, type Locale } from '@/lib/i18n';
-import {
-  getReplayEventsForPerspective,
-  type ExerciseRun,
-  type PlatformScenario,
+import type {
+  ExerciseRun,
+  PlatformScenario,
+  ReplayReceipt,
 } from '@/lib/platform';
+import type { ReadModelGap } from '@/lib/read-model-source';
+import { ReadModelGaps } from './read-model-state';
 
 type ReplayProgressStyle = CSSProperties & { '--replay-progress': string };
 
@@ -26,11 +28,15 @@ function categoryLabel(category: string, locale: Locale): string {
 }
 
 export function RunReplay({
+  gaps,
   locale,
+  replayByPerspective,
   run,
   scenario,
 }: {
+  gaps: readonly ReadModelGap[];
   locale: Locale;
+  replayByPerspective: Readonly<Record<string, readonly ReplayReceipt[]>>;
   run: ExerciseRun;
   scenario: PlatformScenario;
 }) {
@@ -39,8 +45,8 @@ export function RunReplay({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const events = useMemo(
-    () => getReplayEventsForPerspective(run.id, perspective),
-    [perspective, run.id],
+    () => replayByPerspective[perspective] ?? [],
+    [perspective, replayByPerspective],
   );
   const selectedEvent = events[selectedIndex] ?? events[0];
   const perspectiveAgent = run.participants.find(
@@ -95,6 +101,8 @@ export function RunReplay({
         </div>
       </header>
 
+      <ReadModelGaps gaps={gaps} locale={locale} />
+
       <section
         className="replay-workspace"
         aria-labelledby="replay-stream-heading"
@@ -114,11 +122,16 @@ export function RunReplay({
               <option value="operator">
                 {dictionary.replay.operatorPerspective}
               </option>
-              {run.participants.map((participant) => (
-                <option value={participant.id} key={participant.id}>
-                  {participant.displayName[locale]}
-                </option>
-              ))}
+              {run.participants
+                .filter(
+                  (participant) =>
+                    replayByPerspective[participant.id] !== undefined,
+                )
+                .map((participant) => (
+                  <option value={participant.id} key={participant.id}>
+                    {participant.displayName[locale]}
+                  </option>
+                ))}
             </select>
           </label>
           <div className="replay-perspective-summary" role="status">

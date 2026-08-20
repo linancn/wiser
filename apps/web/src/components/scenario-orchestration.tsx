@@ -1,17 +1,22 @@
 import Link from 'next/link';
 
 import { getDictionary, type Locale } from '@/lib/i18n';
-import { getRunsForScenario, type PlatformScenario } from '@/lib/platform';
+import type { ExerciseRun, PlatformScenario } from '@/lib/platform';
+import type { ReadModelGap } from '@/lib/read-model-source';
+import { ReadModelGaps } from './read-model-state';
 
 export function ScenarioOrchestration({
   locale,
+  gaps,
+  runs,
   scenario,
 }: {
+  gaps: readonly ReadModelGap[];
   locale: Locale;
+  runs: readonly ExerciseRun[];
   scenario: PlatformScenario;
 }) {
   const dictionary = getDictionary(locale);
-  const runs = getRunsForScenario(scenario.id);
   const currentRun = runs[0];
 
   return (
@@ -43,6 +48,8 @@ export function ScenarioOrchestration({
           )}
         </div>
       </header>
+
+      <ReadModelGaps gaps={gaps} locale={locale} />
 
       <section
         className="management-boundary"
@@ -103,58 +110,67 @@ export function ScenarioOrchestration({
         </div>
       </section>
 
-      <section
-        className="orchestration-section checkpoints-section"
-        aria-labelledby="checkpoint-heading"
-      >
-        <div className="section-heading split-heading">
-          <div>
-            <p className="eyebrow">02 · DUAL CLOCK</p>
-            <h2 id="checkpoint-heading">
-              {dictionary.orchestration.checkpointsHeading}
-            </h2>
+      {scenario.checkpoints.length === 0 ? null : (
+        <section
+          className="orchestration-section checkpoints-section"
+          aria-labelledby="checkpoint-heading"
+        >
+          <div className="section-heading split-heading">
+            <div>
+              <p className="eyebrow">02 · DUAL CLOCK</p>
+              <h2 id="checkpoint-heading">
+                {dictionary.orchestration.checkpointsHeading}
+              </h2>
+            </div>
+            <p>{dictionary.orchestration.checkpointsLede}</p>
           </div>
-          <p>{dictionary.orchestration.checkpointsLede}</p>
-        </div>
-        <ol className="checkpoint-flow">
-          {scenario.checkpoints.map((checkpoint, index) => (
-            <li key={checkpoint.id}>
-              <span className="checkpoint-time">{checkpoint.virtualTime}</span>
-              <i aria-hidden="true" />
-              <strong>{checkpoint.title[locale]}</strong>
-              <p>{checkpoint.contract[locale]}</p>
-              {index < scenario.checkpoints.length - 1 ? (
-                <span className="flow-arrow" aria-hidden="true">
-                  →
+          <ol className="checkpoint-flow">
+            {scenario.checkpoints.map((checkpoint, index) => (
+              <li key={checkpoint.id}>
+                <span className="checkpoint-time">
+                  {checkpoint.virtualTime}
                 </span>
-              ) : null}
-            </li>
-          ))}
-        </ol>
-      </section>
+                <i aria-hidden="true" />
+                <strong>{checkpoint.title[locale]}</strong>
+                <p>{checkpoint.contract[locale]}</p>
+                {index < scenario.checkpoints.length - 1 ? (
+                  <span className="flow-arrow" aria-hidden="true">
+                    →
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       <div className="orchestration-lower-grid">
-        <section className="topology-panel" aria-labelledby="topology-heading">
-          <p className="eyebrow">03 · WATER SYSTEM</p>
-          <h2 id="topology-heading">
-            {dictionary.orchestration.topologyHeading}
-          </h2>
-          <div
-            className="topology-river"
-            role="img"
-            aria-label={scenario.region[locale]}
+        {scenario.topology.length === 0 ? null : (
+          <section
+            className="topology-panel"
+            aria-labelledby="topology-heading"
           >
-            {scenario.topology.map((node, index) => (
-              <div key={node.en}>
-                <span>{node[locale]}</span>
-                <i aria-hidden="true" />
-                {index < scenario.topology.length - 1 ? (
-                  <b aria-hidden="true" />
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </section>
+            <p className="eyebrow">03 · WATER SYSTEM</p>
+            <h2 id="topology-heading">
+              {dictionary.orchestration.topologyHeading}
+            </h2>
+            <div
+              className="topology-river"
+              role="img"
+              aria-label={scenario.region[locale]}
+            >
+              {scenario.topology.map((node, index) => (
+                <div key={node.en}>
+                  <span>{node[locale]}</span>
+                  <i aria-hidden="true" />
+                  {index < scenario.topology.length - 1 ? (
+                    <b aria-hidden="true" />
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="version-panel" aria-labelledby="versions-heading">
           <p className="eyebrow">04 · IMMUTABLE</p>
