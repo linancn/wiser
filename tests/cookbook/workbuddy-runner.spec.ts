@@ -54,4 +54,32 @@ describe('WorkBuddy Yongding cookbook runner', () => {
       stat(join(outputDirectory, 'workbuddy', 'mcp')),
     ).rejects.toMatchObject({ code: 'ENOENT' });
   }, 40_000);
+
+  it('turns an injected specialist schema failure into a scoped immutable rework successor', async () => {
+    const outputDirectory = join(
+      tmpdir(),
+      `wiser-cookbook-rework-${randomUUID()}`,
+    );
+    temporaryDirectories.push(outputDirectory);
+    const result = await runWorkBuddyCookbook({
+      environment: { ...process.env, NODE_ENV: 'test' },
+      faultInjection: 'water-evidence-schema-once',
+      mode: 'scripted',
+      outputDirectory,
+      repositoryRoot: import.meta.dirname.replace(/\/tests\/cookbook$/, ''),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.report.tddCycle).toEqual({
+      injectedFault: 'water-evidence-schema-once',
+      reworkObserved: true,
+      greenAccepted: true,
+    });
+    expect(
+      result.report.authoritative.evaluations
+        .filter(({ roleSlotId }) => roleSlotId === 'water-evidence')
+        .map(({ verdict }) => verdict),
+    ).toEqual(['REWORK_REQUIRED', 'ACCEPTED']);
+    expect(result.report.authoritative.evaluations).toHaveLength(5);
+  }, 40_000);
 });
