@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   AgentExconApiError,
@@ -39,6 +39,7 @@ class RecordingHttpClient implements AgentExconHttpClient {
 const closeCallbacks: Array<() => Promise<void>> = [];
 
 afterEach(async () => {
+  vi.useRealTimers();
   await Promise.all(closeCallbacks.splice(0).map((close) => close()));
 });
 
@@ -67,6 +68,7 @@ describe('WISER Agent EXCON v2 MCP adapter', () => {
     expect(tools.map(({ name }) => name)).toEqual([
       'excon_get_assignment',
       'excon_sync',
+      'excon_wait_and_sync',
       'excon_list_tasks',
       'excon_list_messages',
       'excon_list_artifacts',
@@ -430,6 +432,49 @@ describe('WISER Agent EXCON v2 MCP adapter', () => {
     expect(text).toContain('"throughReceiptSeq":4');
     expect(text).toContain(`"resourceId":"${TASK_ID}"`);
     expect(result.structuredContent).toEqual({ ok: true, data: http.nextData });
+  });
+
+  it('waits before issuing one ordinary idempotent sync request', async () => {
+    const http = new RecordingHttpClient();
+    const mcpClient = await connect(http);
+    vi.useFakeTimers();
+
+    const pending = mcpClient.callTool({
+      name: 'excon_wait_and_sync',
+      arguments: {
+        runId: RUN_ID,
+        runAgentId: RUN_AGENT_ID,
+        idempotencyKey: IDEMPOTENCY_KEY,
+        afterReceiptSeq: 4,
+        ack: { throughReceiptSeq: 4, headHash: HASH },
+        maxItems: 25,
+        waitSeconds: 15,
+      },
+    });
+    await vi.advanceTimersByTimeAsync(14_999);
+    expect(http.requests).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(1);
+    const result = await pending;
+
+    expect(result.structuredContent).toEqual({
+      ok: true,
+      data: { accepted: true },
+    });
+    expect(http.requests).toEqual([
+      {
+        method: 'POST',
+        path: `/runs/${RUN_ID}/sync`,
+        headers: {
+          'X-Run-Agent-Id': RUN_AGENT_ID,
+          'Idempotency-Key': IDEMPOTENCY_KEY,
+        },
+        body: {
+          afterReceiptSeq: 4,
+          ack: { throughReceiptSeq: 4, headHash: HASH },
+          maxItems: 25,
+        },
+      },
+    ]);
   });
 
   it('rejects extra tool arguments before HTTP dispatch', async () => {

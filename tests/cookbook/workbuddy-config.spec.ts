@@ -141,6 +141,9 @@ describe('WorkBuddy role-isolated runtime renderer', () => {
       expect(prompt).toContain(
         'must not publish a Message or Artifact before `excon_begin_task` succeeds',
       );
+      expect(prompt).toContain('`leaseSeconds=300`');
+      expect(prompt).toContain('`excon_heartbeat_task`');
+      expect(prompt).toContain('`excon_wait_and_sync`');
       expect(prompt.indexOf('`excon_claim_task`')).toBeLessThan(
         prompt.indexOf('`excon_publish_artifact`'),
       );
