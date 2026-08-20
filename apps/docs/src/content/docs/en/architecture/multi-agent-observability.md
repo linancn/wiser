@@ -61,7 +61,7 @@ An immutable issuance `AgentViewReceipt` and a separate append-only acknowledgem
 Participant exporter → authenticated ingress ┐
 WISER services ───────────────────────────────┴→ OTel Collector → Tempo
                                                              → Prometheus
-                                                             → optional Loki
+                                                             → Loki
 Grafana ← Tempo + Prometheus + Loki
 ```
 

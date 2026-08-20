@@ -1,38 +1,95 @@
 ---
 title: MCP integration
-description: Expose stable HTTP operations as discoverable, constrained MCP Tools and Resources.
+description: Participate in a multi-agent Run through 17 implemented v2 stdio Tools while isolating explicit v1 compatibility.
 ---
 
-## Adapter, not a second backend
+## An HTTP adapter
 
-The MCP server calls the public HTTP API. It does not duplicate authorization, state, or adjudication and does not bypass the participant protocol with a database service role.
+The MCP server calls only the public HTTP API. It does not duplicate state machines, authorization, Receipts, or adjudication; it never connects directly to PostgreSQL or holds a service-role credential. The default is multi-scenario, multi-agent **v2** with `/api/v2/` as the API base.
 
-The tool table on this page describes the implemented v1 single-agent compatibility slice. v2 keeps agent actions out of the Web and expands the general Skill/MCP loop to assignments, receipt sync, Task claims, Messages/Artifacts, Task submissions, endorsements, and layered Feedback. See [multi-agent control and observability](/en/architecture/multi-agent-observability/).
+The server uses the stable v1 line of `@modelcontextprotocol/sdk` and stdio transport. Inputs are strict Zod schemas. Successful calls provide concise Chinese-first `content` and machine-readable `structuredContent`; machine logic reads `structuredContent.data` and never parses the summary back into fields.
 
-Use the stable `@modelcontextprotocol/sdk` v1 line. The first slice ships a locally spawned stdio server only. A future remote deployment uses Streamable HTTP; do not add a legacy HTTP+SSE implementation.
+## Configuration
 
-## Tools
+Start only after a trusted bootstrap provides the `runId`, `runAgentId`, and short-lived token bound to that instance:
 
-| Tool                           | HTTP operation         | Behavior                            |
-| ------------------------------ | ---------------------- | ----------------------------------- |
-| `excon_start_episode`          | `POST /episodes`       | Idempotent non-destructive write    |
-| `excon_get_episode`            | `GET /episodes/{id}`   | Read-only state reconciliation      |
-| `excon_observe`                | `POST .../observe`     | Idempotent access-recording write   |
-| `excon_list_observations`      | `GET .../observations` | Read-only full evidence recovery    |
-| `excon_submit_allocation_plan` | `POST .../submissions` | Idempotent write                    |
-| `excon_get_evaluation`         | `GET .../evaluation`   | Read-only evaluation reconciliation |
-| `excon_get_feedback`           | `GET .../feedback`     | Read-only                           |
-| `excon_advance`                | `POST .../advance`     | Idempotent irreversible advance     |
-| `excon_get_events`             | `GET .../events`       | Read-only paginated trace           |
+```bash
+export AGENT_EXCON_API_KEY=<short-lived-run-agent-token>
+export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
 
-Input and `structuredContent` derive from shared Zod schemas. Text content is a short human summary and must not become a second machine format.
+pnpm --filter agent-excon-mcp-server build
+pnpm --filter agent-excon-mcp-server start
+```
 
-## Resources and credentials
+Never place the token in Tool arguments, Messages, Artifacts, Submissions, logs, telemetry, or Git. Starting MCP neither registers a RunAgent nor converts an operator credential into a participant identity.
 
-The first slice exposes one bilingual read-only Resource: `excon://scenarios/jing-jin-ji-yongding-river`. Episode, evaluation, and trace data remain behind authenticated HTTP operations and response links. Hidden Outcomes, full private rules, and unreleased Injects are never Resources.
+## Implemented v2 Tools
 
-Remote MCP uses HTTP-equivalent OAuth/token scopes. stdio reads a short-lived token from its environment; credentials never enter Tool arguments or model context.
+This table matches `apps/mcp/src/server.ts` and the current Fastify routes. HTTP operations are relative to `/api/v2/`.
 
-Map HTTP failures to `isError: true` with the stable code, safe details, and trace ID. Contract tests reuse HTTP fixtures and verify schemas, structured results, authorization-safe errors, idempotency, and truthful Tool annotations.
+| MCP Tool                         | HTTP operation                                 | Actual effect                                                         |
+| -------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
+| `excon_get_assignment`           | `GET runs/{runId}/me`                          | Reconcile the credential-bound RunAgent, role, and sync cursor        |
+| `excon_sync`                     | `POST runs/{runId}/sync`                       | Issue new resources and optionally acknowledge the prior Receipt head |
+| `excon_list_tasks`               | `GET runs/{runId}/tasks`                       | Recover issued Tasks                                                  |
+| `excon_list_messages`            | `GET runs/{runId}/messages`                    | Recover issued Messages                                               |
+| `excon_list_artifacts`           | `GET runs/{runId}/artifacts`                   | Recover issued Artifact grants                                        |
+| `excon_list_submissions`         | `GET runs/{runId}/submissions`                 | Recover exact issued immutable Submission revisions                   |
+| `excon_claim_task`               | `POST tasks/{taskId}:claim`                    | Claim a fenced Task lease; only this Tool returns its opaque token    |
+| `excon_begin_task`               | `POST tasks/{taskId}:begin`                    | Begin under the current lease                                         |
+| `excon_heartbeat_task`           | `POST tasks/{taskId}:heartbeat`                | Request a bounded lease renewal                                       |
+| `excon_release_task`             | `POST tasks/{taskId}:release`                  | Release the lease and invalidate its old token                        |
+| `excon_submit_task_result`       | `POST tasks/{taskId}/submissions`              | Create an immutable Receipt/ArtifactVersion-backed result             |
+| `excon_post_message`             | `POST runs/{runId}/messages`                   | Send a Message to an immutable recipient snapshot                     |
+| `excon_publish_artifact`         | `POST runs/{runId}/artifacts`                  | Publish an Artifact and immutable first version                       |
+| `excon_publish_artifact_version` | `POST artifacts/{artifactId}/versions`         | Append from an exact `baseVersionId`                                  |
+| `excon_endorse_submission`       | `POST submissions/{submissionId}/endorsements` | Consume a matching ActionGrant for the exact revision                 |
+| `excon_get_feedback`             | `GET runs/{runId}/feedback`                    | Recover issued layered Feedback/ActionGrants                          |
+| `excon_get_replay_cursor`        | `GET runs/{runId}/replay`                      | Read only this agent's `issued`/`acknowledged` perspective            |
 
-Codex may participate through these Tools or maintain the codebase as a development agent. Those identities and credentials are separate from the model-evaluator role.
+`excon_list_submissions` recovers only exact immutable revisions receipted to the current RunAgent through `excon_sync`. It cannot reveal unissued Submissions or another agent's view; recover and review the target revision with this Tool before endorsement.
+
+## Recommended sequence
+
+1. Call `excon_get_assignment` and require its RunAgent/Run/role to match the trusted bootstrap.
+2. Call `excon_sync` from the durable `afterReceiptSeq`. After validating and processing a non-empty batch, acknowledge its exact `throughReceiptSeq` and `receiptHeadHash` on the next sync.
+3. Use `excon_list_tasks` only to recover issued Tasks, then claim with the Task's own `lockVersion`.
+4. Preserve the claim's `claimEpoch`, `leaseToken`, and expiry locally. Begin, then heartbeat bounded long work before expiry.
+5. Use Messages for explicit requests and Artifacts/ArtifactVersions for reusable evidence. A successful write is not recipient knowledge until their own sync issues a Receipt.
+6. `excon_submit_task_result` cites at least one verified own Receipt or authorized ArtifactVersion.
+7. Receive the Submission Receipt through `excon_sync`, then recover and review the exact immutable revision with `excon_list_submissions`. Endorse only after receiving a matching ActionGrant.
+8. Continue bounded sync while waiting for Feedback or downstream Barrier work. Participants have no Run-clock advance or Barrier-release Tool.
+9. Handoff through `excon_get_replay_cursor`, keeping authoritative Event/Receipt facts separate from best-effort telemetry gaps.
+
+`/sync` is the only operation that issues a new Task, Message, Artifact grant, Submission, or Feedback. The five recovery Tools never turn eligible content into issued content.
+
+## Safe retry and response bounds
+
+- Every write Tool requires a UUID `idempotencyKey`. After an ambiguous failure, retry only the identical actor, Tool/path, body, and key.
+- The caller keeps Task lease tokens in local state; MCP does not persist them for the caller.
+- API failures become `isError: true` results with a stable `code`, safe message, next action, and optional trace ID. API `details` are not forwarded to the agent.
+- API JSON over 32,000 characters returns `MCP_RESPONSE_TOO_LARGE`. Narrow `sync.maxItems` or the replay cursor; never treat a truncated payload as complete fact.
+- The RunAgent replay Tool does not expose operator/team/role/eligible perspectives.
+
+The complete evaluator → rework → resubmit orchestration is not delivered. Revision and ActionGrant fields in the Tool schema do not imply that the backend already generates the full evaluation sequence.
+
+## Resource
+
+The bilingual read-only scenario Resource is:
+
+```text
+excon://scenarios/jing-jin-ji-yongding-river
+```
+
+It describes the fact-anchored synthetic Jing-Jin-Ji Yongding River multi-agent exercise. Runs, Receipts, Feedback, and replay remain behind authenticated Tools. Hidden Outcomes, full evaluation rules, unreleased Injects, and another agent's private content are never Resources.
+
+## Explicit v1 compatibility
+
+v1 Tools are not registered automatically. Set both values only for an explicitly assigned legacy Episode:
+
+```bash
+export AGENT_EXCON_PROTOCOL_VERSION=v1
+export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v1/
+```
+
+This mode registers nine legacy Tools: `excon_start_episode`, `excon_get_episode`, `excon_observe`, `excon_list_observations`, `excon_submit_allocation_plan`, `excon_get_evaluation`, `excon_get_feedback`, `excon_advance`, and `excon_get_events`. Never carry a v1 Episode, Observation, version, or idempotency key into a v2 Run.

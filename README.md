@@ -10,7 +10,7 @@
 
 WISER 面向水系统的感知、推演、决策与重构。当前首个开源核心子系统是**智能体演练场 / Agent EXCON**：它把真实世界任务封装为可运行、可回放、可验证的演练场景，并通过 HTTP、MCP 与文件化 Skill 向异构智能体开放。
 
-仓库从一个可验证的单智能体兼容纵切开始：京津冀永定河流域生态补水与多水源联合调度。当前 v2 目标已升级为多场景、多角色团队演练：水情证据、水动力约束、生态目标与调度协调智能体获得不同信息、并行完成任务，以显式工件汇流成团队方案，再分别获得个人、角色和团队反馈。
+仓库从一个可验证的单智能体兼容纵切开始：京津冀永定河流域生态补水与多水源联合调度。当前默认开发协议已是 v2 多场景、多角色团队演练：水情证据、水动力约束、生态目标与调度协调智能体获得不同 Receipt、并行完成 Task，并以 Message、ArtifactVersion、Submission 和 Feedback 显式协作。
 
 演练由智能体加载 [`skills/agent-excon`](./skills/agent-excon/SKILL.md) 后通过 HTTP 或 MCP 运行。Web 不模拟智能体参训；它负责多场景管理、导调态势、按 Agent 的 OTel 式 Trace 和基于领域事件/Receipt 的当时视角回放。
 
@@ -22,6 +22,17 @@ WISER 面向水系统的感知、推演、决策与重构。当前首个开源�
 - Supabase 提供 Auth、PostgreSQL、Storage 与本地开发工具；复杂事务使用 `pg` + SQL。
 - PostgreSQL 状态表承担初期异步任务，不引入 Redis 或额外消息队列。
 - 中文界面和文档为默认，英文内容保持一一对应。
+
+## 已交付的 v2 增量
+
+- `packages/contracts` 与纯 `packages/core` 已定义 Scenario/Version/Run/RunAgent/Task/Barrier、Receipt/Event、Message/Artifact、Submission/Feedback 及确定性状态机。
+- Fastify 已提供多场景管理、Run 编组、Receipt `/sync`、Task 租约、协作工件、提交/背书和安全回放的 `/api/v2` 开发纵切；当前实现是**内存协议适配器**，进程重启后不保留状态。
+- Supabase 已有 v2 PostgreSQL schema、约束、RLS、私有 Event/Outbox/credential/telemetry 表和 pgTAP 覆盖，但 Fastify 尚未接入 PostgreSQL API adapter。
+- Agent EXCON Skill 已以 v2 RunAgent 循环为默认；stdio MCP 已实现与 HTTP 路由一致的 17 个 v2 参训工具，包括 Receipt-gated 的 Submission 安全恢复。v1 只在显式选择兼容模式时启用，不会自动降级。
+- Compose `observability` profile 已包含认证 Telemetry Ingress、OTel Collector、Tempo、Prometheus、Loki 和 Grafana；领域 Event/Receipt 始终是权威事实，OTel 只是最佳努力诊断投影。
+- Web 已交付中文默认的多场景、分 Agent Trace 与视角回放 reference/live 两种只读模式；`live` 失败时显式显示数据缺口，不回退或伪造参训过程。
+
+尚未交付的关键边界是 PostgreSQL API adapter、把 v1 翻译到 v2 事实的 compatibility facade，以及完整 evaluator → rework → resubmit 闭环。因此当前 v2 适合协议/TDD/本地调试，不应被描述为持久化生产平台。
 
 ## 目标中的仓库结构
 
@@ -69,7 +80,7 @@ pnpm observability:up
 
 ## 项目状态
 
-v1 walking skeleton 已可运行，v2 正按 TDD 迁移到多场景、多智能体和可观测导调。范围与验收标准记录在 [`docs/roadmap.md`](./docs/roadmap.md)，完整设计见 [`docs/design/v2-multi-scenario-multi-agent-observability.md`](./docs/design/v2-multi-scenario-multi-agent-observability.md)，贡献约定见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
+v2 的契约、纯领域核心、内存 HTTP 协作纵切、数据库 schema/RLS、Skill、17 个 MCP 工具、Submission 安全恢复和认证观测链路已经可验证；持久化接线与完整评价迁移仍在进行。v1 Episode 保留为**显式兼容协议**，目前仍是独立实现，而不是已完成的 v2 facade。范围与验收标准记录在 [`docs/roadmap.md`](./docs/roadmap.md)，完整设计见 [`docs/design/v2-multi-scenario-multi-agent-observability.md`](./docs/design/v2-multi-scenario-multi-agent-observability.md)，贡献约定见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
 
 ## 许可
 

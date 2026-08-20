@@ -1,11 +1,23 @@
 ---
 title: Quick start
-description: Start the first runnable Agent EXCON loop locally.
+description: Verify the Agent EXCON v2 multi-agent protocol slice, MCP adapter, and observability path locally.
 ---
+
+## Know the current boundary first
+
+The default development protocol is `/api/v2`, and the Agent EXCON Skill and MCP server also default to v2. Fastify implements multi-scenario management, RunAgent `/sync`, Task leases, Messages/Artifacts, Submissions/endorsements, and safe replay through an **in-memory protocol adapter**. The Supabase v2 schema/RLS exists but is not yet used by the API. A process restart therefore loses v2 API state: this is a protocol/TDD/local-debugging slice, not a durable production deployment.
+
+The v1 Episode remains runnable only through explicit compatibility selection. It is not yet a facade over v2 facts, and a v2 failure never causes automatic downgrade.
 
 ## Baseline
 
-Use Node.js 24 LTS, pnpm 11, Docker Compose v5, and a local Codex CLI signed in with ChatGPT.
+| Tool             | Pinned baseline        | Purpose                                              |
+| ---------------- | ---------------------- | ---------------------------------------------------- |
+| Node.js          | 24 LTS                 | Web, API, Worker, MCP, and docs                      |
+| pnpm             | 11                     | Workspace and exact dependency lock                  |
+| Docker + Compose | Compose v5             | Application services and local observability profile |
+| Supabase CLI     | Workspace-pinned       | Auth, PostgreSQL, and Storage                        |
+| Codex CLI        | Signed in with ChatGPT | Trusted host-side development and debugging          |
 
 ```bash
 node --version
@@ -17,57 +29,93 @@ codex login status
 ## Install and verify
 
 ```bash
+corepack enable
 pnpm install
 pnpm verify
 ```
 
-Run only the documentation app with `pnpm --filter @agent-excon/docs dev`.
+To verify only the current v2 multi-agent protocol slice:
 
-## Start support services
+```bash
+pnpm --filter @agent-excon/contracts test
+pnpm --filter @agent-excon/core test
+pnpm --filter @agent-excon/api test
+pnpm --filter agent-excon-mcp-server test
+node skills/agent-excon/scripts/lint-skill.mjs
+```
+
+These tests cover distinct-role quorum, Task/Barrier state, Receipt chains, `/sync`, Task leases, Messages/Artifacts, Submissions/endorsements, Receipt-gated safe Submission recovery, participant-safe replay, and MCP-to-HTTP mappings. The complete evaluator → rework → resubmit loop is not delivered; do not infer runtime support merely because related contract fields exist.
+
+## Start local services
 
 ```bash
 pnpm stack:up
 ```
 
-Supabase CLI manages the official compatible local platform containers; Compose manages API, read-only Web, Worker, and docs. The local stack binds to loopback and must not be exposed publicly. Production uses Supabase Platform or an atomically pinned complete official self-host stack.
+Supabase CLI starts Auth/PostgreSQL 17/Storage/Studio. Compose starts API, read-only Web, Worker, and docs.
 
-Use the workspace Supabase CLI for migrations and generated types:
+| Service         | Address                             |
+| --------------- | ----------------------------------- |
+| Web             | `http://127.0.0.1:3000/zh-CN`       |
+| API             | `http://127.0.0.1:3001`             |
+| Docs            | `http://127.0.0.1:4321`             |
+| Worker health   | `http://127.0.0.1:3002/health/live` |
+| Supabase Studio | `http://127.0.0.1:56323`            |
+
+Read the public v2 catalog without credentials:
 
 ```bash
-pnpm exec supabase migration list --local
-pnpm exec supabase gen types --lang typescript --local
+curl --fail http://127.0.0.1:3001/api/v2/scenarios
 ```
 
-## Select an AI mode
+Operator mutations and RunAgent calls use separate bearer credentials. Participant requests also carry an `X-Run-Agent-Id` bound to the token. The default Compose participant token cannot impersonate an operator or arbitrary RunAgent. Before an interactive exercise, a trusted runtime must provision a short-lived token bound to the concrete Run/RunAgent.
 
-**Local development:** run Codex SDK/CLI on the host and reuse the ChatGPT sign-in. Do not mount `~/.codex` into shared application containers.
+## Participate through MCP
 
-**Deployment and controlled integration:** use the OpenAI-compatible adapter with an explicit base URL, API key, and pinned model.
+MCP calls only HTTP and never reads the database. Start it only after receiving a trusted `runId`, `runAgentId`, and short-lived RunAgent token:
 
-**Tests and CI:** use the deterministic fake provider. Live models are limited to opt-in smoke tests.
+```bash
+export AGENT_EXCON_API_KEY=<short-lived-run-agent-token>
+export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
 
-## Start the optional observability stack
+pnpm --filter agent-excon-mcp-server build
+pnpm --filter agent-excon-mcp-server start
+```
+
+The default v2 loop is `assignment → sync/ack → issued Task → claim/begin/heartbeat → Message/Artifact → Submission → sync-issued Submission → safe recovery/review → endorsement → Feedback → agent-safe replay`. See [MCP integration](/en/protocols/mcp/) for the 17 tools and implemented routes. `/sync` is the only new-content issuance operation; recovery GETs never turn eligible content into issued content.
+
+Select both the protocol and URL only for an explicitly assigned legacy Episode:
+
+```bash
+export AGENT_EXCON_PROTOCOL_VERSION=v1
+export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v1/
+```
+
+## Start the technical-observability profile
 
 ```bash
 pnpm observability:up
+pnpm observability:smoke
 ```
 
-This starts the Telemetry Ingress plus pinned patch releases of OTel Collector, Tempo, Prometheus, Loki, and Grafana. Grafana is available at `http://127.0.0.1:3300`; participant OTLP/HTTP enters through `http://127.0.0.1:14318`, while trusted platform OTLP uses `4317/4318`. External agents cannot connect directly to the Collector.
+The profile includes the Telemetry Ingress, OTel Collector, Tempo, Prometheus, Loki, and Grafana. Grafana is at `http://127.0.0.1:3300`. Participant OTLP/HTTP can enter only through `http://127.0.0.1:14318`; trusted platform OTLP uses loopback ports `4317/4318`. The ingress binds RunAgent identity, overwrites reported identity, applies quotas, and rejects sensitive fields. External agents cannot connect directly to the Collector.
 
-Stop the profile while preserving its named volumes with `pnpm observability:down`.
+```bash
+pnpm observability:down
+```
 
-## Exercise the v1 compatibility loop
+Stopping preserves named volumes. Traces, logs, and metrics are best-effort diagnostics; deleting them cannot affect Event/Receipt replay.
 
-The participant loads `skills/agent-excon` and runs the exercise through HTTP or MCP. This executable path is the v1 compatibility slice; the scenario center and multi-agent trace/replay are the v2 reference UI. Web never acts as a participant.
+## Web data modes
 
-1. Create a compatibility Episode from the synthetic Yongding River multi-source dispatch scenario.
-2. Read released source availability, control targets, and monitoring observations.
-3. Submit a staged source-allocation and release plan with evidence references.
-4. Retrieve deterministic evaluation and structured feedback.
-5. Read the Event stream and verify the run can be replayed.
+Web delivers read-only `reference` and `live` modes. Reference is the deterministic build/E2E default and uses fixed fixtures for multi-scenario, per-agent trace, and perspective replay views; the Compose development stack selects live by default. Live fetches safe DTOs only from a server module with an operator token, fails closed, and reports missing checkpoint, topology, Agent detail, or Span detail instead of falling back to fixtures or fabricating participant activity.
 
-See the [HTTP protocol](/en/protocols/http/) for payloads and the [Yongding River dispatch](/en/scenarios/yongding-river-dispatch/) for acceptance criteria.
+Exercise mutations always come from external agents through Skill + HTTP/MCP. Web has no participant submission, clock-advance, or impersonation controls.
 
-v2 maps this Episode to an `ExerciseRun`, one legacy `RunAgent`, and one Task per phase. Newly published scenarios require multiple roles. See [multi-agent control and observability](/en/architecture/multi-agent-observability/).
+## Stop services
 
-Stop services with `pnpm stack:down`. Normal shutdown retains named volumes; data deletion must remain an explicit maintenance operation.
+```bash
+pnpm stack:down
+```
+
+Normal shutdown preserves named volumes. Data deletion remains a separate explicit maintenance action.

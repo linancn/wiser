@@ -1,58 +1,95 @@
 ---
 title: MCP 接入
-description: 将稳定 HTTP 操作暴露为可发现、可约束的 MCP Tools 与 Resources。
+description: 使用 17 个已实现的 v2 stdio Tools 安全参与多智能体 Run，并显式隔离 v1 compatibility。
 ---
 
-## MCP 是适配器
+## MCP 是 HTTP 适配器
 
-MCP Server 调用公开 HTTP API，不复制状态机、权限或裁决逻辑，也不使用数据库 service-role 绕开参训协议。这样 HTTP、SDK 与 MCP 得到相同结果和审计事件。
+MCP Server 只调用公开 HTTP API，不复制状态机、权限、Receipt 或裁决逻辑，不直连 PostgreSQL，也不持有 service-role credential。默认协议是多场景、多智能体 **v2**，默认 API 基路径是 `/api/v2/`。
 
-本页工具表描述已实现的 v1 单 Agent 兼容纵切。v2 不会让前端代替智能体操作，而会把通用 Skill/MCP 循环升级为 assignment、sync Receipt、Task claim、Message/Artifact、Task Submission、endorsement 和分层 Feedback；设计见[多智能体导调与可观测性](/architecture/multi-agent-observability/)。
+当前 server 使用 `@modelcontextprotocol/sdk` v1 稳定线和 stdio transport。输入是 strict Zod schema；成功结果同时返回中文优先的简短 `content` 与机器可读 `structuredContent`。机器逻辑只能读取 `structuredContent.data`，不能反向解析摘要文本。
 
-当前采用 `@modelcontextprotocol/sdk` v1 稳定线，首个切片只交付由本地客户端拉起的 stdio Server。未来远程部署采用 Streamable HTTP；旧 HTTP+SSE transport 不用于新实现。
+## 配置
 
-## 核心 Tools
+只有在可信 bootstrap 已提供 `runId`、`runAgentId` 和绑定到该实例的短期 token 后才启动：
 
-| Tool                           | HTTP 操作                          | 注解                     |
-| ------------------------------ | ---------------------------------- | ------------------------ |
-| `excon_start_episode`          | `POST /episodes`                   | 非只读、幂等、非破坏     |
-| `excon_get_episode`            | `GET /episodes/{id}`               | 只读、用于状态对账       |
-| `excon_observe`                | `POST /episodes/{id}/observe`      | 非只读、幂等、记录访问   |
-| `excon_list_observations`      | `GET /episodes/{id}/observations`  | 只读、恢复完整证据集     |
-| `excon_submit_allocation_plan` | `POST /episodes/{id}/submissions`  | 非只读、幂等             |
-| `excon_get_evaluation`         | `GET /submissions/{id}/evaluation` | 只读、评价状态对账       |
-| `excon_get_feedback`           | `GET /episodes/{id}/feedback`      | 只读                     |
-| `excon_advance`                | `POST /episodes/{id}/advance`      | 非只读、幂等、不可逆推进 |
-| `excon_get_events`             | `GET /episodes/{id}/events`        | 只读、分页 Trace         |
+```bash
+export AGENT_EXCON_API_KEY=<short-lived-run-agent-token>
+export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
 
-Tool 输入和 `structuredContent` 直接来自 `packages/contracts` 的 Zod schema。文本 `content` 只提供简短的人类摘要，机器不应从摘要反向解析字段。
+pnpm --filter agent-excon-mcp-server build
+pnpm --filter agent-excon-mcp-server start
+```
 
-## Resources
+不要把 token 放入 Tool 参数、Message、Artifact、Submission、日志、遥测或 Git。MCP 启动不会注册 RunAgent，也不会把 operator credential 转换为参训身份。
 
-首个切片提供一个稳定、只读的双语场景 Resource：
+## 已实现的 v2 Tools
+
+下表与 `apps/mcp/src/server.ts` 及当前 Fastify 路由一一对应。HTTP 操作相对于 `/api/v2/`。
+
+| MCP Tool                         | HTTP 操作                                      | 真实效果                                            |
+| -------------------------------- | ---------------------------------------------- | --------------------------------------------------- |
+| `excon_get_assignment`           | `GET runs/{runId}/me`                          | 核对 credential 绑定的 RunAgent、角色和 sync cursor |
+| `excon_sync`                     | `POST runs/{runId}/sync`                       | 发放新资源并可确认上一 Receipt head                 |
+| `excon_list_tasks`               | `GET runs/{runId}/tasks`                       | 恢复已 issued Task                                  |
+| `excon_list_messages`            | `GET runs/{runId}/messages`                    | 恢复已 issued Message                               |
+| `excon_list_artifacts`           | `GET runs/{runId}/artifacts`                   | 恢复已 issued Artifact grant                        |
+| `excon_list_submissions`         | `GET runs/{runId}/submissions`                 | 恢复已 issued 的精确不可变 Submission 修订          |
+| `excon_claim_task`               | `POST tasks/{taskId}:claim`                    | 领取 fenced Task lease；仅此工具返回不透明 token    |
+| `excon_begin_task`               | `POST tasks/{taskId}:begin`                    | 以当前 lease 开始 Task                              |
+| `excon_heartbeat_task`           | `POST tasks/{taskId}:heartbeat`                | 请求有界 lease 续期                                 |
+| `excon_release_task`             | `POST tasks/{taskId}:release`                  | 释放 lease 并使旧 token 失效                        |
+| `excon_submit_task_result`       | `POST tasks/{taskId}/submissions`              | 创建带 Receipt/ArtifactVersion 证据的不可变结果     |
+| `excon_post_message`             | `POST runs/{runId}/messages`                   | 向不可变收件人快照发送 Message                      |
+| `excon_publish_artifact`         | `POST runs/{runId}/artifacts`                  | 发布 Artifact 与不可变首版                          |
+| `excon_publish_artifact_version` | `POST artifacts/{artifactId}/versions`         | 从精确 `baseVersionId` 追加版本                     |
+| `excon_endorse_submission`       | `POST submissions/{submissionId}/endorsements` | 消费匹配 ActionGrant 背书精确修订                   |
+| `excon_get_feedback`             | `GET runs/{runId}/feedback`                    | 恢复已 issued 的分层 Feedback/ActionGrant           |
+| `excon_get_replay_cursor`        | `GET runs/{runId}/replay`                      | 只读取自身 `issued`/`acknowledged` agent 视角       |
+
+`excon_list_submissions` 只恢复当前 RunAgent 已通过 `excon_sync` 获得 Receipt 的精确不可变修订。它不会泄露未发放或其他智能体的 Submission；背书前必须用本工具恢复并审阅目标修订。
+
+## 推荐调用顺序
+
+1. `excon_get_assignment`：返回的 RunAgent/Run/role 必须与可信 bootstrap 一致。
+2. `excon_sync`：从持久化的 `afterReceiptSeq` 拉取；处理并验证非空批次后，在下一次 sync 确认精确 `throughReceiptSeq` 和 `receiptHeadHash`。
+3. `excon_list_tasks`：只恢复已发放 Task；用 Task 自身 `lockVersion` claim。
+4. 保存 claim 返回的 `claimEpoch`、`leaseToken` 和期限；begin，长任务在到期前有限 heartbeat。
+5. 用 Message 传递明确请求，用 Artifact/ArtifactVersion 共享可复用证据。成功写入不代表收件人已知，收件人仍需自己的 sync Receipt。
+6. `excon_submit_task_result` 至少引用一个已验证的自身 Receipt 或已授权 ArtifactVersion。
+7. 通过 `excon_sync` 获取 Submission Receipt，再用 `excon_list_submissions` 恢复并审阅精确不可变修订；只有收到匹配 ActionGrant 后才能 endorse。
+8. 继续有界 sync 等待 Feedback/Barrier 下游 Task；参训者没有 Run 时钟推进或 Barrier release Tool。
+9. 交接时使用 `excon_get_replay_cursor`，严格分开权威 Event/Receipt 与最佳努力 Telemetry gap。
+
+`/sync` 是发放新 Task、Message、Artifact grant、Submission 与 Feedback 的唯一入口。五个 recovery Tools 不能把 eligible 内容变成 issued。
+
+## 安全重试与响应边界
+
+- 所有写 Tool 都要求 UUID `idempotencyKey`。模糊失败时只能以完全相同的 actor、Tool/path、body 和 key 重试。
+- Task lease token 只保留在调用方本地状态；MCP Tool 不替调用方持久化它。
+- API 错误映射为 `isError: true`，保留稳定 `code`、安全 message、下一步 action 和可选 trace ID；API `details` 不转发给智能体。
+- 单次 API JSON 超过 32,000 字符时返回 `MCP_RESPONSE_TOO_LARGE`；缩小 `sync.maxItems` 或回放 cursor，不能截断后继续当作完整事实。
+- RunAgent replay Tool 不提供 operator/team/role/eligible 视角。
+
+完整 evaluator → rework → resubmit 编排仍未交付。Tool schema 中存在 revision/ActionGrant 字段，不等于后端已经生成完整评价与重做序列。
+
+## Resource
+
+只读双语场景 Resource：
 
 ```text
 excon://scenarios/jing-jin-ji-yongding-river
 ```
 
-Episode、Observation、评价与 Trace 仍经带身份的 Tools/链接读取。隐藏 Outcome、内部评价规则和未释放 Inject 不是 Resource。
+它说明事实锚定的合成京津冀永定河多智能体演练。Run、Receipt、Feedback 和 replay 仍经有身份的 Tools 读取；隐藏 Outcome、完整评价规则、未释放 Inject 和他人私有内容从不作为 Resource。
 
-## 身份和错误
+## 显式 v1 compatibility
 
-远程 MCP 使用与 HTTP API 对应的 OAuth/token scope。stdio 模式从进程环境读取短期 token；不把 token 写进 Tool 参数、日志或模型上下文。
+v1 工具不会自动注册。只有任务明确指定 legacy Episode 时才同时设置：
 
-HTTP 错误码映射为 `isError: true` 的 Tool 结果，并保留稳定 `code`、安全的 `details` 和 `traceId`。错误描述给出下一步，但不能泄露隐藏事实。
+```bash
+export AGENT_EXCON_PROTOCOL_VERSION=v1
+export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v1/
+```
 
-## Codex 的两个角色
-
-Codex 可以作为参训智能体，通过这些 Tools 完成演练；也可以作为开发期代码智能体维护本项目。两种身份、凭据和事件记录不能混用。模型辅助评价则是第三种受控角色，必须通过独立 evaluator adapter 调用。
-
-## 契约测试
-
-每个 Tool 使用与 HTTP 测试相同的 fixtures，并验证：
-
-- 输入约束与 HTTP schema 一致；
-- 成功结果的 `structuredContent` 不丢字段；
-- 错误不泄露未授权数据；
-- 重试不会重复创建资源；
-- Tool 注解与真实副作用一致。
+此模式注册 9 个 legacy Tools：`excon_start_episode`、`excon_get_episode`、`excon_observe`、`excon_list_observations`、`excon_submit_allocation_plan`、`excon_get_evaluation`、`excon_get_feedback`、`excon_advance`、`excon_get_events`。不得把 v1 Episode、Observation、version 或 idempotency key 带入 v2 Run。

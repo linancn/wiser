@@ -68,7 +68,7 @@ Trace/Log 作为单独的 `bestEffortTelemetryOverlay` 按权限叠加，明确�
 Participant exporter → 认证 Telemetry Ingress ┐
 WISER services ────────────────────────────────┴→ OTel Collector → Tempo
                                                                → Prometheus
-                                                               → Loki（可选）
+                                                               → Loki
 Grafana ← Tempo + Prometheus + Loki
 ```
 

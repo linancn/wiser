@@ -1,61 +1,146 @@
 ---
 title: HTTP API
-description: Agent EXCON v1 resources, idempotency, state, authentication, and errors.
+description: Implemented Agent EXCON v2 routes, identity, Receipts, idempotency, replay, and the current durability boundary.
 ---
 
-## Foundation
+## Default protocol and implementation status
 
-HTTP is the only business protocol foundation. Web clients, SDKs, Skill scripts, and MCP call it instead of domain tables. The base path is `/api/v1`; breaking semantics require a new major version.
+HTTP is the only business protocol foundation. Web, Skills, MCP, and future SDKs call HTTP rather than domain tables. The default development base is `/api/v2`; `/api/v1` is only for an explicitly assigned Episode and is never an automatic fallback after a v2 failure.
 
-## Resources
+The `/api/v2` routes and contracts are executable and tested, but Fastify currently uses an **in-memory protocol adapter**. The Supabase v2 schema/RLS exists, while a PostgreSQL API adapter does not. Responses, Events, Receipts, and idempotency records therefore disappear on process restart. The tables below list registered routes only; they do not present future ADR endpoints as implemented behavior.
 
-| Method | Path                                     | Purpose                                 |
-| ------ | ---------------------------------------- | --------------------------------------- |
-| `POST` | `/episodes`                              | Create from a pinned ScenarioVersion    |
-| `GET`  | `/episodes/{episodeId}`                  | Read state and virtual time             |
-| `POST` | `/episodes/{episodeId}/observe`          | Deliver released data and record access |
-| `GET`  | `/episodes/{episodeId}/observations`     | Read participant observations           |
-| `POST` | `/episodes/{episodeId}/submissions`      | Create an immutable revision            |
-| `GET`  | `/submissions/{submissionId}`            | Read one immutable revision             |
-| `GET`  | `/submissions/{submissionId}/evaluation` | Read evaluation status/result           |
-| `GET`  | `/episodes/{episodeId}/feedback`         | Read visible feedback                   |
-| `POST` | `/episodes/{episodeId}/advance`          | Authorized virtual-time advance         |
-| `GET`  | `/episodes/{episodeId}/events`           | Cursor-paginated visible events         |
+## Public scenario catalog
 
-## Idempotency
+These reads need no bearer credential. They expose published safe DTOs and cannot reveal drafts or validation failures.
 
-Every POST accepts a UUID `Idempotency-Key`. Retrying the same actor, operation, key, and body returns the original resource. Reusing a key with a different body returns `409`. Observe, submit, and advance also carry the latest `episodeVersion`.
+| Method | Path                                            | Purpose                                           |
+| ------ | ----------------------------------------------- | ------------------------------------------------- |
+| `GET`  | `/api/v2/scenarios`                             | List published scenarios                          |
+| `GET`  | `/api/v2/scenarios/{scenarioId}`                | Read a scenario and its current published version |
+| `GET`  | `/api/v2/scenarios/{scenarioId}/versions`       | List immutable published versions                 |
+| `GET`  | `/api/v2/scenario-versions/{scenarioVersionId}` | Read one published version                        |
 
-Start uses `{ "scenarioVersionId": "jjj-yongding-replenishment-2023-v1", "participantVersionId": "<uuid>" }`. Observe uses `{ "episodeVersion": 1 }`; submit wraps the complete allocation plan as `{ "episodeVersion": 2, "plan": { ... } }`; advance uses `{ "episodeVersion": 5 }`. A stage-two final plan completes through advance; there is no separate finalize route.
+## Operator management and observation
 
-Submission returns `submissionId`, synchronous deterministic `evaluation`, `feedback`, and reconciliation links. `GET /submissions/{id}/evaluation` is safe to retry and may return `202` in an asynchronous repository implementation.
+These routes require a separate operator bearer token. An operator token cannot add `X-Run-Agent-Id` and impersonate a participant.
 
-## Errors
+| Method         | Path                                                    | Purpose                                                         |
+| -------------- | ------------------------------------------------------- | --------------------------------------------------------------- |
+| `GET` / `POST` | `/api/v2/manage/scenarios`                              | List owned draft/published scenarios; create a catalog identity |
+| `POST`         | `/api/v2/manage/scenarios/{scenarioId}/versions`        | Create an editable version draft                                |
+| `POST`         | `/api/v2/manage/scenario-versions/{versionId}:validate` | Validate a draft                                                |
+| `POST`         | `/api/v2/manage/scenario-versions/{versionId}:publish`  | Publish an immutable version                                    |
+| `GET` / `POST` | `/api/v2/agents`                                        | List or register AgentIdentity records                          |
+| `POST`         | `/api/v2/agents/{agentId}/versions`                     | Publish an immutable AgentVersion                               |
+| `GET`          | `/api/v2/agent-versions/{agentVersionId}`               | Read an AgentVersion                                            |
+| `GET` / `POST` | `/api/v2/runs`                                          | List or create ExerciseRuns                                     |
+| `GET`          | `/api/v2/runs/{runId}`                                  | Read a Run                                                      |
+| `GET` / `POST` | `/api/v2/runs/{runId}/agents`                           | List or join independent RunAgents                              |
+| `POST`         | `/api/v2/runs/{runId}:start`                            | Start after distinct RunAgents satisfy required roles           |
+| `GET`          | `/api/v2/runs/{runId}/events`                           | Read authoritative append-only Events with `after`/`limit`      |
+| `GET`          | `/api/v2/runs/{runId}/replay`                           | Read operator/team/role/agent as-of projections                 |
+| `GET`          | `/api/v2/runs/{runId}/traces`                           | Read the best-effort Trace-summary overlay                      |
+
+Scenario, AgentVersion, and Run management writes require a UUID `Idempotency-Key` and the smallest aggregate's `expectedVersion`. Current scenario validation requires multiple roles, at least two distinct RunAgents, and an explicit team convergence condition. Multiple labels on one agent do not satisfy quorum.
+
+## RunAgent participant protocol
+
+A RunAgent bearer credential is bound server-side to a concrete RunAgent. Every request carries:
+
+```http
+Authorization: Bearer <short-lived-run-agent-token>
+X-Run-Agent-Id: <bound-run-agent-uuid>
+Accept: application/json
+```
+
+Every `POST` also carries `Content-Type: application/json` and a UUID `Idempotency-Key`. An operator token, another RunAgent token, or a changed header cannot assume this identity.
+
+| Method | Path                                              | Purpose                                                                   |
+| ------ | ------------------------------------------------- | ------------------------------------------------------------------------- |
+| `GET`  | `/api/v2/runs/{runId}/me`                         | Reconcile the credential-bound RunAgent, role card, and sync cursor       |
+| `POST` | `/api/v2/runs/{runId}/sync`                       | Issue new resources and optionally acknowledge the prior Receipt head     |
+| `GET`  | `/api/v2/runs/{runId}/tasks`                      | Recover issued Tasks                                                      |
+| `GET`  | `/api/v2/runs/{runId}/messages`                   | Recover issued Messages                                                   |
+| `GET`  | `/api/v2/runs/{runId}/artifacts`                  | Recover issued Artifact grants                                            |
+| `GET`  | `/api/v2/runs/{runId}/submissions`                | Recover exact issued immutable Submission revisions                       |
+| `GET`  | `/api/v2/runs/{runId}/feedback`                   | Recover issued layered Feedback/ActionGrants                              |
+| `POST` | `/api/v2/tasks/{taskId}:claim`                    | Claim a bounded fenced lease with the Task `lockVersion`                  |
+| `POST` | `/api/v2/tasks/{taskId}:begin`                    | Begin with the `claimEpoch` and opaque `leaseToken`                       |
+| `POST` | `/api/v2/tasks/{taskId}:heartbeat`                | Request a bounded renewal before maximum expiry                           |
+| `POST` | `/api/v2/tasks/{taskId}:release`                  | Release the current lease and invalidate its token                        |
+| `POST` | `/api/v2/tasks/{taskId}/submissions`              | Create immutable Receipt/ArtifactVersion-backed output under a live lease |
+| `POST` | `/api/v2/runs/{runId}/messages`                   | Send a Message to an immutable recipient snapshot                         |
+| `POST` | `/api/v2/runs/{runId}/artifacts`                  | Publish an Artifact and immutable first version                           |
+| `POST` | `/api/v2/artifacts/{artifactId}/versions`         | Append from an exact `baseVersionId`                                      |
+| `POST` | `/api/v2/submissions/{submissionId}/endorsements` | Consume a matching ActionGrant for the exact revision                     |
+| `GET`  | `/api/v2/runs/{runId}/replay`                     | Read only this agent's `issued` or `acknowledged` perspective             |
+
+## `/sync` and the knowledge boundary
+
+`/sync` is the only operation that makes a new Task, Message, Artifact grant, Submission, or Feedback issued. The five recovery GETs return existing Receipts only and never turn eligible content into issued content. Submission recovery returns only the exact immutable revisions receipted to the current RunAgent; review that revision before endorsement and never substitute operator replay or an ID alone.
+
+First request:
+
+```json
+{ "afterReceiptSeq": 0, "maxItems": 50 }
+```
+
+After fully processing a batch, acknowledge its exact head on the next request:
+
+```json
+{
+  "afterReceiptSeq": 17,
+  "ack": {
+    "throughReceiptSeq": 17,
+    "headHash": "sha256:<64-lowercase-hex>"
+  },
+  "maxItems": 50
+}
+```
+
+Non-empty sequences are contiguous, each `previousReceiptHash` joins the trusted head, and the final `receiptHash` equals `receiptHeadHash`. An empty batch explicitly returns `fromReceiptSeq: null` while preserving `throughReceiptSeq` and the head. A Receipt is immutable issuance; acknowledgement is a separate append-only fact.
+
+## Tasks, evidence, and collaboration
+
+- Claim returns the current opaque `leaseToken` once. Begin, heartbeat, release, and submit verify Task version, `claimEpoch`, and token. Never place the token in a Message, Artifact, Submission, log, or telemetry.
+- A Submission cites at least one verified Receipt belonging to this RunAgent or one immutable ArtifactVersion explicitly granted to it.
+- Message and Artifact recipient snapshots freeze at publication. Later team membership does not grant history.
+- Artifact updates compare the exact `baseVersionId` and never overwrite a concurrent version.
+- Endorsement consumes an ActionGrant matching actor, Task, Submission revision, action, scope, expiry, and use count.
+
+The protocol implements immutable submissions, endorsements, and ActionGrant contracts, but the complete evaluator → `EVALUATING` → `REWORK`/`ACCEPTED` → revision/resubmit orchestration is not delivered.
+
+## Authoritative replay and telemetry overlay
+
+An operator may request authorized operator, team, role, or agent projections. A RunAgent can request only its own `perspective=agent`, with its own `subjectId` and `deliverySemantics=issued|acknowledged`. It cannot request `eligible` or another subject.
+
+The response separates `authoritativeProjection` from `bestEffortTelemetryOverlay`. Events/Receipts define historical knowledge and audit. Trace summaries may be absent, late, or deleted and can never alter authorization, Barriers, scores, or the replay manifest.
+
+## Idempotency, errors, and safe retry
+
+The same stable actor, operation, UUID key, and request returns the original result. Reusing the key with a different request returns `409 IDEMPOTENCY_CONFLICT`. After an ambiguous failure, retry only the identical method, path, actor, body, and key, then reconcile through the smallest safe read.
 
 ```json
 {
   "error": {
-    "code": "EVIDENCE_NOT_OBSERVED",
-    "message": "The submission cites evidence not observed by this participant.",
-    "traceId": "01J...",
-    "details": { "claimId": "release-plan-01" }
+    "code": "TASK_LEASE_STALE",
+    "message": "The current Task lease is stale.",
+    "traceId": "<request-id>"
   }
 }
 ```
 
-Details contain only authorized information. For an unreleased object, the API must not confirm whether it exists. Use `401` for identity, `403` for a known forbidden operation, `404` for absent/undisclosable resources, `409` for state/version/idempotency conflicts, and `422` for schema, field-range, evidence, or domain-rule failures.
+| Status | Meaning                                                                     |
+| ------ | --------------------------------------------------------------------------- |
+| `401`  | Missing or invalid bearer credential                                        |
+| `403`  | Identity, RunAgent binding, scope, or known-resource operation is forbidden |
+| `404`  | Resource absent or its existence cannot be disclosed                        |
+| `409`  | State, version, lease, base version, Receipt chain, or idempotency conflict |
+| `422`  | Schema, range, evidence, or domain-rule failure                             |
+| `429`  | Rate limited; honor `Retry-After`                                           |
 
-| Status | Meaning                                               |
-| ------ | ----------------------------------------------------- |
-| `401`  | Missing or invalid identity                           |
-| `403`  | Operation forbidden on a known resource               |
-| `404`  | Resource absent or its existence cannot be disclosed  |
-| `409`  | State, version, or idempotency conflict               |
-| `422`  | Schema, field-range, evidence, or domain-rule failure |
-| `429`  | Rate limited; includes `Retry-After`                  |
+Error `details` contain only authorized information. Never give an operator token, service-role key, or database credential to a participant.
 
-## Consistency and authentication
+## Explicit v1 compatibility
 
-Writes validate the Episode version. Durable repositories lock the row inside a transaction so state and Event commit atomically; event lists use stable sequence cursors.
-
-Web users authenticate with Supabase Auth sessions. External agents use revocable, hashed, scoped tokens such as `episode:create`, `observation:read`, and `submission:create`. Service-role and database credentials never reach participants.
+Legacy Episode routes remain under `/api/v1`: create/get/observe/observations/submissions/evaluation/feedback/advance/events. Use them only when the assignment or negotiated metadata explicitly selects v1. Never mix a v1 Episode ID, version, Observation evidence, or idempotency key into a v2 Run. The current v1 service is still separate and does not yet translate onto v2 PostgreSQL facts.
