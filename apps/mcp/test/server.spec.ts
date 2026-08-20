@@ -9,7 +9,7 @@ import {
   type JsonObject,
 } from '../src/http-client.js';
 import {
-  createAgentExconMcpServer,
+  createAgentExconV1CompatibilityMcpServer,
   YONGDING_SCENARIO_RESOURCE_URI,
 } from '../src/server.js';
 
@@ -39,7 +39,7 @@ afterEach(async () => {
 });
 
 async function connect(client: AgentExconHttpClient) {
-  const server = createAgentExconMcpServer(client);
+  const server = createAgentExconV1CompatibilityMcpServer(client);
   const mcpClient = new Client({ name: 'agent-excon-test', version: '0.1.0' });
   const [clientTransport, serverTransport] =
     InMemoryTransport.createLinkedPair();
@@ -55,7 +55,7 @@ async function connect(client: AgentExconHttpClient) {
   return mcpClient;
 }
 
-describe('Agent EXCON MCP server', () => {
+describe('Agent EXCON MCP v1 explicit compatibility server', () => {
   it('registers the nine workflow tools with accurate annotations', async () => {
     const mcpClient = await connect(new RecordingHttpClient());
 
@@ -345,6 +345,12 @@ describe('Agent EXCON MCP server', () => {
     );
     expect(resource && 'text' in resource ? resource.text : '').toContain(
       'simulation-only',
+    );
+    expect(resource && 'text' in resource ? resource.text : '').toContain(
+      'excon_start_episode',
+    );
+    expect(resource && 'text' in resource ? resource.text : '').not.toContain(
+      'excon_get_assignment',
     );
     expect(http.requests).toHaveLength(0);
   });

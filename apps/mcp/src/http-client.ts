@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 export type JsonPrimitive = boolean | null | number | string;
-export type JsonValue = JsonObject | JsonPrimitive | JsonValue[];
-export type JsonObject = { [key: string]: JsonValue };
+export type JsonValue = JsonObject | JsonPrimitive | readonly JsonValue[];
+export type JsonObject = { readonly [key: string]: JsonValue };
 
 export interface AgentExconHttpRequest {
   readonly method: 'GET' | 'POST';
@@ -15,6 +15,8 @@ export interface AgentExconHttpRequest {
 export interface AgentExconHttpClient {
   request(request: AgentExconHttpRequest): Promise<JsonValue>;
 }
+
+export type AgentExconProtocolVersion = 'v1' | 'v2';
 
 export interface FetchAgentExconHttpClientOptions {
   readonly baseUrl: string;
@@ -60,6 +62,20 @@ function normalizeBaseUrl(value: string): URL {
     );
   }
   return url;
+}
+
+function assertProtocolUrlAlignment(
+  baseUrl: string,
+  protocolVersion: AgentExconProtocolVersion,
+): void {
+  const url = normalizeBaseUrl(baseUrl);
+  const pathVersion = /(?:^|\/)api\/(v1|v2)(?:\/|$)/.exec(url.pathname)?.[1];
+  if (pathVersion !== undefined && pathVersion !== protocolVersion) {
+    throw new Error(
+      `AGENT_EXCON_API_URL 选择了 ${pathVersion}，但协议模式是 ${protocolVersion}。 / ` +
+        `AGENT_EXCON_API_URL selects ${pathVersion}, but the protocol mode is ${protocolVersion}.`,
+    );
+  }
 }
 
 async function readJson(response: Response): Promise<unknown> {
@@ -152,11 +168,27 @@ export function createHttpClientFromEnvironment(
     );
   }
 
+  const protocolVersion = resolveAgentExconProtocolVersion(environment);
+  const baseUrl =
+    environment['AGENT_EXCON_API_URL'] ??
+    environment['AGENT_EXCON_API_BASE_URL'] ??
+    `http://127.0.0.1:3001/api/${protocolVersion}/`;
+  assertProtocolUrlAlignment(baseUrl, protocolVersion);
   return new FetchAgentExconHttpClient({
-    baseUrl:
-      environment['AGENT_EXCON_API_URL'] ??
-      environment['AGENT_EXCON_API_BASE_URL'] ??
-      'http://127.0.0.1:3001/api/v1/',
+    baseUrl,
     token,
   });
+}
+
+export function resolveAgentExconProtocolVersion(
+  environment: NodeJS.ProcessEnv = process.env,
+): AgentExconProtocolVersion {
+  const value = environment['AGENT_EXCON_PROTOCOL_VERSION'] ?? 'v2';
+  if (value !== 'v1' && value !== 'v2') {
+    throw new Error(
+      'AGENT_EXCON_PROTOCOL_VERSION 必须是 v2（默认）或显式 v1 兼容模式。 / ' +
+        'AGENT_EXCON_PROTOCOL_VERSION must be v2 (default) or explicit v1 compatibility mode.',
+    );
+  }
+  return value;
 }

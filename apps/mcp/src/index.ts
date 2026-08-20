@@ -2,17 +2,22 @@
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-import { createHttpClientFromEnvironment } from './http-client.js';
+import {
+  createHttpClientFromEnvironment,
+  resolveAgentExconProtocolVersion,
+} from './http-client.js';
 import { createAgentExconMcpServer } from './server.js';
 
 async function main(): Promise<void> {
+  const protocolVersion = resolveAgentExconProtocolVersion();
   const http = createHttpClientFromEnvironment();
-  const server = createAgentExconMcpServer(http);
+  const server = createAgentExconMcpServer(http, { protocolVersion });
   const transport = new StdioServerTransport();
 
   await server.connect(transport);
   console.error(
-    'Agent EXCON MCP 服务已通过 stdio 启动。 / Agent EXCON MCP server started over stdio.',
+    `Agent EXCON MCP 服务已通过 stdio 启动（${protocolVersion}）。 / ` +
+      `Agent EXCON MCP server started over stdio (${protocolVersion}).`,
   );
 }
 
