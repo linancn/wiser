@@ -11,6 +11,16 @@ export {
   type InMemoryV2ExerciseServiceOptions,
 } from './v2-in-memory-service.js';
 export {
+  LOCAL_LAB_ROLE_KEYS,
+  createV2LocalLab,
+  type CreateV2LocalLabOptions,
+  type LocalLabCredential,
+  type LocalLabManifest,
+  type LocalLabRoleKey,
+  type LocalLabRosterEntry,
+  type V2LocalLab,
+} from './v2-local-lab.js';
+export {
   DEFAULT_SCENARIO,
   DEFAULT_SCENARIO_VERSION_ID,
   type ScenarioDocument,

@@ -61,9 +61,9 @@ describe('v2 local four-agent lab bootstrap', () => {
       expectedRoles,
     );
     expect(
-      new Set(lab.manifest.roster.map(({ runAgentId }) => runAgentId)),
-    ).toHaveSize(4);
-    expect(new Set(lab.credentials.map(({ token }) => token))).toHaveSize(4);
+      new Set(lab.manifest.roster.map(({ runAgentId }) => runAgentId)).size,
+    ).toBe(4);
+    expect(new Set(lab.credentials.map(({ token }) => token)).size).toBe(4);
     expect(JSON.stringify(lab.manifest)).not.toContain('wbl_');
 
     for (const [index, credential] of lab.credentials.entries()) {
