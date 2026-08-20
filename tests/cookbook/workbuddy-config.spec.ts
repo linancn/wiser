@@ -124,7 +124,7 @@ describe('WorkBuddy role-isolated runtime renderer', () => {
       expect(server.env).toMatchObject({
         AGENT_EXCON_PROTOCOL_VERSION: 'v2',
         AGENT_EXCON_API_URL: 'http://127.0.0.1:3101/api/v2/',
-        AGENT_EXCON_API_KEY: `wbl_${roles[index]}_test_secret`,
+        AGENT_EXCON_API_KEY: `wbl_${roles[index]!}_test_secret`,
       });
       expect(configText.match(/test_secret/g)).toHaveLength(1);
       for (const otherRole of roles.filter(
