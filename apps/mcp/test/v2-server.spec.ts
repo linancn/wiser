@@ -400,6 +400,33 @@ describe('WISER Agent EXCON v2 MCP adapter', () => {
     ]);
   });
 
+  it('mirrors successful structured machine data into text-only client content', async () => {
+    const http = new RecordingHttpClient();
+    http.nextData = {
+      throughReceiptSeq: 4,
+      receiptHeadHash: HASH,
+      receipts: [{ resourceType: 'task', resourceId: TASK_ID }],
+    };
+    const mcpClient = await connect(http);
+
+    const result = await mcpClient.callTool({
+      name: 'excon_sync',
+      arguments: {
+        runId: RUN_ID,
+        runAgentId: RUN_AGENT_ID,
+        idempotencyKey: IDEMPOTENCY_KEY,
+        afterReceiptSeq: 0,
+        maxItems: 25,
+      },
+    });
+
+    const text = result.content.find((block) => block.type === 'text')?.text;
+    expect(text).toContain('MACHINE_DATA:');
+    expect(text).toContain('"throughReceiptSeq":4');
+    expect(text).toContain(`"resourceId":"${TASK_ID}"`);
+    expect(result.structuredContent).toEqual({ ok: true, data: http.nextData });
+  });
+
   it('rejects extra tool arguments before HTTP dispatch', async () => {
     const http = new RecordingHttpClient();
     const mcpClient = await connect(http);
