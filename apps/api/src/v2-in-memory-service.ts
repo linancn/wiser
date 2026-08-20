@@ -30,6 +30,7 @@ import type {
   RunArtifactDto,
   RunDto,
   RunEventDto,
+  RunEvaluationDto,
   RunFeedbackDto,
   RunMessageDto,
   RunRoleAssignmentDto,
@@ -47,15 +48,24 @@ import type {
 } from '@agent-excon/contracts';
 import {
   assessRequiredRoleQuorum,
+  acceptRunTask,
+  beginRunTaskEvaluation,
   beginRunTask,
   claimRunTask,
   consumeFeedbackActionGrant,
   createFeedbackActionGrant,
+  createRunBarrier,
   createRunTask,
   heartbeatRunTask,
+  readyRunTaskRevision,
+  recordRunBarrierInput,
+  releaseBlockedRunTask,
+  releaseRunBarrier,
   releaseRunTask,
+  requireRunTaskRework,
   submitRunTask,
   type FeedbackActionGrant,
+  type RunBarrier,
   type RunTask as DomainRunTask,
 } from '@agent-excon/core';
 
@@ -65,6 +75,10 @@ import {
   YONGDING_V2_CASE_PACK,
   type YongdingV2CaseRoleKey,
 } from './yongding-v2-case.js';
+import {
+  evaluateYongdingV2RoleOutput,
+  type YongdingV2RoleEvaluation,
+} from './yongding-v2-evaluator.js';
 
 export const DEFAULT_V2_SCENARIO_ID = 'jing-jin-ji-yongding-river';
 export const DEFAULT_V2_SCENARIO_VERSION_ID =
@@ -138,6 +152,8 @@ interface StoredRun {
   readonly endorsements: Map<string, SubmissionEndorsementDto>;
   readonly feedback: Map<string, RunFeedbackDto>;
   readonly actionGrants: Map<string, FeedbackActionGrant>;
+  readonly evaluations: Map<string, RunEvaluationDto>;
+  readonly barriers: Map<string, RunBarrier>;
   readonly eligible: Map<string, EligibleDisclosure[]>;
   readonly receipts: Map<string, AgentViewReceiptDto[]>;
   readonly acknowledgements: Map<string, StoredAcknowledgement[]>;
@@ -722,6 +738,8 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
           endorsements: new Map(),
           feedback: new Map(),
           actionGrants: new Map(),
+          evaluations: new Map(),
+          barriers: new Map(),
           eligible: new Map(),
           receipts: new Map(),
           acknowledgements: new Map(),
@@ -982,6 +1000,28 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
             assertionClass: 'operator_asserted',
             payload: {
               staffedRunAgentIds: [...new Set(assignedIds as string[])],
+            },
+          });
+          const analysisBarrier = createRunBarrier({
+            id: this.#idFactory(),
+            runId,
+            requiredConditionKeys: [
+              'water-evidence',
+              'hydraulic-constraints',
+              'ecological-target',
+            ],
+          });
+          stored.barriers.set('analysis-ready', analysisBarrier);
+          this.appendRunEvent(stored, {
+            streamType: 'barrier',
+            streamId: analysisBarrier.id,
+            eventType: 'barrier.created',
+            actorType: 'system',
+            actorId: 'excon',
+            assertionClass: 'platform_observed',
+            payload: {
+              definitionKey: 'analysis-ready',
+              requiredConditionKeys: analysisBarrier.requiredConditionKeys,
             },
           });
           for (const role of scenarioVersion.requiredRoles) {
@@ -1461,7 +1501,18 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
             );
           }
           this.issueEndorsementGrants(stored, submission);
-          return { submission, task: taskDto };
+          const responseTask =
+            currentTask.roleSlotId === 'dispatch-coordination' ||
+            submission.targetScope === 'team' ||
+            submission.endorsementRecipientRunAgentIds.length > 0
+              ? taskDto
+              : this.evaluateRoleSubmission(
+                  stored,
+                  submission,
+                  nextTask,
+                  currentTask,
+                );
+          return { submission, task: responseTask };
         },
       ),
     );
@@ -1784,6 +1835,14 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
     );
   }
 
+  listRunEvaluations(
+    principal: ParticipantPrincipal,
+    runId: string,
+  ): Promise<readonly RunEvaluationDto[]> {
+    const stored = this.ownedRun(principal, runId);
+    return Promise.resolve([...stored.evaluations.values()]);
+  }
+
   getReplay(
     principal: ParticipantPrincipal,
     runId: string,
@@ -2014,6 +2073,320 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
     });
     this.addEligible(stored, runAgentId, dto, event, 'task');
     return dto;
+  }
+
+  private recordEvaluatorTaskTransition(
+    stored: StoredRun,
+    task: DomainRunTask,
+    runAgentId: string,
+    eventType: string,
+    evaluationId: string,
+    makeEligible: boolean,
+  ): { readonly dto: RunTaskDto; readonly event: RunEventDto } {
+    stored.taskStates.set(task.id, task);
+    const dto = this.updateTaskDto(stored, task);
+    const event = this.appendRunEvent(stored, {
+      streamType: 'task',
+      streamId: task.id,
+      eventType,
+      actorType: 'system',
+      actorId: 'excon-evaluator',
+      assertionClass: 'evaluator_derived',
+      payload: {
+        runAgentId,
+        evaluationId,
+        state: task.state,
+        taskVersion: task.version,
+        claimEpoch: task.claimEpoch,
+      },
+    });
+    if (makeEligible) {
+      this.addEligible(stored, runAgentId, dto, event, 'task');
+    }
+    return { dto, event };
+  }
+
+  private evaluateRoleSubmission(
+    stored: StoredRun,
+    submission: RunSubmissionDto,
+    submittedTask: DomainRunTask,
+    taskDto: RunTaskDto,
+  ): RunTaskDto {
+    const evaluationId = this.#idFactory();
+    const evaluating = beginRunTaskEvaluation(
+      submittedTask,
+      submittedTask.version,
+    );
+    this.recordEvaluatorTaskTransition(
+      stored,
+      evaluating,
+      submission.actorRunAgentId,
+      'task.evaluating',
+      evaluationId,
+      false,
+    );
+    const result = evaluateYongdingV2RoleOutput({
+      roleSlotId: taskDto.roleSlotId as YongdingV2CaseRoleKey,
+      payload: submission.payload,
+      artifactReferenceCount: submission.artifactVersionRefs.length,
+    });
+    const evaluatedAt = this.timestamp();
+    const evaluationEvent = this.appendRunEvent(stored, {
+      streamType: 'evaluation',
+      streamId: evaluationId,
+      eventType: 'evaluation.completed',
+      actorType: 'system',
+      actorId: 'excon-evaluator',
+      assertionClass: 'evaluator_derived',
+      payload: {
+        runAgentId: submission.actorRunAgentId,
+        submissionId: submission.id,
+        taskId: submission.taskId,
+        roleSlotId: taskDto.roleSlotId,
+        targetScope: submission.targetScope,
+        verdict: result.verdict,
+        issueCodes: result.issues,
+        deterministic: true,
+        evaluatorVersion: 'yongding-role-output-v1',
+      },
+    });
+    const evaluation: RunEvaluationDto = {
+      id: evaluationId,
+      runId: stored.run.id,
+      submissionId: submission.id,
+      taskId: submission.taskId,
+      runAgentId: submission.actorRunAgentId,
+      roleSlotId: taskDto.roleSlotId,
+      targetScope: submission.targetScope,
+      verdict: result.verdict,
+      issueCodes: [...result.issues],
+      deterministic: true,
+      evaluatorVersion: 'yongding-role-output-v1',
+      createdRunSeq: evaluationEvent.runSeq,
+      createdAt: evaluatedAt,
+    };
+    stored.evaluations.set(evaluation.id, evaluation);
+
+    if (result.verdict === 'ACCEPTED') {
+      const accepted = acceptRunTask(evaluating, evaluating.version);
+      const { dto } = this.recordEvaluatorTaskTransition(
+        stored,
+        accepted,
+        submission.actorRunAgentId,
+        'task.accepted',
+        evaluationId,
+        true,
+      );
+      this.issueEvaluationFeedback(stored, submission, evaluation, result);
+      this.recordAcceptedBarrierInput(
+        stored,
+        taskDto.roleSlotId,
+        evaluationEvent,
+      );
+      return dto;
+    }
+
+    const rework = requireRunTaskRework(evaluating, evaluating.version);
+    this.recordEvaluatorTaskTransition(
+      stored,
+      rework,
+      submission.actorRunAgentId,
+      'task.rework-required',
+      evaluationId,
+      false,
+    );
+    this.issueEvaluationFeedback(stored, submission, evaluation, result);
+    const ready = readyRunTaskRevision(rework, rework.version);
+    return this.recordEvaluatorTaskTransition(
+      stored,
+      ready,
+      submission.actorRunAgentId,
+      'task.revision-ready',
+      evaluationId,
+      true,
+    ).dto;
+  }
+
+  private issueEvaluationFeedback(
+    stored: StoredRun,
+    submission: RunSubmissionDto,
+    evaluation: RunEvaluationDto,
+    result: YongdingV2RoleEvaluation,
+  ): void {
+    for (const targetScope of ['individual', 'role'] as const) {
+      const feedbackId = this.#idFactory();
+      const event = this.appendRunEvent(stored, {
+        streamType: 'feedback',
+        streamId: feedbackId,
+        eventType: 'feedback.created',
+        actorType: 'system',
+        actorId: 'excon-evaluator',
+        assertionClass: 'evaluator_derived',
+        payload: {
+          runAgentId: submission.actorRunAgentId,
+          evaluationId: evaluation.id,
+          submissionId: submission.id,
+          targetScope,
+          verdict: evaluation.verdict,
+        },
+      });
+      const actionGrants: FeedbackActionGrantDto[] = [];
+      if (
+        targetScope === 'individual' &&
+        result.verdict === 'REWORK_REQUIRED'
+      ) {
+        const grantId = this.#idFactory();
+        const scopeHash = hash({
+          targetRunAgentId: submission.actorRunAgentId,
+          targetTaskId: submission.taskId,
+          action: 'resubmit',
+          predecessorSubmissionId: submission.id,
+          evaluationId: evaluation.id,
+        });
+        const grant = createFeedbackActionGrant({
+          id: grantId,
+          targetRunAgentId: submission.actorRunAgentId,
+          targetTaskId: submission.taskId,
+          action: 'resubmit',
+          predecessorSubmissionId: submission.id,
+          evaluationId: evaluation.id,
+          issuedRunSeq: event.runSeq,
+          issuedAt: evaluation.createdAt,
+          expiresAt: this.addSeconds(evaluation.createdAt, 24 * 60 * 60),
+          maxUses: 1,
+          scopeHash,
+        });
+        stored.actionGrants.set(grant.id, grant);
+        actionGrants.push(grant);
+      }
+      const accepted = result.verdict === 'ACCEPTED';
+      const feedback: RunFeedbackDto = {
+        id: feedbackId,
+        runId: stored.run.id,
+        targetScope,
+        recipientRunAgentIds: [submission.actorRunAgentId],
+        basisType: 'evaluation',
+        summary: accepted
+          ? {
+              'zh-CN': '确定性评价已接受该角色输出。',
+              en: 'The deterministic evaluator accepted this role output.',
+            }
+          : {
+              'zh-CN': '确定性评价要求修订该角色输出。',
+              en: 'The deterministic evaluator requires a revised role output.',
+            },
+        guidance: accepted
+          ? [
+              {
+                'zh-CN': '等待 EXCON 释放下游协作，不要推进全局时钟。',
+                en: 'Wait for EXCON to release downstream collaboration; do not advance the global clock.',
+              },
+            ]
+          : result.issues.map((issue) => ({
+              'zh-CN': `修订问题：${issue}`,
+              en: `Revision issue: ${issue}`,
+            })),
+        allowedActions: accepted ? [] : ['resubmit'],
+        subjectSubmissionId: submission.id,
+        ...(actionGrants.length === 0 ? {} : { actionGrants }),
+        createdRunSeq: event.runSeq,
+        createdAt: evaluation.createdAt,
+      };
+      stored.feedback.set(feedback.id, feedback);
+      this.addEligible(
+        stored,
+        submission.actorRunAgentId,
+        feedback,
+        event,
+        'feedback',
+      );
+    }
+  }
+
+  private recordAcceptedBarrierInput(
+    stored: StoredRun,
+    roleSlotId: string,
+    evaluationEvent: RunEventDto,
+  ): void {
+    if (roleSlotId === 'dispatch-coordination') return;
+    const barrier = stored.barriers.get('analysis-ready');
+    if (barrier === undefined) {
+      throw new ExerciseServiceError(
+        'INTERNAL_ERROR',
+        'The analysis-ready barrier is missing.',
+      );
+    }
+    const next = recordRunBarrierInput(barrier, {
+      expectedVersion: barrier.version,
+      conditionKey: roleSlotId,
+      sourceEventId: evaluationEvent.eventId,
+    });
+    stored.barriers.set('analysis-ready', next);
+    this.appendRunEvent(stored, {
+      streamType: 'barrier',
+      streamId: barrier.id,
+      eventType: 'barrier.condition-satisfied',
+      actorType: 'system',
+      actorId: 'excon-evaluator',
+      assertionClass: 'evaluator_derived',
+      payload: {
+        definitionKey: 'analysis-ready',
+        conditionKey: roleSlotId,
+        evaluationEventId: evaluationEvent.eventId,
+        barrierState: next.state,
+      },
+    });
+    if (next.state !== 'SATISFIED') return;
+
+    const decision = releaseRunBarrier(next, next.version);
+    stored.barriers.set('analysis-ready', decision.barrier);
+    if (!decision.releasedNow) return;
+    this.appendRunEvent(stored, {
+      streamType: 'barrier',
+      streamId: barrier.id,
+      eventType: 'barrier.released',
+      actorType: 'system',
+      actorId: 'excon-evaluator',
+      assertionClass: 'evaluator_derived',
+      payload: {
+        definitionKey: 'analysis-ready',
+        conditionKeys: decision.barrier.requiredConditionKeys,
+      },
+    });
+    const coordinatorTask = [...stored.tasks.values()].find(
+      ({ roleSlotId: candidate }) => candidate === 'dispatch-coordination',
+    );
+    if (coordinatorTask === undefined) {
+      throw new ExerciseServiceError(
+        'INTERNAL_ERROR',
+        'The dispatch coordination Task is missing.',
+      );
+    }
+    const domainTask = stored.taskStates.get(coordinatorTask.id)!;
+    const ready = releaseBlockedRunTask(domainTask, domainTask.version);
+    stored.taskStates.set(ready.id, ready);
+    const readyDto = this.updateTaskDto(stored, ready);
+    const readyEvent = this.appendRunEvent(stored, {
+      streamType: 'task',
+      streamId: ready.id,
+      eventType: 'task.ready',
+      actorType: 'system',
+      actorId: 'excon-evaluator',
+      assertionClass: 'evaluator_derived',
+      payload: {
+        runAgentId: readyDto.assignedRunAgentId,
+        definitionKey: 'stage-1-dispatch-coordination',
+        releasedByBarrier: 'analysis-ready',
+        taskVersion: ready.version,
+      },
+    });
+    this.addEligible(
+      stored,
+      readyDto.assignedRunAgentId,
+      readyDto,
+      readyEvent,
+      'task',
+    );
   }
 
   private updateTaskDto(stored: StoredRun, task: DomainRunTask): RunTaskDto {
@@ -2744,6 +3117,9 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
     if (event.streamType === 'run') return true;
     if (event.streamType === 'run_agent') {
       return visibleRunAgentIds.has(event.streamId);
+    }
+    if (event.streamType === 'evaluation' || event.streamType === 'barrier') {
+      return false;
     }
     if (event.streamType === 'task') {
       return visibleReceipts.some(

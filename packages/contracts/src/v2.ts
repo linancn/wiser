@@ -450,6 +450,35 @@ export const RunFeedbackSchema = z.strictObject({
 });
 export type RunFeedbackDto = z.infer<typeof RunFeedbackSchema>;
 
+export const RunEvaluationIssueCodeSchema = z.enum([
+  'OUTPUT_SCHEMA_TYPE',
+  'OUTPUT_SCHEMA_REQUIRED_FIELD',
+  'OUTPUT_SCHEMA_MIN_ITEMS',
+  'OUTPUT_SCHEMA_ADDITIONAL_PROPERTY',
+  'ARTIFACT_EVIDENCE_REQUIRED',
+]);
+
+export const RunEvaluationSchema = z.strictObject({
+  id: z.string().uuid(),
+  runId: z.string().uuid(),
+  submissionId: z.string().uuid(),
+  taskId: z.string().uuid(),
+  runAgentId: z.string().uuid(),
+  roleSlotId: EntityKeySchema,
+  targetScope: z.enum(['individual', 'role', 'team']),
+  verdict: z.enum(['ACCEPTED', 'REWORK_REQUIRED']),
+  issueCodes: z.array(RunEvaluationIssueCodeSchema),
+  deterministic: z.literal(true),
+  evaluatorVersion: EntityKeySchema,
+  createdRunSeq: z.number().int().positive(),
+  createdAt: V2TimestampSchema,
+});
+export type RunEvaluationDto = z.infer<typeof RunEvaluationSchema>;
+
+export const RunEvaluationListSchema = z.strictObject({
+  items: z.array(RunEvaluationSchema),
+});
+
 export const RunAgentMeSchema = z.strictObject({
   runAgent: RunAgentSchema,
   roleAssignment: RunRoleAssignmentSchema,
@@ -811,6 +840,8 @@ export const RunEventSchema = z.strictObject({
     'receipt',
     'submission',
     'endorsement',
+    'evaluation',
+    'barrier',
   ]),
   streamId: z.string().min(1).max(128),
   eventType: EntityKeySchema,

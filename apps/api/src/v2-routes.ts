@@ -707,6 +707,25 @@ export function registerV2Routes(
         }
 
         protectedApi.get(
+          '/runs/:runId/evaluations',
+          {
+            schema: {
+              ...protectedRouteSchema,
+              tags: ['replay-v2'],
+              summary: 'List deterministic Run evaluations for operators',
+            },
+          },
+          async (request) => {
+            const { runId } = V2RunIdParamsSchema.parse(request.params);
+            return {
+              items: await service.listRunEvaluations(
+                principal(request),
+                runId,
+              ),
+            };
+          },
+        );
+        protectedApi.get(
           '/runs/:runId/events',
           {
             schema: {

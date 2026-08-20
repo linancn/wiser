@@ -23,6 +23,7 @@ import type {
   RunArtifactDto,
   RunDto,
   RunEventDto,
+  RunEvaluationDto,
   RunFeedbackDto,
   RunMessageDto,
   RunSubmissionDto,
@@ -222,6 +223,10 @@ export interface V2ExerciseService {
     readonly endorsement: SubmissionEndorsementDto;
     readonly actionGrant: FeedbackActionGrantDto;
   }>;
+  listRunEvaluations(
+    principal: ParticipantPrincipal,
+    runId: string,
+  ): Promise<readonly RunEvaluationDto[]>;
   listRunEvents(
     principal: ParticipantPrincipal,
     runId: string,
