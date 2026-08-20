@@ -32,6 +32,8 @@
     "observability:up": "docker compose --profile observability up -d --build otel-collector telemetry-ingress tempo prometheus loki grafana",
     "observability:smoke": "node infrastructure/observability/smoke.mjs",
     "observability:down": "docker compose --profile observability stop telemetry-ingress otel-collector tempo prometheus loki grafana",
+    "cookbook:scripted": "tsx cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs --mode scripted",
+    "cookbook:workbuddy": "tsx cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs --mode workbuddy",
     "stack:up": "pnpm supabase:start && pnpm compose:up",
     "stack:down": "pnpm compose:down && pnpm supabase:stop"
   },
