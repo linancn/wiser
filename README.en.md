@@ -57,6 +57,14 @@ pnpm stack:up
 
 Supabase CLI first starts Auth/PostgreSQL 17/Storage/Studio, then Compose starts API, read-only Web, worker, and docs. Defaults are Web `:3000`, API `:3001`, worker health `:3002`, docs `:4321`, and Supabase Studio `:56323`. Stop with `pnpm stack:down`.
 
+Start the optional local technical-observability stack with:
+
+```bash
+pnpm observability:up
+```
+
+It exposes loopback-only OTLP on `:4317/:4318`, Grafana on `:3300`, and Prometheus on `:9090`, with local Trace/Log storage in Tempo/Loki. `pnpm observability:down` stops only these services and preserves named volumes. The Collector is a trusted local ingress; production participant telemetry must still pass through an authenticated RunAgent-bound ingress.
+
 Codex subscription auth is host-only for trusted local development. Containers and CI default to the fake provider. Never commit or mount `~/.codex/auth.json`, Supabase service-role keys, or other credentials.
 
 ## Project status

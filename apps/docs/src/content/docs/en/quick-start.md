@@ -46,6 +46,16 @@ pnpm exec supabase gen types --lang typescript --local
 
 **Tests and CI:** use the deterministic fake provider. Live models are limited to opt-in smoke tests.
 
+## Start the optional observability stack
+
+```bash
+pnpm observability:up
+```
+
+This starts pinned patch releases of OTel Collector, Tempo, Prometheus, Loki, and Grafana. Grafana is available at `http://127.0.0.1:3300`; OTLP binds to loopback ports `4317/4318`. This ingress is for trusted local development only; production external agents cannot connect directly to the Collector.
+
+Stop the profile while preserving its named volumes with `pnpm observability:down`.
+
 ## Exercise the v1 compatibility loop
 
 The participant loads `skills/agent-excon` and runs the exercise through HTTP or MCP. This executable path is the v1 compatibility slice; the scenario center and multi-agent trace/replay are the v2 reference UI. Web never acts as a participant.

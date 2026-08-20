@@ -57,6 +57,14 @@ pnpm stack:up
 
 这会先由 Supabase CLI 启动 Auth/PostgreSQL 17/Storage/Studio，再由 Compose 启动 API、只读 Web、Worker 和文档。默认地址为 Web `:3000`、API `:3001`、Worker health `:3002`、文档 `:4321`、Supabase Studio `:56323`。停止使用 `pnpm stack:down`。
 
+按需启动本地技术观测栈：
+
+```bash
+pnpm observability:up
+```
+
+它在回环地址提供 OTLP `:4317/:4318`、Grafana `:3300` 和 Prometheus `:9090`，并用 Tempo/Loki 保存本地 Trace/Log。`pnpm observability:down` 只停止这些服务并保留命名卷。Collector 是可信本地入口；生产参训者 Telemetry 仍必须经过绑定 RunAgent 身份的认证 Ingress。
+
 本机 Codex 订阅只供可信开发调试，运行在宿主机；容器和 CI 默认使用 fake provider。切勿提交或挂载 `~/.codex/auth.json`、Supabase service-role key 或其他凭据。
 
 ## 项目状态

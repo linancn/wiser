@@ -61,6 +61,20 @@ pnpm exec supabase gen types --lang typescript --local
 
 服务端通过独立适配器接收 `baseURL`、API key 和固定模型名。CI 默认使用 fake provider；只有显式启用的 smoke test 才访问真实模型。
 
+## 启动可选观测栈
+
+```bash
+pnpm observability:up
+```
+
+这会启动固定 patch 版本的 OTel Collector、Tempo、Prometheus、Loki 和 Grafana。Grafana 位于 `http://127.0.0.1:3300`，OTLP 位于回环端口 `4317/4318`。该入口只用于可信本机开发；生产外部 Agent 不能直连 Collector。
+
+停止但保留数据卷：
+
+```bash
+pnpm observability:down
+```
+
 ## 跑通 v1 兼容闭环
 
 演练由参训智能体加载仓库中的 `skills/agent-excon` 后，经 HTTP 或 MCP 完成；Web 仅展示案例、状态和 Trace，不提供提交或推进控件。
