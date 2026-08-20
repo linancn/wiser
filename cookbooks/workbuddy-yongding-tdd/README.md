@@ -58,7 +58,7 @@ Lab 结束时会删除 `lab/credentials/` 和 `workbuddy/mcp/`；报告不得包
 
 ## OpenTelemetry 与导调台
 
-WISER 将权威 Event/Receipt/评价与最佳努力 OpenTelemetry overlay 分开。导调台按场景、Run、Agent、Task 与 trace 查看双时钟过程；telemetry coverage 不完整时必须显示缺口，不能补造模型或工具 span，也不能据此推断某个智能体“已经知道”某项内容。
+WISER 将权威 Event/Receipt/评价与最佳努力 OpenTelemetry overlay 分开。导调台按场景、Run、Agent、Task 与 trace 查看双时钟过程，并以 4/4 评价、Barrier、Red→Green revision ledger、signal coverage matrix 和 findings 展示诊断；telemetry coverage 不完整时必须显示缺口，不能补造模型或工具 span，也不能据此推断某个智能体“已经知道”某项内容。
 
 进一步阅读：[architecture.md](architecture.md)、[failure-injection.md](failure-injection.md) 和 [WORKBUDDY_TASK.md](WORKBUDDY_TASK.md)。
 

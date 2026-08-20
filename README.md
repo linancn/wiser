@@ -31,7 +31,7 @@ WISER 面向水系统的感知、推演、决策与重构。当前首个开源�
 - Agent EXCON Skill 已以 v2 RunAgent 循环为默认；stdio MCP 已实现与 HTTP 路由一致的 18 个 v2 参训工具，包括 Receipt-gated 的 Submission 安全恢复与不推进虚拟时钟的有界 wait-and-sync。v1 只在显式选择兼容模式时启用，不会自动降级。
 - 本机 WorkBuddy Cookbook 已能用四个隔离的顶层进程运行真实 Yongding v2 协作链；scripted 与故障注入 profile 均经过真实 MCP，覆盖确定性评价、scoped rework、三方背书与两个 Barrier，真实 WorkBuddy 仅在显式 opt-in 时启动。
 - Compose `observability` profile 已包含认证 Telemetry Ingress、OTel Collector、Tempo、Prometheus、Loki 和 Grafana；领域 Event/Receipt 始终是权威事实，OTel 只是最佳努力诊断投影。
-- Web 已交付中文默认的多场景、分 Agent Trace 与视角回放 reference/live 两种只读模式；`live` 失败时显式显示数据缺口，不回退或伪造参训过程。
+- Web 已交付中文默认的多场景、分 Agent Trace、视角回放与 authority-aware 诊断板；4/4 评价、Barrier、Red→Green 修订账本与 OTel Trace/Span/Log/Metric coverage 分轨展示。reference/live 均只读，`live` 失败时显式显示数据缺口，不回退或伪造参训过程。
 
 尚未交付的关键边界是 PostgreSQL API adapter，以及把 v1 翻译到 v2 事实的 compatibility facade。因此当前 v2 适合协议/TDD/本地调试，不应被描述为持久化生产平台。
 
