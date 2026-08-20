@@ -1,12 +1,20 @@
 import {
+  CreateArtifactVersionRequestSchema,
   CreateAgentIdentityRequestSchema,
   CreateAgentVersionRequestSchema,
+  CreateRunArtifactRequestSchema,
+  CreateRunMessageRequestSchema,
   CreateRunRequestSchema,
   CreateScenarioRequestSchema,
   CreateScenarioVersionRequestSchema,
+  CreateSubmissionEndorsementRequestSchema,
+  CreateTaskSubmissionRequestSchema,
   JoinRunAgentRequestSchema,
   ReplayQuerySchema,
   RunSyncRequestSchema,
+  TaskClaimRequestSchema,
+  TaskHeartbeatRequestSchema,
+  TaskLeaseCommandRequestSchema,
   VersionCommandRequestSchema,
 } from '@agent-excon/contracts';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
@@ -20,11 +28,15 @@ import {
 import {
   V2AgentIdParamsSchema,
   V2AgentVersionIdParamsSchema,
+  V2ArtifactIdParamsSchema,
   V2EventQuerySchema,
   V2RunAgentHeaderSchema,
   V2RunIdParamsSchema,
   V2ScenarioIdParamsSchema,
   V2ScenarioVersionIdParamsSchema,
+  V2SubmissionIdParamsSchema,
+  V2TaskActionParamsSchema,
+  V2TaskIdParamsSchema,
 } from './v2-schemas.js';
 import type { V2ExerciseService } from './v2-types.js';
 import { z } from 'zod';
@@ -76,6 +88,7 @@ function runAgentPrincipal(
   const authenticated = authenticatedPrincipal(request);
   if (
     !authenticated.roles?.includes('run_agent') ||
+    authenticated.roles.includes('operator') ||
     !authenticated.runAgentIds?.includes(expectedRunAgentId)
   ) {
     throw new ExerciseServiceError(
@@ -426,6 +439,25 @@ export function registerV2Routes(
             };
           },
         );
+        protectedApi.get(
+          '/runs/:runId/me',
+          {
+            schema: {
+              ...protectedRouteSchema,
+              tags: ['agent-collaboration-v2'],
+              summary: 'Recover the credential-bound RunAgent assignment',
+            },
+          },
+          async (request) => {
+            const { runId } = V2RunIdParamsSchema.parse(request.params);
+            const requestedRunAgentId = runAgentId(request);
+            return service.getRunAgentMe(
+              runAgentPrincipal(request, requestedRunAgentId),
+              runId,
+              requestedRunAgentId,
+            );
+          },
+        );
         protectedApi.post(
           '/runs/:runAction',
           {
@@ -465,6 +497,181 @@ export function registerV2Routes(
               idempotencyKey(request),
               RunSyncRequestSchema.parse(request.body),
             );
+          },
+        );
+
+        protectedApi.post(
+          '/tasks/:taskAction',
+          {
+            schema: {
+              ...protectedRouteSchema,
+              tags: ['agent-collaboration-v2'],
+              summary: 'Claim or mutate a credential-bound Task lease',
+            },
+          },
+          async (request) => {
+            const { taskAction } = V2TaskActionParamsSchema.parse(
+              request.params,
+            );
+            const separator = taskAction.lastIndexOf(':');
+            const taskId = taskAction.slice(0, separator);
+            const action = taskAction.slice(separator + 1);
+            const requestedRunAgentId = runAgentId(request);
+            const actor = runAgentPrincipal(request, requestedRunAgentId);
+            const key = idempotencyKey(request);
+            if (action === 'claim') {
+              return service.claimTask(
+                actor,
+                requestedRunAgentId,
+                taskId,
+                key,
+                TaskClaimRequestSchema.parse(request.body),
+              );
+            }
+            if (action === 'begin') {
+              return service.beginTask(
+                actor,
+                requestedRunAgentId,
+                taskId,
+                key,
+                TaskLeaseCommandRequestSchema.parse(request.body),
+              );
+            }
+            if (action === 'heartbeat') {
+              return service.heartbeatTask(
+                actor,
+                requestedRunAgentId,
+                taskId,
+                key,
+                TaskHeartbeatRequestSchema.parse(request.body),
+              );
+            }
+            return service.releaseTask(
+              actor,
+              requestedRunAgentId,
+              taskId,
+              key,
+              TaskLeaseCommandRequestSchema.parse(request.body),
+            );
+          },
+        );
+
+        protectedApi.post(
+          '/tasks/:taskId/submissions',
+          {
+            schema: {
+              ...protectedRouteSchema,
+              tags: ['agent-collaboration-v2'],
+              summary: 'Submit an immutable Task result under a live lease',
+            },
+          },
+          async (request, reply) => {
+            const { taskId } = V2TaskIdParamsSchema.parse(request.params);
+            const requestedRunAgentId = runAgentId(request);
+            const result = await service.submitTask(
+              runAgentPrincipal(request, requestedRunAgentId),
+              requestedRunAgentId,
+              taskId,
+              idempotencyKey(request),
+              CreateTaskSubmissionRequestSchema.parse(request.body),
+            );
+            return reply.code(201).send(result);
+          },
+        );
+
+        protectedApi.post(
+          '/runs/:runId/messages',
+          {
+            schema: {
+              ...protectedRouteSchema,
+              tags: ['agent-collaboration-v2'],
+              summary: 'Post a message to an immutable recipient snapshot',
+            },
+          },
+          async (request, reply) => {
+            const { runId } = V2RunIdParamsSchema.parse(request.params);
+            const requestedRunAgentId = runAgentId(request);
+            const result = await service.createMessage(
+              runAgentPrincipal(request, requestedRunAgentId),
+              requestedRunAgentId,
+              runId,
+              idempotencyKey(request),
+              CreateRunMessageRequestSchema.parse(request.body),
+            );
+            return reply.code(201).send(result);
+          },
+        );
+
+        protectedApi.post(
+          '/runs/:runId/artifacts',
+          {
+            schema: {
+              ...protectedRouteSchema,
+              tags: ['agent-collaboration-v2'],
+              summary: 'Publish an Artifact and immutable first version',
+            },
+          },
+          async (request, reply) => {
+            const { runId } = V2RunIdParamsSchema.parse(request.params);
+            const requestedRunAgentId = runAgentId(request);
+            const result = await service.createArtifact(
+              runAgentPrincipal(request, requestedRunAgentId),
+              requestedRunAgentId,
+              runId,
+              idempotencyKey(request),
+              CreateRunArtifactRequestSchema.parse(request.body),
+            );
+            return reply.code(201).send(result);
+          },
+        );
+
+        protectedApi.post(
+          '/artifacts/:artifactId/versions',
+          {
+            schema: {
+              ...protectedRouteSchema,
+              tags: ['agent-collaboration-v2'],
+              summary: 'Append an ArtifactVersion from the current base',
+            },
+          },
+          async (request, reply) => {
+            const { artifactId } = V2ArtifactIdParamsSchema.parse(
+              request.params,
+            );
+            const requestedRunAgentId = runAgentId(request);
+            const result = await service.createArtifactVersion(
+              runAgentPrincipal(request, requestedRunAgentId),
+              requestedRunAgentId,
+              artifactId,
+              idempotencyKey(request),
+              CreateArtifactVersionRequestSchema.parse(request.body),
+            );
+            return reply.code(201).send(result);
+          },
+        );
+
+        protectedApi.post(
+          '/submissions/:submissionId/endorsements',
+          {
+            schema: {
+              ...protectedRouteSchema,
+              tags: ['agent-collaboration-v2'],
+              summary: 'Consume a scoped Feedback ActionGrant to endorse',
+            },
+          },
+          async (request, reply) => {
+            const { submissionId } = V2SubmissionIdParamsSchema.parse(
+              request.params,
+            );
+            const requestedRunAgentId = runAgentId(request);
+            const result = await service.endorseSubmission(
+              runAgentPrincipal(request, requestedRunAgentId),
+              requestedRunAgentId,
+              submissionId,
+              idempotencyKey(request),
+              CreateSubmissionEndorsementRequestSchema.parse(request.body),
+            );
+            return reply.code(201).send(result);
           },
         );
 

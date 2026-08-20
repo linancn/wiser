@@ -1,15 +1,23 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+
+import { RunTaskSchema } from '@agent-excon/contracts';
 
 import type {
   AgentIdentityDto,
   AgentVersionDto,
   AgentViewReceiptDto,
   BestEffortTelemetryOverlayDto,
+  CreateArtifactVersionRequest,
   CreateAgentIdentityRequest,
   CreateAgentVersionRequest,
+  CreateRunArtifactRequest,
+  CreateRunMessageRequest,
   CreateRunRequest,
   CreateScenarioRequest,
   CreateScenarioVersionRequest,
+  CreateSubmissionEndorsementRequest,
+  CreateTaskSubmissionRequest,
+  FeedbackActionGrantDto,
   JoinRunAgentRequest,
   ManageScenarioSummaryDto,
   PublicScenarioSummaryDto,
@@ -18,19 +26,38 @@ import type {
   ReplayResponseDto,
   RoleDefinitionDto,
   RunAgentDto,
+  RunAgentMeDto,
   RunArtifactDto,
   RunDto,
   RunEventDto,
   RunFeedbackDto,
   RunMessageDto,
   RunRoleAssignmentDto,
+  RunSubmissionDto,
   RunSyncRequest,
   RunTaskDto,
   ScenarioVersionDetailDto,
   SyncDeliveryBatchDto,
+  SubmissionEndorsementDto,
+  TaskClaimRequest,
+  TaskClaimResponseDto,
+  TaskHeartbeatRequest,
+  TaskLeaseCommandRequest,
   VersionCommandRequest,
 } from '@agent-excon/contracts';
-import { assessRequiredRoleQuorum } from '@agent-excon/core';
+import {
+  assessRequiredRoleQuorum,
+  beginRunTask,
+  claimRunTask,
+  consumeFeedbackActionGrant,
+  createFeedbackActionGrant,
+  createRunTask,
+  heartbeatRunTask,
+  releaseRunTask,
+  submitRunTask,
+  type FeedbackActionGrant,
+  type RunTask as DomainRunTask,
+} from '@agent-excon/core';
 
 import { ExerciseServiceError, type ParticipantPrincipal } from './types.js';
 import type { IssuedRunResource, V2ExerciseService } from './v2-types.js';
@@ -78,6 +105,8 @@ interface EligibleDisclosure {
   readonly resourceVersion: string;
   readonly sourceEventId: string;
   readonly sourceRunSeq: number;
+  readonly contentSnapshot: IssuedRunResource;
+  readonly contentHash: string;
 }
 
 interface StoredAcknowledgement {
@@ -93,9 +122,14 @@ interface StoredRun {
   readonly runAgents: Map<string, StoredRunAgent>;
   readonly roleAssignments: RunRoleAssignmentDto[];
   readonly tasks: Map<string, RunTaskDto>;
+  readonly taskStates: Map<string, DomainRunTask>;
   readonly messages: Map<string, RunMessageDto>;
   readonly artifacts: Map<string, RunArtifactDto>;
+  readonly artifactVersions: Map<string, RunArtifactDto>;
+  readonly submissions: Map<string, RunSubmissionDto>;
+  readonly endorsements: Map<string, SubmissionEndorsementDto>;
   readonly feedback: Map<string, RunFeedbackDto>;
+  readonly actionGrants: Map<string, FeedbackActionGrant>;
   readonly eligible: Map<string, EligibleDisclosure[]>;
   readonly receipts: Map<string, AgentViewReceiptDto[]>;
   readonly acknowledgements: Map<string, StoredAcknowledgement[]>;
@@ -111,6 +145,7 @@ interface IdempotencyRecord {
 export interface InMemoryV2ExerciseServiceOptions {
   readonly idFactory?: () => string;
   readonly now?: () => Date;
+  readonly leaseTokenFactory?: () => string;
 }
 
 const defaultRoles: readonly RoleDefinitionDto[] = Object.freeze([
@@ -204,11 +239,15 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
   readonly #idempotency = new Map<string, IdempotencyRecord>();
   readonly #idFactory: () => string;
   readonly #now: () => Date;
+  readonly #leaseTokenFactory: () => string;
   #closed = false;
 
   constructor(options: InMemoryV2ExerciseServiceOptions = {}) {
     this.#idFactory = options.idFactory ?? randomUUID;
     this.#now = options.now ?? (() => new Date());
+    this.#leaseTokenFactory =
+      options.leaseTokenFactory ??
+      (() => `wlt_${randomBytes(32).toString('base64url')}`);
     this.seedYongdingScenario();
   }
 
@@ -289,7 +328,7 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
   ): Promise<{ readonly scenario: ManageScenarioSummaryDto }> {
     return Promise.resolve(
       this.idempotent(
-        principal,
+        principal.id,
         'scenario:create',
         idempotencyKey,
         input,
@@ -334,7 +373,7 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
   ): Promise<{ readonly scenarioVersion: ScenarioVersionDetailDto }> {
     return Promise.resolve(
       this.idempotent(
-        principal,
+        principal.id,
         `scenario:${scenarioId}:version:create`,
         idempotencyKey,
         input,
@@ -379,7 +418,7 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
   ): Promise<{ readonly scenarioVersion: ScenarioVersionDetailDto }> {
     return Promise.resolve(
       this.idempotent(
-        principal,
+        principal.id,
         `scenario-version:${scenarioVersionId}:validate`,
         idempotencyKey,
         input,
@@ -459,7 +498,7 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
   ): Promise<{ readonly scenarioVersion: ScenarioVersionDetailDto }> {
     return Promise.resolve(
       this.idempotent(
-        principal,
+        principal.id,
         `scenario-version:${scenarioVersionId}:publish`,
         idempotencyKey,
         input,
@@ -526,21 +565,27 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
     input: CreateAgentIdentityRequest,
   ): Promise<{ readonly agent: AgentIdentityDto }> {
     return Promise.resolve(
-      this.idempotent(principal, 'agent:create', idempotencyKey, input, () => {
-        const now = this.timestamp();
-        const agent: AgentIdentityDto = {
-          id: this.#idFactory(),
-          ownerId: principal.id,
-          displayName: input.displayName,
-          description: input.description,
-          lifecycle: 'ACTIVE',
-          version: 1,
-          createdAt: now,
-          updatedAt: now,
-        };
-        this.#agents.set(agent.id, { dto: agent, versionIds: [] });
-        return { agent };
-      }),
+      this.idempotent(
+        principal.id,
+        'agent:create',
+        idempotencyKey,
+        input,
+        () => {
+          const now = this.timestamp();
+          const agent: AgentIdentityDto = {
+            id: this.#idFactory(),
+            ownerId: principal.id,
+            displayName: input.displayName,
+            description: input.description,
+            lifecycle: 'ACTIVE',
+            version: 1,
+            createdAt: now,
+            updatedAt: now,
+          };
+          this.#agents.set(agent.id, { dto: agent, versionIds: [] });
+          return { agent };
+        },
+      ),
     );
   }
 
@@ -552,7 +597,7 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
   ): Promise<{ readonly agentVersion: AgentVersionDto }> {
     return Promise.resolve(
       this.idempotent(
-        principal,
+        principal.id,
         `agent:${agentId}:version:create`,
         idempotencyKey,
         input,
@@ -628,7 +673,7 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
     input: CreateRunRequest,
   ): Promise<{ readonly run: RunDto }> {
     return Promise.resolve(
-      this.idempotent(principal, 'run:create', idempotencyKey, input, () => {
+      this.idempotent(principal.id, 'run:create', idempotencyKey, input, () => {
         const scenarioVersion = this.#scenarioVersions.get(
           input.scenarioVersionId,
         );
@@ -661,9 +706,14 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
           runAgents: new Map(),
           roleAssignments: [],
           tasks: new Map(),
+          taskStates: new Map(),
           messages: new Map(),
           artifacts: new Map(),
+          artifactVersions: new Map(),
+          submissions: new Map(),
+          endorsements: new Map(),
           feedback: new Map(),
+          actionGrants: new Map(),
           eligible: new Map(),
           receipts: new Map(),
           acknowledgements: new Map(),
@@ -700,7 +750,7 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
   ): Promise<{ readonly runAgent: RunAgentDto }> {
     return Promise.resolve(
       this.idempotent(
-        principal,
+        principal.id,
         `run:${runId}:agent:join`,
         idempotencyKey,
         input,
@@ -808,6 +858,37 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
     );
   }
 
+  getRunAgentMe(
+    principal: ParticipantPrincipal,
+    runId: string,
+    runAgentId: string,
+  ): Promise<RunAgentMeDto> {
+    const stored = this.runForAgent(principal, runId, runAgentId);
+    const runAgent = this.ownedRunAgent(stored, runAgentId).dto;
+    const roleAssignment = stored.roleAssignments.find(
+      (assignment) => assignment.runAgentId === runAgentId,
+    );
+    const role = this.pinnedScenarioVersion(stored).requiredRoles.find(
+      ({ id }) => id === runAgent.roleSlotId,
+    );
+    if (roleAssignment === undefined || role === undefined) {
+      throw new ExerciseServiceError(
+        'INTERNAL_ERROR',
+        'RunAgent assignment projection is incomplete.',
+      );
+    }
+    const receipts = stored.receipts.get(runAgentId) ?? [];
+    return Promise.resolve({
+      runAgent,
+      roleAssignment,
+      role,
+      syncCursor: {
+        afterReceiptSeq: receipts.length,
+        receiptHeadHash: receipts.at(-1)?.receiptHash ?? ZERO_HASH,
+      },
+    });
+  }
+
   startRun(
     principal: ParticipantPrincipal,
     runId: string,
@@ -816,7 +897,7 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
   ): Promise<{ readonly run: RunDto }> {
     return Promise.resolve(
       this.idempotent(
-        principal,
+        principal.id,
         `run:${runId}:start`,
         idempotencyKey,
         input,
@@ -914,7 +995,7 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
   ): Promise<SyncDeliveryBatchDto> {
     return Promise.resolve(
       this.idempotent(
-        principal,
+        runAgentId,
         `run:${runId}:agent:${runAgentId}:sync`,
         idempotencyKey,
         input,
@@ -943,10 +1024,16 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
             );
           }
           const issuedIds = new Set(
-            receipts.map(({ resourceId }) => resourceId),
+            receipts.map(
+              ({ resourceType, resourceId, resourceVersion }) =>
+                `${resourceType}:${resourceId}:${resourceVersion}`,
+            ),
           );
           const eligible = (stored.eligible.get(runAgentId) ?? []).filter(
-            ({ resourceId }) => !issuedIds.has(resourceId),
+            ({ resourceType, resourceId, resourceVersion }) =>
+              !issuedIds.has(
+                `${resourceType}:${resourceId}:${resourceVersion}`,
+              ),
           );
           const selected = eligible.slice(0, input.maxItems);
           const deliveryBatchId = this.#idFactory();
@@ -990,7 +1077,7 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
                 string,
                 unknown
               >,
-              contentHash: hash(resource),
+              contentHash: disclosure.contentHash,
               previousReceiptHash,
             };
             const receipt: AgentViewReceiptDto = {
@@ -1025,19 +1112,606 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
     resourceType: ResourceType,
   ): Promise<readonly IssuedRunResource[]> {
     const stored = this.runForAgent(principal, runId, runAgentId);
-    const resources = (stored.receipts.get(runAgentId) ?? [])
-      .filter((receipt) => receipt.resourceType === resourceType)
-      .map((receipt) =>
-        this.resource(stored, {
-          resourceType,
-          viewKind: receipt.viewKind,
-          resourceId: receipt.resourceId,
-          resourceVersion: receipt.resourceVersion,
-          sourceEventId: receipt.sourceEventId,
-          sourceRunSeq: receipt.sourceRunSeq,
-        }),
-      );
-    return Promise.resolve(resources);
+    const latest = new Map<string, IssuedRunResource>();
+    for (const receipt of stored.receipts.get(runAgentId) ?? []) {
+      if (receipt.resourceType === resourceType) {
+        latest.set(
+          receipt.resourceId,
+          receipt.contentSnapshot as IssuedRunResource,
+        );
+      }
+    }
+    return Promise.resolve([...latest.values()]);
+  }
+
+  claimTask(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    taskId: string,
+    idempotencyKey: string,
+    input: TaskClaimRequest,
+  ): Promise<TaskClaimResponseDto> {
+    return Promise.resolve(
+      this.idempotent(
+        runAgentId,
+        `task:${taskId}:claim`,
+        idempotencyKey,
+        input,
+        () => {
+          const { stored, task } = this.taskForAgent(
+            principal,
+            runAgentId,
+            taskId,
+          );
+          const claimedAt = this.timestamp();
+          const leaseExpiresAt = this.addSeconds(claimedAt, input.leaseSeconds);
+          const maximumLeaseExpiresAt = this.addSeconds(claimedAt, 15 * 60);
+          const leaseToken = this.#leaseTokenFactory();
+          const next = claimRunTask(task, {
+            expectedVersion: input.expectedVersion,
+            runAgentId,
+            leaseTokenHash: hash(leaseToken),
+            claimedAt,
+            leaseExpiresAt,
+            maximumLeaseExpiresAt,
+          });
+          const dto = this.recordTaskTransition(
+            stored,
+            next,
+            runAgentId,
+            'task.claimed',
+          );
+          return {
+            task: dto,
+            lease: {
+              claimEpoch: next.claimEpoch,
+              leaseToken,
+              leaseExpiresAt,
+              maximumLeaseExpiresAt,
+            },
+          };
+        },
+      ),
+    );
+  }
+
+  beginTask(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    taskId: string,
+    idempotencyKey: string,
+    input: TaskLeaseCommandRequest,
+  ): Promise<{ readonly task: RunTaskDto }> {
+    return Promise.resolve(
+      this.idempotent(
+        runAgentId,
+        `task:${taskId}:begin`,
+        idempotencyKey,
+        input,
+        () => {
+          const { stored, task } = this.taskForAgent(
+            principal,
+            runAgentId,
+            taskId,
+          );
+          const next = beginRunTask(task, this.leaseCommand(input, runAgentId));
+          return {
+            task: this.recordTaskTransition(
+              stored,
+              next,
+              runAgentId,
+              'task.started',
+            ),
+          };
+        },
+      ),
+    );
+  }
+
+  heartbeatTask(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    taskId: string,
+    idempotencyKey: string,
+    input: TaskHeartbeatRequest,
+  ): Promise<{ readonly task: RunTaskDto }> {
+    return Promise.resolve(
+      this.idempotent(
+        runAgentId,
+        `task:${taskId}:heartbeat`,
+        idempotencyKey,
+        input,
+        () => {
+          const { stored, task } = this.taskForAgent(
+            principal,
+            runAgentId,
+            taskId,
+          );
+          if (task.activeClaim === undefined) {
+            return {
+              task: this.recordTaskTransition(
+                stored,
+                heartbeatRunTask(task, {
+                  ...this.leaseCommand(input, runAgentId),
+                  nextLeaseExpiresAt: this.timestamp(),
+                }),
+                runAgentId,
+                'task.lease-renewed',
+              ),
+            };
+          }
+          const next = heartbeatRunTask(task, {
+            ...this.leaseCommand(input, runAgentId),
+            nextLeaseExpiresAt: this.addSeconds(
+              task.activeClaim.leaseExpiresAt,
+              input.extendBySeconds,
+            ),
+          });
+          return {
+            task: this.recordTaskTransition(
+              stored,
+              next,
+              runAgentId,
+              'task.lease-renewed',
+            ),
+          };
+        },
+      ),
+    );
+  }
+
+  releaseTask(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    taskId: string,
+    idempotencyKey: string,
+    input: TaskLeaseCommandRequest,
+  ): Promise<{ readonly task: RunTaskDto }> {
+    return Promise.resolve(
+      this.idempotent(
+        runAgentId,
+        `task:${taskId}:release`,
+        idempotencyKey,
+        input,
+        () => {
+          const { stored, task } = this.taskForAgent(
+            principal,
+            runAgentId,
+            taskId,
+          );
+          const next = releaseRunTask(
+            task,
+            this.leaseCommand(input, runAgentId),
+          );
+          return {
+            task: this.recordTaskTransition(
+              stored,
+              next,
+              runAgentId,
+              'task.released',
+            ),
+          };
+        },
+      ),
+    );
+  }
+
+  submitTask(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    taskId: string,
+    idempotencyKey: string,
+    input: CreateTaskSubmissionRequest,
+  ): Promise<{
+    readonly submission: RunSubmissionDto;
+    readonly task: RunTaskDto;
+  }> {
+    return Promise.resolve(
+      this.idempotent(
+        runAgentId,
+        `task:${taskId}:submission:create`,
+        idempotencyKey,
+        input,
+        () => {
+          const {
+            stored,
+            task,
+            dto: currentTask,
+          } = this.taskForAgent(principal, runAgentId, taskId);
+          this.assertSubmissionReferences(stored, runAgentId, input);
+          this.assertRecipientSnapshot(
+            stored,
+            input.endorsementRecipientRunAgentIds,
+            runAgentId,
+          );
+
+          let revisionNo = 1;
+          let consumedRevisionGrant:
+            { id: string; next: FeedbackActionGrant } | undefined;
+          if (input.revisionOfId !== undefined) {
+            const predecessor = stored.submissions.get(input.revisionOfId);
+            if (
+              predecessor === undefined ||
+              predecessor.taskId !== taskId ||
+              predecessor.actorRunAgentId !== runAgentId
+            ) {
+              throw new ExerciseServiceError(
+                'SUBMISSION_CONFLICT',
+                "修订必须指向同一智能体在同一 Task 的不可变前序提交。 / A revision must reference the same agent's immutable predecessor for this Task.",
+              );
+            }
+            revisionNo = predecessor.revisionNo + 1;
+            consumedRevisionGrant = {
+              id: input.feedbackActionGrantId!,
+              next: this.consumeGrant(
+                stored,
+                runAgentId,
+                input.feedbackActionGrantId!,
+                taskId,
+                'resubmit',
+                predecessor.id,
+              ),
+            };
+          }
+
+          const nextTask = submitRunTask(
+            task,
+            this.leaseCommand(input, runAgentId),
+          );
+          const submittedAt = this.timestamp();
+          const submissionId = this.#idFactory();
+          const event = this.appendRunEvent(stored, {
+            streamType: 'task',
+            streamId: taskId,
+            eventType: 'task.submitted',
+            actorType: 'run_agent',
+            actorId: runAgentId,
+            assertionClass: 'participant_reported',
+            payload: {
+              runAgentId,
+              submissionId,
+              taskVersion: nextTask.version,
+              claimEpoch: input.claimEpoch,
+              revisionNo,
+            },
+          });
+          const submission: RunSubmissionDto = {
+            id: submissionId,
+            runId: stored.run.id,
+            taskId,
+            actorRunAgentId: runAgentId,
+            targetScope: input.targetScope,
+            roleSlotId: currentTask.roleSlotId,
+            revisionNo,
+            ...(input.revisionOfId === undefined
+              ? {}
+              : { revisionOfId: input.revisionOfId }),
+            submissionType: input.submissionType,
+            isFinal: false,
+            payload: canonicalize(
+              input.payload,
+            ) as CreateTaskSubmissionRequest['payload'],
+            payloadHash: hash(input.payload),
+            receiptRefs: [...input.receiptRefs],
+            artifactVersionRefs: [...input.artifactVersionRefs],
+            endorsementRecipientRunAgentIds: [
+              ...input.endorsementRecipientRunAgentIds,
+            ],
+            submittedVirtualAt: stored.run.virtualTime,
+            submittedAt,
+            createdRunSeq: event.runSeq,
+          };
+          stored.submissions.set(submission.id, submission);
+          stored.taskStates.set(taskId, nextTask);
+          const taskDto = this.updateTaskDto(stored, nextTask);
+          this.addEligible(stored, runAgentId, taskDto, event, 'task');
+          if (consumedRevisionGrant !== undefined) {
+            stored.actionGrants.set(
+              consumedRevisionGrant.id,
+              consumedRevisionGrant.next,
+            );
+            this.appendGrantConsumedEvent(
+              stored,
+              runAgentId,
+              consumedRevisionGrant.next,
+            );
+          }
+          this.issueEndorsementGrants(stored, submission);
+          return { submission, task: taskDto };
+        },
+      ),
+    );
+  }
+
+  createMessage(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    runId: string,
+    idempotencyKey: string,
+    input: CreateRunMessageRequest,
+  ): Promise<{ readonly message: RunMessageDto }> {
+    return Promise.resolve(
+      this.idempotent(
+        runAgentId,
+        `run:${runId}:message:create`,
+        idempotencyKey,
+        input,
+        () => {
+          const stored = this.runForAgent(principal, runId, runAgentId);
+          this.assertRunning(stored);
+          this.assertRecipientSnapshot(stored, input.recipientRunAgentIds);
+          const messageId = this.#idFactory();
+          const event = this.appendRunEvent(stored, {
+            streamType: 'message',
+            streamId: messageId,
+            eventType: 'message.created',
+            actorType: 'run_agent',
+            actorId: runAgentId,
+            assertionClass: 'participant_reported',
+            payload: {
+              runAgentId,
+              recipientRunAgentIds: [...input.recipientRunAgentIds],
+            },
+          });
+          const message: RunMessageDto = {
+            id: messageId,
+            runId,
+            senderType: 'RUN_AGENT',
+            senderId: runAgentId,
+            recipientRunAgentIds: [...input.recipientRunAgentIds],
+            subject: input.subject,
+            body: input.body,
+            createdRunSeq: event.runSeq,
+            createdAt: this.timestamp(),
+          };
+          stored.messages.set(message.id, message);
+          for (const recipientId of message.recipientRunAgentIds) {
+            this.addEligible(stored, recipientId, message, event, 'message');
+          }
+          return { message };
+        },
+      ),
+    );
+  }
+
+  createArtifact(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    runId: string,
+    idempotencyKey: string,
+    input: CreateRunArtifactRequest,
+  ): Promise<{ readonly artifact: RunArtifactDto }> {
+    return Promise.resolve(
+      this.idempotent(
+        runAgentId,
+        `run:${runId}:artifact:create`,
+        idempotencyKey,
+        input,
+        () => {
+          const stored = this.runForAgent(principal, runId, runAgentId);
+          this.assertRunning(stored);
+          this.assertRecipientSnapshot(stored, input.recipientRunAgentIds);
+          if (
+            [...stored.artifacts.values()].some(
+              ({ artifactKey }) => artifactKey === input.artifactKey,
+            )
+          ) {
+            throw new ExerciseServiceError(
+              'ARTIFACT_KEY_CONFLICT',
+              'artifactKey 在 Run 内必须唯一。 / artifactKey must be unique within a Run.',
+            );
+          }
+          const artifactId = this.#idFactory();
+          const versionId = this.#idFactory();
+          const event = this.appendRunEvent(stored, {
+            streamType: 'artifact',
+            streamId: artifactId,
+            eventType: 'artifact.published',
+            actorType: 'run_agent',
+            actorId: runAgentId,
+            assertionClass: 'participant_reported',
+            payload: {
+              runAgentId,
+              versionId,
+              versionNo: 1,
+              recipientRunAgentIds: [...input.recipientRunAgentIds],
+            },
+          });
+          const artifact: RunArtifactDto = {
+            id: artifactId,
+            runId,
+            artifactKey: input.artifactKey,
+            versionId,
+            versionNo: 1,
+            artifactType: input.artifactType,
+            title: input.title,
+            content: canonicalize(
+              input.content,
+            ) as CreateRunArtifactRequest['content'],
+            contentHash: hash(input.content),
+            authorType: 'RUN_AGENT',
+            authorId: runAgentId,
+            recipientRunAgentIds: [...input.recipientRunAgentIds],
+            createdRunSeq: event.runSeq,
+            createdAt: this.timestamp(),
+          };
+          stored.artifacts.set(artifact.id, artifact);
+          stored.artifactVersions.set(artifact.versionId, artifact);
+          for (const recipientId of input.recipientRunAgentIds) {
+            this.addEligible(stored, recipientId, artifact, event, 'artifact');
+          }
+          return { artifact };
+        },
+      ),
+    );
+  }
+
+  createArtifactVersion(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    artifactId: string,
+    idempotencyKey: string,
+    input: CreateArtifactVersionRequest,
+  ): Promise<{ readonly artifact: RunArtifactDto }> {
+    return Promise.resolve(
+      this.idempotent(
+        runAgentId,
+        `artifact:${artifactId}:version:create`,
+        idempotencyKey,
+        input,
+        () => {
+          const stored = this.runContainingArtifact(artifactId);
+          this.runForAgent(principal, stored.run.id, runAgentId);
+          this.assertRunning(stored);
+          const current = stored.artifacts.get(artifactId)!;
+          if (
+            current.authorId !== runAgentId &&
+            !this.hasIssuedResource(
+              stored,
+              runAgentId,
+              'artifact',
+              artifactId,
+              input.baseVersionId,
+            )
+          ) {
+            throw new ExerciseServiceError(
+              'RESOURCE_NOT_ISSUED',
+              '只能基于本人已收到的 ArtifactVersion 创建新版本。 / A new version must be based on an ArtifactVersion issued to this RunAgent.',
+            );
+          }
+          if (current.versionId !== input.baseVersionId) {
+            throw new ExerciseServiceError(
+              'ARTIFACT_BASE_CONFLICT',
+              'baseVersionId 不是当前版本；不会静默覆盖。 / baseVersionId is not current; the service will not overwrite silently.',
+              { currentVersionId: current.versionId },
+            );
+          }
+          this.assertRecipientSnapshot(stored, input.recipientRunAgentIds);
+          const versionId = this.#idFactory();
+          const event = this.appendRunEvent(stored, {
+            streamType: 'artifact',
+            streamId: artifactId,
+            eventType: 'artifact.version-published',
+            actorType: 'run_agent',
+            actorId: runAgentId,
+            assertionClass: 'participant_reported',
+            payload: {
+              runAgentId,
+              versionId,
+              baseVersionId: input.baseVersionId,
+              versionNo: current.versionNo + 1,
+              recipientRunAgentIds: [...input.recipientRunAgentIds],
+            },
+          });
+          const artifact: RunArtifactDto = {
+            ...current,
+            versionId,
+            versionNo: current.versionNo + 1,
+            baseVersionId: input.baseVersionId,
+            content: canonicalize(
+              input.content,
+            ) as CreateArtifactVersionRequest['content'],
+            contentHash: hash(input.content),
+            authorType: 'RUN_AGENT',
+            authorId: runAgentId,
+            recipientRunAgentIds: [...input.recipientRunAgentIds],
+            createdRunSeq: event.runSeq,
+            createdAt: this.timestamp(),
+          };
+          stored.artifacts.set(artifact.id, artifact);
+          stored.artifactVersions.set(artifact.versionId, artifact);
+          for (const recipientId of input.recipientRunAgentIds) {
+            this.addEligible(stored, recipientId, artifact, event, 'artifact');
+          }
+          return { artifact };
+        },
+      ),
+    );
+  }
+
+  endorseSubmission(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    submissionId: string,
+    idempotencyKey: string,
+    input: CreateSubmissionEndorsementRequest,
+  ): Promise<{
+    readonly endorsement: SubmissionEndorsementDto;
+    readonly actionGrant: FeedbackActionGrantDto;
+  }> {
+    return Promise.resolve(
+      this.idempotent(
+        runAgentId,
+        `submission:${submissionId}:endorsement:create`,
+        idempotencyKey,
+        input,
+        () => {
+          const { stored, submission } =
+            this.runContainingSubmission(submissionId);
+          this.runForAgent(principal, stored.run.id, runAgentId);
+          const nextGrant = this.consumeGrant(
+            stored,
+            runAgentId,
+            input.feedbackActionGrantId,
+            submission.taskId,
+            'endorse',
+            submission.id,
+          );
+          if (
+            !this.hasIssuedGrant(
+              stored,
+              runAgentId,
+              input.feedbackActionGrantId,
+            )
+          ) {
+            throw new ExerciseServiceError(
+              'RESOURCE_NOT_ISSUED',
+              'ActionGrant 必须先通过 /sync Receipt 发放。 / The ActionGrant must first be issued by a /sync Receipt.',
+            );
+          }
+          if (
+            [...stored.endorsements.values()].some(
+              (endorsement) =>
+                endorsement.submissionId === submissionId &&
+                endorsement.endorserRunAgentId === runAgentId,
+            )
+          ) {
+            throw new ExerciseServiceError(
+              'SUBMISSION_CONFLICT',
+              '该 RunAgent 已 endorsement 此 Submission。 / This RunAgent already endorsed the Submission.',
+            );
+          }
+          stored.actionGrants.set(nextGrant.id, nextGrant);
+          this.appendGrantConsumedEvent(stored, runAgentId, nextGrant);
+          const endorsedAt = this.timestamp();
+          const endorsementId = this.#idFactory();
+          const event = this.appendRunEvent(stored, {
+            streamType: 'endorsement',
+            streamId: endorsementId,
+            eventType: 'submission.endorsed',
+            actorType: 'run_agent',
+            actorId: runAgentId,
+            assertionClass: 'participant_reported',
+            payload: {
+              runAgentId,
+              submissionId,
+              feedbackActionGrantId: nextGrant.id,
+            },
+          });
+          const endorsement: SubmissionEndorsementDto = {
+            id: endorsementId,
+            runId: stored.run.id,
+            submissionId,
+            endorserRunAgentId: runAgentId,
+            feedbackActionGrantId: nextGrant.id,
+            endorsedAt,
+            createdRunSeq: event.runSeq,
+          };
+          stored.endorsements.set(endorsement.id, endorsement);
+          return { endorsement, actionGrant: nextGrant };
+        },
+      ),
+    );
   }
 
   listRunEvents(
@@ -1076,15 +1750,12 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
       ({ runAgentId, assignedRunSeq }) =>
         assignedRunSeq <= atRunSeq && visibleRunAgentIds.has(runAgentId),
     );
-    const tasks = [...stored.tasks.values()].filter(
-      ({ assignedRunAgentId, createdRunSeq }) =>
-        createdRunSeq <= atRunSeq && visibleRunAgentIds.has(assignedRunAgentId),
-    );
     const events = allEvents.filter((event) =>
       this.eventVisibleTo(event, stored, query, visibleRunAgentIds),
     );
     const receipts = [...stored.receipts.entries()].flatMap(
       ([candidateRunAgentId, candidateReceipts]) => {
+        if (query.perspective === 'team') return [];
         if (!visibleRunAgentIds.has(candidateRunAgentId)) return [];
         const acknowledgedThrough = this.acknowledgedThroughAt(
           stored,
@@ -1099,8 +1770,15 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
         );
       },
     );
+    const tasks = this.replayTasksAt(
+      stored,
+      query,
+      visibleRunAgentIds,
+      atRunSeq,
+      receipts,
+    );
     const eligibleResources =
-      query.deliverySemantics === 'eligible'
+      query.deliverySemantics === 'eligible' && query.perspective !== 'team'
         ? [...stored.eligible.entries()].flatMap(
             ([candidateRunAgentId, disclosures]) => {
               if (!visibleRunAgentIds.has(candidateRunAgentId)) return [];
@@ -1178,6 +1856,396 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
   close(): Promise<void> {
     this.#closed = true;
     return Promise.resolve();
+  }
+
+  private assertRunning(stored: StoredRun): void {
+    if (stored.run.state !== 'RUNNING') {
+      throw new ExerciseServiceError(
+        'RUN_STATE_CONFLICT',
+        '该协作命令只允许在 RUNNING Run 执行。 / This collaboration command requires a RUNNING Run.',
+      );
+    }
+  }
+
+  private taskForAgent(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    taskId: string,
+  ): {
+    readonly stored: StoredRun;
+    readonly task: DomainRunTask;
+    readonly dto: RunTaskDto;
+  } {
+    const stored = [...this.#runs.values()].find(({ tasks }) =>
+      tasks.has(taskId),
+    );
+    if (stored === undefined) {
+      throw new ExerciseServiceError(
+        'TASK_NOT_FOUND',
+        'Task 不存在。 / The Task does not exist.',
+      );
+    }
+    this.runForAgent(principal, stored.run.id, runAgentId);
+    this.assertRunning(stored);
+    const dto = stored.tasks.get(taskId)!;
+    if (dto.assignedRunAgentId !== runAgentId) {
+      throw new ExerciseServiceError(
+        'FORBIDDEN',
+        "RunAgent 不能操作其他智能体的 Task。 / A RunAgent cannot operate another agent's Task.",
+      );
+    }
+    if (!this.hasIssuedResource(stored, runAgentId, 'task', taskId)) {
+      throw new ExerciseServiceError(
+        'RESOURCE_NOT_ISSUED',
+        'Task 必须先通过 /sync Receipt 发放。 / The Task must first be issued by a /sync Receipt.',
+      );
+    }
+    const task = stored.taskStates.get(taskId);
+    if (task === undefined) {
+      throw new ExerciseServiceError(
+        'INTERNAL_ERROR',
+        'Task domain state is missing.',
+      );
+    }
+    return { stored, task, dto };
+  }
+
+  private leaseCommand(
+    input: TaskLeaseCommandRequest,
+    runAgentId: string,
+  ): {
+    readonly expectedVersion: number;
+    readonly runAgentId: string;
+    readonly claimEpoch: number;
+    readonly leaseTokenHash: string;
+    readonly now: string;
+  } {
+    return {
+      expectedVersion: input.expectedVersion,
+      runAgentId,
+      claimEpoch: input.claimEpoch,
+      leaseTokenHash: hash(input.leaseToken),
+      now: this.timestamp(),
+    };
+  }
+
+  private recordTaskTransition(
+    stored: StoredRun,
+    task: DomainRunTask,
+    runAgentId: string,
+    eventType: string,
+  ): RunTaskDto {
+    stored.taskStates.set(task.id, task);
+    const dto = this.updateTaskDto(stored, task);
+    const event = this.appendRunEvent(stored, {
+      streamType: 'task',
+      streamId: task.id,
+      eventType,
+      actorType: 'run_agent',
+      actorId: runAgentId,
+      assertionClass: 'platform_observed',
+      payload: {
+        runAgentId,
+        state: task.state,
+        taskVersion: task.version,
+        claimEpoch: task.claimEpoch,
+        ...(task.activeClaim === undefined
+          ? {}
+          : { leaseExpiresAt: task.activeClaim.leaseExpiresAt }),
+      },
+    });
+    this.addEligible(stored, runAgentId, dto, event, 'task');
+    return dto;
+  }
+
+  private updateTaskDto(stored: StoredRun, task: DomainRunTask): RunTaskDto {
+    const current = stored.tasks.get(task.id);
+    if (current === undefined) {
+      throw new ExerciseServiceError(
+        'INTERNAL_ERROR',
+        'Task projection is missing.',
+      );
+    }
+    const next: RunTaskDto = {
+      id: current.id,
+      runId: current.runId,
+      roleSlotId: current.roleSlotId,
+      assignedRunAgentId: current.assignedRunAgentId,
+      definitionKey: current.definitionKey,
+      title: current.title,
+      objective: current.objective,
+      state: task.state,
+      lockVersion: task.version,
+      claimEpoch: task.claimEpoch,
+      createdRunSeq: current.createdRunSeq,
+      ...(task.activeClaim === undefined
+        ? {}
+        : {
+            claimedByRunAgentId: task.activeClaim.runAgentId,
+            leaseExpiresAt: task.activeClaim.leaseExpiresAt,
+          }),
+    };
+    stored.tasks.set(task.id, next);
+    return next;
+  }
+
+  private hasIssuedResource(
+    stored: StoredRun,
+    runAgentId: string,
+    resourceType: ResourceType,
+    resourceId: string,
+    resourceVersion?: string,
+  ): boolean {
+    return (stored.receipts.get(runAgentId) ?? []).some(
+      (receipt) =>
+        receipt.resourceType === resourceType &&
+        receipt.resourceId === resourceId &&
+        (resourceVersion === undefined ||
+          receipt.resourceVersion === resourceVersion),
+    );
+  }
+
+  private assertSubmissionReferences(
+    stored: StoredRun,
+    runAgentId: string,
+    input: CreateTaskSubmissionRequest,
+  ): void {
+    const receipts = stored.receipts.get(runAgentId) ?? [];
+    for (const reference of input.receiptRefs) {
+      const receipt = receipts.find(({ id }) => id === reference.receiptId);
+      if (
+        receipt === undefined ||
+        receipt.receiptHash !== reference.receiptHash
+      ) {
+        throw new ExerciseServiceError(
+          'RECEIPT_REFERENCE_CONFLICT',
+          "Submission 只能引用本人已发放且哈希匹配的 Receipt。 / A Submission may cite only this agent's issued Receipt with a matching hash.",
+        );
+      }
+    }
+    for (const reference of input.artifactVersionRefs) {
+      const receipt = receipts.find(
+        (candidate) =>
+          candidate.resourceType === 'artifact' &&
+          candidate.resourceId === reference.artifactId &&
+          candidate.resourceVersion === reference.artifactVersionId,
+      );
+      const snapshotContentHash = receipt?.contentSnapshot.contentHash;
+      if (
+        receipt === undefined ||
+        snapshotContentHash !== reference.contentHash
+      ) {
+        throw new ExerciseServiceError(
+          'RECEIPT_REFERENCE_CONFLICT',
+          "ArtifactVersion 引用必须来自本人已发放的 Receipt 且内容哈希匹配。 / An ArtifactVersion reference must come from this agent's issued Receipt with a matching content hash.",
+        );
+      }
+    }
+  }
+
+  private assertRecipientSnapshot(
+    stored: StoredRun,
+    recipientRunAgentIds: readonly string[],
+    excludedRunAgentId?: string,
+  ): void {
+    for (const recipientId of recipientRunAgentIds) {
+      if (recipientId === excludedRunAgentId) {
+        throw new ExerciseServiceError(
+          'FORBIDDEN',
+          'Endorsement 收件人不能是提交者本人。 / An endorsement recipient cannot be the submitter.',
+        );
+      }
+      this.ownedRunAgent(stored, recipientId);
+    }
+  }
+
+  private runContainingArtifact(artifactId: string): StoredRun {
+    const stored = [...this.#runs.values()].find(({ artifacts }) =>
+      artifacts.has(artifactId),
+    );
+    if (stored === undefined) {
+      throw new ExerciseServiceError(
+        'ARTIFACT_NOT_FOUND',
+        'Artifact 不存在。 / The Artifact does not exist.',
+      );
+    }
+    return stored;
+  }
+
+  private runContainingSubmission(submissionId: string): {
+    readonly stored: StoredRun;
+    readonly submission: RunSubmissionDto;
+  } {
+    const stored = [...this.#runs.values()].find(({ submissions }) =>
+      submissions.has(submissionId),
+    );
+    const submission = stored?.submissions.get(submissionId);
+    if (stored === undefined || submission === undefined) {
+      throw new ExerciseServiceError(
+        'SUBMISSION_NOT_FOUND',
+        'Submission 不存在。 / The Submission does not exist.',
+      );
+    }
+    return { stored, submission };
+  }
+
+  private issueEndorsementGrants(
+    stored: StoredRun,
+    submission: RunSubmissionDto,
+  ): void {
+    for (const recipientRunAgentId of submission.endorsementRecipientRunAgentIds) {
+      const feedbackId = this.#idFactory();
+      const evaluationId = this.#idFactory();
+      const grantId = this.#idFactory();
+      const scopeHash = hash({
+        targetRunAgentId: recipientRunAgentId,
+        targetTaskId: submission.taskId,
+        action: 'endorse',
+        predecessorSubmissionId: submission.id,
+        evaluationId,
+      });
+      const issuedAt = this.timestamp();
+      const event = this.appendRunEvent(stored, {
+        streamType: 'feedback',
+        streamId: feedbackId,
+        eventType: 'feedback-action-grant.issued',
+        actorType: 'system',
+        actorId: 'excon',
+        assertionClass: 'evaluator_derived',
+        payload: {
+          runAgentId: recipientRunAgentId,
+          feedbackActionGrantId: grantId,
+          targetTaskId: submission.taskId,
+          predecessorSubmissionId: submission.id,
+          action: 'endorse',
+        },
+      });
+      const grant = createFeedbackActionGrant({
+        id: grantId,
+        targetRunAgentId: recipientRunAgentId,
+        targetTaskId: submission.taskId,
+        action: 'endorse',
+        predecessorSubmissionId: submission.id,
+        evaluationId,
+        issuedRunSeq: event.runSeq,
+        issuedAt,
+        expiresAt: this.addSeconds(issuedAt, 24 * 60 * 60),
+        maxUses: 1,
+        scopeHash,
+      });
+      stored.actionGrants.set(grant.id, grant);
+      const feedback: RunFeedbackDto = {
+        id: feedbackId,
+        runId: stored.run.id,
+        targetScope: 'individual',
+        recipientRunAgentIds: [recipientRunAgentId],
+        basisType: 'evaluation',
+        summary: {
+          'zh-CN': '团队提交正在收集明确 endorsement。',
+          en: 'The team submission is collecting explicit endorsements.',
+        },
+        guidance: [
+          {
+            'zh-CN': '核对提交引用后，仅使用本反馈中不可转让的 ActionGrant。',
+            en: 'Check the cited evidence, then use only the non-transferable ActionGrant in this feedback.',
+          },
+        ],
+        allowedActions: ['endorse'],
+        subjectSubmissionId: submission.id,
+        actionGrants: [grant],
+        createdRunSeq: event.runSeq,
+        createdAt: issuedAt,
+      };
+      stored.feedback.set(feedback.id, feedback);
+      this.addEligible(
+        stored,
+        recipientRunAgentId,
+        feedback,
+        event,
+        'feedback',
+      );
+    }
+  }
+
+  private consumeGrant(
+    stored: StoredRun,
+    runAgentId: string,
+    grantId: string,
+    taskId: string,
+    action: 'resubmit' | 'endorse',
+    predecessorSubmissionId: string,
+  ): FeedbackActionGrant {
+    const grant = stored.actionGrants.get(grantId);
+    if (grant === undefined) {
+      throw new ExerciseServiceError(
+        'FEEDBACK_GRANT_NOT_FOUND',
+        'Feedback ActionGrant 不存在。 / The Feedback ActionGrant does not exist.',
+      );
+    }
+    const commandScopeHash = hash({
+      targetRunAgentId: runAgentId,
+      targetTaskId: taskId,
+      action,
+      predecessorSubmissionId,
+      evaluationId: grant.evaluationId,
+    });
+    const next = consumeFeedbackActionGrant(grant, {
+      expectedVersion: grant.version,
+      runAgentId,
+      taskId,
+      action,
+      predecessorSubmissionId,
+      evaluationId: grant.evaluationId,
+      scopeHash: commandScopeHash,
+      now: this.timestamp(),
+      virtualTime: stored.run.virtualTime,
+    });
+    if (!this.hasIssuedGrant(stored, runAgentId, grantId)) {
+      throw new ExerciseServiceError(
+        'RESOURCE_NOT_ISSUED',
+        'ActionGrant 必须先通过 /sync Receipt 发放。 / The ActionGrant must first be issued by a /sync Receipt.',
+      );
+    }
+    return next;
+  }
+
+  private hasIssuedGrant(
+    stored: StoredRun,
+    runAgentId: string,
+    grantId: string,
+  ): boolean {
+    return (stored.receipts.get(runAgentId) ?? []).some((receipt) => {
+      if (receipt.resourceType !== 'feedback') return false;
+      const snapshot = receipt.contentSnapshot as {
+        readonly actionGrants?: readonly FeedbackActionGrantDto[];
+      };
+      return snapshot.actionGrants?.some(({ id }) => id === grantId) ?? false;
+    });
+  }
+
+  private appendGrantConsumedEvent(
+    stored: StoredRun,
+    runAgentId: string,
+    grant: FeedbackActionGrant,
+  ): void {
+    this.appendRunEvent(stored, {
+      streamType: 'feedback',
+      streamId: grant.id,
+      eventType: 'feedback-action-grant.consumed',
+      actorType: 'run_agent',
+      actorId: runAgentId,
+      assertionClass: 'platform_observed',
+      payload: {
+        runAgentId,
+        feedbackActionGrantId: grant.id,
+        usedCount: grant.usedCount,
+        version: grant.version,
+      },
+    });
+  }
+
+  private addSeconds(timestamp: string, seconds: number): string {
+    return new Date(Date.parse(timestamp) + seconds * 1_000).toISOString();
   }
 
   private seedYongdingScenario(): void {
@@ -1258,9 +2326,19 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
       objective: role.mission,
       state: 'READY',
       lockVersion: 1,
+      claimEpoch: 0,
       createdRunSeq: taskEvent.runSeq,
     };
     stored.tasks.set(task.id, task);
+    stored.taskStates.set(
+      task.id,
+      createRunTask({
+        id: task.id,
+        runId: stored.run.id,
+        initialState: 'READY',
+        reassignable: true,
+      }),
+    );
     this.addEligible(stored, runAgentId, task, taskEvent, 'task');
 
     const messageId = this.#idFactory();
@@ -1311,17 +2389,21 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
     const artifact: RunArtifactDto = {
       id: artifactId,
       runId: stored.run.id,
+      artifactKey: `role-brief-${role.id}`,
       versionId: this.#idFactory(),
+      versionNo: 1,
       artifactType: 'role-brief',
       title: role.expectedArtifact,
       content,
       contentHash: hash(content),
       authorType: 'EXCON',
       authorId: 'excon',
+      recipientRunAgentIds: [runAgentId],
       createdRunSeq: artifactEvent.runSeq,
       createdAt,
     };
     stored.artifacts.set(artifact.id, artifact);
+    stored.artifactVersions.set(artifact.versionId, artifact);
     this.addEligible(stored, runAgentId, artifact, artifactEvent, 'artifact');
 
     const feedbackId = this.#idFactory();
@@ -1386,6 +2468,8 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
             : '1',
       sourceEventId: sourceEvent.eventId,
       sourceRunSeq: sourceEvent.runSeq,
+      contentSnapshot: canonicalize(resource) as IssuedRunResource,
+      contentHash: hash(resource),
     });
   }
 
@@ -1466,21 +2550,8 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
     stored: StoredRun,
     disclosure: EligibleDisclosure,
   ): IssuedRunResource {
-    const resource =
-      disclosure.resourceType === 'task'
-        ? stored.tasks.get(disclosure.resourceId)
-        : disclosure.resourceType === 'message'
-          ? stored.messages.get(disclosure.resourceId)
-          : disclosure.resourceType === 'artifact'
-            ? stored.artifacts.get(disclosure.resourceId)
-            : stored.feedback.get(disclosure.resourceId);
-    if (resource === undefined) {
-      throw new ExerciseServiceError(
-        'INTERNAL_ERROR',
-        '发放资源投影缺失。 / An issued resource projection is missing.',
-      );
-    }
-    return resource;
+    void stored;
+    return disclosure.contentSnapshot;
   }
 
   private replayRunAgentIds(
@@ -1501,14 +2572,96 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
     );
   }
 
+  private replayTasksAt(
+    stored: StoredRun,
+    query: ReplayQuery,
+    visibleRunAgentIds: ReadonlySet<string>,
+    atRunSeq: number,
+    visibleReceipts: readonly AgentViewReceiptDto[],
+  ): RunTaskDto[] {
+    if (query.perspective === 'team') return [];
+    const snapshots = new Map<
+      string,
+      { readonly task: RunTaskDto; readonly evidenceRunSeq: number }
+    >();
+    const consider = (value: unknown, evidenceRunSeq: number): void => {
+      const parsed = RunTaskSchema.safeParse(value);
+      if (
+        !parsed.success ||
+        !visibleRunAgentIds.has(parsed.data.assignedRunAgentId)
+      ) {
+        return;
+      }
+      const previous = snapshots.get(parsed.data.id);
+      if (previous === undefined || evidenceRunSeq > previous.evidenceRunSeq) {
+        snapshots.set(parsed.data.id, { task: parsed.data, evidenceRunSeq });
+      }
+    };
+
+    if (query.perspective === 'operator') {
+      for (const [runAgentId, disclosures] of stored.eligible) {
+        if (!visibleRunAgentIds.has(runAgentId)) continue;
+        for (const disclosure of disclosures) {
+          if (
+            disclosure.resourceType === 'task' &&
+            disclosure.sourceRunSeq <= atRunSeq
+          ) {
+            consider(disclosure.contentSnapshot, disclosure.sourceRunSeq);
+          }
+        }
+      }
+    } else {
+      for (const receipt of visibleReceipts) {
+        if (
+          receipt.resourceType === 'task' &&
+          receipt.issuedRunSeq <= atRunSeq
+        ) {
+          consider(receipt.contentSnapshot, receipt.issuedRunSeq);
+        }
+      }
+    }
+
+    return [...snapshots.values()]
+      .map(({ task }) => task)
+      .sort(
+        (left, right) =>
+          left.createdRunSeq - right.createdRunSeq ||
+          left.id.localeCompare(right.id),
+      );
+  }
+
   private eventVisibleTo(
     event: RunEventDto,
     stored: StoredRun,
     query: ReplayQuery,
     visibleRunAgentIds: ReadonlySet<string>,
   ): boolean {
-    if (query.perspective === 'operator' || query.perspective === 'team') {
-      return true;
+    if (query.perspective === 'operator') return true;
+    if (query.perspective === 'team') {
+      if (event.streamType === 'run' || event.streamType === 'run_agent') {
+        return true;
+      }
+      if (event.streamType === 'message') {
+        const message = stored.messages.get(event.streamId);
+        return (
+          message !== undefined &&
+          message.recipientRunAgentIds.length === stored.runAgents.size
+        );
+      }
+      if (event.streamType === 'artifact') {
+        const artifact = stored.artifacts.get(event.streamId);
+        return (
+          artifact !== undefined &&
+          (artifact.recipientRunAgentIds ?? []).length === stored.runAgents.size
+        );
+      }
+      if (event.streamType === 'feedback') {
+        return stored.feedback.get(event.streamId)?.targetScope === 'team';
+      }
+      if (event.streamType === 'submission') {
+        return stored.submissions.get(event.streamId)?.targetScope === 'team';
+      }
+      return false;
     }
     if (event.streamType === 'run') return true;
     if (event.streamType === 'run_agent') {
@@ -1521,24 +2674,38 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
       );
     }
     if (event.streamType === 'message') {
+      const message = stored.messages.get(event.streamId);
       return Boolean(
-        stored.messages
-          .get(event.streamId)
-          ?.recipientRunAgentIds.some((id) => visibleRunAgentIds.has(id)),
+        message !== undefined &&
+        ((message.senderType === 'RUN_AGENT' &&
+          visibleRunAgentIds.has(message.senderId)) ||
+          message.recipientRunAgentIds.some((id) =>
+            visibleRunAgentIds.has(id),
+          )),
       );
     }
     if (event.streamType === 'feedback') {
-      return Boolean(
-        stored.feedback
-          .get(event.streamId)
-          ?.recipientRunAgentIds.some((id) => visibleRunAgentIds.has(id)),
+      const feedback = stored.feedback.get(event.streamId);
+      if (feedback !== undefined) {
+        return feedback.recipientRunAgentIds.some((id) =>
+          visibleRunAgentIds.has(id),
+        );
+      }
+      const payloadRunAgentId = event.payload.runAgentId;
+      return (
+        typeof payloadRunAgentId === 'string' &&
+        visibleRunAgentIds.has(payloadRunAgentId)
       );
     }
     if (event.streamType === 'artifact') {
-      return [...stored.eligible.entries()].some(
-        ([runAgentId, disclosures]) =>
-          visibleRunAgentIds.has(runAgentId) &&
-          disclosures.some(({ resourceId }) => resourceId === event.streamId),
+      const artifact = stored.artifacts.get(event.streamId);
+      return Boolean(
+        artifact !== undefined &&
+        ((artifact.authorType === 'RUN_AGENT' &&
+          visibleRunAgentIds.has(artifact.authorId)) ||
+          (artifact.recipientRunAgentIds ?? []).some((id) =>
+            visibleRunAgentIds.has(id),
+          )),
       );
     }
     const payloadRunAgentId = event.payload.runAgentId;
@@ -1793,6 +2960,7 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
     if (
       stored === undefined ||
       !principal.roles?.includes('run_agent') ||
+      principal.roles.includes('operator') ||
       !principal.runAgentIds?.includes(runAgentId)
     ) {
       throw new ExerciseServiceError(
@@ -1872,13 +3040,13 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
   }
 
   private idempotent<T>(
-    principal: ParticipantPrincipal,
+    actorId: string,
     scope: string,
     key: string,
     request: unknown,
     operation: () => T,
   ): T {
-    const cacheKey = `${principal.id}:${scope}:${key}`;
+    const cacheKey = `${actorId}:${scope}:${key}`;
     const requestHash = hash(request);
     const previous = this.#idempotency.get(cacheKey);
     if (previous !== undefined) {

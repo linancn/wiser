@@ -5,6 +5,11 @@ import {
   AgentVersionSchema,
   ApiErrorCodeSchema,
   BestEffortTelemetryOverlaySchema,
+  CreateArtifactVersionRequestSchema,
+  CreateRunArtifactRequestSchema,
+  CreateRunMessageRequestSchema,
+  CreateTaskSubmissionRequestSchema,
+  FeedbackActionGrantSchema,
   ManageScenarioSummarySchema,
   PublicScenarioSummarySchema,
   RunAgentSchema,
@@ -13,6 +18,9 @@ import {
   RunSyncRequestSchema,
   RunTaskSchema,
   SyncDeliveryBatchSchema,
+  TaskClaimRequestSchema,
+  TaskHeartbeatRequestSchema,
+  TaskLeaseCommandRequestSchema,
 } from '../src/index.js';
 
 const text = { 'zh-CN': '永定河联合调度', en: 'Yongding joint dispatch' };
@@ -220,9 +228,147 @@ describe('Agent EXCON v2 contracts', () => {
         'AGENT_NOT_FOUND',
         'RUN_NOT_FOUND',
         'RUN_ROLE_CONFLICT',
+        'TASK_LEASE_STALE',
+        'ARTIFACT_BASE_CONFLICT',
+        'FEEDBACK_GRANT_SCOPE_MISMATCH',
         'RECEIPT_CHAIN_CONFLICT',
         'FORBIDDEN',
       ]),
     );
+  });
+
+  it('keeps collaboration commands strict, JSON-only, and unable to echo lease secrets in resources', () => {
+    expect(TaskClaimRequestSchema.parse({ expectedVersion: 1 })).toEqual({
+      expectedVersion: 1,
+      leaseSeconds: 60,
+    });
+    expect(
+      TaskClaimRequestSchema.safeParse({
+        expectedVersion: 1,
+        leaseSeconds: 60,
+        runAgentId: '00000000-0000-4000-8000-000000000004',
+      }).success,
+    ).toBe(false);
+
+    const leaseCommand = {
+      expectedVersion: 2,
+      claimEpoch: 1,
+      leaseToken:
+        'wlt_abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789',
+    };
+    expect(TaskLeaseCommandRequestSchema.safeParse(leaseCommand).success).toBe(
+      true,
+    );
+    expect(
+      TaskHeartbeatRequestSchema.safeParse({
+        ...leaseCommand,
+        extendBySeconds: 60,
+      }).success,
+    ).toBe(true);
+
+    const submission = {
+      ...leaseCommand,
+      submissionType: 'water-evidence-result',
+      targetScope: 'individual',
+      payload: { nested: [1, true, null, { source: 'receipt' }] },
+      receiptRefs: [
+        {
+          receiptId: '00000000-0000-4000-8000-000000000010',
+          receiptHash:
+            'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        },
+      ],
+      artifactVersionRefs: [],
+      endorsementRecipientRunAgentIds: [],
+    };
+    expect(
+      CreateTaskSubmissionRequestSchema.safeParse(submission).success,
+    ).toBe(true);
+    expect(
+      CreateTaskSubmissionRequestSchema.safeParse({
+        ...submission,
+        payload: { invalid: undefined },
+      }).success,
+    ).toBe(false);
+    expect(
+      CreateTaskSubmissionRequestSchema.safeParse({
+        ...submission,
+        receiptRefs: [],
+      }).success,
+    ).toBe(false);
+
+    const task = {
+      id: '00000000-0000-4000-8000-000000000005',
+      runId: '00000000-0000-4000-8000-000000000003',
+      roleSlotId: 'water-evidence',
+      assignedRunAgentId: '00000000-0000-4000-8000-000000000004',
+      definitionKey: 'analyze-water-evidence',
+      title: text,
+      objective: text,
+      state: 'CLAIMED',
+      lockVersion: 2,
+      claimEpoch: 1,
+      claimedByRunAgentId: '00000000-0000-4000-8000-000000000004',
+      leaseExpiresAt: '2026-08-20T08:01:00.000Z',
+      createdRunSeq: 4,
+    };
+    expect(RunTaskSchema.safeParse(task).success).toBe(true);
+    expect(
+      RunTaskSchema.safeParse({
+        ...task,
+        leaseToken: leaseCommand.leaseToken,
+      }).success,
+    ).toBe(false);
+    expect(
+      RunTaskSchema.safeParse({
+        ...task,
+        leaseTokenHash:
+          'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      }).success,
+    ).toBe(false);
+
+    expect(
+      CreateRunMessageRequestSchema.safeParse({
+        recipientRunAgentIds: [
+          '00000000-0000-4000-8000-000000000004',
+          '00000000-0000-4000-8000-000000000004',
+        ],
+        subject: text,
+        body: text,
+      }).success,
+    ).toBe(false);
+    expect(
+      CreateRunArtifactRequestSchema.safeParse({
+        artifactKey: 'water-evidence-register',
+        artifactType: 'evidence-register',
+        title: text,
+        content: { rows: [] },
+        recipientRunAgentIds: ['00000000-0000-4000-8000-000000000004'],
+      }).success,
+    ).toBe(true);
+    expect(
+      CreateArtifactVersionRequestSchema.safeParse({
+        baseVersionId: '00000000-0000-4000-8000-000000000020',
+        content: { complete: true },
+        recipientRunAgentIds: ['00000000-0000-4000-8000-000000000004'],
+      }).success,
+    ).toBe(true);
+    expect(
+      FeedbackActionGrantSchema.safeParse({
+        id: '00000000-0000-4000-8000-000000000030',
+        targetRunAgentId: '00000000-0000-4000-8000-000000000004',
+        targetTaskId: '00000000-0000-4000-8000-000000000005',
+        action: 'endorse',
+        predecessorSubmissionId: '00000000-0000-4000-8000-000000000031',
+        evaluationId: '00000000-0000-4000-8000-000000000032',
+        issuedRunSeq: 9,
+        issuedAt: '2026-08-20T08:00:00.000Z',
+        maxUses: 1,
+        usedCount: 0,
+        scopeHash:
+          'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        version: 1,
+      }).success,
+    ).toBe(true);
   });
 });

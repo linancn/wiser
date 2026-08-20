@@ -5,6 +5,28 @@ const V2LocalizedTextSchema = z.strictObject({
   en: z.string().trim().min(1).max(2_000),
 });
 
+export type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly JsonValue[]
+  | { readonly [key: string]: JsonValue };
+
+export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([
+    z.null(),
+    z.boolean(),
+    z.number().finite(),
+    z.string(),
+    z.array(JsonValueSchema),
+    z.record(z.string(), JsonValueSchema),
+  ]),
+);
+
+export const JsonObjectSchema = z.record(z.string(), JsonValueSchema);
+export type JsonObject = z.infer<typeof JsonObjectSchema>;
+
 export const EntityKeySchema = z
   .string()
   .trim()
@@ -329,6 +351,9 @@ export const RunTaskSchema = z.strictObject({
   objective: V2LocalizedTextSchema,
   state: RunTaskStateSchema,
   lockVersion: AggregateVersionSchema,
+  claimEpoch: z.number().int().nonnegative().default(0),
+  claimedByRunAgentId: z.string().uuid().optional(),
+  leaseExpiresAt: V2TimestampSchema.optional(),
   createdRunSeq: z.number().int().positive(),
 });
 export type RunTaskDto = z.infer<typeof RunTaskSchema>;
@@ -359,17 +384,47 @@ export type RunMessageDto = z.infer<typeof RunMessageSchema>;
 export const RunArtifactSchema = z.strictObject({
   id: z.string().uuid(),
   runId: z.string().uuid(),
+  artifactKey: EntityKeySchema.optional(),
   versionId: z.string().uuid(),
+  versionNo: z.number().int().positive().default(1),
+  baseVersionId: z.string().uuid().optional(),
   artifactType: EntityKeySchema,
   title: V2LocalizedTextSchema,
-  content: V2LocalizedTextSchema,
+  content: JsonObjectSchema,
   contentHash: Sha256DigestSchema,
   authorType: z.enum(['EXCON', 'RUN_AGENT']),
   authorId: z.string().min(1).max(128),
+  recipientRunAgentIds: z.array(z.string().uuid()).min(1).optional(),
   createdRunSeq: z.number().int().positive(),
   createdAt: V2TimestampSchema,
 });
 export type RunArtifactDto = z.infer<typeof RunArtifactSchema>;
+
+export const FeedbackActionSchema = z.enum([
+  'revise_task',
+  'resubmit',
+  'endorse',
+  'request_clarification',
+]);
+
+export const FeedbackActionGrantSchema = z.strictObject({
+  id: z.string().uuid(),
+  targetRunAgentId: z.string().uuid(),
+  targetTaskId: z.string().uuid(),
+  action: FeedbackActionSchema,
+  predecessorSubmissionId: z.string().uuid().optional(),
+  evaluationId: z.string().uuid(),
+  issuedRunSeq: z.number().int().positive(),
+  issuedAt: V2TimestampSchema,
+  expiresVirtualAt: V2TimestampSchema.optional(),
+  expiresAt: V2TimestampSchema.optional(),
+  maxUses: z.number().int().positive(),
+  usedCount: z.number().int().nonnegative(),
+  revokedRunSeq: z.number().int().positive().optional(),
+  scopeHash: Sha256DigestSchema,
+  version: AggregateVersionSchema,
+});
+export type FeedbackActionGrantDto = z.infer<typeof FeedbackActionGrantSchema>;
 
 export const RunFeedbackSchema = z.strictObject({
   id: z.string().uuid(),
@@ -388,10 +443,218 @@ export const RunFeedbackSchema = z.strictObject({
       'request_clarification',
     ]),
   ),
+  subjectSubmissionId: z.string().uuid().optional(),
+  actionGrants: z.array(FeedbackActionGrantSchema).optional(),
   createdRunSeq: z.number().int().positive(),
   createdAt: V2TimestampSchema,
 });
 export type RunFeedbackDto = z.infer<typeof RunFeedbackSchema>;
+
+export const RunAgentMeSchema = z.strictObject({
+  runAgent: RunAgentSchema,
+  roleAssignment: RunRoleAssignmentSchema,
+  role: RoleDefinitionSchema,
+  syncCursor: z.strictObject({
+    afterReceiptSeq: z.number().int().nonnegative(),
+    receiptHeadHash: Sha256DigestSchema,
+  }),
+});
+export type RunAgentMeDto = z.infer<typeof RunAgentMeSchema>;
+
+export const TaskClaimRequestSchema = z.strictObject({
+  expectedVersion: AggregateVersionSchema,
+  leaseSeconds: z.number().int().min(15).max(300).default(60),
+});
+export type TaskClaimRequest = z.infer<typeof TaskClaimRequestSchema>;
+
+export const OpaqueTaskLeaseTokenSchema = z
+  .string()
+  .min(36)
+  .max(256)
+  .regex(/^wlt_[A-Za-z0-9_-]+$/);
+
+export const TaskLeaseCommandRequestSchema = z.strictObject({
+  expectedVersion: AggregateVersionSchema,
+  claimEpoch: z.number().int().positive(),
+  leaseToken: OpaqueTaskLeaseTokenSchema,
+});
+export type TaskLeaseCommandRequest = z.infer<
+  typeof TaskLeaseCommandRequestSchema
+>;
+
+export const TaskHeartbeatRequestSchema = TaskLeaseCommandRequestSchema.extend({
+  extendBySeconds: z.number().int().min(1).max(300),
+});
+export type TaskHeartbeatRequest = z.infer<typeof TaskHeartbeatRequestSchema>;
+
+export const TaskCommandResponseSchema = z.strictObject({
+  task: RunTaskSchema,
+});
+
+export const TaskClaimResponseSchema = z.strictObject({
+  task: RunTaskSchema,
+  lease: z.strictObject({
+    claimEpoch: z.number().int().positive(),
+    leaseToken: OpaqueTaskLeaseTokenSchema,
+    leaseExpiresAt: V2TimestampSchema,
+    maximumLeaseExpiresAt: V2TimestampSchema,
+  }),
+});
+export type TaskClaimResponseDto = z.infer<typeof TaskClaimResponseSchema>;
+
+export const ReceiptReferenceSchema = z.strictObject({
+  receiptId: z.string().uuid(),
+  receiptHash: Sha256DigestSchema,
+});
+export type ReceiptReferenceDto = z.infer<typeof ReceiptReferenceSchema>;
+
+export const ArtifactVersionReferenceSchema = z.strictObject({
+  artifactId: z.string().uuid(),
+  artifactVersionId: z.string().uuid(),
+  contentHash: Sha256DigestSchema,
+});
+export type ArtifactVersionReferenceDto = z.infer<
+  typeof ArtifactVersionReferenceSchema
+>;
+
+const UniqueRunAgentRecipientsSchema = z
+  .array(z.string().uuid())
+  .min(1)
+  .max(64)
+  .superRefine((ids, context) => {
+    if (new Set(ids).size !== ids.length) {
+      context.addIssue({
+        code: 'custom',
+        message: 'recipientRunAgentIds must be unique',
+      });
+    }
+  });
+
+export const CreateTaskSubmissionRequestSchema = z
+  .strictObject({
+    expectedVersion: AggregateVersionSchema,
+    claimEpoch: z.number().int().positive(),
+    leaseToken: OpaqueTaskLeaseTokenSchema,
+    submissionType: EntityKeySchema,
+    targetScope: z.enum(['individual', 'role', 'team']).default('individual'),
+    payload: JsonObjectSchema,
+    receiptRefs: z.array(ReceiptReferenceSchema).max(200).default([]),
+    artifactVersionRefs: z
+      .array(ArtifactVersionReferenceSchema)
+      .max(200)
+      .default([]),
+    revisionOfId: z.string().uuid().optional(),
+    feedbackActionGrantId: z.string().uuid().optional(),
+    endorsementRecipientRunAgentIds: z
+      .array(z.string().uuid())
+      .max(64)
+      .default([]),
+  })
+  .superRefine((input, context) => {
+    if (input.receiptRefs.length + input.artifactVersionRefs.length === 0) {
+      context.addIssue({
+        code: 'custom',
+        path: ['receiptRefs'],
+        message:
+          'a submission must cite at least one issued Receipt or ArtifactVersion',
+      });
+    }
+    if (
+      new Set(input.endorsementRecipientRunAgentIds).size !==
+      input.endorsementRecipientRunAgentIds.length
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['endorsementRecipientRunAgentIds'],
+        message: 'endorsement recipients must be unique',
+      });
+    }
+    if (
+      (input.revisionOfId === undefined) !==
+      (input.feedbackActionGrantId === undefined)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['feedbackActionGrantId'],
+        message:
+          'a revision requires both revisionOfId and feedbackActionGrantId',
+      });
+    }
+  });
+export type CreateTaskSubmissionRequest = z.infer<
+  typeof CreateTaskSubmissionRequestSchema
+>;
+
+export const RunSubmissionSchema = z.strictObject({
+  id: z.string().uuid(),
+  runId: z.string().uuid(),
+  taskId: z.string().uuid(),
+  actorRunAgentId: z.string().uuid(),
+  targetScope: z.enum(['individual', 'role', 'team']),
+  roleSlotId: EntityKeySchema,
+  revisionNo: z.number().int().positive(),
+  revisionOfId: z.string().uuid().optional(),
+  submissionType: EntityKeySchema,
+  isFinal: z.boolean(),
+  payload: JsonObjectSchema,
+  payloadHash: Sha256DigestSchema,
+  receiptRefs: z.array(ReceiptReferenceSchema),
+  artifactVersionRefs: z.array(ArtifactVersionReferenceSchema),
+  endorsementRecipientRunAgentIds: z.array(z.string().uuid()),
+  submittedVirtualAt: V2TimestampSchema,
+  submittedAt: V2TimestampSchema,
+  createdRunSeq: z.number().int().positive(),
+});
+export type RunSubmissionDto = z.infer<typeof RunSubmissionSchema>;
+
+export const CreateRunMessageRequestSchema = z.strictObject({
+  recipientRunAgentIds: UniqueRunAgentRecipientsSchema,
+  subject: V2LocalizedTextSchema,
+  body: V2LocalizedTextSchema,
+});
+export type CreateRunMessageRequest = z.infer<
+  typeof CreateRunMessageRequestSchema
+>;
+
+export const CreateRunArtifactRequestSchema = z.strictObject({
+  artifactKey: EntityKeySchema,
+  artifactType: EntityKeySchema,
+  title: V2LocalizedTextSchema,
+  content: JsonObjectSchema,
+  recipientRunAgentIds: UniqueRunAgentRecipientsSchema,
+});
+export type CreateRunArtifactRequest = z.infer<
+  typeof CreateRunArtifactRequestSchema
+>;
+
+export const CreateArtifactVersionRequestSchema = z.strictObject({
+  baseVersionId: z.string().uuid(),
+  content: JsonObjectSchema,
+  recipientRunAgentIds: UniqueRunAgentRecipientsSchema,
+});
+export type CreateArtifactVersionRequest = z.infer<
+  typeof CreateArtifactVersionRequestSchema
+>;
+
+export const CreateSubmissionEndorsementRequestSchema = z.strictObject({
+  feedbackActionGrantId: z.string().uuid(),
+});
+export type CreateSubmissionEndorsementRequest = z.infer<
+  typeof CreateSubmissionEndorsementRequestSchema
+>;
+
+export const SubmissionEndorsementSchema = z.strictObject({
+  id: z.string().uuid(),
+  runId: z.string().uuid(),
+  submissionId: z.string().uuid(),
+  endorserRunAgentId: z.string().uuid(),
+  feedbackActionGrantId: z.string().uuid(),
+  endorsedAt: V2TimestampSchema,
+  createdRunSeq: z.number().int().positive(),
+});
+export type SubmissionEndorsementDto = z.infer<
+  typeof SubmissionEndorsementSchema
+>;
 
 export const CreateRunRequestSchema = z.strictObject({
   scenarioVersionId: EntityKeySchema,
@@ -543,6 +806,8 @@ export const RunEventSchema = z.strictObject({
     'artifact',
     'feedback',
     'receipt',
+    'submission',
+    'endorsement',
   ]),
   streamId: z.string().min(1).max(128),
   eventType: EntityKeySchema,

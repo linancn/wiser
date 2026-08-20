@@ -1,11 +1,17 @@
 import type {
   AgentIdentityDto,
   AgentVersionDto,
+  CreateArtifactVersionRequest,
   CreateAgentIdentityRequest,
   CreateAgentVersionRequest,
   CreateRunRequest,
+  CreateRunArtifactRequest,
+  CreateRunMessageRequest,
   CreateScenarioRequest,
   CreateScenarioVersionRequest,
+  CreateSubmissionEndorsementRequest,
+  CreateTaskSubmissionRequest,
+  FeedbackActionGrantDto,
   JoinRunAgentRequest,
   ManageScenarioSummaryDto,
   PublicScenarioVersionDetailDto,
@@ -13,11 +19,18 @@ import type {
   ReplayQuery,
   ReplayResponseDto,
   RunAgentDto,
+  RunAgentMeDto,
   RunArtifactDto,
   RunDto,
   RunEventDto,
   RunFeedbackDto,
   RunMessageDto,
+  RunSubmissionDto,
+  SubmissionEndorsementDto,
+  TaskClaimRequest,
+  TaskClaimResponseDto,
+  TaskHeartbeatRequest,
+  TaskLeaseCommandRequest,
   RunSyncRequest,
   RunTaskDto,
   ScenarioVersionDetailDto,
@@ -111,6 +124,11 @@ export interface V2ExerciseService {
     principal: ParticipantPrincipal,
     runId: string,
   ): Promise<readonly RunAgentDto[]>;
+  getRunAgentMe(
+    principal: ParticipantPrincipal,
+    runId: string,
+    runAgentId: string,
+  ): Promise<RunAgentMeDto>;
   startRun(
     principal: ParticipantPrincipal,
     runId: string,
@@ -131,6 +149,75 @@ export interface V2ExerciseService {
     runAgentId: string,
     resourceType: 'task' | 'message' | 'artifact' | 'feedback',
   ): Promise<readonly IssuedRunResource[]>;
+  claimTask(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    taskId: string,
+    idempotencyKey: string,
+    input: TaskClaimRequest,
+  ): Promise<TaskClaimResponseDto>;
+  beginTask(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    taskId: string,
+    idempotencyKey: string,
+    input: TaskLeaseCommandRequest,
+  ): Promise<{ readonly task: RunTaskDto }>;
+  heartbeatTask(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    taskId: string,
+    idempotencyKey: string,
+    input: TaskHeartbeatRequest,
+  ): Promise<{ readonly task: RunTaskDto }>;
+  releaseTask(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    taskId: string,
+    idempotencyKey: string,
+    input: TaskLeaseCommandRequest,
+  ): Promise<{ readonly task: RunTaskDto }>;
+  submitTask(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    taskId: string,
+    idempotencyKey: string,
+    input: CreateTaskSubmissionRequest,
+  ): Promise<{
+    readonly submission: RunSubmissionDto;
+    readonly task: RunTaskDto;
+  }>;
+  createMessage(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    runId: string,
+    idempotencyKey: string,
+    input: CreateRunMessageRequest,
+  ): Promise<{ readonly message: RunMessageDto }>;
+  createArtifact(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    runId: string,
+    idempotencyKey: string,
+    input: CreateRunArtifactRequest,
+  ): Promise<{ readonly artifact: RunArtifactDto }>;
+  createArtifactVersion(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    artifactId: string,
+    idempotencyKey: string,
+    input: CreateArtifactVersionRequest,
+  ): Promise<{ readonly artifact: RunArtifactDto }>;
+  endorseSubmission(
+    principal: ParticipantPrincipal,
+    runAgentId: string,
+    submissionId: string,
+    idempotencyKey: string,
+    input: CreateSubmissionEndorsementRequest,
+  ): Promise<{
+    readonly endorsement: SubmissionEndorsementDto;
+    readonly actionGrant: FeedbackActionGrantDto;
+  }>;
   listRunEvents(
     principal: ParticipantPrincipal,
     runId: string,

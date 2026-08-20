@@ -21,6 +21,24 @@ export const V2RunIdParamsSchema = z.strictObject({
   runId: z.string().uuid(),
 });
 
+export const V2TaskActionParamsSchema = z.strictObject({
+  taskAction: z
+    .string()
+    .regex(/^[0-9a-f-]{36}:(claim|begin|heartbeat|release)$/),
+});
+
+export const V2TaskIdParamsSchema = z.strictObject({
+  taskId: z.string().uuid(),
+});
+
+export const V2ArtifactIdParamsSchema = z.strictObject({
+  artifactId: z.string().uuid(),
+});
+
+export const V2SubmissionIdParamsSchema = z.strictObject({
+  submissionId: z.string().uuid(),
+});
+
 export const V2RunAgentHeaderSchema = z.string().uuid();
 
 export const V2EventQuerySchema = z.strictObject({
