@@ -426,14 +426,16 @@ export function evaluateWaterAllocationPlan(input: {
     timeTravelViolations,
     totalScore: roundMetric(totalScore),
   };
-  const verdict =
-    timeTravelViolations > 0 ||
-    constraintCompliance < 1 ||
-    ecologicalCoverage < 0.8
+  const allFeasibilityConstraintsPass =
+    timeTravelViolations === 0 &&
+    constraintCompliance === 1 &&
+    ecologicalCoverage === 1 &&
+    evidenceCoverage === 1;
+  const verdict = allFeasibilityConstraintsPass
+    ? 'pass'
+    : timeTravelViolations > 0 || constraintCompliance < 1
       ? 'fail'
-      : totalScore >= 90
-        ? 'pass'
-        : 'partial';
+      : 'partial';
 
   return Object.freeze({ verdict, metrics: Object.freeze(metrics) });
 }

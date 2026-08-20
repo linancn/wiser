@@ -49,7 +49,7 @@ const zhCN = {
   scenario: {
     eyebrow: '任务简报',
     heading: '场景说明',
-    lede: '公开资料只用于锚定水系拓扑、水源类别和控制位置；可用量、阈值、成本、观测与结果均为固定合成值。',
+    lede: '公开资料锚定水系拓扑、水源类别、控制位置和少量历史断面流量；容量、阈值、传递规则、方案与结果均为固定合成值。',
     boundaryTitle: '演练边界',
     boundary:
       '决策域限定在京津冀水系统。晋蒙上游来水作为带来源与时态的边界输入，不代表跨行政区指挥关系。',
@@ -158,7 +158,7 @@ const en: typeof zhCN = {
   scenario: {
     eyebrow: 'Mission brief',
     heading: 'Scenario brief',
-    lede: 'Public sources anchor only the network topology, source categories and control locations. Availability, thresholds, costs, observations and outcomes are fixed synthetic values.',
+    lede: 'Public sources anchor the topology, source categories, control locations and a few historical section flows. Capacities, thresholds, transfer rules, plans and outcomes are fixed synthetic values.',
     boundaryTitle: 'Exercise boundary',
     boundary:
       'The decision domain is limited to the Jing-Jin-Ji water system. Upstream inflow from Shanxi and Inner Mongolia is a sourced, time-stamped boundary input—not a claim of cross-jurisdiction authority.',

@@ -38,7 +38,7 @@ export const SourceReleaseDecisionSchema = z
   .object({
     sourceId: WaterSourceIdSchema,
     flowM3s: z.number().finite().min(0).max(100).multipleOf(0.1),
-    evidenceRefs: z.array(z.string().min(3).max(128)).max(32),
+    evidenceRefs: z.array(z.string().min(3).max(128)).min(1).max(32),
   })
   .strict();
 export type SourceReleaseDecision = z.infer<typeof SourceReleaseDecisionSchema>;

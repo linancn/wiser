@@ -65,6 +65,37 @@ describe('shared protocol contracts', () => {
     );
   });
 
+  it('keeps stage one revisable and stage two final', () => {
+    expect(
+      AllocationPlanSubmissionSchema.safeParse({
+        ...validPlan,
+        isFinal: true,
+      }).success,
+    ).toBe(false);
+    expect(
+      AllocationPlanSubmissionSchema.safeParse({
+        ...validPlan,
+        stage: 2,
+        isFinal: false,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('requires observed evidence for every source release', () => {
+    const noEvidence = {
+      ...validPlan,
+      sourceReleases: validPlan.sourceReleases.map((release) =>
+        release.sourceId === 'reclaimed-lower'
+          ? { ...release, evidenceRefs: [] }
+          : release,
+      ),
+    };
+
+    expect(AllocationPlanSubmissionSchema.safeParse(noEvidence).success).toBe(
+      false,
+    );
+  });
+
   it('requires matching Chinese and English display text', () => {
     expect(LocalizedTextSchema.safeParse({ 'zh-CN': '联合调度' }).success).toBe(
       false,

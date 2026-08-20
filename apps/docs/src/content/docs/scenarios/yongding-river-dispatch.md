@@ -7,8 +7,8 @@ description: 以真实水系统和水源关系为锚点、使用合成运行数�
 
 这是一个**事实锚定的合成演练**，不是对某一现实年度调度过程的复刻，也不用于给出现实水量调度建议。
 
-- **事实锚点**：永定河跨区域水系统、真实存在的水源类型、关键工程与控制位置。
-- **合成内容**：水源可用量、日流量、输水损失、约束阈值、监测值、成本和最终 Outcome。
+- **事实锚点**：永定河跨区域水系统、水源类型、关键工程，以及 2023-03-22/23 少量带来源的官方断面流量。
+- **合成内容**：水源能力、传递系数、生态目标、约束更新、调度方案、评分和最终 Outcome。
 - **隔离要求**：所有合成记录标记 `simulationOnly: true`，不得与现实业务库或实时控制系统连接。
 
 ## 事实锚点
@@ -17,11 +17,12 @@ description: 以真实水系统和水源关系为锚点、使用合成运行数�
 
 现实永定河流域还涉及内蒙古、山西等上游区域。本演练把决策域限定在京津冀水系统，把晋蒙上游来水作为带来源和时态的边界输入，不虚构跨行政区指挥权。
 
-- [北京市水务局：2022 年度永定河生态补水全面启动](https://swj.beijing.gov.cn/swdt/swyw/202201/t20220113_2590791.html)
+- [北京市水务局：2023 年永定河生态补水](https://swj.beijing.gov.cn/swdt/ztzl/2023nydhstbsdt/202303/t20230320_2940003.html)
+- [北京市水务局：2023 年 3 月 22 日补水每日信息](https://swj.beijing.gov.cn/swdt/ztzl/2023nydhstbsdt/2023bsmrxx/202303/t20230322_2942113.html)
+- [北京市水务局：2023 年 3 月 23 日补水每日信息](https://swj.beijing.gov.cn/swdt/ztzl/2023nydhstbsdt/2023bsmrxx/202303/t20230323_2942886.html)
 - [北京市水务局：水利部调水管理司调研永定河生态补水工作](https://swj.beijing.gov.cn/swdt/ztzl/hczzl/zydt/202312/t20231201_3330949.html)
-- [北京市水务局：永定河“生态文章”](https://swj.beijing.gov.cn/swdt/swyw/202007/t20200720_1953413.html)
 
-这些资料只用于确定系统拓扑与水源类别。演练不复制报道中的年度水量、流量或绩效数字。
+官方流量只作为历史时点 Observation；它不直接给出智能体应选择的调度值。仓库不复制网页、图片或完整监测序列，来源与许可边界见场景目录的 `PROVENANCE.md`。
 
 ## 决策任务
 
@@ -40,50 +41,46 @@ description: 以真实水系统和水源关系为锚点、使用合成运行数�
 
 首切片使用一份小型、固定、可提交仓库的 fixture：
 
-- `source_availability`：上游水库群、引调水、再生水等合成可用量；
-- `network_edges`：合成输水能力、损失率和传播时滞；
-- `control_targets`：关键合成控制断面的分时目标；
-- `quality_classes`：用于混合约束的离散合成水质类别；
-- `observations`：分阶段下发的流量、水位和水质观测；
-- `outcome`：演练结束后揭示的合成实际到达过程。
+- `facts/official-anchors.json`：少量官方事实及来源 ID；
+- `fixture/stage-1.json`：三个水源上限、四个断面目标、传递模型和可行方案；
+- `fixture/stage-2.json`：第二阶段完整约束更新和最终方案；
+- `outcome`：演练结束后揭示的合成结果。
 
-每条动态记录保留 `event_time`、`observed_time`、`ingested_time` 和 `released_time`。参与者能否使用一条数据，以 `released_time` 和权限快照为准。
+HTTP Observation 同时保留 `eventTime`、`observedTime`、`ingestedTime`、`releasedTime`、墙钟 `accessedTime` 和演练时钟 `accessedVirtualTime`。证据资格以释放、虚拟访问时点、Episode 所有权和可选 `supersedesInformationId` 为准。
 
 ## 演练时间线
 
 ```text
-T+00  锁定场景版本，释放初始水源可用量、拓扑和控制目标
-T+06  智能体提交第一版 24 小时联合调度方案
-T+06  系统执行质量守恒、容量、时滞和证据可见性检查
-T+06  返回 L2 Feedback：维度得分与约束错误类型
-T+12  释放合成上游来水修订和一个控制断面观测
-T+14  智能体提交不可变的修订方案
-T+24  接入合成 Outcome，完成到达过程和目标满足度裁决
+2023-03-22 15:00 CST  锁定版本，释放第一阶段事实锚点与完整合成规则
+                         智能体 Observe、提交 stage 1 方案并获取确定性 Feedback
+                         未通过时创建 revisionNo 递增的不可变修订
+2023-03-23 11:10 CST  推进检查点，释放带 supersedesInformationId 的完整规则更新
+                         智能体重新 Observe，提交 stage 2 最终方案并完成 Episode
 ```
 
-修订不会覆盖首次提交。新 Submission 通过 `supersedes` 指向前一版本，从而保留反馈前后的能力变化。
+修订不会覆盖首次提交。新 Submission 通过 `revisionNo` 和 `revisionOf` 指向前一版本，从而保留反馈前后的能力变化。
 
 ## 提交最小结构
 
 ```json
 {
-  "type": "dispatch_plan",
-  "horizonHours": 24,
-  "allocations": [
+  "stage": 1,
+  "sourceReleases": [
     {
-      "sourceId": "synthetic-guanting-release",
-      "period": "T+06/T+12",
-      "volume": 18.5,
-      "unit": "scenario-volume-unit",
-      "evidenceRefs": ["observation:source-snapshot:t00"]
+      "sourceId": "guanting",
+      "flowM3s": 20,
+      "evidenceRefs": [
+        "official-flow-20230322-guanting",
+        "simulated-rules-20230322-stage-1"
+      ]
     }
   ],
-  "assumptions": ["All values are simulation-only."],
-  "final": false
+  "expectedSectionFlows": [{ "sectionId": "sanjiadian", "flowM3s": 18 }],
+  "isFinal": false
 }
 ```
 
-演练使用抽象的 `scenario-volume-unit`，避免合成值被误认为现实立方米或流量指令。
+上例只展示 envelope 中的单项；实际契约要求三个水源和四个断面。数值单位为合成模型中的 m³/s，带 `simulationOnly` 安全边界，不构成现实流量指令。
 
 ## 确定性裁决
 
@@ -92,10 +89,10 @@ T+24  接入合成 Outcome，完成到达过程和目标满足度裁决
 1. Schema、单位和数值范围；
 2. Episode 状态与提交权限；
 3. 引用证据是否已向该参与者释放；
-4. 各时段水量守恒和水源可用量；
-5. 输水能力、传播时滞和合成损失率；
-6. 控制断面目标和合成水质混合规则；
-7. 与合成 Outcome 比较到达偏差、目标满足率和调整幅度。
+4. 三个水源上限、总释放上限和 0.1 m³/s 步长；
+5. 四段固定传递模型与申报断面流量的 0.01 m³/s 误差；
+6. 合成生态断面目标、证据覆盖和时间穿越；
+7. 总分与参与者可见 issues。
 
 LLM 不参与基准裁决。模型辅助评价以后可以检查方案解释质量，但不能覆盖确定性约束失败。
 

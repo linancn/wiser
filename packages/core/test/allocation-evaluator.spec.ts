@@ -135,4 +135,48 @@ describe('deterministic Jing-Jin-Ji allocation evaluator', () => {
     expect(evaluation.metrics.timeTravelViolations).toBe(1);
     expect(evaluation.verdict).toBe('fail');
   });
+
+  it('does not pass when even one ecological target is narrowly missed', () => {
+    const nearMiss: AllocationPlanSubmission = {
+      ...canonicalStageOnePlan,
+      sourceReleases: canonicalStageOnePlan.sourceReleases.map((release) =>
+        release.sourceId === 'guanting' ? { ...release, flowM3s: 19 } : release,
+      ),
+      expectedSectionFlows: [
+        { sectionId: 'sanjiadian', flowM3s: 17.1 },
+        { sectionId: 'lugouqiao', flowM3s: 15.928 },
+        { sectionId: 'cuizhihuiying', flowM3s: 15.11096 },
+        { sectionId: 'qujiadian', flowM3s: 13.599864 },
+      ],
+    };
+    const evaluation = evaluateWaterAllocationPlan({
+      submission: nearMiss,
+      ...stageOneRules,
+      evidenceTimestamps: onTimeEvidence,
+      submittedVirtualTime: '2023-03-22T07:10:00.000Z',
+    });
+
+    expect(evaluation.metrics.ecologicalCoverage).toBeLessThan(1);
+    expect(evaluation.verdict).toBe('partial');
+  });
+
+  it('does not pass when a source decision lacks evidence', () => {
+    const missingEvidence: AllocationPlanSubmission = {
+      ...canonicalStageOnePlan,
+      sourceReleases: canonicalStageOnePlan.sourceReleases.map((release) =>
+        release.sourceId === 'reclaimed-lower'
+          ? { ...release, evidenceRefs: [] }
+          : release,
+      ),
+    };
+    const evaluation = evaluateWaterAllocationPlan({
+      submission: missingEvidence,
+      ...stageOneRules,
+      evidenceTimestamps: onTimeEvidence,
+      submittedVirtualTime: '2023-03-22T07:10:00.000Z',
+    });
+
+    expect(evaluation.metrics.evidenceCoverage).toBeLessThan(1);
+    expect(evaluation.verdict).toBe('partial');
+  });
 });
