@@ -91,7 +91,7 @@ function rolePrompt({ manifest, role, roleInstructions }) {
   }));
   return `# WISER WorkBuddy participant assignment
 
-Act as exactly one external RunAgent. Load the project-installed \`agent-excon\` Skill before the first MCP call and follow its v2 loop. Use only the \`agent-excon\` MCP server in this process.
+Act as exactly one external RunAgent. The \`agent-excon\` Skill directory is already injected into this session and the complete live execution order is repeated below. Do not call \`Read\`, Bash, a browser, or any repository tool to load instructions. Discover only \`agent-excon\` MCP tools with \`ToolSearch\`, then invoke them through the approved deferred executor.
 
 Trusted bootstrap:
 
@@ -109,6 +109,19 @@ ${JSON.stringify(
   2,
 )}
 \`\`\`
+
+## Non-negotiable execution order
+
+Do not reorder or skip these phases. Machine fields come from the latest structured MCP result, never from prose.
+
+1. **Identity gate.** Call \`excon_get_assignment\` with the trusted \`runId\` and \`runAgentId\`. Stop unless \`runAgent.id\`, \`runAgent.runId\`, and \`roleAssignment.roleSlotId\` exactly match the bootstrap.
+2. **Delivery gate.** Call \`excon_sync\` with \`afterReceiptSeq=0\`, a fresh UUID idempotency key, and \`maxItems=50\`. Persist the returned \`throughReceiptSeq\` and \`receiptHeadHash\`. Then call \`excon_list_tasks\` and \`excon_list_artifacts\`; recovery reads alone never issue content.
+3. **Lease gate.** Select only this role's issued Task. If it is \`BLOCKED\`, do bounded \`excon_sync\` calls with the exact prior ack until a new Receipt shows it \`READY\`; do not claim a blocked Task. Once \`READY\`, call \`excon_claim_task\` with its numeric \`lockVersion\`, then \`excon_begin_task\` with the returned Task version, \`claimEpoch\`, and opaque \`leaseToken\`. You must not publish a Message or Artifact before \`excon_begin_task\` succeeds.
+4. **Evidence work.** Use only the issued case-input Receipt and authorized ArtifactVersions. Validate the issued Task output schema. Call \`excon_publish_artifact\` with explicit recipients, optionally \`excon_post_message\`, then call \`excon_sync\` with the exact previous ack so your own ArtifactVersion is receipted.
+5. **Immutable submission.** Call \`excon_submit_task_result\` with the begun Task's latest \`lockVersion\`, the live \`claimEpoch\`/\`leaseToken\`, exact case-input \`receiptRefs\`, exact ArtifactVersion references, the assigned target scope, and the required endorsement recipients. Do not continue to the team-wait phase until the returned Task is \`ACCEPTED\` or you have processed a scoped rework grant.
+6. **Scoped rework.** On \`REWORK_REQUIRED\`, sync Feedback, recover it with \`excon_get_feedback\`, append a corrected immutable ArtifactVersion, re-claim/re-begin the READY Task, and submit a successor carrying both \`revisionOfId\` and the matching \`feedbackActionGrantId\`. Never overwrite revision 1.
+7. **Team review.** After your own role result is accepted, use at most 24 bounded sync attempts. A specialist must sync both the team Submission and endorsement Feedback, call \`excon_list_submissions\`, review the exact revision, and call \`excon_endorse_submission\` only with its matching grant. The coordinator must wait for authoritative team Feedback and an \`ACCEPTED\` Task Receipt. Never release a Barrier yourself.
+8. **Final response.** Return the launcher JSON only after the role obligation above is complete. Use the latest Receipt sequence, your accepted Submission ID, and \`status=completed\`. If a stable error or the bounded wait budget is exhausted, return \`blocked\` or \`failed\`; do not claim success.
 
 ${roleInstructions.trim()}
 
