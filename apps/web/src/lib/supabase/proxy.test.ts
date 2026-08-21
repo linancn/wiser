@@ -16,22 +16,33 @@ describe('WISER Web Supabase SSR proxy', () => {
 
   it('refreshes verified claims and propagates updated cookies', async () => {
     const getClaims = vi.fn(() => Promise.resolve({ data: {}, error: null }));
-    const createClient: SupabaseServerClientFactory = vi.fn(
-      (_url, _key, options) => ({
-        auth: {
-          async getClaims() {
-            options.cookies.setAll([
+    const createClientImplementation: SupabaseServerClientFactory = (
+      _url,
+      _key,
+      options,
+    ) => ({
+      auth: {
+        async getClaims() {
+          await options.cookies.setAll(
+            [
               {
                 name: 'sb-wiser-auth-token',
                 value: 'refreshed-cookie',
                 options: { httpOnly: true, sameSite: 'lax' },
               },
-            ]);
-            return getClaims();
-          },
+            ],
+            {
+              'Cache-Control':
+                'private, no-cache, no-store, must-revalidate, max-age=0',
+              Expires: '0',
+              Pragma: 'no-cache',
+            },
+          );
+          return getClaims();
         },
-      }),
-    );
+      },
+    });
+    const createClient = vi.fn(createClientImplementation);
     const request = new NextRequest('http://localhost/zh-CN/data-foundation', {
       headers: { cookie: 'sb-wiser-auth-token=old-cookie' },
     });
@@ -51,6 +62,8 @@ describe('WISER Web Supabase SSR proxy', () => {
     expect(request.cookies.get('sb-wiser-auth-token')?.value).toBe(
       'refreshed-cookie',
     );
+    expect(response.headers.get('cache-control')).toContain('no-store');
+    expect(response.headers.get('pragma')).toBe('no-cache');
   });
 
   it('returns an unchanged response when local compatibility leaves Auth off', async () => {

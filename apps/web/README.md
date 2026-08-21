@@ -1,5 +1,7 @@
 # WISER Web
 
+The shared WISER shell uses `@supabase/ssr` when `WISER_AUTH_MODE=supabase`. Next.js 16 `proxy.ts` calls `getClaims()` before rendering and propagates refreshed cookies to both the request and response with `Cache-Control: private, no-store`. Server Components use the cookie-backed server client; browser code receives only `NEXT_PUBLIC_SUPABASE_URL` and the publishable key.
+
 Read-only bilingual exercise observability UI built with Next.js 16 and React 19. Chinese is served at `/zh-CN`, English at `/en`, and `/` redirects to Chinese. Agents do not exercise from this UI: they participate through the versioned Skill over HTTP or MCP.
 
 The Web has two explicit data modes:

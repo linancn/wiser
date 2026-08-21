@@ -31,6 +31,8 @@ Delivered now: the `platform` / `platform_private` schemas, automatic user provi
 
 Fastify exposes the `platform.identity` module and safe `/api/platform/v1/me` projection. `WISER_AUTH_MODE=supabase` creates the current stable `supabase-js` client, bounded PostgreSQL pool, and fail-closed Resolver in the default process. Production refuses any missing required configuration, and process shutdown closes the pool. Web SSR sessions and delegated-credential issuance remain later milestones.
 
+Web now uses the current stable `@supabase/ssr` Browser/Server clients and Next.js 16 `proxy.ts`. Proxy calls `getClaims()` before a response is produced, writes refreshed cookies to both request and response, and sets `private, no-store`. Login, callback, sign-out pages, and current-user token forwarding remain the next vertical slice.
+
 ## Control-plane model
 
 ```text

@@ -31,6 +31,8 @@ JWT 证明主体、认证强度与 Session；动态 Tenant、Project、Role 和 
 
 Fastify 已提供 `platform.identity` 模块和 `/api/platform/v1/me` 安全投影。`WISER_AUTH_MODE=supabase` 会在默认进程中创建最新稳定 `supabase-js` client、受限 PostgreSQL Pool 和 fail-closed Resolver；生产缺少任何必要配置时拒绝启动，进程关闭时释放 Pool。Web SSR Session 与委托凭据签发仍是后续里程碑。
 
+Web 已使用最新稳定 `@supabase/ssr` 建立 Browser/Server Client 与 Next.js 16 `proxy.ts`。Proxy 在响应产生前调用 `getClaims()`，刷新后的 Cookie 同时写回 request/response，并设置 `private, no-store`；登录、回调、退出页面和当前用户 Token 转发仍在后续纵切实现。
+
 ## 控制面模型
 
 ```text
