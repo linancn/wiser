@@ -146,3 +146,17 @@ export {
   type DelegatedCredentialAuthorizationQuery,
   type DelegatedCredentialAuthorizationRow,
 } from './postgres-delegated-credential.js';
+export {
+  PlatformDelegationServiceError,
+  PostgresPlatformDelegationService,
+  canonicalPlatformDelegationRequestHash,
+  type IssuedPlatformCredentialView,
+  type PlatformDelegationCommandContext,
+  type PlatformDelegationCommandService,
+  type PlatformDelegationQueryResult,
+  type PlatformDelegationServiceErrorCode,
+  type PlatformDelegationTransactionClient,
+  type PlatformDelegationTransactionPool,
+  type PlatformDelegationView,
+  type PostgresPlatformDelegationServiceOptions,
+} from './postgres-platform-delegation-service.js';

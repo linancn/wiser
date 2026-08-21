@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 2a48b8b101083b7c84189db1e2eb64b2c6faf9af
+lastReviewedCommit: f7410075ab0b7d6c5cb535637da45ad8c1a22070
 ---
 
 ## One identity authority
@@ -33,7 +33,7 @@ Fastify exposes the `platform.identity` module and safe `/api/platform/v1/me` pr
 
 Web now uses the current stable `@supabase/ssr` Browser/Server clients and Next.js 16 `proxy.ts`. Proxy calls `getClaims()` before a response is produced, writes refreshed cookies to both request and response, and sets `private, no-store`. Bilingual password login, PKCE callback, POST-only local sign-out, and the shared Shell's current-session state are executable. Every continuation target is normalized to the active locale and rejected if it leaves the WISER origin or re-enters an Auth endpoint; every Auth response is non-cacheable.
 
-The delegated-credential cryptographic boundary is now executable. It strictly parses `wdc1.<key-id>.<secret>`, generates independent 128-bit locators and 256-bit secrets with Node's secure random source, and stores only a domain-separated HMAC-SHA-256. The JSON key-ring configuration requires canonical unpadded base64url keys of at least 256 bits, names one active key for issuance, retains previous keys for verification during rotation, and fails closed without echoing secret configuration. The delegated principal Resolver and single-query PostgreSQL adapter are also delivered; database issuance/rotation transactions remain the next authorization slice.
+The delegated-credential cryptographic boundary is now executable. It strictly parses `wdc1.<key-id>.<secret>`, generates independent 128-bit locators and 256-bit secrets with Node's secure random source, and stores only a domain-separated HMAC-SHA-256. The JSON key-ring configuration requires canonical unpadded base64url keys of at least 256 bits, names one active key for issuance, retains previous keys for verification during rotation, and fails closed without echoing secret configuration. The delegated principal Resolver, single-query PostgreSQL adapter, and transactional create/issue/rotate/revoke service are delivered; default-process runtime composition remains the next authorization slice.
 
 ## Control-plane model
 
@@ -97,7 +97,7 @@ A user or service calls an authorized API to issue a short-lived delegated crede
 - MCP tool arguments, Messages, Artifacts, logs, and traces never contain credentials.
 - EXCON private data retains only the binding between the general credential and `runAgentId/runId`.
 
-The Fastify `platform.delegation` module now fixes the HTTP command boundary for create, metadata read, issue, rotate, and revoke. It accepts only verified Supabase humans with `platform.delegation.manage`, UUID idempotency keys, a maximum one-hour TTL, known delegated scopes, and a ceiling no higher than the caller's live ceiling. Plaintext appears only in successful issue/rotate responses and every response is `private, no-store`. The injected PostgreSQL command service remains responsible for row locks, one-active-credential enforcement, Audit, and Control Outbox atomicity.
+The Fastify `platform.delegation` module now fixes the HTTP command boundary for create, metadata read, issue, rotate, and revoke. It accepts only verified Supabase humans with `platform.delegation.manage`, UUID idempotency keys, a maximum one-hour TTL, known delegated scopes, and a ceiling no higher than the caller's live ceiling. Plaintext appears only in successful issue/rotate responses and every response is `private, no-store`. `PostgresPlatformDelegationService` revalidates the Supabase Session and live memberships inside each transaction, takes idempotency and aggregate locks, clips credentials to 15 minutes and the Delegation expiry, preserves one active credential, and writes Audit plus Control Outbox atomically. Same-hash command replay is safe; issue/rotate replay returns `SECRET_NOT_RECOVERABLE` rather than storing recoverable plaintext. Audit, Outbox, and errors contain neither token nor HMAC.
 
 Delegated bearer resolution parses the envelope before any database lookup, loads one private record by its public key id, verifies the HMAC in Node with a fixed-length timing-safe comparison, and only then trusts control facts. Every request rechecks both actors, both Tenant/Project memberships, the Tenant, Project, delegation and credential lifecycle, Purpose, and expiry. Effective scopes are the sorted intersection of delegation scopes, the delegator's current live scopes, and the injected known-scope registry; the effective security ceiling is the lower of the delegation and the delegator's current ceiling. No positive authorization cache is used.
 
