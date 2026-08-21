@@ -6,9 +6,13 @@ import { Pool } from 'pg';
 
 import { runMigrations } from './runner.js';
 
-const connectionString = process.env.DATA_POSTGRES_URL;
+const canonicalConnectionString = process.env.DATA_DATABASE_MIGRATION_URL;
+const connectionString =
+  canonicalConnectionString === undefined
+    ? process.env.DATA_POSTGRES_URL
+    : canonicalConnectionString;
 if (connectionString === undefined || connectionString.length === 0) {
-  throw new Error('DATA_POSTGRES_URL is required.');
+  throw new Error('DATA_DATABASE_MIGRATION_URL is required.');
 }
 
 const directory =
