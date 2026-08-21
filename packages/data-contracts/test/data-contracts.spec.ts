@@ -498,6 +498,16 @@ describe('Data Foundation capability registry', () => {
       'data.ingestion.create',
       'data.ingestion.submit',
       'data.operation.get',
+      'data.catalog.create',
+      'data.catalog.versions.list',
+      'data.catalog.versions.get',
+      'data.uploadSession.create',
+      'data.uploadSession.complete',
+      'data.ingestion.get',
+      'data.ingestion.approve',
+      'data.ingestion.reject',
+      'data.operation.cancel',
+      'data.operation.events',
     ]);
     expect(Object.keys(DATA_CAPABILITY_REGISTRY)).toEqual(DATA_CAPABILITY_IDS);
 
