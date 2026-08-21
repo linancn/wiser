@@ -25,6 +25,7 @@ export const DATA_SERVICES = Object.freeze([
 
 export const DATA_ALL_SERVICES = Object.freeze([
   'data-migrate',
+  'data-runtime-provision',
   'pgstac-migrate',
   'opensearch-icu-init',
   ...DATA_SERVICES,
@@ -364,6 +365,58 @@ select (
   if (output.trim() !== 'true') {
     throw operationError('pgSTAC migrations are incomplete');
   }
+}
+
+export async function assertRuntimeRoles() {
+  const roles = await runPostgresSql(`
+select rolname || '|' || rolsuper || '|' || rolbypassrls || '|' || rolcanlogin
+from pg_catalog.pg_roles
+where rolname in ('wiser_data_runtime', 'wiser_data_api', 'wiser_data_worker')
+order by rolname;
+`);
+  const expected = [
+    'wiser_data_api|false|false|true',
+    'wiser_data_runtime|false|false|false',
+    'wiser_data_worker|false|false|true',
+  ].join('\n');
+  if (roles.trim() !== expected) {
+    throw operationError(
+      'least-privilege Data Foundation runtime roles are invalid',
+    );
+  }
+
+  const wrongScope = await runPostgresSql(`
+begin;
+set local role wiser_data_worker;
+set local wiser.tenant_id = '11111111-1111-4111-8111-111111111111';
+set local wiser.project_id = '22222222-2222-4222-8222-222222222222';
+set local wiser.max_security_level = 'L3_CONFIDENTIAL';
+set local wiser.policy_version = '1';
+select count(*) from catalog.data_item;
+rollback;
+`);
+  if (!/^0(?:\s|$)/.test(wrongScope.trim())) {
+    throw operationError('Data Foundation runtime role crossed its RLS scope');
+  }
+
+  const fixtureScope = await runPostgresSql(`
+begin;
+set local role wiser_data_worker;
+set local wiser.tenant_id = '${SEED_IDENTIFIERS.tenantId}';
+set local wiser.project_id = '${SEED_IDENTIFIERS.projectId}';
+set local wiser.max_security_level = 'L3_CONFIDENTIAL';
+set local wiser.policy_version = '1';
+select count(*)
+from catalog.data_item
+where data_item_id = '${SEED_IDENTIFIERS.dataItemId}'::uuid;
+rollback;
+`);
+  if (!/^1(?:\s|$)/.test(fixtureScope.trim())) {
+    throw operationError(
+      'Data Foundation runtime role cannot read its seeded scope',
+    );
+  }
+  return Object.freeze({ api: true, worker: true, rls: true });
 }
 
 export function buildSeedSql(fixture) {

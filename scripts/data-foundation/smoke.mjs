@@ -2,6 +2,7 @@ import {
   apiContractCheck,
   assertMigrationsApplied,
   assertPgStacMigrated,
+  assertRuntimeRoles,
   assertSeedFixture,
   composeHealthCheck,
   isDirectExecution,
@@ -10,9 +11,10 @@ import {
 
 export async function smokeDataFoundation() {
   const fixture = await verifyFixtureBundle();
-  const [migrations, , services, api, seed] = await Promise.all([
+  const [migrations, , roles, services, api, seed] = await Promise.all([
     assertMigrationsApplied(),
     assertPgStacMigrated(),
+    assertRuntimeRoles(),
     composeHealthCheck(),
     apiContractCheck(),
     assertSeedFixture(fixture),
@@ -23,6 +25,7 @@ export async function smokeDataFoundation() {
       migrationCount: migrations.length,
       healthyServiceCount: services.length,
       capabilityCount: api.capabilityCount,
+      roles,
       fixture,
       seed,
     })}\n`,
