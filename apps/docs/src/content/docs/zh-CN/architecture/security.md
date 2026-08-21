@@ -32,6 +32,8 @@ lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 
 ## Supabase 与 RLS
 
+- Supabase Auth 是全 WISER 唯一的用户、Session、Tenant、Project、Membership 与委托身份权威；Data Foundation 不创建第二套 Auth。
+- `platform` 与 `platform_private` 不暴露给 Data API，默认撤销 anon/authenticated 的 Schema、Table、Sequence 和 Function 权限，并对所有表启用 `FORCE ROW LEVEL SECURITY` 作为纵深防御。
 - 所有暴露 schema 的表启用 RLS。
 - 新表不会天然暴露给 Data API；`GRANT` 和 RLS 是两个独立步骤。
 - 策略使用 `TO authenticated` 加所有权、RunAgent 和 recipient snapshot 谓词，不能只验证角色。

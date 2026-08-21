@@ -1,6 +1,6 @@
 begin;
 
-select plan(35);
+select plan(40);
 
 select has_schema('platform', 'platform control schema exists');
 select has_schema('platform_private', 'platform private schema exists');
@@ -117,6 +117,58 @@ select is(
   1::bigint,
   'seeded Supabase users receive a platform profile'
 );
+select is(
+  (
+    select count(*)
+    from platform.tenants
+    where id = 'b1000000-0000-4000-8000-000000000001'
+      and slug = 'wiser-local'
+      and status = 'active'
+  ),
+  1::bigint,
+  'the local WISER tenant is seeded'
+);
+select is(
+  (
+    select count(*)
+    from platform.projects
+    where id = 'b2000000-0000-4000-8000-000000000001'
+      and tenant_id = 'b1000000-0000-4000-8000-000000000001'
+      and slug = 'yongding-lab'
+  ),
+  1::bigint,
+  'the local Yongding project is seeded'
+);
+select is(
+  (
+    select count(*)
+    from platform.tenant_memberships
+    where tenant_id = 'b1000000-0000-4000-8000-000000000001'
+      and status = 'active'
+  ),
+  5::bigint,
+  'all five seeded users belong to the WISER tenant'
+);
+select is(
+  (
+    select count(*)
+    from platform.project_memberships
+    where project_id = 'b2000000-0000-4000-8000-000000000001'
+      and status = 'active'
+  ),
+  5::bigint,
+  'all five seeded users belong to the Yongding project'
+);
+select is(
+  (
+    select count(*)
+    from platform.role_bindings
+    where actor_id = '10000000-0000-4000-8000-000000000005'
+      and status = 'active'
+  ),
+  3::bigint,
+  'the seeded operator has platform EXCON and data stewardship roles'
+);
 
 select throws_ok(
   $$insert into platform.actors (id, actor_type, status)
@@ -193,7 +245,7 @@ insert into platform.roles (
   id, role_key, system_id, status
 ) values (
   'a4000000-0000-4000-8000-000000000001',
-  'data-reader',
+  'test-data-reader',
   'data',
   'active'
 );

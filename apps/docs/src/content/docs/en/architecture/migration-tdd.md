@@ -23,6 +23,8 @@ lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 
 The v1 walking skeleton remains a compatibility protocol while facts converge on v2. Episode and Run tables must not remain dual-write authorities because state, events, receipts, and outbox records could no longer commit atomically.
 
+Supabase manages Auth, the platform control plane, and EXCON data; its migrations, declarative schema, seed, and pgTAP suite remain synchronized. The future independent Data Foundation `data-postgres` uses its own checksummed SQL runner, advisory lock, and migration history. The two databases never share migration directories or pretend to form a cross-database transaction.
+
 ## Online cutover order
 
 1. Deploy v2 tables, RLS, Tasks/Barriers, Event/Receipt/Outbox, and `legacy_episode_map` without changing v1 routes.

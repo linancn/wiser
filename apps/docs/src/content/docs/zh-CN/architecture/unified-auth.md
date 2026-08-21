@@ -27,6 +27,8 @@ lastReviewedCommit: 493d825a4aa45f9a89f79fd3df2a770f8d0e3c4e
 
 JWT 证明主体、认证强度与 Session；动态 Tenant、Project、Role 和 Scope 从 Supabase 控制面解析。`user_metadata` 可由用户修改，绝不参与授权；动态权限也不完整复制进 JWT，因为 claims 只有刷新 Token 后才变化。
 
+当前已交付 `platform` / `platform_private` Schema、用户自动建档、Tenant/Project/Membership、Role/Scope/Binding、Delegation、私有 Credential/Audit/Outbox、最小权限与 40 项 pgTAP 契约。JWT Resolver、Web SSR Session 和委托凭据签发仍属于下一接线里程碑，不能把数据库结构误报为已完成的登录流程。
+
 ## 控制面模型
 
 ```text

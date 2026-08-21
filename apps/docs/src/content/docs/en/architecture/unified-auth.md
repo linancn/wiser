@@ -27,6 +27,8 @@ All WISER systems use the existing Supabase Auth service, JWT signing keys/JWKS,
 
 A JWT proves the subject, authentication assurance, and session. Dynamic Tenant, Project, Role, and Scope facts are resolved from the Supabase control plane. User-editable `user_metadata` never participates in authorization, and dynamic grants are not fully copied into JWTs because claims change only after token refresh.
 
+Delivered now: the `platform` / `platform_private` schemas, automatic user provisioning, Tenant/Project/Membership, Role/Scope/Binding, Delegation, private Credential/Audit/Outbox storage, least-privilege grants, and 40 pgTAP contract checks. JWT resolution, Web SSR sessions, and delegated-credential issuance remain the next wiring milestone; database structure must not be reported as a completed login flow.
+
 ## Control-plane model
 
 ```text

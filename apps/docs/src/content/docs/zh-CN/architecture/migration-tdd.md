@@ -23,6 +23,8 @@ lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 
 v1 walking skeleton 继续作为兼容协议，但事实写入逐步统一到 v2。不能长期双写 Episode 和 Run 两套表，否则 Event、Receipt 与状态无法保持原子一致。
 
+Supabase 管理 Auth、平台控制面和 EXCON 数据，其 migration、declarative schema、seed 与 pgTAP 必须同步。未来独立的 Data Foundation `data-postgres` 使用自己的带校验和 SQL runner、advisory lock 与迁移历史；两套数据库不得混用迁移目录或伪造跨库事务。
+
 ## 在线切换顺序
 
 1. 部署 v2 表、RLS、Task/Barrier、Event/Receipt/Outbox 和 `legacy_episode_map`，v1 路由暂时不变。

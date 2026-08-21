@@ -1157,3 +1157,199 @@ values (
   'Seed a terminal identity lifecycle fixture for negative tests',
   '2026-08-20T01:30:00Z'
 );
+
+-- WISER unified platform identity and authorization -------------------------
+
+insert into platform.tenants (
+  id,
+  slug,
+  name_zh_cn,
+  name_en,
+  status,
+  created_by_actor_id
+)
+values (
+  'b1000000-0000-4000-8000-000000000001',
+  'wiser-local',
+  'WISER 本地工作区',
+  'WISER Local Workspace',
+  'active',
+  '10000000-0000-4000-8000-000000000005'
+)
+on conflict (id) do nothing;
+
+insert into platform.tenant_memberships (
+  tenant_id,
+  actor_id,
+  status,
+  membership_version
+)
+select
+  'b1000000-0000-4000-8000-000000000001',
+  actor.id,
+  'active',
+  1
+from platform.actors as actor
+where actor.id in (
+  '10000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000003',
+  '10000000-0000-4000-8000-000000000004',
+  '10000000-0000-4000-8000-000000000005'
+)
+on conflict (tenant_id, actor_id) do nothing;
+
+insert into platform.projects (
+  id,
+  tenant_id,
+  slug,
+  name_zh_cn,
+  name_en,
+  status,
+  created_by_actor_id
+)
+values (
+  'b2000000-0000-4000-8000-000000000001',
+  'b1000000-0000-4000-8000-000000000001',
+  'yongding-lab',
+  '永定河协同实验室',
+  'Yongding Collaboration Lab',
+  'active',
+  '10000000-0000-4000-8000-000000000005'
+)
+on conflict (id) do nothing;
+
+insert into platform.project_memberships (
+  project_id,
+  tenant_id,
+  actor_id,
+  status,
+  membership_version
+)
+select
+  'b2000000-0000-4000-8000-000000000001',
+  'b1000000-0000-4000-8000-000000000001',
+  membership.actor_id,
+  'active',
+  1
+from platform.tenant_memberships as membership
+where membership.tenant_id = 'b1000000-0000-4000-8000-000000000001'
+on conflict (project_id, actor_id) do nothing;
+
+insert into platform.roles (
+  id,
+  role_key,
+  system_id,
+  status
+)
+values
+  (
+    'b3000000-0000-4000-8000-000000000001',
+    'platform-owner',
+    'platform',
+    'active'
+  ),
+  (
+    'b3000000-0000-4000-8000-000000000002',
+    'excon-operator',
+    'excon',
+    'active'
+  ),
+  (
+    'b3000000-0000-4000-8000-000000000003',
+    'excon-run-agent',
+    'excon',
+    'active'
+  ),
+  (
+    'b3000000-0000-4000-8000-000000000004',
+    'data-steward',
+    'data',
+    'active'
+  ),
+  (
+    'b3000000-0000-4000-8000-000000000005',
+    'data-reader',
+    'data',
+    'active'
+  )
+on conflict (id) do nothing;
+
+insert into platform.role_scopes (role_id, scope)
+values
+  ('b3000000-0000-4000-8000-000000000001', 'platform.project.manage'),
+  ('b3000000-0000-4000-8000-000000000001', 'platform.delegation.manage'),
+  ('b3000000-0000-4000-8000-000000000002', 'excon.scenario.manage'),
+  ('b3000000-0000-4000-8000-000000000002', 'excon.run.manage'),
+  ('b3000000-0000-4000-8000-000000000002', 'excon.run.read'),
+  ('b3000000-0000-4000-8000-000000000003', 'excon.run-agent.act'),
+  ('b3000000-0000-4000-8000-000000000003', 'excon.telemetry.write'),
+  ('b3000000-0000-4000-8000-000000000004', 'data.catalog.read'),
+  ('b3000000-0000-4000-8000-000000000004', 'data.ingestion.write'),
+  ('b3000000-0000-4000-8000-000000000004', 'data.publish'),
+  ('b3000000-0000-4000-8000-000000000005', 'data.catalog.read'),
+  ('b3000000-0000-4000-8000-000000000005', 'data.query')
+on conflict (role_id, scope) do nothing;
+
+insert into platform.role_bindings (
+  id,
+  actor_id,
+  tenant_id,
+  project_id,
+  role_id,
+  status,
+  created_by_actor_id
+)
+values
+  (
+    'b4000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000005',
+    'b1000000-0000-4000-8000-000000000001',
+    'b2000000-0000-4000-8000-000000000001',
+    'b3000000-0000-4000-8000-000000000001',
+    'active',
+    '10000000-0000-4000-8000-000000000005'
+  ),
+  (
+    'b4000000-0000-4000-8000-000000000002',
+    '10000000-0000-4000-8000-000000000005',
+    'b1000000-0000-4000-8000-000000000001',
+    'b2000000-0000-4000-8000-000000000001',
+    'b3000000-0000-4000-8000-000000000002',
+    'active',
+    '10000000-0000-4000-8000-000000000005'
+  ),
+  (
+    'b4000000-0000-4000-8000-000000000003',
+    '10000000-0000-4000-8000-000000000005',
+    'b1000000-0000-4000-8000-000000000001',
+    'b2000000-0000-4000-8000-000000000001',
+    'b3000000-0000-4000-8000-000000000004',
+    'active',
+    '10000000-0000-4000-8000-000000000005'
+  );
+
+insert into platform.role_bindings (
+  id,
+  actor_id,
+  tenant_id,
+  project_id,
+  role_id,
+  status,
+  created_by_actor_id
+)
+select
+  (
+    'b5000000-0000-4000-8000-'
+    || lpad(row_number() over (order by member.actor_id)::text, 12, '0')
+  )::uuid,
+  member.actor_id,
+  member.tenant_id,
+  member.project_id,
+  'b3000000-0000-4000-8000-000000000003',
+  'active',
+  '10000000-0000-4000-8000-000000000005'
+from platform.project_memberships as member
+where member.project_id = 'b2000000-0000-4000-8000-000000000001'
+  and member.actor_id <> '10000000-0000-4000-8000-000000000005'
+on conflict (id) do nothing;
