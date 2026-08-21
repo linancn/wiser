@@ -317,6 +317,13 @@ describe('Docpact documentation governance', () => {
     );
 
     const platformAuthRule = docpactRule(config, 'wiser-platform-auth');
+    for (const apiAuthPath of [
+      'apps/api/src/platform/auth-runtime.ts',
+      'apps/api/src/platform/identity-module.ts',
+      'apps/api/src/platform/delegation-module.ts',
+    ]) {
+      expect(platformAuthRule).toContain(`- path: ${apiAuthPath}`);
+    }
     for (const webAuthPath of [
       'apps/web/src/lib/auth.ts',
       'apps/web/src/app/*/auth/**',
