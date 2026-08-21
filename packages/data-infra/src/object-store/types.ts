@@ -22,7 +22,10 @@ export type S3AuthorityCommand =
   | UploadPartCommand;
 
 export interface S3AuthorityCommandClient {
-  send(command: S3AuthorityCommand): Promise<unknown>;
+  send(
+    command: S3AuthorityCommand,
+    options?: { readonly abortSignal?: AbortSignal },
+  ): Promise<unknown>;
 }
 
 export type S3AuthorityPresigner = (
@@ -30,13 +33,21 @@ export type S3AuthorityPresigner = (
   expiresIn: number,
 ) => Promise<string>;
 
-export interface AuthorityObjectInput {
+interface AuthorityObjectReference {
   readonly tenantId: string;
   readonly projectId: string;
   readonly uploadId: string;
-  readonly sha256: string;
   readonly sizeBytes: number;
   readonly contentType: string;
+  readonly signal?: AbortSignal;
+}
+
+export interface QuarantineObjectInput extends AuthorityObjectReference {
+  readonly sha256?: string;
+}
+
+export interface AuthorityObjectInput extends AuthorityObjectReference {
+  readonly sha256: string;
 }
 
 export interface AuthorityObjectLocation {
@@ -80,10 +91,17 @@ export interface CommittedObjectLocations {
 
 export interface S3AuthorityObjectStore {
   planQuarantinePut(
-    input: AuthorityObjectInput & { readonly ttlSeconds: number },
+    input: QuarantineObjectInput & { readonly ttlSeconds: number },
   ): Promise<QuarantinePutPlan>;
   planQuarantineMultipart(
-    input: AuthorityObjectInput & {
+    input: QuarantineObjectInput & {
+      readonly partSizeBytes: number;
+      readonly ttlSeconds: number;
+    },
+  ): Promise<QuarantineMultipartPlan>;
+  resignQuarantineMultipart(
+    input: QuarantineObjectInput & {
+      readonly multipartUploadId: string;
       readonly partSizeBytes: number;
       readonly ttlSeconds: number;
     },
@@ -104,11 +122,16 @@ export interface S3AuthorityObjectStore {
       }[];
     },
   ): Promise<void>;
-  verifyQuarantineObject(input: AuthorityObjectInput): Promise<void>;
+  verifyQuarantineObject(
+    input: AuthorityObjectInput & {
+      readonly allowMissingSha256Metadata?: boolean;
+      readonly expectedEtag?: string;
+    },
+  ): Promise<void>;
   commitQuarantineObject(
     input: AuthorityObjectInput & { readonly versionId: string },
   ): Promise<CommittedObjectLocations>;
   abortQuarantineObject(
-    input: AuthorityObjectInput & { readonly multipartUploadId?: string },
+    input: QuarantineObjectInput & { readonly multipartUploadId?: string },
   ): Promise<void>;
 }

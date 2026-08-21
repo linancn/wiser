@@ -15,6 +15,7 @@ import type {
   AuthorityObjectInput,
   AuthorityObjectLocation,
   CommittedObjectLocations,
+  QuarantineObjectInput,
   S3AuthorityCommandClient,
   S3AuthorityObjectStore,
   S3AuthorityPresigner,
@@ -29,6 +30,8 @@ const MIN_TTL_SECONDS = 60;
 const MAX_TTL_SECONDS = 900;
 const MIN_MULTIPART_PART_SIZE = 5 * 1024 * 1024;
 const MAX_MULTIPART_PARTS = 10_000;
+const MAX_SINGLE_PUT_SIZE = 5 * 1024 * 1024 * 1024;
+const MAX_OBJECT_SIZE = 5 * 1024 * 1024 * 1024 * 1024;
 
 interface S3AuthorityObjectStoreOptions {
   readonly bucket: string;
@@ -39,7 +42,7 @@ interface S3AuthorityObjectStoreOptions {
 
 interface HeadProjection {
   readonly size: number;
-  readonly sha256: string;
+  readonly sha256: string | null;
   readonly etag: string | null;
 }
 
@@ -53,18 +56,26 @@ function validReference(value: string): boolean {
   return UUID_PATTERN.test(value);
 }
 
-function validateObject(input: AuthorityObjectInput): void {
+function validateQuarantineObject(input: QuarantineObjectInput): void {
   if (
     !validReference(input.tenantId) ||
     !validReference(input.projectId) ||
     !validReference(input.uploadId) ||
-    !SHA256_PATTERN.test(input.sha256) ||
+    (input.sha256 !== undefined && !SHA256_PATTERN.test(input.sha256)) ||
     !Number.isSafeInteger(input.sizeBytes) ||
     input.sizeBytes < 1 ||
+    input.sizeBytes > MAX_OBJECT_SIZE ||
     input.contentType.length < 3 ||
     input.contentType.length > 255 ||
     !CONTENT_TYPE_PATTERN.test(input.contentType)
   ) {
+    throw authorityError('INVALID_OBJECT_REFERENCE');
+  }
+}
+
+function validateAuthorityObject(input: AuthorityObjectInput): void {
+  validateQuarantineObject(input);
+  if (!SHA256_PATTERN.test(input.sha256)) {
     throw authorityError('INVALID_OBJECT_REFERENCE');
   }
 }
@@ -110,8 +121,8 @@ function prefix(input: {
   return `tenants/${input.tenantId}/projects/${input.projectId}`;
 }
 
-function quarantineKey(input: AuthorityObjectInput): string {
-  return `${prefix(input)}/quarantine/${input.uploadId}/sha256/${input.sha256}`;
+function quarantineKey(input: QuarantineObjectInput): string {
+  return `${prefix(input)}/quarantine/${input.uploadId}/object`;
 }
 
 function rawKey(input: AuthorityObjectInput): string {
@@ -157,11 +168,34 @@ export function createS3AuthorityObjectStore(
   }
   const clock = options.clock ?? (() => new Date());
 
-  async function head(key: string): Promise<HeadProjection | null> {
+  function assertActive(signal: AbortSignal | undefined): void {
+    if (signal?.aborted === true) {
+      throw authorityError('OBJECT_STORE_UNAVAILABLE');
+    }
+  }
+
+  async function send(
+    command: Parameters<S3AuthorityCommandClient['send']>[0],
+    signal?: AbortSignal,
+  ): Promise<unknown> {
+    assertActive(signal);
+    const result = await options.client.send(
+      command,
+      signal === undefined ? undefined : { abortSignal: signal },
+    );
+    assertActive(signal);
+    return result;
+  }
+
+  async function head(
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<HeadProjection | null> {
     let response: unknown;
     try {
-      response = await options.client.send(
+      response = await send(
         new HeadObjectCommand({ Bucket: options.bucket, Key: key }),
+        signal,
       );
     } catch (error) {
       if (isNotFound(error)) return null;
@@ -174,13 +208,13 @@ export function createS3AuthorityObjectStore(
     if (
       typeof size !== 'number' ||
       !Number.isSafeInteger(size) ||
-      typeof sha256 !== 'string'
+      (sha256 !== undefined && typeof sha256 !== 'string')
     ) {
       throw authorityError('OBJECT_INTEGRITY_MISMATCH');
     }
     return {
       size,
-      sha256,
+      sha256: typeof sha256 === 'string' ? sha256 : null,
       etag: headerString(value?.['ETag']),
     };
   }
@@ -188,10 +222,12 @@ export function createS3AuthorityObjectStore(
   function matches(
     projection: HeadProjection,
     expected: { readonly sizeBytes: number; readonly sha256: string },
+    allowMissingSha256Metadata = false,
   ): boolean {
     return (
       projection.size === expected.sizeBytes &&
-      projection.sha256 === expected.sha256
+      (projection.sha256 === expected.sha256 ||
+        (allowMissingSha256Metadata && projection.sha256 === null))
     );
   }
 
@@ -200,7 +236,7 @@ export function createS3AuthorityObjectStore(
     destination: AuthorityObjectLocation,
     expected: AuthorityObjectInput,
   ): Promise<boolean> {
-    const existing = await head(destination.key);
+    const existing = await head(destination.key, expected.signal);
     if (existing !== null) {
       if (!matches(existing, expected)) {
         throw authorityError('IMMUTABLE_OBJECT_CONFLICT');
@@ -208,18 +244,21 @@ export function createS3AuthorityObjectStore(
       return true;
     }
     try {
-      await options.client.send(
+      await send(
         new CopyObjectCommand({
           Bucket: destination.bucket,
           Key: destination.key,
           CopySource: encodeURIComponent(`${options.bucket}/${sourceKey}`),
-          MetadataDirective: 'COPY',
+          MetadataDirective: 'REPLACE',
+          Metadata: { sha256: expected.sha256 },
+          ContentType: expected.contentType,
         }),
+        expected.signal,
       );
     } catch {
       throw authorityError('OBJECT_STORE_UNAVAILABLE');
     }
-    const copied = await head(destination.key);
+    const copied = await head(destination.key, expected.signal);
     if (copied === null || !matches(copied, expected)) {
       throw authorityError('OBJECT_INTEGRITY_MISMATCH');
     }
@@ -228,7 +267,10 @@ export function createS3AuthorityObjectStore(
 
   return {
     async planQuarantinePut(input) {
-      validateObject(input);
+      validateQuarantineObject(input);
+      if (input.sizeBytes > MAX_SINGLE_PUT_SIZE) {
+        throw authorityError('INVALID_OBJECT_REFERENCE');
+      }
       validateTtl(input.ttlSeconds);
       const key = quarantineKey(input);
       const command = new PutObjectCommand({
@@ -236,11 +278,15 @@ export function createS3AuthorityObjectStore(
         Key: key,
         ContentLength: input.sizeBytes,
         ContentType: input.contentType,
-        Metadata: { sha256: input.sha256 },
+        ...(input.sha256 === undefined
+          ? {}
+          : { Metadata: { sha256: input.sha256 } }),
       });
       let url: string;
       try {
+        assertActive(input.signal);
         url = await options.presign(command, input.ttlSeconds);
+        assertActive(input.signal);
       } catch {
         throw authorityError('OBJECT_STORE_UNAVAILABLE');
       }
@@ -253,17 +299,20 @@ export function createS3AuthorityObjectStore(
         requiredHeaders: {
           'content-length': String(input.sizeBytes),
           'content-type': input.contentType,
-          'x-amz-meta-sha256': input.sha256,
+          ...(input.sha256 === undefined
+            ? {}
+            : { 'x-amz-meta-sha256': input.sha256 }),
         },
       };
     },
 
     async planQuarantineMultipart(input) {
-      validateObject(input);
+      validateQuarantineObject(input);
       validateTtl(input.ttlSeconds);
       if (
         !Number.isSafeInteger(input.partSizeBytes) ||
-        input.partSizeBytes < MIN_MULTIPART_PART_SIZE
+        input.partSizeBytes < MIN_MULTIPART_PART_SIZE ||
+        input.partSizeBytes > MAX_SINGLE_PUT_SIZE
       ) {
         throw authorityError('INVALID_MULTIPART_PLAN');
       }
@@ -274,13 +323,16 @@ export function createS3AuthorityObjectStore(
       const key = quarantineKey(input);
       let response: unknown;
       try {
-        response = await options.client.send(
+        response = await send(
           new CreateMultipartUploadCommand({
             Bucket: options.bucket,
             Key: key,
             ContentType: input.contentType,
-            Metadata: { sha256: input.sha256 },
+            ...(input.sha256 === undefined
+              ? {}
+              : { Metadata: { sha256: input.sha256 } }),
           }),
+          input.signal,
         );
       } catch {
         throw authorityError('OBJECT_STORE_UNAVAILABLE');
@@ -290,26 +342,100 @@ export function createS3AuthorityObjectStore(
         throw authorityError('OBJECT_STORE_UNAVAILABLE');
       }
       const expiresAt = expiration(clock, input.ttlSeconds);
+      let parts: Awaited<
+        ReturnType<S3AuthorityObjectStore['planQuarantineMultipart']>
+      >['parts'];
+      try {
+        parts = await Promise.all(
+          Array.from({ length: partCount }, async (_, index) => {
+            const partNumber = index + 1;
+            const consumed = index * input.partSizeBytes;
+            const sizeBytes = Math.min(
+              input.partSizeBytes,
+              input.sizeBytes - consumed,
+            );
+            let url: string;
+            try {
+              assertActive(input.signal);
+              url = await options.presign(
+                new UploadPartCommand({
+                  Bucket: options.bucket,
+                  Key: key,
+                  UploadId: uploadId,
+                  PartNumber: partNumber,
+                  ContentLength: sizeBytes,
+                }),
+                input.ttlSeconds,
+              );
+              assertActive(input.signal);
+            } catch {
+              throw authorityError('OBJECT_STORE_UNAVAILABLE');
+            }
+            return { partNumber, sizeBytes, url, expiresAt };
+          }),
+        );
+      } catch {
+        try {
+          await send(
+            new AbortMultipartUploadCommand({
+              Bucket: options.bucket,
+              Key: key,
+              UploadId: uploadId,
+            }),
+          );
+        } catch {
+          // The public failure stays sanitized; recovery can reap stale uploads.
+        }
+        throw authorityError('OBJECT_STORE_UNAVAILABLE');
+      }
+      return {
+        kind: 'multipart',
+        bucket: options.bucket,
+        key,
+        uploadId,
+        parts,
+      };
+    },
+
+    async resignQuarantineMultipart(input) {
+      validateQuarantineObject(input);
+      validateTtl(input.ttlSeconds);
+      if (
+        input.multipartUploadId.length < 1 ||
+        input.multipartUploadId.length > 1_024 ||
+        !Number.isSafeInteger(input.partSizeBytes) ||
+        input.partSizeBytes < MIN_MULTIPART_PART_SIZE ||
+        input.partSizeBytes > MAX_SINGLE_PUT_SIZE
+      ) {
+        throw authorityError('INVALID_MULTIPART_PLAN');
+      }
+      const partCount = Math.ceil(input.sizeBytes / input.partSizeBytes);
+      if (partCount < 1 || partCount > MAX_MULTIPART_PARTS) {
+        throw authorityError('INVALID_MULTIPART_PLAN');
+      }
+      const key = quarantineKey(input);
+      const expiresAt = expiration(clock, input.ttlSeconds);
       const parts = await Promise.all(
         Array.from({ length: partCount }, async (_, index) => {
           const partNumber = index + 1;
-          const consumed = index * input.partSizeBytes;
           const sizeBytes = Math.min(
             input.partSizeBytes,
-            input.sizeBytes - consumed,
+            input.sizeBytes - index * input.partSizeBytes,
           );
           let url: string;
           try {
+            assertActive(input.signal);
             url = await options.presign(
               new UploadPartCommand({
                 Bucket: options.bucket,
                 Key: key,
-                UploadId: uploadId,
+                UploadId: input.multipartUploadId,
                 PartNumber: partNumber,
                 ContentLength: sizeBytes,
               }),
               input.ttlSeconds,
             );
+            assertActive(input.signal);
           } catch {
             throw authorityError('OBJECT_STORE_UNAVAILABLE');
           }
@@ -320,7 +446,7 @@ export function createS3AuthorityObjectStore(
         kind: 'multipart',
         bucket: options.bucket,
         key,
-        uploadId,
+        uploadId: input.multipartUploadId,
         parts,
       };
     },
@@ -347,7 +473,7 @@ export function createS3AuthorityObjectStore(
     },
 
     async completeQuarantineMultipart(input) {
-      validateObject(input);
+      validateAuthorityObject(input);
       if (
         input.multipartUploadId.length === 0 ||
         input.multipartUploadId.length > 1_024 ||
@@ -367,7 +493,7 @@ export function createS3AuthorityObjectStore(
         throw authorityError('INVALID_MULTIPART_PLAN');
       }
       try {
-        await options.client.send(
+        await send(
           new CompleteMultipartUploadCommand({
             Bucket: options.bucket,
             Key: quarantineKey(input),
@@ -379,6 +505,7 @@ export function createS3AuthorityObjectStore(
               })),
             },
           }),
+          input.signal,
         );
       } catch {
         throw authorityError('OBJECT_STORE_UNAVAILABLE');
@@ -386,23 +513,27 @@ export function createS3AuthorityObjectStore(
     },
 
     async verifyQuarantineObject(input) {
-      validateObject(input);
-      const projection = await head(quarantineKey(input));
+      validateAuthorityObject(input);
+      const projection = await head(quarantineKey(input), input.signal);
       if (projection === null) throw authorityError('OBJECT_NOT_FOUND');
-      if (!matches(projection, input)) {
+      if (
+        !matches(projection, input, input.allowMissingSha256Metadata) ||
+        (input.expectedEtag !== undefined &&
+          projection.etag !== input.expectedEtag)
+      ) {
         throw authorityError('OBJECT_INTEGRITY_MISMATCH');
       }
     },
 
     async commitQuarantineObject(input) {
-      validateObject(input);
+      validateAuthorityObject(input);
       if (!validReference(input.versionId)) {
         throw authorityError('INVALID_OBJECT_REFERENCE');
       }
       const sourceKey = quarantineKey(input);
-      const source = await head(sourceKey);
+      const source = await head(sourceKey, input.signal);
       if (source === null) throw authorityError('OBJECT_NOT_FOUND');
-      if (!matches(source, input)) {
+      if (!matches(source, input, true)) {
         throw authorityError('OBJECT_INTEGRITY_MISMATCH');
       }
       const raw = { bucket: options.bucket, key: rawKey(input) };
@@ -420,7 +551,7 @@ export function createS3AuthorityObjectStore(
     },
 
     async abortQuarantineObject(input) {
-      validateObject(input);
+      validateQuarantineObject(input);
       const key = quarantineKey(input);
       try {
         if (input.multipartUploadId !== undefined) {
@@ -430,16 +561,18 @@ export function createS3AuthorityObjectStore(
           ) {
             throw authorityError('INVALID_OBJECT_REFERENCE');
           }
-          await options.client.send(
+          await send(
             new AbortMultipartUploadCommand({
               Bucket: options.bucket,
               Key: key,
               UploadId: input.multipartUploadId,
             }),
+            input.signal,
           );
         }
-        await options.client.send(
+        await send(
           new DeleteObjectCommand({ Bucket: options.bucket, Key: key }),
+          input.signal,
         );
       } catch (error) {
         if (error instanceof ObjectStoreAuthorityError) throw error;
