@@ -1,0 +1,41 @@
+{
+  "skill_name": "wiser-data-foundation",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我需要从 WISER 数据基座找到永定河生态补水的权威证据，先筛 water-monitoring 目录，再做知识检索并给出可复核引用。请说明你会调用哪些 REST 或 MCP 能力，以及你会保留哪些版本、质量、验收、安全和限制字段。",
+      "expected_output": "A bounded catalog-to-knowledge workflow that pins immutable versions, preserves evidence and governance fields, and never uses backend-native queries.",
+      "files": [],
+      "expectations": [
+        "Uses catalog search/get before knowledge or federated search.",
+        "Pins dataItemId and immutable versionId rather than silently using latest.",
+        "Keeps quality, acceptance, publication, security, limitations, and evidence separate.",
+        "Uses only REST or registered MCP capabilities and does not propose SQL, Cypher, or direct projection access."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "把一份站点 GeoJSON 和一份证据 Markdown 作为同一个数据条送进 WISER。请给我从上传会话、文件上传完成、创建 ingestion、提交、等待人工审核到查询 Operation 的安全调用顺序；网络可能在 submit 后断开，所以也要说明幂等恢复。",
+      "expected_output": "A complete two-asset ingestion sequence using bounded upload targets, one ingestion and operation, optimistic versions, idempotency, review, and safe retry reconciliation.",
+      "files": [],
+      "expectations": [
+        "Creates and completes an upload session before one ingestion containing both assetIds.",
+        "Uses a fresh UUID idempotency key and expectedVersion/If-Match for each intended command.",
+        "Reconciles the existing Operation after an ambiguous submit instead of creating duplicate ingestion.",
+        "Treats review, authoritative commit, projections, and publication as distinct later states."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "我拿到一个 L2_RESTRICTED 河道图层和一个 L1_INTERNAL 监测表，想做空间相交并生成新的分析数据。怎样查询、怎样确定结果安全级别、怎样引用证据并重新入库？请特别避免把搜索分数或模型置信度当成质量结论。",
+      "expected_output": "A governed geo-intersection and derived-ingestion workflow that inherits L2, pins evidence, and leaves deterministic quality/acceptance decisions outside AI.",
+      "files": [],
+      "expectations": [
+        "Uses data.geo.intersect with exact versioned targets and explicit CRS where geometry is supplied.",
+        "Derives an L2_RESTRICTED minimum security level and never lowers it to L1 or L0.",
+        "Submits the derived result through a new ingestion with source versions and evidence references.",
+        "Separates retrieval score, Agent confidence, quality grade, acceptance status, and publication status."
+      ]
+    }
+  ]
+}

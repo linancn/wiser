@@ -1,0 +1,4 @@
+interface:
+  display_name: WISER Data Foundation
+  short_description: Query and ingest governed WISER data through REST or MCP.
+  default_prompt: Use the WISER Data Foundation Capability boundary to discover, query, spatially analyze, ingest, review, or monitor governed data without direct store access.

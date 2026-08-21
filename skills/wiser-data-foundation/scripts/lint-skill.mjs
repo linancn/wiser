@@ -12,7 +12,10 @@ function assert(condition, message) {
 
 function includesAll(source, values, label) {
   for (const value of values) {
-    assert(source.includes(value), `${label} is missing ${JSON.stringify(value)}`);
+    assert(
+      source.includes(value),
+      `${label} is missing ${JSON.stringify(value)}`,
+    );
   }
 }
 
@@ -21,13 +24,15 @@ async function read(relativePath) {
 }
 
 try {
-  const [skill, protocol, governance, examples, evalSource] = await Promise.all([
-    read('SKILL.md'),
-    read('references/capability-protocol.md'),
-    read('references/governance-and-security.md'),
-    read('references/examples.md'),
-    read('evals/evals.json'),
-  ]);
+  const [skill, protocol, governance, examples, evalSource] = await Promise.all(
+    [
+      read('SKILL.md'),
+      read('references/capability-protocol.md'),
+      read('references/governance-and-security.md'),
+      read('references/examples.md'),
+      read('evals/evals.json'),
+    ],
+  );
 
   assert(skill.split('\n').length < 500, 'SKILL.md must stay below 500 lines');
   const frontmatter = /^---\nname: ([^\n]+)\ndescription: ([^\n]+)\n---\n/.exec(
@@ -131,13 +136,21 @@ try {
     'opensearch_execute',
     '~/.codex/auth.json',
   ]) {
-    assert(!combined.includes(forbidden), `Skill contains forbidden ${forbidden}`);
+    assert(
+      !combined.includes(forbidden),
+      `Skill contains forbidden ${forbidden}`,
+    );
   }
 
   const evals = JSON.parse(evalSource);
-  assert(evals.skill_name === 'wiser-data-foundation', 'eval skill_name mismatch');
   assert(
-    Array.isArray(evals.evals) && evals.evals.length >= 3 && evals.evals.length <= 4,
+    evals.skill_name === 'wiser-data-foundation',
+    'eval skill_name mismatch',
+  );
+  assert(
+    Array.isArray(evals.evals) &&
+      evals.evals.length >= 3 &&
+      evals.evals.length <= 4,
     'evals must contain 3-4 realistic cases',
   );
   for (const evaluation of evals.evals) {
@@ -151,7 +164,10 @@ try {
         evaluation.expected_output.length >= 30,
       `eval ${evaluation.id} expected output is too small`,
     );
-    assert(Array.isArray(evaluation.files), `eval ${evaluation.id} needs files`);
+    assert(
+      Array.isArray(evaluation.files),
+      `eval ${evaluation.id} needs files`,
+    );
     assert(
       Array.isArray(evaluation.expectations) &&
         evaluation.expectations.length >= 4,
