@@ -20,9 +20,7 @@ describe('Data Foundation content blob forward migration', () => {
     expect(sql).toMatch(/drop constraint.*content_hash_key/i);
     expect(sql).toMatch(/add column content_blob_id uuid/i);
     expect(sql).toMatch(/references catalog\.content_blob/i);
-    expect(sql).toMatch(
-      /unique\s*\(tenant_id,\s*project_id,\s*asset_id\)/i,
-    );
+    expect(sql).toMatch(/unique\s*\(tenant_id,\s*project_id,\s*asset_id\)/i);
   });
 
   it('keeps the new authority table forced behind scoped RLS', () => {
