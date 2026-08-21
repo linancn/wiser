@@ -37,6 +37,9 @@ describe('WISER WorkBuddy showcase execution bundle', () => {
     expect(codexTask).toContain('Computer Use');
     expect(codexTask).toContain('/collaboration');
     expect(leadTask).toContain('Lead 不计入四个 RunAgent');
+    expect(leadTask).toContain('四个参训进程不调用模型');
+    expect(leadTask).toContain('Lead 本身仍可能使用已登录的 WorkBuddy 订阅');
+    expect(leadTask).toContain('不得把整个 scripted 展示描述为“无模型调用”');
     expect(combined).toContain('四个独立顶层进程');
     expect(combined).toContain('pnpm showcase:preflight');
     expect(combined).toContain('pnpm showcase:start --profile scripted');
