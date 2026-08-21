@@ -65,6 +65,14 @@ describe('WorkBuddy Yongding cookbook runner', () => {
     expect(result.report.authoritative.releasedBarriers).toEqual(
       expect.arrayContaining(['analysis-ready', 'endorsement-ready']),
     );
+    expect(result.report.authoritative.interactions).toEqual({
+      interactionCount: 11,
+      handoffCount: 3,
+      requestCount: 1,
+      responseCount: 3,
+      openRequestCount: 0,
+      acknowledgedDeliveryCount: expect.any(Number),
+    });
     expect((await stat(result.reportPath)).mode & 0o777).toBe(0o600);
     const serialized = await readFile(result.reportPath, 'utf8');
     expect(serialized).not.toMatch(/wbl_[A-Za-z0-9_-]+/);
