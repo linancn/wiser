@@ -297,6 +297,9 @@ function frozenCheckpoint(): FrozenIngestionCheckpoint {
         parserHash: ordinal === 0 ? 'c'.repeat(64) : 'd'.repeat(64),
         profileHash: '2'.repeat(64),
         classificationHash: '3'.repeat(64),
+        ...(ordinal === 0
+          ? { evidenceExcerpt: 'hello water evidence' }
+          : {}),
       })),
       transformedArtifactRef: 'quarantine/transform',
       transformedHash: 'e'.repeat(64),
@@ -517,6 +520,10 @@ describe('Postgres ingestion authority adapter', () => {
     expect(statements.join('\n')).toMatch(/security\.audit_event/);
     expect(statements.join('\n')).toMatch(/event\.outbox_event/);
     expect(statements.join('\n')).toMatch(/knowledge\.evidence_fragment/);
+    const evidenceInsert = runtime.pool.client.queries.find(({ text }) =>
+      /ingestion\.runtime\.evidence-fragment/.test(text),
+    );
+    expect(evidenceInsert?.values).toContain('hello water evidence');
     expect(statements.join('\n')).toMatch(/asset\.version_id is null/);
     expect(statements.join('\n')).toMatch(/input\.ingestion_id = \$3::uuid/);
     expect(statements.join('\n')).not.toMatch(
