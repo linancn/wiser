@@ -1,5 +1,30 @@
 import { expect, test } from '@playwright/test';
 
+const mixedChineseProductTerms =
+  /\b(?:Operator|Agent Session|Agent|Run|Trace|Barrier|ArtifactVersion|Receipt|Event|Telemetry|Best-effort|Thread|Operation|Exporter|Revision|Verdict|Evidence|Inject|Feedback|Prompt|Tool|payload|cursor|signal|live|Web|Log|Logs|Metric|Links?|ROLE|BARRIER|VERDICT|AUTHORITY|TELEMETRY|TRIAGE|MESSAGE|ARTIFACTVERSION|FLOW)\b/;
+
+async function visibleNarrativeText(page: import('@playwright/test').Page) {
+  return page.evaluate(() =>
+    [...document.querySelectorAll('body *')]
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return (
+          element.tagName !== 'CODE' &&
+          element.closest('code') === null &&
+          element.children.length === 0 &&
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          rect.width > 0 &&
+          rect.height > 0 &&
+          (element.textContent ?? '').trim().length > 0
+        );
+      })
+      .map((element) => (element.textContent ?? '').trim())
+      .join('\n'),
+  );
+}
+
 test('opens the Chinese scenario center and preserves the route in English', async ({
   page,
 }) => {
@@ -55,6 +80,33 @@ test('declares the route locale in server-rendered HTML without JavaScript', asy
     expect(response.ok()).toBe(true);
     await expect(response.text()).resolves.toContain(`<html lang="${locale}"`);
   }
+});
+
+test('uses consistent professional Chinese while preserving protocol terms', async ({
+  page,
+}) => {
+  for (const route of [
+    'scenarios',
+    'scenarios/yongding-2023-ecological-replenishment',
+    'runs',
+    'runs/run-yongding-spring-042',
+    'runs/run-yongding-spring-042/collaboration',
+    'runs/run-yongding-spring-042/diagnostics',
+    'runs/run-yongding-spring-042/trace',
+    'runs/run-yongding-spring-042/replay',
+  ]) {
+    await page.goto(`/zh-CN/${route}`);
+    const text = (await visibleNarrativeText(page)).replaceAll(
+      'Agent EXCON',
+      '',
+    );
+    expect(text, route).not.toMatch(mixedChineseProductTerms);
+  }
+
+  await page.goto('/zh-CN/scenarios');
+  await expect(page.getByText('Skill', { exact: false })).toBeVisible();
+  await expect(page.getByText('HTTP', { exact: false })).toBeVisible();
+  await expect(page.getByText('MCP', { exact: false })).toBeVisible();
 });
 
 test('separates scenario management from active multi-agent runs', async ({

@@ -17,6 +17,15 @@ function keysOf(value: unknown, prefix = ''): string[] {
   return [prefix];
 }
 
+function stringsOf(value: unknown): string[] {
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) return value.flatMap(stringsOf);
+  if (value && typeof value === 'object') {
+    return Object.values(value).flatMap(stringsOf);
+  }
+  return [];
+}
+
 describe('bilingual product contract', () => {
   it('uses Simplified Chinese as the default and only exposes supported routes', () => {
     expect(DEFAULT_LOCALE).toBe('zh-CN');
@@ -40,6 +49,38 @@ describe('bilingual product contract', () => {
     expect(scenarios.length).toBeGreaterThanOrEqual(3);
     expect(JSON.stringify({ dictionaries, scenarios })).not.toContain(
       ['防', '汛'].join(''),
+    );
+  });
+
+  it('uses professional Chinese product terminology while retaining protocol names', () => {
+    expect(dictionaries['zh-CN'].scenarioCenter.lede).toBe(
+      '当前展示导调员使用的管理视图预览。每个场景独立版本化，并明确多智能体角色、阶段契约和评价边界；参训智能体仍通过 Skill、HTTP 或 MCP 与平台交互。',
+    );
+    expect(dictionaries['zh-CN'].runWorkspace.trace).toBe('追踪');
+    expect(dictionaries['zh-CN'].trace.workspaceHeading).toBe('追踪分析');
+
+    const productCopy = stringsOf({
+      shell: dictionaries['zh-CN'].shell,
+      scenarioCenter: dictionaries['zh-CN'].scenarioCenter,
+      orchestration: dictionaries['zh-CN'].orchestration,
+      runList: dictionaries['zh-CN'].runList,
+      runWorkspace: dictionaries['zh-CN'].runWorkspace,
+      runOverview: dictionaries['zh-CN'].runOverview,
+      collaboration: dictionaries['zh-CN'].collaboration,
+      trace: dictionaries['zh-CN'].trace,
+      diagnostics: dictionaries['zh-CN'].diagnostics,
+      replay: dictionaries['zh-CN'].replay,
+    })
+      .join('\n')
+      .replaceAll('Agent EXCON', '');
+
+    expect(productCopy).toContain('Skill');
+    expect(productCopy).toContain('HTTP');
+    expect(productCopy).toContain('MCP');
+    expect(productCopy).toContain('OpenTelemetry');
+    expect(productCopy).toContain('Span');
+    expect(productCopy).not.toMatch(
+      /\b(?:Operator|Agent Session|Agent|Run|Trace|Barrier|ArtifactVersion|Receipt|Event|Telemetry|Best-effort|Thread|Operation|Exporter|Revision|Verdict|Evidence|Inject|Feedback|Prompt|Tool|payload|cursor|signal|live|Web|Log|Logs|Metric|Links?)\b/,
     );
   });
 });
