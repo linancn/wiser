@@ -6,7 +6,9 @@ import { DataJobHandlerError } from '../src/handlers/registry.js';
 import {
   DATA_INGESTION_PROCESS_JOB_TYPE,
   IngestionPipelinePortError,
+  canonicalPipelineHash,
   createIngestionPipelineHandler,
+  type FrozenIngestionCheckpoint,
   type IngestionAssetCheckpoint,
   type IngestionAuthorityPort,
   type PipelineIngestionState,
@@ -15,8 +17,6 @@ import {
 } from '../src/handlers/ingestion-pipeline.js';
 
 const payload = {
-  tenantId: '11111111-1111-4111-8111-111111111111',
-  projectId: '22222222-2222-4222-8222-222222222222',
   ingestionId: '33333333-3333-4333-8333-333333333333',
   expectedState: 'RECEIVED',
   expectedVersion: 1,
@@ -24,6 +24,8 @@ const payload = {
 
 const job: ClaimedDataJob = {
   jobId: '55555555-5555-4555-8555-555555555555',
+  tenantId: '11111111-1111-4111-8111-111111111111',
+  projectId: '22222222-2222-4222-8222-222222222222',
   operationId: '66666666-6666-4666-8666-666666666666',
   jobType: DATA_INGESTION_PROCESS_JOB_TYPE,
   payload,
@@ -33,12 +35,19 @@ const job: ClaimedDataJob = {
   leaseExpiresAt: '2026-08-22T01:00:00.000Z',
   rowVersion: 2,
   cancelRequested: false,
+  securityLevel: 'L0_PUBLIC',
+  policyVersion: 9,
 };
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
 
 class FakeAuthority implements IngestionAuthorityPort {
   readonly order: string[];
   readonly transitions: IngestionTransitionRequest[] = [];
   commits = 0;
+  frozenCheckpoint?: FrozenIngestionCheckpoint;
   state: PipelineIngestionState = 'RECEIVED';
   version = 1;
   versionId?: string;
@@ -47,6 +56,7 @@ class FakeAuthority implements IngestionAuthorityPort {
     {
       assetId: '44444444-4444-4444-8444-444444444444',
       ordinal: 0,
+      uploadId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       objectRef: 'quarantine/object-0',
       mediaType: 'application/pdf',
       sourceKind: 'document' as const,
@@ -64,8 +74,28 @@ class FakeAuthority implements IngestionAuthorityPort {
       state: this.state,
       version: this.version,
       securityLevel: this.securityLevel,
+      policyVersion: 9,
       assets: this.assets,
+      ...(this.frozenCheckpoint === undefined
+        ? {}
+        : { frozenCheckpoint: this.frozenCheckpoint }),
       ...(this.versionId === undefined ? {} : { versionId: this.versionId }),
+    });
+  }
+
+  freezeCheckpoint(
+    request: Parameters<IngestionAuthorityPort['freezeCheckpoint']>[0],
+  ) {
+    expect(request.expectedState).toBe(this.state);
+    expect(request.expectedVersion).toBe(this.version);
+    this.order.push(`authority:${request.toState}`);
+    this.state = request.toState;
+    this.version += 1;
+    this.frozenCheckpoint = structuredClone(request.checkpoint);
+    return Promise.resolve({
+      state: request.toState,
+      version: this.version,
+      reviewHash: request.checkpoint.reviewHash,
     });
   }
 
@@ -77,6 +107,24 @@ class FakeAuthority implements IngestionAuthorityPort {
     this.state = request.toState;
     this.version += 1;
     return Promise.resolve({ state: request.toState, version: this.version });
+  }
+
+  recordFingerprints(
+    request: Parameters<IngestionAuthorityPort['recordFingerprints']>[0],
+  ) {
+    expect(request.expectedState).toBe(this.state);
+    expect(request.expectedVersion).toBe(this.version);
+    this.order.push('authority:FINGERPRINTED');
+    this.assets = this.assets.map((asset, index) => ({
+      ...asset,
+      sourceHash: request.fingerprints[index]!.sourceHash,
+    }));
+    this.state = 'FINGERPRINTED';
+    this.version += 1;
+    return Promise.resolve({
+      state: 'FINGERPRINTED' as const,
+      version: this.version,
+    });
   }
 
   commit(request: Parameters<IngestionAuthorityPort['commit']>[0]) {
@@ -118,6 +166,7 @@ function setup(
       {
         assetId: '99999999-9999-4999-8999-999999999999',
         ordinal: 1,
+        uploadId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
         objectRef: 'quarantine/object-1',
         mediaType: 'application/geo+json',
         sourceKind: 'geojson',
@@ -144,13 +193,15 @@ function setup(
       },
     },
     fingerprint: {
-      sha256: () => {
+      sha256: ({ objectRef }) => {
         order.push('fingerprint');
-        return Promise.resolve('a'.repeat(64));
+        return Promise.resolve(
+          objectRef.endsWith('object-1') ? 'b'.repeat(64) : 'a'.repeat(64),
+        );
       },
     },
     parser: {
-      parse: () => {
+      parse: ({ objectRef, sourceKind }) => {
         order.push('parse');
         if (parserFailures > 0) {
           parserFailures -= 1;
@@ -164,8 +215,10 @@ function setup(
         }
         if (overrides.parserError) return Promise.reject(overrides.parserError);
         return Promise.resolve({
-          kind: 'document' as const,
-          contentHash: 'b'.repeat(64),
+          kind: sourceKind,
+          contentHash: objectRef.endsWith('object-1')
+            ? 'b'.repeat(64)
+            : 'a'.repeat(64),
           metadata: { title: 'Water report' },
         });
       },
@@ -243,7 +296,11 @@ function setup(
   return {
     order,
     authority,
-    handler: createIngestionPipelineHandler(options),
+    handler: (candidate: ClaimedDataJob) =>
+      createIngestionPipelineHandler(options)({
+        ...candidate,
+        securityLevel: authority.securityLevel,
+      }),
   };
 }
 
@@ -261,6 +318,21 @@ describe('Agent-native ingestion pipeline', () => {
         retryable: false,
       });
     }
+  });
+
+  it('uses a deep canonical JSON hash with a fixed regression vector', () => {
+    expect(
+      canonicalPipelineHash({
+        z: [{ beta: 2, alpha: 1 }, true],
+        a: { nested: '水', number: -0 },
+      }),
+    ).toBe('59cb7d367be43ae34ad161a49488f5c2ee15c0825267e59521b2776f11ab3f61');
+    expect(
+      canonicalPipelineHash({
+        a: { number: 0, nested: '水' },
+        z: [{ alpha: 1, beta: 2 }, true],
+      }),
+    ).toBe('59cb7d367be43ae34ad161a49488f5c2ee15c0825267e59521b2776f11ab3f61');
   });
 
   it('runs the unique pipeline order and atomically commits ordinary passing L0 data', async () => {
@@ -375,6 +447,105 @@ describe('Agent-native ingestion pipeline', () => {
     expect(authority.commits).toBe(1);
     expect(order.filter((entry) => entry === 'quarantine')).toHaveLength(2);
     expect(order.filter((entry) => entry === 'parse')).toHaveLength(2);
+  });
+
+  it('rejects non-contiguous authority ordinals before any external stage runs', async () => {
+    const value = setup({ assetCount: 2 });
+    value.authority.assets[1] = {
+      ...value.authority.assets[1]!,
+      ordinal: 2,
+    };
+    await expect(value.handler(job)).rejects.toMatchObject({
+      category: 'INGESTION_AUTHORITY_CONFLICT',
+      retryable: false,
+    });
+    expect(value.order).toEqual(['authority:load']);
+  });
+
+  it('commits an approved high-risk checkpoint without replaying any stage port', async () => {
+    const reviewed = setup({ securityLevel: 'L2_RESTRICTED' });
+    await expect(reviewed.handler(job)).resolves.toMatchObject({
+      status: 'WAITING_REVIEW',
+    });
+    const frozen = reviewed.authority.frozenCheckpoint;
+    expect(frozen).toBeDefined();
+    if (frozen === undefined) throw new Error('missing frozen checkpoint');
+    const manifestAssets = frozen.assetManifest.assets;
+    const validatedPlan = frozen.assetManifest.validatedPlan;
+    if (!Array.isArray(manifestAssets) || !isRecord(validatedPlan)) {
+      throw new Error('invalid frozen checkpoint fixture');
+    }
+    const firstManifestAsset: unknown = manifestAssets[0];
+    if (!isRecord(firstManifestAsset)) {
+      throw new Error('invalid frozen asset fixture');
+    }
+    expect(firstManifestAsset.scanHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(validatedPlan.planHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(frozen.assetManifest).toMatchObject({
+      assets: [
+        {
+          assetId: reviewed.authority.assets[0]!.assetId,
+          sourceHash: 'a'.repeat(64),
+          parserHash: 'a'.repeat(64),
+          profileHash: 'c'.repeat(64),
+          classificationHash: 'd'.repeat(64),
+        },
+      ],
+      transformedHash: 'e'.repeat(64),
+    });
+
+    const approved = setup({ securityLevel: 'L2_RESTRICTED' });
+    approved.authority.state = 'APPROVED';
+    approved.authority.version = 11;
+    approved.authority.frozenCheckpoint = frozen;
+    const approvedJob = {
+      ...job,
+      securityLevel: 'L2_RESTRICTED' as const,
+      payload: {
+        ingestionId: payload.ingestionId,
+        expectedState: 'APPROVED' as const,
+        expectedVersion: 11,
+      },
+    };
+    await expect(approved.handler(approvedJob)).resolves.toMatchObject({
+      status: 'SUCCEEDED',
+      result: { state: 'COMMITTED' },
+    });
+    expect(approved.order).toEqual(['authority:load', 'authority:COMMITTED']);
+    expect(approved.authority.commits).toBe(1);
+  });
+
+  it('rejects an APPROVED job fence that does not match the checkpoint chain', async () => {
+    const value = setup();
+    value.authority.state = 'FINGERPRINTED';
+    value.authority.version = 4;
+    await expect(
+      value.handler({
+        ...job,
+        payload: {
+          ingestionId: payload.ingestionId,
+          expectedState: 'APPROVED',
+          expectedVersion: 3,
+        },
+      }),
+    ).rejects.toMatchObject({
+      category: 'INGESTION_AUTHORITY_CONFLICT',
+      retryable: false,
+    });
+    expect(value.order).toEqual(['authority:load']);
+  });
+
+  it('rejects a computed fingerprint that differs from the authoritative source hash', async () => {
+    const value = setup();
+    value.authority.assets[0] = {
+      ...value.authority.assets[0]!,
+      sourceHash: 'b'.repeat(64),
+    };
+    await expect(value.handler(job)).rejects.toMatchObject({
+      category: 'OBJECT_INTEGRITY_MISMATCH',
+      retryable: false,
+    });
+    expect(value.authority.state).toBe('SECURITY_SCANNED');
   });
 
   it('returns persisted review/commit checkpoints without replaying stages', async () => {

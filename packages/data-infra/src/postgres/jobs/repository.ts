@@ -110,6 +110,8 @@ function claimedJob(row: Readonly<Record<string, unknown>>): ClaimedDataJob {
   const leaseOwner = requiredString(row, 'lease_owner');
   return {
     jobId: requiredString(row, 'job_id'),
+    tenantId: requiredString(row, 'tenant_id'),
+    projectId: requiredString(row, 'project_id'),
     operationId: requiredString(row, 'operation_id'),
     jobType: requiredString(row, 'job_type'),
     payload: record(row, 'payload'),
@@ -119,6 +121,11 @@ function claimedJob(row: Readonly<Record<string, unknown>>): ClaimedDataJob {
     leaseExpiresAt: requiredString(row, 'lease_expires_at'),
     rowVersion: integer(row, 'row_version'),
     cancelRequested: row.cancel_requested_at !== null,
+    securityLevel: requiredString(row, 'security_level') as Exclude<
+      ClaimedDataJob['securityLevel'],
+      undefined
+    >,
+    policyVersion: integer(row, 'policy_version'),
   };
 }
 

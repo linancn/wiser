@@ -34,6 +34,32 @@ class FakeClient implements DataJobDatabaseClient {
         Object.assign(new Error('stale worker lease'), { code: '55000' }),
       );
     }
+    if (/claim_jobs_at/i.test(text)) {
+      return Promise.resolve({
+        rows: [
+          {
+            job_id: lease.jobId,
+            tenant_id: scope.tenantId,
+            project_id: scope.projectId,
+            operation_id: '44444444-4444-4444-8444-444444444444',
+            job_type: 'data.ingestion.process',
+            payload: {
+              ingestionId: '55555555-5555-4555-8555-555555555555',
+              expectedState: 'RECEIVED',
+              expectedVersion: 1,
+            },
+            attempt_count: 1,
+            max_attempts: 5,
+            lease_owner: 'worker-a',
+            lease_expires_at: '2026-08-22T02:02:00.000Z',
+            row_version: 2,
+            cancel_requested_at: null,
+            security_level: 'L2_RESTRICTED',
+            policy_version: 7,
+          },
+        ],
+      });
+    }
     if (/settle_job/i.test(text)) {
       return Promise.resolve({
         rows: [
@@ -86,6 +112,26 @@ describe('deterministic job retry policy', () => {
 });
 
 describe('Postgres Data Job repository', () => {
+  it('carries authoritative tenant, project, security, and policy scope on claims', async () => {
+    const repository = new PostgresDataJobRepository(new FakePool());
+    await expect(
+      repository.claim(
+        scope,
+        'worker-a',
+        1,
+        120_000,
+        '2026-08-22T02:00:00.000Z',
+      ),
+    ).resolves.toMatchObject([
+      {
+        tenantId: scope.tenantId,
+        projectId: scope.projectId,
+        securityLevel: 'L2_RESTRICTED',
+        policyVersion: scope.policyVersion,
+      },
+    ]);
+  });
+
   it('settles job, Operation event, and Outbox through one short transaction', async () => {
     const pool = new FakePool();
     const repository = new PostgresDataJobRepository(pool);

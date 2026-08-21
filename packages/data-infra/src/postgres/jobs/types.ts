@@ -27,6 +27,10 @@ export interface DataJobLease {
 
 export interface ClaimedDataJob {
   readonly jobId: string;
+  /** Present on every PostgreSQL-backed claim; optional for generic test/runtime jobs. */
+  readonly tenantId?: string;
+  /** Present on every PostgreSQL-backed claim; optional for generic test/runtime jobs. */
+  readonly projectId?: string;
   readonly operationId: string;
   readonly jobType: string;
   readonly payload: Readonly<Record<string, unknown>>;
@@ -36,6 +40,18 @@ export interface ClaimedDataJob {
   readonly leaseExpiresAt: string;
   readonly rowVersion: number;
   readonly cancelRequested: boolean;
+  /** Authoritative row classification copied from the claimed job. */
+  readonly securityLevel?: DataSecurityLevel;
+  /** Authoritative policy fence copied from the claimed job. */
+  readonly policyVersion?: number;
+}
+
+export const DATA_INGESTION_PROCESS_JOB_TYPE = 'data.ingestion.process';
+
+export interface DataIngestionProcessJobPayload {
+  readonly ingestionId: string;
+  readonly expectedState: 'RECEIVED' | 'APPROVED';
+  readonly expectedVersion: number;
 }
 
 export type DataJobSettlementStatus =
