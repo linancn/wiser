@@ -81,6 +81,53 @@ test('switches WISER systems without losing locale or color theme', async ({
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 
+test('offers the same unified identity surface in Chinese and English', async ({
+  page,
+}) => {
+  await page.goto('/zh-CN/login?next=/zh-CN/data-foundation');
+  await expect(page.getByRole('heading', { name: '登录 WISER' })).toBeVisible();
+  await expect(page.getByLabel('邮箱')).toBeVisible();
+  await expect(page.getByLabel('密码')).toBeVisible();
+  await expect(page.getByRole('button', { name: '登录' })).toBeVisible();
+  await expect(page.getByText('Supabase Auth', { exact: true })).toBeVisible();
+  await expect(page.locator('form')).toHaveAttribute(
+    'action',
+    '/zh-CN/auth/login',
+  );
+  await expect(page.locator('input[name="next"]')).toHaveValue(
+    '/zh-CN/data-foundation',
+  );
+
+  await page.getByRole('link', { name: 'English' }).click();
+  await expect(page).toHaveURL(/\/en\/login$/);
+  await expect(
+    page.getByRole('heading', { name: 'Sign in to WISER' }),
+  ).toBeVisible();
+  await expect(page.getByLabel('Email')).toBeVisible();
+  await expect(page.getByLabel('Password')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+});
+
+test('keeps the identity gate accessible in both themes on a narrow screen', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/zh-CN/login');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.getByRole('heading', { name: '登录 WISER' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '登录' })).toBeVisible();
+  const overflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
 test('uses a two-level global navigation and enters Runs through overview', async ({
   page,
 }) => {
