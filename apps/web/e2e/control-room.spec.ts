@@ -218,7 +218,7 @@ test('visually checks the read-only preview at desktop and 390px without browser
     await page.waitForLoadState('networkidle');
     await expect(page.getByText('设计预览')).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: '多智能体协作 Trace' }),
+      page.getByRole('heading', { name: 'Trace 探索' }),
     ).toBeVisible();
     const overflow = await page.evaluate(
       () =>
