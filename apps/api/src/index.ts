@@ -1,5 +1,10 @@
 export { buildApp, type BuildAppOptions } from './app.js';
 export {
+  createDefaultApiModules,
+  main,
+  type DefaultApiRuntimeFactories,
+} from './main.js';
+export {
   DataCapabilityHandler,
   DataCapabilityHandlerError,
   type DataCapabilityAuditPort,
@@ -13,6 +18,11 @@ export {
   type DataFoundationModuleOptions,
   type DataFoundationReadiness,
 } from './data-foundation/plugin.js';
+export {
+  createDataFoundationRuntimeFromEnvironment,
+  type DataFoundationRuntime,
+  type DataFoundationRuntimeFactories,
+} from './data-foundation/runtime.js';
 export {
   PostgresDataReadCursorError,
   PostgresDataReadError,
