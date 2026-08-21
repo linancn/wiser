@@ -230,6 +230,31 @@
   }
 }
 
+@media (max-width: 360px) {
+  .mark {
+    width: 34px;
+    height: 34px;
+  }
+
+  .brand {
+    gap: 7px;
+  }
+
+  .brand strong {
+    font-size: 16px;
+  }
+
+  .source {
+    display: none;
+  }
+
+  .language {
+    min-width: 60px;
+    padding-right: 7px;
+    padding-left: 7px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .skip {
     transition: none;

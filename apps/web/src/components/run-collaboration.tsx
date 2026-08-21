@@ -13,6 +13,7 @@ import {
   collaborationKindLabel,
   collaborationSummary,
   deliveryStateLabel,
+  interactionNeedsAttention,
 } from '@/lib/run-collaboration';
 import { ReadModelGaps } from './read-model-state';
 import { RunLiveRefresh } from './run-live-refresh';
@@ -27,6 +28,16 @@ function agentName(run: ExerciseRun, agentId: string, locale: Locale): string {
     run.participants.find(({ id }) => id === agentId)?.displayName[locale] ??
     agentId
   );
+}
+
+function senderName(
+  exchange: CollaborationExchange,
+  run: ExerciseRun,
+  locale: Locale,
+): string {
+  return exchange.senderType === 'EXCON'
+    ? getDictionary(locale).collaboration.operator
+    : agentName(run, exchange.senderId, locale);
 }
 
 function exchangeStatusLabel(
@@ -91,7 +102,7 @@ function ExchangeDetail({
         </div>
         <div>
           <dt>{copy.sender}</dt>
-          <dd>{agentName(run, exchange.senderId, locale)}</dd>
+          <dd>{senderName(exchange, run, locale)}</dd>
         </div>
         <div>
           <dt>{copy.thread}</dt>
@@ -191,11 +202,7 @@ export function RunCollaboration({
 
   const filtered = useMemo(() => {
     if (filter === 'attention') {
-      return interactions.filter(
-        ({ deliveries, status }) =>
-          status === 'open' ||
-          deliveries.some(({ state }) => state !== 'acknowledged'),
-      );
+      return interactions.filter(interactionNeedsAttention);
     }
     if (filter === 'requests') {
       return interactions.filter(
@@ -220,7 +227,9 @@ export function RunCollaboration({
 
   function selectExchange(exchangeId: string) {
     setSelectedId(exchangeId);
-    setMobileExpandedId(exchangeId);
+    setMobileExpandedId((current) =>
+      current === exchangeId ? undefined : exchangeId,
+    );
   }
 
   return (
@@ -295,7 +304,7 @@ export function RunCollaboration({
         <section className={styles.routingMap} aria-label={copy.routingMap}>
           <header>
             <span>{copy.routingMap}</span>
-            <small>MESSAGE · ARTIFACTVERSION · RECEIPT</small>
+            <small>{copy.routingProtocol}</small>
           </header>
           <div>
             {run.participants.map((agent) => {
@@ -309,6 +318,7 @@ export function RunCollaboration({
               ).length;
               return (
                 <article
+                  data-testid="collaboration-agent-node"
                   data-coordinator={agent.roleId.includes('coordination')}
                   key={agent.id}
                 >
@@ -335,7 +345,7 @@ export function RunCollaboration({
           <section className={styles.ledger} aria-labelledby="ledger-heading">
             <header className={styles.ledgerHeader}>
               <div>
-                <span>CAUSAL EXCHANGE LEDGER</span>
+                <span>{copy.ledgerEyebrow}</span>
                 <h3 id="ledger-heading">{copy.ledger}</h3>
               </div>
               <p>{copy.ledgerLede}</p>
@@ -347,7 +357,7 @@ export function RunCollaboration({
               <ol className={styles.exchangeList}>
                 {filtered.map((exchange) => {
                   const isSelected = selected?.id === exchange.id;
-                  const sender = agentName(run, exchange.senderId, locale);
+                  const sender = senderName(exchange, run, locale);
                   const recipients = exchange.recipientRunAgentIds
                     .map((agentId) => agentName(run, agentId, locale))
                     .join(locale === 'zh-CN' ? '、' : ', ');
@@ -357,6 +367,8 @@ export function RunCollaboration({
                       : exchange.kind === 'request'
                         ? 'collaboration-request'
                         : undefined;
+                  const mobileDetailId = `mobile-exchange-detail-${exchange.id}`;
+                  const isMobileExpanded = mobileExpandedId === exchange.id;
                   return (
                     <li
                       data-testid="collaboration-exchange"
@@ -371,7 +383,8 @@ export function RunCollaboration({
                         <button
                           type="button"
                           className={styles.exchangeButton}
-                          aria-controls="collaboration-inspector"
+                          aria-controls={mobileDetailId}
+                          aria-expanded={isMobileExpanded}
                           aria-pressed={isSelected}
                           onClick={() => selectExchange(exchange.id)}
                         >
@@ -395,10 +408,13 @@ export function RunCollaboration({
                             <b>{deliverySummary(exchange, locale)}</b>
                           </span>
                         </button>
-                        {mobileExpandedId === exchange.id ? (
+                        {isMobileExpanded ? (
                           <div
+                            id={mobileDetailId}
                             className={styles.mobileDetail}
                             data-testid="mobile-exchange-detail"
+                            role="region"
+                            aria-label={`${exchange.subject[locale]} · ${copy.inspector}`}
                           >
                             <ExchangeDetail
                               exchange={exchange}
@@ -425,7 +441,7 @@ export function RunCollaboration({
           >
             <div className={styles.inspectorLabel}>
               <span>{copy.inspector}</span>
-              <code>CAPTURED, NOT INFERRED</code>
+              <code>{copy.capturedNotInferred}</code>
             </div>
             {selected === undefined ? (
               <p className={styles.empty}>{copy.noExchanges}</p>

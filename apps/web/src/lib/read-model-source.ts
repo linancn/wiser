@@ -52,10 +52,13 @@ export interface RunCatalogReadModel {
 export interface RunWorkspaceReadModel {
   readonly scenario: PlatformScenario;
   readonly run: ExerciseRun;
-  readonly interactions: readonly CollaborationExchange[];
   readonly replayByPerspective: Readonly<
     Record<string, readonly ReplayReceipt[]>
   >;
+}
+
+export interface RunCollaborationReadModel extends RunWorkspaceReadModel {
+  readonly interactions: readonly CollaborationExchange[];
 }
 
 export type ReadModelUnavailableReason =
@@ -90,6 +93,9 @@ export interface WebReadModelSource {
   readRunWorkspace(
     runId: string,
   ): Promise<ReadModelResult<RunWorkspaceReadModel>>;
+  readRunCollaboration(
+    runId: string,
+  ): Promise<ReadModelResult<RunCollaborationReadModel>>;
 }
 
 export interface LiveReadModelSourceOptions {
@@ -372,6 +378,26 @@ export function createReferenceReadModelSource(): WebReadModelSource {
         );
       }
       return Promise.resolve(
+        ready('reference', { scenario, run, replayByPerspective }),
+      );
+    },
+    readRunCollaboration(runId) {
+      const run = getRunById(runId);
+      if (run === undefined) return Promise.resolve(referenceMissing(runId));
+      const scenario = getScenarioById(run.scenarioId);
+      if (scenario === undefined) {
+        return Promise.resolve(referenceMissing(run.scenarioId));
+      }
+      const replayByPerspective: Record<string, readonly ReplayReceipt[]> = {
+        operator: getReplayEventsForPerspective(run.id, 'operator'),
+      };
+      for (const participant of run.participants) {
+        replayByPerspective[participant.id] = getReplayEventsForPerspective(
+          run.id,
+          participant.id,
+        );
+      }
+      return Promise.resolve(
         ready('reference', {
           scenario,
           run,
@@ -395,6 +421,7 @@ export function createUnavailableReadModelSource(
     readScenarioWorkspace: result,
     readRunCatalog: result,
     readRunWorkspace: result,
+    readRunCollaboration: result,
   };
 }
 
@@ -1207,14 +1234,12 @@ class LiveReadModelSource implements WebReadModelSource {
           `Run ${runId} references a scenario version missing from /api/v2/scenarios.`,
         );
       }
-      const [agents, replay, telemetry, evaluations, interactions] =
-        await Promise.all([
-          this.runAgents(runId),
-          this.replay(runId),
-          this.telemetry(runId),
-          this.evaluations(runId),
-          this.interactions(runId),
-        ]);
+      const [agents, replay, telemetry, evaluations] = await Promise.all([
+        this.runAgents(runId),
+        this.replay(runId),
+        this.telemetry(runId),
+        this.evaluations(runId),
+      ]);
       if (replay.authoritativeProjection.run.id !== apiRun.id) {
         throw new ReadModelSourceError(
           'contract',
@@ -1238,8 +1263,7 @@ class LiveReadModelSource implements WebReadModelSource {
         replay.bestEffortTelemetryOverlay.traces.some(
           (trace) => trace.runId !== runId,
         ) ||
-        evaluations.some((evaluation) => evaluation.runId !== runId) ||
-        interactions.some((interaction) => interaction.runId !== runId)
+        evaluations.some((evaluation) => evaluation.runId !== runId)
       ) {
         throw new ReadModelSourceError(
           'contract',
@@ -1276,11 +1300,27 @@ class LiveReadModelSource implements WebReadModelSource {
         {
           scenario,
           run,
-          interactions,
           replayByPerspective: { operator: run.replayReceipts },
         },
         gaps,
       );
+    });
+  }
+
+  async readRunCollaboration(
+    runId: string,
+  ): Promise<ReadModelResult<RunCollaborationReadModel>> {
+    const workspace = await this.readRunWorkspace(runId);
+    if (workspace.status === 'unavailable') return workspace;
+    return this.capture(async () => {
+      const interactions = await this.interactions(runId);
+      if (interactions.some((interaction) => interaction.runId !== runId)) {
+        throw new ReadModelSourceError(
+          'contract',
+          `An interaction returned for ${runId} references a different Run.`,
+        );
+      }
+      return ready('live', { ...workspace.data, interactions }, workspace.gaps);
     });
   }
 

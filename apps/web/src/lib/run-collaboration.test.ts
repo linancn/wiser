@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { getReferenceInteractions } from './platform';
-import { collaborationSummary, deliveryStateLabel } from './run-collaboration';
+import {
+  collaborationSummary,
+  deliveryStateLabel,
+  interactionNeedsAttention,
+} from './run-collaboration';
 
 describe('Run collaboration projection', () => {
   it('summarizes the reference Run from causal exchanges, not telemetry', () => {
@@ -23,5 +27,41 @@ describe('Run collaboration projection', () => {
     expect(deliveryStateLabel('issued', 'zh-CN')).toBe('已签发可见性收据');
     expect(deliveryStateLabel('acknowledged', 'zh-CN')).toBe('接收批次已确认');
     expect(deliveryStateLabel('acknowledged', 'zh-CN')).not.toContain('已读');
+  });
+
+  it('counts only fully acknowledged handoffs and fully answered requests as closed', () => {
+    const interactions = getReferenceInteractions('run-yongding-spring-042');
+    const partial = interactions.map((exchange, index) => {
+      if (index === 0) {
+        return {
+          ...exchange,
+          deliveries: exchange.deliveries.map((delivery) => ({
+            ...delivery,
+            state: 'issued' as const,
+          })),
+          status: 'open' as const,
+        };
+      }
+      if (exchange.kind === 'request') {
+        return {
+          ...exchange,
+          responseMessageIds: exchange.responseMessageIds.slice(0, 2),
+          status: 'open' as const,
+        };
+      }
+      return exchange;
+    });
+
+    expect(collaborationSummary(partial)).toMatchObject({
+      acknowledgedDeliveries: 8,
+      handoffCount: 2,
+      openRequestCount: 1,
+    });
+    expect(interactionNeedsAttention(partial[0]!)).toBe(true);
+    expect(
+      interactionNeedsAttention(
+        partial.find(({ kind }) => kind === 'request')!,
+      ),
+    ).toBe(true);
   });
 });

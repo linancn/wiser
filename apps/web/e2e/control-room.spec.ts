@@ -146,7 +146,7 @@ test('observes parallel agents, cross-agent links, and perspective replay', asyn
 
 test('shows causal agent exchanges and per-recipient delivery without claiming they were read', async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto('/zh-CN/runs/run-yongding-spring-042/collaboration');
 
   await expect(
@@ -156,11 +156,15 @@ test('shows causal agent exchanges and per-recipient delivery without claiming t
     'aria-current',
     'page',
   );
-  await expect(
-    page.getByRole('button', { name: '刷新协作状态' }),
-  ).toBeVisible();
+  const refreshButton = page.getByRole('button', { name: '刷新协作状态' });
+  await expect(refreshButton).toBeVisible();
   await expect(page.getByTestId('collaboration-refresh-status')).toContainText(
     '参考投影',
+  );
+  await refreshButton.click();
+  await expect(refreshButton).toBeEnabled();
+  await expect(page.getByTestId('collaboration-refresh-status')).toContainText(
+    '最后更新',
   );
   await expect(page.getByTestId('collaboration-exchange')).toHaveCount(7);
   await expect(page.getByTestId('collaboration-handoff')).toHaveCount(3);
@@ -168,7 +172,12 @@ test('shows causal agent exchanges and per-recipient delivery without claiming t
   await expect(page.getByText('3 个专业工件已交接')).toBeVisible();
 
   const request = page.getByTestId('collaboration-request');
-  await request.getByRole('button').click();
+  const requestButton = request.getByRole('button').first();
+  await expect(requestButton).toHaveAttribute('aria-expanded', 'false');
+  const mobileRegionId = await requestButton.getAttribute('aria-controls');
+  expect(mobileRegionId).toMatch(/^mobile-exchange-detail-/);
+  await requestButton.click();
+  await expect(requestButton).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByTestId('collaboration-inspector')).toContainText(
     '来水研判智能体',
   );
@@ -176,22 +185,85 @@ test('shows causal agent exchanges and per-recipient delivery without claiming t
     '接收批次已确认',
   );
   await expect(page.getByText('已读', { exact: true })).toHaveCount(0);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath('desktop-collaboration-expanded.png'),
+  });
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await expect(page.getByTestId('collaboration-exchange')).toHaveCount(7);
-  await page.getByTestId('collaboration-request').getByRole('button').click();
-  await expect(
-    page
-      .getByTestId('collaboration-request')
-      .getByTestId('mobile-exchange-detail'),
-  ).toBeVisible();
+  const mobileRequest = page.getByTestId('collaboration-request');
+  const mobileRequestButton = mobileRequest.getByRole('button').first();
+  await mobileRequestButton.click();
+  const mobileDetail = mobileRequest.getByTestId('mobile-exchange-detail');
+  await expect(mobileDetail).toBeVisible();
+  await expect(mobileDetail).toHaveAttribute('role', 'region');
+  const smallestExpanded = await mobileDetail.evaluate((root) =>
+    [...root.querySelectorAll('*')]
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return (
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          rect.width > 0 &&
+          rect.height > 0 &&
+          element.children.length === 0 &&
+          (element.textContent ?? '').trim().length > 0
+        );
+      })
+      .reduce(
+        (minimum, element) =>
+          Math.min(
+            minimum,
+            Number.parseFloat(getComputedStyle(element).fontSize),
+          ),
+        Number.POSITIVE_INFINITY,
+      ),
+  );
+  expect(smallestExpanded).toBeGreaterThanOrEqual(11.5);
   const overflow = await page.evaluate(
     () =>
       document.documentElement.scrollWidth -
       document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(1);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath('mobile-collaboration-expanded.png'),
+  });
+
+  await mobileRequestButton.click();
+  await expect(mobileRequestButton).toHaveAttribute('aria-expanded', 'false');
+  await expect(mobileDetail).toHaveCount(0);
+
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto('/en/runs/run-yongding-spring-042/collaboration');
+  await expect(
+    page.getByRole('heading', {
+      name: 'Collaboration confluence',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByTestId('collaboration-agent-node')).toHaveCount(4);
+  const firstNode = await page
+    .getByTestId('collaboration-agent-node')
+    .nth(0)
+    .boundingBox();
+  const secondNode = await page
+    .getByTestId('collaboration-agent-node')
+    .nth(1)
+    .boundingBox();
+  expect(secondNode?.y).toBeGreaterThan(firstNode?.y ?? 0);
+  const englishOverflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
+  expect(englishOverflow).toBeLessThanOrEqual(1);
 });
 
 test('keeps the operator workspace usable on a narrow screen', async ({

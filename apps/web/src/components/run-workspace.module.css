@@ -690,3 +690,29 @@
     border-left: 0;
   }
 }
+
+@media (max-width: 360px) {
+  .statusStrip > div {
+    overflow: hidden;
+  }
+
+  .statusStrip dt,
+  .statusStrip dd {
+    overflow-wrap: anywhere;
+  }
+
+  .localNav {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .localNav a {
+    flex: 0 0 auto;
+    min-width: 68px;
+    padding-right: 10px;
+    padding-left: 10px;
+    overflow-wrap: normal;
+    white-space: nowrap;
+  }
+}

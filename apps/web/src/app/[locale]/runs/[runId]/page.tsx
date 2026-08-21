@@ -24,7 +24,7 @@ export default async function RunOverviewPage({
   const { locale, runId } = await params;
   if (!isLocale(locale)) notFound();
   const source = await getWebReadModelSource();
-  const result = await source.readRunWorkspace(runId);
+  const result = await source.readRunCollaboration(runId);
   if (result.status === 'unavailable') {
     return <ReadModelUnavailable locale={locale} {...result} />;
   }

@@ -180,7 +180,7 @@
 .routingMap header small {
   color: #87a39b;
   font-family: 'SFMono-Regular', 'IBM Plex Mono', monospace;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .routingMap > div {
@@ -196,17 +196,6 @@
   border: 1px solid #477067;
   border-radius: 12px;
   background: #20463e;
-}
-
-.routingMap article:not(:last-child)::after {
-  position: absolute;
-  z-index: 1;
-  top: 31px;
-  left: calc(100% + 1px);
-  width: 19px;
-  height: 2px;
-  background: #55bfd0;
-  content: '';
 }
 
 .routingMap article[data-coordinator='true'] {
@@ -255,7 +244,7 @@
 
 .routingMap dt {
   color: #9cb6ae;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .routingMap dd {
@@ -457,7 +446,7 @@
 
 .inspectorLabel code {
   color: #efb653;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .detailHeader,
@@ -509,7 +498,7 @@
 .detailFacts dt,
 .detailSection h4 {
   color: #9fb9b1;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -575,14 +564,14 @@
 .deliveryList small {
   margin-top: 2px;
   color: #a8c0b9;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .deliveryList code {
   grid-column: 2;
   grid-row: 1;
   color: #8dd3dd;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .artifactList li {
@@ -600,12 +589,12 @@
 
 .artifactList code {
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .artifactList small {
   color: #95b3aa;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .responseLinks {
@@ -631,7 +620,7 @@
 .responseLinks span,
 .responseLinks strong,
 .responseLinks small {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .responseLinks span {
@@ -776,10 +765,6 @@
     padding: 12px;
   }
 
-  .routingMap article::after {
-    display: none;
-  }
-
   .routingMap article strong {
     font-size: 12px;
   }
@@ -887,7 +872,7 @@
     grid-column: 1;
     grid-row: auto;
     padding-left: 16px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .responseLinks button {
@@ -897,6 +882,37 @@
   .responseLinks strong {
     grid-column: 1 / -1;
     grid-row: 2;
+  }
+}
+
+@media (max-width: 360px) {
+  .page {
+    width: min(calc(100% - 20px), 1500px);
+  }
+
+  .routingMap > div {
+    grid-template-columns: 1fr;
+  }
+
+  .statusBand {
+    grid-template-columns: 1fr;
+  }
+
+  .statusBand > span:nth-of-type(odd) {
+    border-right: 0;
+  }
+
+  .refreshBar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .refreshBar span {
+    max-width: none;
+  }
+
+  .refreshBar button {
+    width: 100%;
   }
 }
 

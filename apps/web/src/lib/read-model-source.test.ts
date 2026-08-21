@@ -346,7 +346,22 @@ describe('Web read-model sources', () => {
     expect(result.data.run.participants).toHaveLength(1);
     expect(result.data.run.spans).toEqual([]);
     expect(result.data.run.traceSummaries).toHaveLength(1);
-    expect(result.data.interactions).toMatchObject([
+    expect(
+      fetcher.mock.calls.some(([input]) =>
+        (typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url
+        ).includes('/interactions'),
+      ),
+    ).toBe(false);
+    const collaboration = await source.readRunCollaboration(RUN_ID);
+    expect(collaboration.status).toBe('ready');
+    if (collaboration.status !== 'ready') {
+      throw new Error('expected live collaboration data');
+    }
+    expect(collaboration.data.interactions).toMatchObject([
       {
         kind: 'handoff',
         deliveries: [{ state: 'acknowledged' }],
@@ -489,6 +504,9 @@ describe('Web read-model sources', () => {
     });
 
     await expect(source.readRunWorkspace(RUN_ID)).resolves.toMatchObject({
+      status: 'ready',
+    });
+    await expect(source.readRunCollaboration(RUN_ID)).resolves.toMatchObject({
       status: 'unavailable',
       reason: 'contract',
     });
@@ -512,6 +530,9 @@ describe('Web read-model sources', () => {
     });
 
     await expect(source.readRunWorkspace(RUN_ID)).resolves.toMatchObject({
+      status: 'ready',
+    });
+    await expect(source.readRunCollaboration(RUN_ID)).resolves.toMatchObject({
       status: 'unavailable',
       reason: 'contract',
     });

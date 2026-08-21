@@ -22,7 +22,11 @@ export function collaborationSummary(
     acknowledgedDeliveries: deliveries.filter(
       ({ state }) => state === 'acknowledged',
     ).length,
-    handoffCount: exchanges.filter(({ kind }) => kind === 'handoff').length,
+    handoffCount: exchanges.filter(
+      ({ deliveries, kind }) =>
+        kind === 'handoff' &&
+        deliveries.every(({ state }) => state === 'acknowledged'),
+    ).length,
     openRequestCount: exchanges.filter(
       ({ kind, status }) => kind === 'request' && status === 'open',
     ).length,
@@ -30,6 +34,15 @@ export function collaborationSummary(
     responseCount: exchanges.filter(({ kind }) => kind === 'response').length,
     totalDeliveries: deliveries.length,
   };
+}
+
+export function interactionNeedsAttention(
+  exchange: CollaborationExchange,
+): boolean {
+  return (
+    exchange.status === 'open' ||
+    exchange.deliveries.some(({ state }) => state !== 'acknowledged')
+  );
 }
 
 export function deliveryStateLabel(
