@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
@@ -42,7 +44,7 @@ const dataItem = {
     name: 'Data steward',
     email: 'steward@example.test',
   },
-  authorizationScopes: ['data.catalog.read'],
+  authorizationScope: 'data.catalog.read',
   citationRequirements: ['Cite the immutable data item version.'],
   spatialExtent: {
     bbox: [115, 39, 117, 41],
@@ -169,10 +171,208 @@ const validCapabilityInputs = {
     expectedVersion: 1,
   },
   'data.operation.get': { operationId: OPERATION_ID },
+} satisfies Record<DataCapabilityId, Readonly<Record<string, unknown>>>;
+
+const expectedCapabilityMappings = {
+  'data.catalog.search': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/catalog/data-items',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataCatalog' },
+    mcpMapping: { toolName: 'data_catalog_search' },
+    skillMapping: { operation: 'data.catalog.search' },
+  },
+  'data.catalog.get': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/catalog/data-items/:dataItemId',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataItem' },
+    mcpMapping: { toolName: 'data_catalog_get' },
+    skillMapping: { operation: 'data.catalog.get' },
+  },
+  'data.query': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/query',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataQuery' },
+    mcpMapping: { toolName: 'data_query' },
+    skillMapping: { operation: 'data.query' },
+  },
+  'data.search.federated': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/search',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataSearch' },
+    mcpMapping: { toolName: 'data_search_federated' },
+    skillMapping: { operation: 'data.search.federated' },
+  },
+  'data.knowledge.search': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/knowledge/search',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'knowledgeSearch' },
+    mcpMapping: { toolName: 'data_knowledge_search' },
+    skillMapping: { operation: 'data.knowledge.search' },
+  },
+  'data.graph.expand': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/graph/expand',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'graphExpand' },
+    mcpMapping: { toolName: 'data_graph_expand' },
+    skillMapping: { operation: 'data.graph.expand' },
+  },
+  'data.graph.findPath': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/graph/find-path',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'graphFindPath' },
+    mcpMapping: { toolName: 'data_graph_find_path' },
+    skillMapping: { operation: 'data.graph.findPath' },
+  },
+  'data.geo.query': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/geo/query',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'geoQuery' },
+    mcpMapping: { toolName: 'data_geo_query' },
+    skillMapping: { operation: 'data.geo.query' },
+  },
+  'data.geo.intersect': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/geo/intersect',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'geoIntersect' },
+    mcpMapping: { toolName: 'data_geo_intersect' },
+    skillMapping: { operation: 'data.geo.intersect' },
+  },
+  'data.ingestion.create': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/ingestions',
+      successStatus: 202,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'createDataIngestion',
+    },
+    mcpMapping: { toolName: 'data_ingestion_create' },
+    skillMapping: { operation: 'data.ingestion.create' },
+  },
+  'data.ingestion.submit': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/ingestions/:ingestionId/submit',
+      successStatus: 202,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'submitDataIngestion',
+    },
+    mcpMapping: { toolName: 'data_ingestion_submit' },
+    skillMapping: { operation: 'data.ingestion.submit' },
+  },
+  'data.operation.get': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/operations/:operationId',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataOperation' },
+    mcpMapping: { toolName: 'data_operation_get' },
+    skillMapping: { operation: 'data.operation.get' },
+  },
+} satisfies Record<DataCapabilityId, unknown>;
+
+const expectedJsonSchemaHashes = {
+  'data.catalog.search': {
+    input: '0200fec39a66bcfc428b442a5302a5171ec3d3d19fd98e937e1b85f60257ed49',
+    output: 'dd965149834a8f23f11449b6988ca7acee74fa394e4964d4e4fb610f5fd434d1',
+  },
+  'data.catalog.get': {
+    input: '59f8155f67dd96336971960f7143c640e2fd75643846ab1b4c835a1602857078',
+    output: 'ec49b4213125b3a70612ef02f4859fb1861eee31947e5c69707f8bbf278953d2',
+  },
+  'data.query': {
+    input: '20d4bff3890ed680749126034103e2bed7e1d67224cd0ca5837ce068568f0648',
+    output: 'b1b42ca06ee4283a115c26570cbf68724807dca70f361815dd5932f38b7816c4',
+  },
+  'data.search.federated': {
+    input: 'e542ee0fb3fba029e37dd03dfe259033d3a1a3dd85ee05d0b117beda5603bb1f',
+    output: '7cd253bdc1e4ba282a199b8c9f17be12f207cb32e19d2be94358119d2a0195e9',
+  },
+  'data.knowledge.search': {
+    input: 'bd3bd75072c95fa8489422d2974cd7f508cc1fc9a28c1d0419ba2bb4ee12503e',
+    output: '7cd253bdc1e4ba282a199b8c9f17be12f207cb32e19d2be94358119d2a0195e9',
+  },
+  'data.graph.expand': {
+    input: 'b2a97fa2b258d7ab662204c5d16c1d3f06a44ae08764897983e29bb3bddc67c4',
+    output: 'f441e464b240788a240a2e06cb585f6762dcaa78fa76f3e523c063c964dadaef',
+  },
+  'data.graph.findPath': {
+    input: '4e43ce54e4fe4f4997e32f1f2c6573bcf610e1d38921a4b4fd0093971831a10e',
+    output: 'f441e464b240788a240a2e06cb585f6762dcaa78fa76f3e523c063c964dadaef',
+  },
+  'data.geo.query': {
+    input: '2036d4561ed61bc9fab314ae85485e3f6663570ecbd6aee136dd72ef3ce26acb',
+    output: 'dc587a390c429b04bdaecc5ea2facc37b323400e31a9a63e5db3f018f8673047',
+  },
+  'data.geo.intersect': {
+    input: '149e9a9d34ec3aaa0abf18e5f998c5016d4fb8b397bcaf7b2cfa6669357a6fd0',
+    output: 'dc587a390c429b04bdaecc5ea2facc37b323400e31a9a63e5db3f018f8673047',
+  },
+  'data.ingestion.create': {
+    input: '2991848d7da6f56eb4640306c007e13e2f9727bff669d07d4f1dcbf7711ec2b4',
+    output: '7b19ccfcc5f4207960d70b1c1db9eec56640a2370c6a27f3dfaa97e61008c6f4',
+  },
+  'data.ingestion.submit': {
+    input: '47ed04cb0df6082ab3eebccb7e9baf18d299de127844ec5bb64c14f94ab26b62',
+    output: '928bf9ac9cdd29b9a23353f39dee4a4b4c5cb50f2878b9fc92c3d3fbf53633be',
+  },
+  'data.operation.get': {
+    input: '09011488985ab0fd152fd0d78a556e7a698c5491c863bf2ccef9984e486d0662',
+    output: 'f413231e63ad67f73058ed7e86bbd247ebd235de4dedb9472f618427fab4fd98',
+  },
 } satisfies Record<
   DataCapabilityId,
-  Readonly<Record<string, unknown>>
+  Readonly<{ input: string; output: string }>
 >;
+
+function normalizeJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map((entry) => normalizeJson(entry));
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Readonly<Record<string, unknown>>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, entry]) => [key, normalizeJson(entry)]),
+    );
+  }
+  return value;
+}
+
+function jsonSchemaHash(schema: z.ZodType): string {
+  const generated = z.toJSONSchema(schema, { target: 'draft-7' });
+  const canonicalJson = JSON.stringify(normalizeJson(generated));
+  return createHash('sha256').update(canonicalJson).digest('hex');
+}
 
 describe('Data Foundation status contracts', () => {
   it('accepts every specified status and keeps the dimensions independent', () => {
@@ -214,7 +414,6 @@ describe('Data Foundation status contracts', () => {
       'CLASSIFIED',
       'SCHEMA_MAPPED',
       'SEMANTIC_MAPPED',
-      'TRANSFORMED',
       'VALIDATED',
       'SPATIOTEMPORAL_ALIGNED',
       'REVIEW_REQUIRED',
@@ -260,7 +459,25 @@ describe('Data Foundation DTO contracts', () => {
       DataItemVersionSchema.safeParse({ ...dataItemVersion, mutable: true })
         .success,
     ).toBe(false);
-    expect(OperationSchema.safeParse({ ...operation, internalJobId: 'job-1' }).success).toBe(
+    expect(
+      OperationSchema.safeParse({ ...operation, internalJobId: 'job-1' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('rejects missing required fields at every public DTO boundary', () => {
+    const dataItemWithoutName: Record<string, unknown> = { ...dataItem };
+    delete dataItemWithoutName.name;
+    const versionWithoutId: Record<string, unknown> = { ...dataItemVersion };
+    delete versionWithoutId.versionId;
+    const operationWithoutStatus: Record<string, unknown> = { ...operation };
+    delete operationWithoutStatus.status;
+
+    expect(DataItemSchema.safeParse(dataItemWithoutName).success).toBe(false);
+    expect(DataItemVersionSchema.safeParse(versionWithoutId).success).toBe(
+      false,
+    );
+    expect(OperationSchema.safeParse(operationWithoutStatus).success).toBe(
       false,
     );
   });
@@ -282,9 +499,7 @@ describe('Data Foundation capability registry', () => {
       'data.ingestion.submit',
       'data.operation.get',
     ]);
-    expect(Object.keys(DATA_CAPABILITY_REGISTRY)).toEqual(
-      DATA_CAPABILITY_IDS,
-    );
+    expect(Object.keys(DATA_CAPABILITY_REGISTRY)).toEqual(DATA_CAPABILITY_IDS);
 
     for (const capabilityId of DATA_CAPABILITY_IDS) {
       const definition = DATA_CAPABILITY_REGISTRY[capabilityId];
@@ -293,10 +508,12 @@ describe('Data Foundation capability registry', () => {
         true,
       );
       expect(definition.requiredScopes.length).toBeGreaterThan(0);
-      expect(definition.restMapping.path).toMatch(/^\/api\/data\/v1\//);
-      expect(definition.graphqlMapping.field.length).toBeGreaterThan(0);
-      expect(definition.mcpMapping.toolName).toMatch(/^data_/);
-      expect(definition.skillMapping.operation).toBe(capabilityId);
+      expect({
+        restMapping: definition.restMapping,
+        graphqlMapping: definition.graphqlMapping,
+        mcpMapping: definition.mcpMapping,
+        skillMapping: definition.skillMapping,
+      }).toEqual(expectedCapabilityMappings[capabilityId]);
     }
   });
 
@@ -314,6 +531,12 @@ describe('Data Foundation capability registry', () => {
 
   it('rejects incomplete or extended capability definitions', () => {
     const definition = DATA_CAPABILITY_REGISTRY['data.catalog.search'];
+    const incompleteDefinition: Record<string, unknown> = { ...definition };
+    delete incompleteDefinition.outputSchema;
+
+    expect(
+      CapabilityDefinitionSchema.safeParse(incompleteDefinition).success,
+    ).toBe(false);
     expect(
       CapabilityDefinitionSchema.safeParse({
         ...definition,
@@ -325,9 +548,7 @@ describe('Data Foundation capability registry', () => {
 
 describe('Data Foundation JSON Schema generation', () => {
   it('keeps enum and strict DTO JSON Schema output stable', () => {
-    expect(
-      z.toJSONSchema(SecurityLevelSchema, { target: 'draft-7' }),
-    ).toEqual({
+    expect(z.toJSONSchema(SecurityLevelSchema, { target: 'draft-7' })).toEqual({
       $schema: 'http://json-schema.org/draft-07/schema#',
       type: 'string',
       enum: ['L0_PUBLIC', 'L1_INTERNAL', 'L2_RESTRICTED', 'L3_CONFIDENTIAL'],
@@ -354,7 +575,7 @@ describe('Data Foundation JSON Schema generation', () => {
         'ownerProjectId',
         'sourceOrganization',
         'sourceContact',
-        'authorizationScopes',
+        'authorizationScope',
         'citationRequirements',
         'spatialExtent',
         'sourceCrs',
@@ -387,7 +608,7 @@ describe('Data Foundation JSON Schema generation', () => {
         'intendedUses',
         'ownerProjectId',
         'sourceOrganization',
-        'authorizationScopes',
+        'authorizationScope',
         'citationRequirements',
         'unitDefinitions',
         'missingValueRules',
@@ -413,6 +634,10 @@ describe('Data Foundation JSON Schema generation', () => {
         expect(generated.type).toBe('object');
         expect(generated.additionalProperties).toBe(false);
       }
+      expect({
+        input: jsonSchemaHash(definition.inputSchema),
+        output: jsonSchemaHash(definition.outputSchema),
+      }).toEqual(expectedJsonSchemaHashes[capabilityId]);
     }
   });
 });
