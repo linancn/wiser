@@ -25,6 +25,7 @@ export type SupportedGeoJsonGeometry =
     };
 
 export interface SpatialProjectionInput {
+  readonly spatialExtentId?: string;
   readonly tenantId: string;
   readonly projectId: string;
   readonly dataItemId: string;

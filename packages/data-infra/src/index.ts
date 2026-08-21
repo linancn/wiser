@@ -2,6 +2,7 @@ export * from './embedding/index.js';
 export * from './migrations/index.js';
 export * from './object-store/index.js';
 export * from './postgres/jobs/index.js';
+export * from './postgres/pool.js';
 export * from './projections/evidence/index.js';
 export * from './projections/graph-stac/index.js';
 export * from './projections/outbox/index.js';

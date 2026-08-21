@@ -6,6 +6,7 @@ const NAMESPACE = Buffer.from('6b215d43bd2e5bc5bb0bd9db39e8269a', 'hex');
 
 export function deterministicSpatialExtentId(value: unknown): string {
   const input = validateSpatialProjectionInput(value);
+  if (input.spatialExtentId !== undefined) return input.spatialExtentId;
   const identity = [
     input.tenantId,
     input.projectId,

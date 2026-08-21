@@ -179,7 +179,13 @@ export function validateSpatialProjectionInput(
   value: unknown,
 ): ValidatedSpatialProjectionInput {
   const candidate = object(value, 'Spatial projection input');
-  exactKeys(candidate, INPUT_KEYS, 'Spatial projection input');
+  exactKeys(
+    candidate,
+    candidate.spatialExtentId === undefined
+      ? INPUT_KEYS
+      : [...INPUT_KEYS, 'spatialExtentId'],
+    'Spatial projection input',
+  );
   if (
     typeof candidate.policyVersion !== 'number' ||
     !Number.isSafeInteger(candidate.policyVersion) ||
@@ -201,6 +207,11 @@ export function validateSpatialProjectionInput(
   const sourceSrid = Number(crsMatch[1]);
 
   return Object.freeze({
+    ...(candidate.spatialExtentId === undefined
+      ? {}
+      : {
+          spatialExtentId: uuid(candidate.spatialExtentId, 'spatialExtentId'),
+        }),
     tenantId: uuid(candidate.tenantId, 'tenantId'),
     projectId: uuid(candidate.projectId, 'projectId'),
     dataItemId: uuid(candidate.dataItemId, 'dataItemId'),

@@ -1,13 +1,10 @@
-import { PostgresDataJobRepository } from '@wiser/data-infra';
-
 import {
   closeDataWorkerHttpServer,
   createDataWorkerHttpServer,
-  DataWorkerScheduler,
-  StaticJobHandlerRegistry,
-  type DataWorkerLogger,
-} from './index.js';
+} from './http/server.js';
 import { loadDataWorkerConfig } from './config.js';
+import { createDefaultDataWorkerRuntime } from './runtime/default-runtime.js';
+import type { DataWorkerLogger } from './scheduler.js';
 
 const logger: DataWorkerLogger = {
   info(event, context) {
@@ -21,25 +18,18 @@ const logger: DataWorkerLogger = {
   },
 };
 
-async function main(environment: NodeJS.ProcessEnv): Promise<void> {
+export async function main(environment: NodeJS.ProcessEnv): Promise<void> {
   const config = loadDataWorkerConfig(environment);
   if (config.deprecatedAliases.length > 0) {
     logger.warn('data_worker_deprecated_environment_aliases', {
       aliases: config.deprecatedAliases,
     });
   }
-  const repository = PostgresDataJobRepository.connect(config.databaseUrl);
-  const scheduler = new DataWorkerScheduler({
-    repository,
-    handlers: new StaticJobHandlerRegistry([]),
-    logger,
-    scope: config.scope,
-    workerId: config.workerId,
-    claimLimit: config.claimLimit,
-    leaseMs: config.leaseMs,
-    heartbeatIntervalMs: config.heartbeatIntervalMs,
-    pollIntervalMs: config.pollIntervalMs,
-  });
+  const composition = createDefaultDataWorkerRuntime(config, logger);
+  if (composition.jobTypes.length === 0) {
+    throw new Error('Data Worker default handler registry is empty.');
+  }
+  const { runtime, scheduler } = composition;
   const server = createDataWorkerHttpServer(scheduler);
   server.listen(config.healthPort, config.healthHost);
 
@@ -48,9 +38,9 @@ async function main(environment: NodeJS.ProcessEnv): Promise<void> {
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
   try {
-    await scheduler.start(abort.signal);
+    await runtime.start(abort.signal);
   } finally {
-    await scheduler.stop();
+    await runtime.stop();
     await closeDataWorkerHttpServer(server);
     process.off('SIGINT', shutdown);
     process.off('SIGTERM', shutdown);
@@ -59,7 +49,10 @@ async function main(environment: NodeJS.ProcessEnv): Promise<void> {
 
 void main(process.env).catch((error: unknown) => {
   logger.error('data_worker_start_failed', {
-    message: error instanceof Error ? error.message : 'Unknown error',
+    category:
+      error instanceof Error
+        ? 'DATA_WORKER_START_FAILED'
+        : 'DATA_WORKER_UNKNOWN_FAILURE',
   });
   process.exitCode = 1;
 });
