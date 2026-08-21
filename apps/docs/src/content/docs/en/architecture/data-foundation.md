@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 9465d7fada3ed33d926f6afac5041f8f9980c817
+lastReviewedCommit: da0b06a2286bd856bc3948de7b4f7303a62da2cf
 ---
 
 ## Boundary and implementation status
@@ -33,7 +33,7 @@ Data Foundation is a WISER business system peer to Agent EXCON. It owns DataItem
 
 `@wiser/data-contracts` is the transport-neutral source for REST, GraphQL, MCP, Skills, and runtime validation. Public objects use `z.strictObject` and reject both unknown fields and missing required fields. Normalized draft-7 JSON Schemas are protected by SHA-256 regressions. Exact tables also lock all four transport mappings for the first 12 Capabilities; AST scanning and transport-specific schemas are forbidden.
 
-Initial Capabilities:
+The Registry preserves the stable order of its initial 12 Capabilities:
 
 ```text
 data.catalog.search       data.catalog.get
@@ -43,6 +43,18 @@ data.graph.findPath       data.geo.query
 data.geo.intersect        data.ingestion.create
 data.ingestion.submit     data.operation.get
 ```
+
+Ten control-plane Capabilities follow that stable prefix and complete the currently required REST, GraphQL, and MCP operations:
+
+```text
+data.catalog.create              data.catalog.versions.list
+data.catalog.versions.get        data.uploadSession.create
+data.uploadSession.complete      data.ingestion.get
+data.ingestion.approve           data.ingestion.reject
+data.operation.cancel            data.operation.events
+```
+
+The REST mapping for `data.operation.events` explicitly uses SSE. Graph operations remain structured `graph.expand/findPath` inputs rather than arbitrary Cypher, and no query Capability accepts arbitrary SQL or OpenSearch DSL.
 
 A `DataItem` is the smallest governance unit, not a file, table, or layer. Quality grade, acceptance status, publication status, and security level are four independent dimensions; adapters must never collapse them into one “status.”
 

@@ -28,6 +28,7 @@ const SCHEMA_VERSION_ID = '20000000-0000-4000-8000-000000000005';
 const ASSET_ID = '20000000-0000-4000-8000-000000000006';
 const INGESTION_ID = '20000000-0000-4000-8000-000000000007';
 const OPERATION_ID = '20000000-0000-4000-8000-000000000008';
+const UPLOAD_SESSION_ID = '20000000-0000-4000-8000-000000000009';
 
 const dataItem = {
   tenantId: TENANT_ID,
@@ -130,6 +131,20 @@ const point = {
   crs: 'EPSG:4490',
 } as const;
 
+const createDataItemInput: Record<string, unknown> = { ...dataItem };
+for (const serverOwnedField of [
+  'tenantId',
+  'dataItemId',
+  'qualityGrade',
+  'acceptanceStatus',
+  'publicationStatus',
+  'version',
+  'createdAt',
+  'updatedAt',
+]) {
+  delete createDataItemInput[serverOwnedField];
+}
+
 const validCapabilityInputs = {
   'data.catalog.search': { query: 'monitoring station', first: 20 },
   'data.catalog.get': { dataItemId: DATA_ITEM_ID },
@@ -171,6 +186,54 @@ const validCapabilityInputs = {
     expectedVersion: 1,
   },
   'data.operation.get': { operationId: OPERATION_ID },
+  'data.catalog.create': createDataItemInput,
+  'data.catalog.versions.list': { dataItemId: DATA_ITEM_ID, first: 25 },
+  'data.catalog.versions.get': {
+    dataItemId: DATA_ITEM_ID,
+    versionId: VERSION_ID,
+  },
+  'data.uploadSession.create': {
+    ownerProjectId: PROJECT_ID,
+    objects: [
+      {
+        fileName: 'sample-stations.geojson',
+        mediaType: 'application/geo+json',
+        sizeBytes: 4096,
+        sha256: dataItemVersion.sourceHash,
+      },
+    ],
+    preferredMode: 'PRESIGNED_PUT',
+  },
+  'data.uploadSession.complete': {
+    uploadSessionId: UPLOAD_SESSION_ID,
+    expectedVersion: 1,
+    objects: [
+      {
+        assetId: ASSET_ID,
+        sizeBytes: 4096,
+        sha256: dataItemVersion.sourceHash,
+        etag: 'fixture-etag',
+      },
+    ],
+  },
+  'data.ingestion.get': { ingestionId: INGESTION_ID },
+  'data.ingestion.approve': {
+    ingestionId: INGESTION_ID,
+    expectedVersion: 4,
+    reviewNote: 'Quality and lineage gates passed.',
+  },
+  'data.ingestion.reject': {
+    ingestionId: INGESTION_ID,
+    expectedVersion: 4,
+    reasonCode: 'QUALITY_GATE_FAILED',
+    reason: 'Required station identifiers are missing.',
+  },
+  'data.operation.cancel': {
+    operationId: OPERATION_ID,
+    expectedVersion: 2,
+    reason: 'The source upload was superseded.',
+  },
+  'data.operation.events': { operationId: OPERATION_ID, first: 100 },
 } satisfies Record<DataCapabilityId, Readonly<Record<string, unknown>>>;
 
 const expectedCapabilityMappings = {
@@ -300,7 +363,154 @@ const expectedCapabilityMappings = {
     mcpMapping: { toolName: 'data_operation_get' },
     skillMapping: { operation: 'data.operation.get' },
   },
+  'data.catalog.create': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/catalog/data-items',
+      successStatus: 201,
+    },
+    graphqlMapping: { operationType: 'mutation', field: 'createDataItem' },
+    mcpMapping: { toolName: 'data_catalog_create' },
+    skillMapping: { operation: 'data.catalog.create' },
+  },
+  'data.catalog.versions.list': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/catalog/data-items/:dataItemId/versions',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataItemVersions' },
+    mcpMapping: { toolName: 'data_catalog_versions_list' },
+    skillMapping: { operation: 'data.catalog.versions.list' },
+  },
+  'data.catalog.versions.get': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/catalog/data-items/:dataItemId/versions/:versionId',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataItemVersion' },
+    mcpMapping: { toolName: 'data_catalog_version_get' },
+    skillMapping: { operation: 'data.catalog.versions.get' },
+  },
+  'data.uploadSession.create': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/upload-sessions',
+      successStatus: 201,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'createDataUploadSession',
+    },
+    mcpMapping: { toolName: 'data_upload_session_create' },
+    skillMapping: { operation: 'data.uploadSession.create' },
+  },
+  'data.uploadSession.complete': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/upload-sessions/:uploadSessionId/complete',
+      successStatus: 200,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'completeDataUploadSession',
+    },
+    mcpMapping: { toolName: 'data_upload_session_complete' },
+    skillMapping: { operation: 'data.uploadSession.complete' },
+  },
+  'data.ingestion.get': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/ingestions/:ingestionId',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataIngestion' },
+    mcpMapping: { toolName: 'data_ingestion_get' },
+    skillMapping: { operation: 'data.ingestion.get' },
+  },
+  'data.ingestion.approve': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/ingestions/:ingestionId/approve',
+      successStatus: 202,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'approveDataIngestion',
+    },
+    mcpMapping: { toolName: 'data_ingestion_approve' },
+    skillMapping: { operation: 'data.ingestion.approve' },
+  },
+  'data.ingestion.reject': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/ingestions/:ingestionId/reject',
+      successStatus: 200,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'rejectDataIngestion',
+    },
+    mcpMapping: { toolName: 'data_ingestion_reject' },
+    skillMapping: { operation: 'data.ingestion.reject' },
+  },
+  'data.operation.cancel': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/operations/:operationId/cancel',
+      successStatus: 200,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'cancelDataOperation',
+    },
+    mcpMapping: { toolName: 'data_operation_cancel' },
+    skillMapping: { operation: 'data.operation.cancel' },
+  },
+  'data.operation.events': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/operations/:operationId/events',
+      successStatus: 200,
+      responseMode: 'SSE',
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataOperationEvents' },
+    mcpMapping: { toolName: 'data_operation_events' },
+    skillMapping: { operation: 'data.operation.events' },
+  },
 } satisfies Record<DataCapabilityId, unknown>;
+
+const expectedCapabilityScopes = {
+  'data.catalog.search': ['data.catalog.read'],
+  'data.catalog.get': ['data.catalog.read'],
+  'data.query': ['data.query.execute'],
+  'data.search.federated': ['data.search.execute'],
+  'data.knowledge.search': ['data.knowledge.read'],
+  'data.graph.expand': ['data.graph.read'],
+  'data.graph.findPath': ['data.graph.read'],
+  'data.geo.query': ['data.geo.read'],
+  'data.geo.intersect': ['data.geo.read'],
+  'data.ingestion.create': ['data.ingestion.write'],
+  'data.ingestion.submit': ['data.ingestion.write'],
+  'data.operation.get': ['data.operation.read'],
+  'data.catalog.create': ['data.ingestion.write'],
+  'data.catalog.versions.list': ['data.catalog.read'],
+  'data.catalog.versions.get': ['data.catalog.read'],
+  'data.uploadSession.create': ['data.ingestion.write'],
+  'data.uploadSession.complete': ['data.ingestion.write'],
+  'data.ingestion.get': ['data.operation.read'],
+  'data.ingestion.approve': ['data.publish'],
+  'data.ingestion.reject': ['data.publish'],
+  'data.operation.cancel': ['data.operation.read', 'data.ingestion.write'],
+  'data.operation.events': ['data.operation.read'],
+} satisfies Record<DataCapabilityId, readonly string[]>;
+
+const asynchronousCapabilityIds = new Set<DataCapabilityId>([
+  'data.ingestion.create',
+  'data.ingestion.submit',
+  'data.ingestion.approve',
+]);
 
 const expectedJsonSchemaHashes = {
   'data.catalog.search': {
@@ -350,6 +560,46 @@ const expectedJsonSchemaHashes = {
   'data.operation.get': {
     input: '09011488985ab0fd152fd0d78a556e7a698c5491c863bf2ccef9984e486d0662',
     output: 'f413231e63ad67f73058ed7e86bbd247ebd235de4dedb9472f618427fab4fd98',
+  },
+  'data.catalog.create': {
+    input: '0254364350cd935921753ca74571dee5e3bbbb802de4a71bc2c61439c179f95a',
+    output: '5e22a8d5e66d538f1b6e765e73c5e8d06250db62490f7fef56876378d05abd7a',
+  },
+  'data.catalog.versions.list': {
+    input: '75619aee74646552dcf7b4939d615e01747a55cbe074ad7589894896d8fae176',
+    output: '417d20fde3f862522707b7dcdc66e4e2a7d39f3574a74fbbaa84957b47aceb5a',
+  },
+  'data.catalog.versions.get': {
+    input: 'e506474b6ef13975dec248cd0e32b68a09754d04f420a710355c0d15b105aa6a',
+    output: '93d00d1053ece01534eee9d559c84f23faf74e2a71ffde53657ac36fd91f4504',
+  },
+  'data.uploadSession.create': {
+    input: 'e8c8f8eb84563ca0b1c61f0ca9dbe55d00f5672f8c4117913b81dc21424d46e0',
+    output: '6148abb3f3c2c150dd9ab9edbdff520a99a18af32fbbb27b5168ef6b8fc2763e',
+  },
+  'data.uploadSession.complete': {
+    input: 'cb0cacc5b3b0687f6f2c8d4aa22eca8429327d757ebf201abd86b2a0626fce2d',
+    output: 'b4475e14d0689a99bf4c89f7ce14b0bba97a4e3fa465dc71ea2af9e340146077',
+  },
+  'data.ingestion.get': {
+    input: 'bf57edf9d7399573105b1a2ddcc13160b29c2a8de852e6b70e3aaba4dede9878',
+    output: 'ab7ff15fce6f1b1d2b9fe851578aa973bedc10925bed0a5646afb6eeca875be3',
+  },
+  'data.ingestion.approve': {
+    input: '284419a11ea425388676752a72d139705ca907bea613595468383bce808be9b4',
+    output: '928bf9ac9cdd29b9a23353f39dee4a4b4c5cb50f2878b9fc92c3d3fbf53633be',
+  },
+  'data.ingestion.reject': {
+    input: 'ef64d5a6d39a6695165c43780fee6f3feedd60aa77f9f10919e5d383972e9df6',
+    output: 'ab7ff15fce6f1b1d2b9fe851578aa973bedc10925bed0a5646afb6eeca875be3',
+  },
+  'data.operation.cancel': {
+    input: '9c3b5eb52eee1d4a21f3f318608d18c22fd3ab3b9d86bc4faa835993e59d37ec',
+    output: 'f413231e63ad67f73058ed7e86bbd247ebd235de4dedb9472f618427fab4fd98',
+  },
+  'data.operation.events': {
+    input: '247ee2e3a7b01ba0a273c3031da7336cd19085e1794eb8391216ddd28d4bf3f2',
+    output: '8a06fb39f4dee6a7d8a92b8c6a4f4ab1f0b6bf873091ef8668b9a4dfff57c83a',
   },
 } satisfies Record<
   DataCapabilityId,
@@ -518,6 +768,15 @@ describe('Data Foundation capability registry', () => {
         true,
       );
       expect(definition.requiredScopes.length).toBeGreaterThan(0);
+      expect(definition.requiredScopes).toEqual(
+        expectedCapabilityScopes[capabilityId],
+      );
+      expect(definition.executionMode).toBe(
+        asynchronousCapabilityIds.has(capabilityId)
+          ? 'ASYNCHRONOUS'
+          : 'SYNCHRONOUS',
+      );
+      expect(definition.idempotent).toBe(true);
       expect({
         restMapping: definition.restMapping,
         graphqlMapping: definition.graphqlMapping,
@@ -536,6 +795,56 @@ describe('Data Foundation capability registry', () => {
         definition.inputSchema.safeParse({ ...input, untrustedExtra: true })
           .success,
       ).toBe(false);
+    }
+  });
+
+  it('rejects missing required input fields wherever the operation requires them', () => {
+    let checkedCapabilities = 0;
+
+    for (const capabilityId of DATA_CAPABILITY_IDS) {
+      const definition = DATA_CAPABILITY_REGISTRY[capabilityId];
+      const input = validCapabilityInputs[capabilityId];
+      for (const field of Object.keys(input)) {
+        const incompleteInput: Record<string, unknown> = { ...input };
+        delete incompleteInput[field];
+        if (!definition.inputSchema.safeParse(incompleteInput).success) {
+          checkedCapabilities += 1;
+          break;
+        }
+      }
+    }
+
+    expect(checkedCapabilities).toBe(DATA_CAPABILITY_IDS.length - 1);
+  });
+
+  it('rejects raw database and projection-store languages', () => {
+    expect(DATA_CAPABILITY_IDS).not.toContain('data.graph.query');
+    expect(
+      DATA_CAPABILITY_REGISTRY['data.query'].inputSchema.safeParse({
+        sql: 'select * from catalog.data_item',
+      }).success,
+    ).toBe(false);
+    expect(
+      DATA_CAPABILITY_REGISTRY['data.graph.findPath'].inputSchema.safeParse({
+        cypher: 'match (n) return n',
+      }).success,
+    ).toBe(false);
+    expect(
+      DATA_CAPABILITY_REGISTRY['data.search.federated'].inputSchema.safeParse({
+        opensearchDsl: { query: { match_all: {} } },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('returns the shared Operation contract for every asynchronous handler', () => {
+    for (const capabilityId of asynchronousCapabilityIds) {
+      const definition = DATA_CAPABILITY_REGISTRY[capabilityId];
+      const output = z.toJSONSchema(definition.outputSchema, {
+        target: 'draft-7',
+      });
+
+      expect(definition.restMapping.successStatus).toBe(202);
+      expect(output.properties).toHaveProperty('operation');
     }
   });
 

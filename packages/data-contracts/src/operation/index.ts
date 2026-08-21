@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import { OffsetDateTimeSchema } from '../common.js';
+import {
+  CursorSchema,
+  OffsetDateTimeSchema,
+  PageRequestFields,
+} from '../common.js';
 import { PlatformUuidSchema } from '@wiser/platform-contracts';
 
 export const OperationStatusSchema = z.enum([
@@ -70,3 +74,43 @@ export const OperationSchema = z
     }
   });
 export type OperationDto = z.infer<typeof OperationSchema>;
+
+export const CancelOperationInputSchema = z.strictObject({
+  operationId: PlatformUuidSchema,
+  expectedVersion: z.number().int().positive(),
+  reason: z.string().min(1).max(2048).optional(),
+});
+
+export const OperationEventTypeSchema = z.enum([
+  'CREATED',
+  'STARTED',
+  'PROGRESS_REPORTED',
+  'WAITING_INPUT',
+  'WAITING_REVIEW',
+  'SUCCEEDED',
+  'FAILED',
+  'CANCELLED',
+]);
+
+export const OperationEventSchema = z.strictObject({
+  eventId: PlatformUuidSchema,
+  operationId: PlatformUuidSchema,
+  sequence: z.number().int().positive(),
+  eventType: OperationEventTypeSchema,
+  status: OperationStatusSchema,
+  progressPercent: z.number().int().min(0).max(100),
+  operationVersion: z.number().int().positive(),
+  occurredAt: OffsetDateTimeSchema,
+  message: z.string().min(1).max(2048).optional(),
+});
+export type OperationEventDto = z.infer<typeof OperationEventSchema>;
+
+export const GetOperationEventsInputSchema = z.strictObject({
+  operationId: PlatformUuidSchema,
+  ...PageRequestFields,
+});
+
+export const OperationEventPageSchema = z.strictObject({
+  items: z.array(OperationEventSchema).max(10_000),
+  nextCursor: CursorSchema.optional(),
+});

@@ -1,9 +1,11 @@
 import { z } from 'zod';
 
 import {
+  CursorSchema,
   DataFieldNameSchema,
   DataKeySchema,
   OffsetDateTimeSchema,
+  PageRequestFields,
   Sha256Schema,
 } from '../common.js';
 import {
@@ -219,3 +221,37 @@ export const DataItemVersionSchema = z
     }
   });
 export type DataItemVersionDto = z.infer<typeof DataItemVersionSchema>;
+
+export const CreateDataItemInputSchema = DataItemSchema.omit({
+  tenantId: true,
+  dataItemId: true,
+  qualityGrade: true,
+  acceptanceStatus: true,
+  publicationStatus: true,
+  version: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const CreateDataItemOutputSchema = z.strictObject({
+  item: DataItemSchema,
+});
+
+export const ListDataItemVersionsInputSchema = z.strictObject({
+  dataItemId: PlatformUuidSchema,
+  ...PageRequestFields,
+});
+
+export const DataItemVersionPageSchema = z.strictObject({
+  items: z.array(DataItemVersionSchema),
+  nextCursor: CursorSchema.optional(),
+});
+
+export const GetDataItemVersionInputSchema = z.strictObject({
+  dataItemId: PlatformUuidSchema,
+  versionId: PlatformUuidSchema,
+});
+
+export const GetDataItemVersionOutputSchema = z.strictObject({
+  version: DataItemVersionSchema,
+});

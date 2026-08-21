@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 9465d7fada3ed33d926f6afac5041f8f9980c817
+lastReviewedCommit: da0b06a2286bd856bc3948de7b4f7303a62da2cf
 ---
 
 ## 边界与当前实现
@@ -33,7 +33,7 @@ Data Foundation 是 WISER 内与 Agent EXCON 平级的业务系统。它拥有 D
 
 `@wiser/data-contracts` 是 REST、GraphQL、MCP、Skill 与运行时校验的 transport-neutral 契约源。公开对象使用 `z.strictObject`，同时拒绝未知字段和缺失必填字段。生成的 draft-7 JSON Schema 经过规范化 SHA-256 回归；12 项首批 Capability 的 REST、GraphQL、MCP 与 Skill 映射也由精确表格测试锁定，禁止 AST 扫描或 transport 自行发明 Schema。
 
-首批 Capability：
+Registry 保留首批 12 个 Capability 的稳定顺序：
 
 ```text
 data.catalog.search       data.catalog.get
@@ -43,6 +43,18 @@ data.graph.findPath       data.geo.query
 data.geo.intersect        data.ingestion.create
 data.ingestion.submit     data.operation.get
 ```
+
+其后追加 10 个控制面 Capability，完整覆盖当前要求的 REST/GraphQL/MCP 操作：
+
+```text
+data.catalog.create              data.catalog.versions.list
+data.catalog.versions.get        data.uploadSession.create
+data.uploadSession.complete      data.ingestion.get
+data.ingestion.approve           data.ingestion.reject
+data.operation.cancel            data.operation.events
+```
+
+`data.operation.events` 的 REST mapping 明确使用 SSE。图查询仍由结构化 `graph.expand/findPath` 输入表达，不开放任意 Cypher；查询能力均禁止任意 SQL 或 OpenSearch DSL。
 
 `DataItem` 是最小治理粒度，不等于文件、表或图层。质量等级、验收状态、发布状态和安全等级是四个独立维度；任何适配器都不能把它们压缩成一个“状态”。
 
