@@ -295,6 +295,11 @@ describe('Docpact documentation governance', () => {
         'packages/data-infra/src/**',
         'packages/data-infra/**',
       ],
+      [
+        'data-foundation-worker',
+        'apps/data-worker/src/**',
+        'apps/data-worker/**',
+      ],
     ]) {
       const rule = docpactRule(config, ruleId);
       expect(rule, ruleId).toContain(`- path: ${narrowPath}`);
@@ -338,6 +343,7 @@ describe('Docpact documentation governance', () => {
       'data-foundation-contracts',
       'data-foundation-core',
       'data-foundation-infra',
+      'data-foundation-worker',
     ]) {
       const rule = docpactRule(config, ruleId);
       expect(rule).toContain(
@@ -394,6 +400,7 @@ describe('Docpact documentation governance', () => {
     expect(config).toContain('data-foundation-contracts');
     expect(config).toContain('data-foundation-core');
     expect(config).toContain('data-foundation-infra');
+    expect(config).toContain('data-foundation-worker');
     expect(docpactRule(config, 'data-foundation-infra')).toContain(
       '- path: infrastructure/data-foundation/**',
     );
