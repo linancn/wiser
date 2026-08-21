@@ -38,7 +38,7 @@ WISER 面向水系统的感知、推演、决策与重构。当前首个开源�
 ## 目标中的仓库结构
 
 ```text
-apps/          HTTP API、只读 Web、Worker、MCP 与 Starlight 文档
+apps/          HTTP API、只读 Web、Worker、MCP 与 Fumadocs 文档
 cookbooks/     本机多智能体 TDD、WorkBuddy 启动与脱敏报告
 packages/      协议、纯领域核心与基础设施适配器
 scenarios/     版本化演练场景及来源清单

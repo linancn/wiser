@@ -1,29 +1,17 @@
 ---
 title: WISER 水地图 · 智能体演练场
 description: WISER 是 AI 赋能的水智能系统与重构引擎；Agent EXCON 将现实任务封装为可运行、可裁决、可回放的智能体环境。
-template: splash
-hero:
-  title: wiser water, better future
-  tagline: WISER 水地图以 Agent EXCON 掌握任务时点、可见信息和验证结果，让水智能体在可验证环境中演练、裁决与重构。
-  actions:
-    - text: 运行第一个闭环
-      link: /quick-start/
-      variant: primary
-    - text: 阅读永定河联合调度案例
-      link: /scenarios/yongding-river-dispatch/
-      variant: secondary
 ---
 
-import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
-import HomeTimeline from '../../components/HomeTimeline.astro';
+<HomeHero locale="zh-CN" />
 
-<HomeTimeline locale="zh" />
+<HomeTimeline locale="zh-CN" />
 
 > 当前默认案例使用真实水系统关系和少量有来源的历史观测作事实锚点；容量、目标、规则、方案和结果均为隔离合成数据，不向现实控制系统发出指令。
 
 ## 一个多智能体环境，而不是一组演示接口
 
-<CardGrid>
+<Cards>
   <Card title="环境控制">
     锁定场景版本和虚拟时间，按规则释放观察，避免历史回放中的时间穿越。
   </Card>
@@ -42,31 +30,31 @@ import HomeTimeline from '../../components/HomeTimeline.astro';
     事件与 Agent Receipt 重建每个智能体实际获得的信息；OTel Trace
     用于技术诊断而非审计事实。
   </Card>
-</CardGrid>
+</Cards>
 
 ## 从这里进入
 
-<CardGrid stagger>
-  <LinkCard
+<Cards>
+  <Card
     title="快速开始"
     href="/quick-start/"
     description="启动服务并验证 v2 RunAgent 协作协议纵切。"
   />
-  <LinkCard
+  <Card
     title="架构边界"
     href="/architecture/overview/"
     description="了解多场景、多智能体、权威回放和 OTel 的职责边界。"
   />
-  <LinkCard
+  <Card
     title="HTTP 协议"
     href="/protocols/http/"
     description="查看资源、状态机、幂等和错误约定。"
   />
-  <LinkCard
+  <Card
     title="TDD 贡献指南"
     href="/contributing/tdd/"
     description="用京津冀水系统合成演练驱动红—绿—重构。"
   />
-</CardGrid>
+</Cards>
 
 > v2 契约、核心、内存 HTTP 协作纵切、确定性评价/返工/背书闭环、数据库 schema/RLS、Skill、MCP 和认证观测链路已交付；PostgreSQL API adapter 与 v1 facade 仍未交付。v1 只能显式选择。

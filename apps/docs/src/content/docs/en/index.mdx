@@ -1,21 +1,9 @@
 ---
 title: WISER · Agent Exercise Control Infrastructure
 description: WISER is the Water Intelligence System & Engine for Reconfiguration, empowered by AI; Agent EXCON provides its runnable and replayable exercise environment.
-template: splash
-hero:
-  title: wiser water, better future
-  tagline: WISER Water Map uses Agent EXCON to control task time and information visibility so water agents can exercise, be adjudicated, and improve in a verifiable environment.
-  actions:
-    - text: Run the first loop
-      link: /en/quick-start/
-      variant: primary
-    - text: Explore the Yongding River dispatch
-      link: /en/scenarios/yongding-river-dispatch/
-      variant: secondary
 ---
 
-import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
-import HomeTimeline from '../../../components/HomeTimeline.astro';
+<HomeHero locale="en" />
 
 <HomeTimeline locale="en" />
 
@@ -23,7 +11,7 @@ import HomeTimeline from '../../../components/HomeTimeline.astro';
 
 ## A multi-agent environment, not a collection of demo endpoints
 
-<CardGrid>
+<Cards>
   <Card title="Environment control">
     Pin scenario versions and virtual time, then release observations without
     hindsight leakage.
@@ -44,31 +32,31 @@ import HomeTimeline from '../../../components/HomeTimeline.astro';
     Events and Agent receipts reconstruct what each member actually received;
     OTel traces diagnose technology but do not define audit truth.
   </Card>
-</CardGrid>
+</Cards>
 
 ## Choose a path
 
-<CardGrid stagger>
-  <LinkCard
+<Cards>
+  <Card
     title="Quick start"
     href="/en/quick-start/"
     description="Start services and verify the v2 RunAgent collaboration slice."
   />
-  <LinkCard
+  <Card
     title="Architecture"
     href="/en/architecture/overview/"
     description="Understand multi-scenario, multi-agent, replay, and OTel boundaries."
   />
-  <LinkCard
+  <Card
     title="HTTP protocol"
     href="/en/protocols/http/"
     description="Review resources, state, idempotency, and errors."
   />
-  <LinkCard
+  <Card
     title="TDD guide"
     href="/en/contributing/tdd/"
     description="Drive small commits from a fact-anchored synthetic water-system exercise."
   />
-</CardGrid>
+</Cards>
 
 > v2 contracts, core, the in-memory HTTP collaboration slice, deterministic evaluation/rework/endorsement loop, database schema/RLS, Skill, MCP, and authenticated observability are delivered. The PostgreSQL API adapter and v1 facade are not. v1 requires explicit selection.

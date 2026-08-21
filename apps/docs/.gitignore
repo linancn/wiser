@@ -1,3 +1,9 @@
-.astro/
+.next/
+.source/
 dist/
+next-env.d.ts
 node_modules/
+out/
+playwright-report/
+test-results/
+tsconfig.tsbuildinfo

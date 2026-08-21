@@ -1,0 +1,16 @@
+{
+  "title": "WISER · Agent EXCON",
+  "pages": [
+    "index",
+    "---开始---",
+    "quick-start",
+    "---场景目录---",
+    "scenarios",
+    "---设计边界---",
+    "architecture",
+    "---接入协议---",
+    "protocols",
+    "---参与开发---",
+    "contributing"
+  ]
+}

@@ -85,7 +85,7 @@ services:
 
   docs:
     <<: *app
-    command: pnpm --filter @agent-excon/docs exec astro dev --host 0.0.0.0 --port 4321
+    command: pnpm --filter @agent-excon/docs exec next dev --hostname 0.0.0.0 --port 4321
     ports:
       - 127.0.0.1:4321:4321
     healthcheck:

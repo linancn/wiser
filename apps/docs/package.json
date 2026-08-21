@@ -3,22 +3,32 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Bilingual documentation for Agent EXCON",
+  "description": "Bilingual Fumadocs documentation for WISER Agent EXCON",
   "license": "MIT",
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro check && astro build",
-    "typecheck": "astro check",
-    "preview": "astro preview"
+    "dev": "next dev",
+    "build": "next build",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@astrojs/starlight": "0.41.7",
-    "astro": "7.2.4"
+    "fumadocs-core": "16.14.5",
+    "fumadocs-mdx": "15.3.0",
+    "fumadocs-ui": "16.14.5",
+    "next": "16.3.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "4.4.3"
   },
   "devDependencies": {
-    "@astrojs/check": "0.9.10",
-    "prettier": "3.9.6",
-    "prettier-plugin-astro": "0.14.1",
-    "typescript": "6.0.3"
+    "@playwright/test": "1.62.1",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/mdx": "2.0.14",
+    "@types/node": "24.13.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "postcss": "8.5.26",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2"
   }
 }

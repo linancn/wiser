@@ -18,7 +18,9 @@ function markdownFiles(path: string): string[] {
   return readdirSync(root).flatMap((entry) => {
     const absolute = resolve(root, entry);
     if (statSync(absolute).isDirectory()) {
-      return markdownFiles(`${path}/${entry}`).map((child) => `${entry}/${child}`);
+      return markdownFiles(`${path}/${entry}`).map(
+        (child) => `${entry}/${child}`,
+      );
     }
     return /\.mdx?$/.test(entry) ? [entry] : [];
   });
@@ -44,7 +46,9 @@ describe('TypeScript 7 native toolchain', () => {
       expect(dependencies).not.toHaveProperty(removed);
     }
 
-    expect(existsSync(resolve(repositoryRoot, 'eslint.config.mjs'))).toBe(false);
+    expect(existsSync(resolve(repositoryRoot, 'eslint.config.mjs'))).toBe(
+      false,
+    );
     const oxlintConfig = read('.oxlintrc.json');
     expect(oxlintConfig).toContain('"typeAware": true');
     expect(oxlintConfig).toContain('typescript/consistent-type-imports');
@@ -82,15 +86,15 @@ describe('Fumadocs documentation application', () => {
     expect(dependencies).not.toHaveProperty('@astrojs/check');
     expect(dependencies).not.toHaveProperty('@astrojs/starlight');
 
-    expect(existsSync(resolve(repositoryRoot, 'apps/docs/astro.config.mjs'))).toBe(
-      false,
-    );
-    expect(existsSync(resolve(repositoryRoot, 'apps/docs/source.config.ts'))).toBe(
-      true,
-    );
-    expect(existsSync(resolve(repositoryRoot, 'apps/docs/next.config.ts'))).toBe(
-      true,
-    );
+    expect(
+      existsSync(resolve(repositoryRoot, 'apps/docs/astro.config.mjs')),
+    ).toBe(false);
+    expect(
+      existsSync(resolve(repositoryRoot, 'apps/docs/source.config.ts')),
+    ).toBe(true);
+    expect(
+      existsSync(resolve(repositoryRoot, 'apps/docs/next.config.ts')),
+    ).toBe(true);
   });
 
   it('keeps a complete Chinese-default and English documentation corpus', () => {
@@ -110,5 +114,27 @@ describe('Fumadocs documentation application', () => {
       'pnpm --filter @agent-excon/docs exec next dev --hostname 0.0.0.0 --port 4321',
     );
     expect(compose).not.toContain('@agent-excon/docs exec astro');
+  });
+
+  it('keeps host-generated Fumadocs artifacts out of Docker images', () => {
+    const ignored = new Set(
+      read('.dockerignore')
+        .split('\n')
+        .map((line) => line.trim()),
+    );
+
+    for (const generated of [
+      '**/.next',
+      '**/.source',
+      '**/node_modules',
+      '**/out',
+      '**/test-results',
+    ]) {
+      expect(ignored).toContain(generated);
+    }
+  });
+
+  it('does not require Git history inside the slim docs container', () => {
+    expect(read('apps/docs/source.config.ts')).toContain('lastModified: false');
   });
 });

@@ -15,7 +15,7 @@
     "dev": "pnpm --parallel --filter @agent-excon/api --filter @agent-excon/web --filter @agent-excon/docs dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint .",
+    "lint": "oxlint --type-aware",
     "test": "vitest run && pnpm --recursive --if-present --filter './apps/*' test",
     "test:watch": "vitest",
     "typecheck": "pnpm -r --if-present typecheck",
@@ -44,16 +44,14 @@
     "stack:down": "pnpm compose:down && pnpm supabase:stop"
   },
   "devDependencies": {
-    "@eslint/js": "10.0.1",
     "@types/node": "24.13.3",
     "@vitest/coverage-v8": "4.1.11",
-    "eslint": "10.8.1",
+    "oxlint": "1.79.0",
+    "oxlint-tsgolint": "7.0.2001",
     "prettier": "3.9.6",
-    "prettier-plugin-astro": "0.14.1",
     "supabase": "2.115.0",
     "tsx": "4.23.12",
-    "typescript": "6.0.3",
-    "typescript-eslint": "8.67.0",
+    "typescript": "7.0.2",
     "vitest": "4.1.11"
   }
 }

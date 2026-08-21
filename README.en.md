@@ -38,7 +38,7 @@ Important unfinished boundaries are the PostgreSQL API adapter and the v1-to-v2 
 ## Intended workspace
 
 ```text
-apps/          HTTP API, read-only Web, worker, MCP, and Starlight documentation
+apps/          HTTP API, read-only Web, worker, MCP, and Fumadocs documentation
 cookbooks/     Local multi-agent TDD, WorkBuddy launch, and redacted reports
 packages/      Contracts, pure domain core, and infrastructure adapters
 scenarios/     Versioned scenarios and provenance manifests

@@ -1,0 +1,16 @@
+{
+  "title": "WISER · Agent EXCON",
+  "pages": [
+    "index",
+    "---Start---",
+    "quick-start",
+    "---Scenario catalog---",
+    "scenarios",
+    "---Design boundaries---",
+    "architecture",
+    "---Protocols---",
+    "protocols",
+    "---Contributing---",
+    "contributing"
+  ]
+}

@@ -42,14 +42,16 @@ describe('Postgres telemetry credential verification', () => {
       role: 'water-evidence',
     });
     expect(database.calls).toHaveLength(1);
-    expect(database.calls[0]?.text).toContain("'telemetry:write' = any");
-    expect(database.calls[0]?.text).toContain('credential.revoked_at is null');
-    expect(database.calls[0]?.text).toContain(
-      "agent_identity.lifecycle_state = 'active'",
-    );
-    expect(database.calls[0]?.values[0]).toBeInstanceOf(Buffer);
-    expect(database.calls[0]?.values[0]).not.toBe(rawToken);
-    expect((database.calls[0]?.values[0] as Buffer).byteLength).toBe(32);
+    const call = database.calls[0];
+    expect(call).toBeDefined();
+    if (!call) throw new Error('expected one database call');
+    expect(call.text).toContain("'telemetry:write' = any");
+    expect(call.text).toContain('credential.revoked_at is null');
+    expect(call.text).toContain("agent_identity.lifecycle_state = 'active'");
+    const digest = call.values[0];
+    expect(digest).toBeInstanceOf(Buffer);
+    expect(digest).not.toBe(rawToken);
+    expect((digest as Buffer).byteLength).toBe(32);
   });
 
   it('returns null for an unknown hash and refuses a weak pepper', async () => {
