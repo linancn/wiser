@@ -1,6 +1,6 @@
 begin;
 
-select plan(52);
+select plan(53);
 
 select has_schema('platform', 'platform control schema exists');
 select has_schema('platform_private', 'platform private schema exists');
@@ -208,6 +208,29 @@ select is(
   ),
   3::bigint,
   'the seeded operator has platform EXCON and data stewardship roles'
+);
+select is(
+  (
+    select count(distinct role_scope.scope)
+    from platform.roles as role
+    join platform.role_scopes as role_scope on role_scope.role_id = role.id
+    where role.role_key = 'data-steward'
+      and role_scope.scope = any(
+        array[
+          'data.catalog.read',
+          'data.geo.read',
+          'data.graph.read',
+          'data.ingestion.write',
+          'data.knowledge.read',
+          'data.operation.read',
+          'data.publish',
+          'data.query.execute',
+          'data.search.execute'
+        ]::text[]
+      )
+  ),
+  9::bigint,
+  'the data steward covers every initial Capability Registry scope'
 );
 
 select throws_ok(
