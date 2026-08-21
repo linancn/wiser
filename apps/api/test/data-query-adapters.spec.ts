@@ -70,6 +70,7 @@ describe('Postgres structured authority query port', () => {
     const client = new FakePgClient();
     client.results.push(
       { rows: [] },
+      { rows: [{ version_id: VERSION_ID }] },
       {
         rows: [
           {
@@ -105,14 +106,14 @@ describe('Postgres structured authority query port', () => {
       rows: [{ station: 'Lugouqiao', flow: 16.7 }],
     });
     expect(client.calls.map(({ text }) => text.trim().split(/\s+/)[0])).toEqual(
-      ['begin', 'select', 'with', 'commit'],
+      ['begin', 'select', 'select', 'select', 'commit'],
     );
-    const sql = client.calls[2]!.text;
+    const versionSql = client.calls[2]!.text;
+    const sql = client.calls[3]!.text;
     expect(sql).toContain('knowledge.evidence_fragment');
     expect(sql).toContain("locator -> 'record'");
-    expect(sql).toContain('catalog.data_item_version');
-    expect(sql).toContain('selected_version');
-    expect(sql).toContain('version_number desc');
+    expect(versionSql).toContain('catalog.data_item_version');
+    expect(versionSql).toContain('version_number desc');
     expect(sql).not.toContain('Lugouqiao');
     expect(sql).not.toContain('flow GTE');
     expect(client.calls[1]!.values).toEqual([
@@ -126,6 +127,28 @@ describe('Postgres structured authority query port', () => {
       DATA_CAPABILITY_REGISTRY['data.query'].outputSchema.safeParse(output)
         .success,
     ).toBe(true);
+  });
+
+  it('returns an empty page for an existing committed version without record fragments', async () => {
+    const client = new FakePgClient();
+    client.results.push(
+      { rows: [] },
+      { rows: [{ version_id: VERSION_ID }] },
+      { rows: [] },
+      { rows: [] },
+    );
+    const port = new PostgresStructuredDataQueryPort({
+      pool: new FakePool(client),
+    });
+
+    await expect(
+      port.query(request({ dataItemId: DATA_ITEM_ID, fields: ['station'] })),
+    ).resolves.toEqual({
+      dataItemId: DATA_ITEM_ID,
+      versionId: VERSION_ID,
+      columns: ['station'],
+      rows: [],
+    });
   });
 
   it('rolls back and redacts database failures and honors AbortSignal', async () => {
@@ -155,6 +178,7 @@ describe('Postgres structured authority query port', () => {
     const client = new FakePgClient();
     client.results.push(
       { rows: [] },
+      { rows: [{ version_id: VERSION_ID }] },
       {
         rows: [
           {
@@ -200,9 +224,9 @@ describe('Neo4j graph query port', () => {
     http.responses.push({
       status: 200,
       body: {
+        queryType: 'r',
         data: {
           fields: ['graph'],
-          queryType: 'r',
           values: [
             [
               {
@@ -229,9 +253,9 @@ describe('Neo4j graph query port', () => {
     http.responses.push({
       status: 200,
       body: {
+        queryType: 'r',
         data: {
           fields: ['graph'],
-          queryType: 'r',
           values: [[{ nodes: [], edges: [], nextCursor: 'next' }]],
         },
       },
