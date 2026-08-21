@@ -112,7 +112,8 @@ test('observes parallel agents, cross-agent links, and perspective replay', asyn
   await expect(
     page.getByRole('heading', { name: '诊断与确定性评测' }),
   ).toBeVisible();
-  await expect(page.locator('.authority-track')).toContainText('4 / 4');
+  await expect(page.getByTestId('diagnostic-summary')).toContainText('4 / 4');
+  await expect(page.getByTestId('evaluation-row')).toHaveCount(6);
   await expect(page.getByRole('link', { name: '评测' })).toHaveAttribute(
     'aria-current',
     'page',

@@ -26,6 +26,8 @@ describe('Run diagnostics panel', () => {
     expect(html).toContain('endorsement-ready');
     expect(html).toContain('data-source="authoritative"');
     expect(html).toContain('data-source="telemetry"');
+    expect(html).toContain('data-testid="diagnostic-summary"');
+    expect(html.match(/data-testid="evaluation-row"/g)).toHaveLength(6);
     expect(html).toContain('Span 明细');
     expect(html).not.toContain('综合评分');
   });
