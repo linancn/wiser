@@ -15,7 +15,7 @@ checkPaths:
   - packages/contracts/**
   - packages/core/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 0ccec4db0435f04becdd27c377b977f1e3f238f4
+lastReviewedCommit: 18bbd16ed693066e1abb97809cc62aa8e9a35d2d
 ---
 
 # WISER API host
@@ -33,6 +33,8 @@ The default `InMemoryExerciseService` (v1) and `InMemoryV2ExerciseService` are d
 `buildApp()` is the WISER Fastify composition root. Additional product systems register explicit, statically imported `WiserApiModule` values through `BuildAppOptions.modules`; module ids are namespaced and unique, and duplicate ids fail during readiness. Agent EXCON routes remain available while Data Foundation and future systems join the same process without copying the HTTP host.
 
 `createPlatformIdentityModule()` adds the protected `GET /api/platform/v1/me` vertical slice when a `PlatformPrincipalResolver` is injected. It requires Bearer, Tenant, Project, and Purpose context and returns only the safe actor, role, scope, maximum-security-level, and authorization-version projection; credentials and Session ids never enter the response.
+
+`createPlatformDelegationModule()` defines the human-only delegated-credential command surface. A verified Supabase principal must have `platform.delegation.manage`; requested Scope, Purpose, TTL, and L0-L3 ceiling may not exceed the live context. Every command requires a UUID `Idempotency-Key`, every response is `private, no-store`, metadata reads never expose a token, and issue/rotate are the only one-time plaintext responses. The module is transport-only and requires an injected transactional `PlatformDelegationCommandService`; default-process PostgreSQL wiring remains the next slice.
 
 `main.ts` creates the concrete Supabase `getClaims` client and PostgreSQL Membership loader when `WISER_AUTH_MODE=supabase`. Production defaults to that mode and refuses missing `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, or `DATABASE_URL`; non-production defaults to `off` for the legacy local-token compatibility profile. The authorization pool is closed through the Fastify lifecycle.
 

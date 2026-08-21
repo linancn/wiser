@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 107e637b8570748a09c29f7b28c70ac07198aba9
+lastReviewedCommit: 18bbd16ed693066e1abb97809cc62aa8e9a35d2d
 ---
 
 ## 单一身份源
@@ -96,6 +96,8 @@ Shell 的用户状态只来自刚完成验证的 authenticated claims，不把�
 - 撤销委托人 Membership、Project、Agent 或 credential 后，下一次请求失败。
 - MCP Tool 参数、Message、Artifact、日志与 Trace 不得包含凭据。
 - EXCON 私有表只保留通用 credential 与 `runAgentId/runId` 的绑定。
+
+Fastify `platform.delegation` 模块现已固定 create、metadata read、issue、rotate 与 revoke 的 HTTP 命令边界。只有通过验证且拥有 `platform.delegation.manage` 的 Supabase human 才能调用；命令必须使用 UUID 幂等键，TTL 最长一小时，委托 Scope 必须已知，ceiling 不得高于调用方实时上限。明文只出现在成功的 issue/rotate 响应中，所有响应均为 `private, no-store`。注入的 PostgreSQL command service 仍负责行锁、单 active credential、Audit 与 Control Outbox 原子性。
 
 ## Data Foundation 跨库引用
 

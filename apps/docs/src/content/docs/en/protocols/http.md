@@ -16,7 +16,7 @@ checkPaths:
   - packages/contracts/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 0ccec4db0435f04becdd27c377b977f1e3f238f4
+lastReviewedCommit: 18bbd16ed693066e1abb97809cc62aa8e9a35d2d
 ---
 
 ## Default protocol and implementation status
@@ -30,6 +30,19 @@ The `/api/v2` routes and contracts are executable and tested, but Fastify curren
 Fastify is the shared WISER HTTP composition host. Each system registers routes through a statically imported `WiserApiModule`; module ids are namespaced and globally unique, and a duplicate id fails readiness. Static registration does not scan the TypeScript AST and never lets a module bypass application or authorization boundaries. Existing Agent EXCON routes remain compatible while Data Foundation and future systems reuse the same host.
 
 With `WISER_AUTH_MODE=supabase`, the default API process creates the Supabase `getClaims` client, PostgreSQL Membership loader, and platform identity module. `GET /api/platform/v1/me` requires Bearer, Tenant, Project, and Purpose context and returns only the safe Actor, Role, Scope, maximum-security-level, and authorization-version projection. Production defaults to this mode and refuses to start without the URL, publishable key, or database connection; the non-production `off` mode preserves the legacy local compatibility entry.
+
+The injectable `platform.delegation` module defines these control-plane routes:
+
+| Method | Path                                                            | Result                              |
+| ------ | --------------------------------------------------------------- | ----------------------------------- |
+| POST   | `/api/platform/v1/delegations`                                  | Create one bounded Delegation       |
+| GET    | `/api/platform/v1/delegations/:delegationId`                    | Read safe metadata                  |
+| POST   | `/api/platform/v1/delegations/:delegationId/credentials`        | Issue plaintext once                |
+| POST   | `/api/platform/v1/delegations/:delegationId/credentials:rotate` | Rotate and return the new plaintext |
+| POST   | `/api/platform/v1/delegations/:delegationId:revoke`             | Revoke a Delegation                 |
+| POST   | `/api/platform/v1/credentials/:credentialId:revoke`             | Revoke one Credential               |
+
+Commands require a UUID `Idempotency-Key`; all routes require Bearer, Tenant, Project, and Purpose headers plus a Supabase human with `platform.delegation.manage`. The concrete transactional command service is not yet registered by the default runtime.
 
 ## Public scenario catalog
 

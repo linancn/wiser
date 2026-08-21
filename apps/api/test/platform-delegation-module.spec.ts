@@ -6,6 +6,7 @@ import type { PlatformRequestContext } from '@wiser/platform-contracts';
 import { buildApp } from '../src/app.js';
 import {
   createPlatformDelegationModule,
+  type IssuedPlatformCredentialView,
   type PlatformDelegationCommandService,
   type PlatformDelegationView,
 } from '../src/platform/delegation-module.js';
@@ -121,7 +122,8 @@ function appWith(
 
 describe('WISER platform delegation HTTP module', () => {
   it('creates a bounded delegation from the verified human context', async () => {
-    const { app, service } = appWith(humanContext);
+    const createDelegation = vi.fn(() => Promise.resolve(delegation));
+    const { app } = appWith(humanContext, commandService({ createDelegation }));
     const response = await app.inject({
       method: 'POST',
       url: '/api/platform/v1/delegations',
@@ -141,7 +143,7 @@ describe('WISER platform delegation HTTP module', () => {
     );
     expect(response.headers['cache-control']).toContain('no-store');
     expect(response.json()).toEqual(delegation);
-    expect(service.createDelegation).toHaveBeenCalledWith({
+    expect(createDelegation).toHaveBeenCalledWith({
       context: humanContext,
       delegateActorId: DELEGATE_ID,
       scopes: ['data.catalog.read'],
@@ -171,9 +173,11 @@ describe('WISER platform delegation HTTP module', () => {
     });
 
     expect(issue.statusCode).toBe(201);
-    expect(issue.json().token).toMatch(/^wdc1\./);
+    expect(issue.json<IssuedPlatformCredentialView>().token).toMatch(/^wdc1\./);
     expect(rotate.statusCode).toBe(201);
-    expect(rotate.json().token).toMatch(/^wdc1\./);
+    expect(rotate.json<IssuedPlatformCredentialView>().token).toMatch(
+      /^wdc1\./,
+    );
     for (const response of [issue, rotate]) {
       expect(response.headers['cache-control']).toContain('no-store');
       expect(response.headers.pragma).toBe('no-cache');
@@ -181,19 +185,24 @@ describe('WISER platform delegation HTTP module', () => {
   });
 
   it('reads metadata and revokes delegations or credentials without returning secrets', async () => {
-    const { app, service } = appWith(humanContext);
+    const revokeDelegation = vi.fn(() => Promise.resolve());
+    const revokeCredential = vi.fn(() => Promise.resolve());
+    const { app } = appWith(
+      humanContext,
+      commandService({ revokeDelegation, revokeCredential }),
+    );
     const read = await app.inject({
       method: 'GET',
       url: `/api/platform/v1/delegations/${DELEGATION_ID}`,
       headers: requestHeaders(),
     });
-    const revokeDelegation = await app.inject({
+    const revokedDelegationResponse = await app.inject({
       method: 'POST',
       url: `/api/platform/v1/delegations/${DELEGATION_ID}:revoke`,
       headers: requestHeaders(),
       payload: { expectedDelegationVersion: 1 },
     });
-    const revokeCredential = await app.inject({
+    const revokedCredentialResponse = await app.inject({
       method: 'POST',
       url: `/api/platform/v1/credentials/${CREDENTIAL_ID}:revoke`,
       headers: {
@@ -206,14 +215,15 @@ describe('WISER platform delegation HTTP module', () => {
     expect(read.statusCode).toBe(200);
     expect(read.json()).toEqual(delegation);
     expect(JSON.stringify(read.json())).not.toContain('wdc1.');
-    expect(revokeDelegation.statusCode).toBe(204);
-    expect(revokeCredential.statusCode).toBe(204);
-    expect(service.revokeDelegation).toHaveBeenCalledOnce();
-    expect(service.revokeCredential).toHaveBeenCalledOnce();
+    expect(revokedDelegationResponse.statusCode).toBe(204);
+    expect(revokedCredentialResponse.statusCode).toBe(204);
+    expect(revokeDelegation).toHaveBeenCalledOnce();
+    expect(revokeCredential).toHaveBeenCalledOnce();
   });
 
   it('rejects absent, delegated, or unscoped principals before command dispatch', async () => {
-    const service = commandService();
+    const createDelegation = vi.fn(() => Promise.resolve(delegation));
+    const service = commandService({ createDelegation });
     const missing = appWith(null, service).app;
     const delegated = appWith(
       {
@@ -256,7 +266,7 @@ describe('WISER platform delegation HTTP module', () => {
       });
       expect(response.statusCode).toBe(expectedStatus);
     }
-    expect(service.createDelegation).not.toHaveBeenCalled();
+    expect(createDelegation).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -308,7 +318,8 @@ describe('WISER platform delegation HTTP module', () => {
       },
     },
   ])('rejects $name', async ({ context = humanContext, payload }) => {
-    const service = commandService();
+    const createDelegation = vi.fn(() => Promise.resolve(delegation));
+    const service = commandService({ createDelegation });
     const { app } = appWith(context, service);
     const response = await app.inject({
       method: 'POST',
@@ -318,11 +329,12 @@ describe('WISER platform delegation HTTP module', () => {
     });
 
     expect(response.statusCode).toBe(422);
-    expect(service.createDelegation).not.toHaveBeenCalled();
+    expect(createDelegation).not.toHaveBeenCalled();
   });
 
   it('requires a UUID idempotency key for every command', async () => {
-    const service = commandService();
+    const createDelegation = vi.fn(() => Promise.resolve(delegation));
+    const service = commandService({ createDelegation });
     const { app } = appWith(humanContext, service);
     const headers = requestHeaders();
     const response = await app.inject({
@@ -339,6 +351,6 @@ describe('WISER platform delegation HTTP module', () => {
     });
 
     expect(response.statusCode).toBe(422);
-    expect(service.createDelegation).not.toHaveBeenCalled();
+    expect(createDelegation).not.toHaveBeenCalled();
   });
 });

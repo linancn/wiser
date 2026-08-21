@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 107e637b8570748a09c29f7b28c70ac07198aba9
+lastReviewedCommit: 18bbd16ed693066e1abb97809cc62aa8e9a35d2d
 ---
 
 ## One identity authority
@@ -96,6 +96,8 @@ A user or service calls an authorized API to issue a short-lived delegated crede
 - Revoking delegator membership, Project, Agent, delegation, or credential rejects the next request.
 - MCP tool arguments, Messages, Artifacts, logs, and traces never contain credentials.
 - EXCON private data retains only the binding between the general credential and `runAgentId/runId`.
+
+The Fastify `platform.delegation` module now fixes the HTTP command boundary for create, metadata read, issue, rotate, and revoke. It accepts only verified Supabase humans with `platform.delegation.manage`, UUID idempotency keys, a maximum one-hour TTL, known delegated scopes, and a ceiling no higher than the caller's live ceiling. Plaintext appears only in successful issue/rotate responses and every response is `private, no-store`. The injected PostgreSQL command service remains responsible for row locks, one-active-credential enforcement, Audit, and Control Outbox atomicity.
 
 ## Cross-database Data Foundation references
 
