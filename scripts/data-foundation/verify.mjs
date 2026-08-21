@@ -23,7 +23,11 @@ export async function verifyDataFoundation() {
   const fixture = await verifyFixtureBundle();
   await runCommand(
     'node',
-    ['--test', 'scripts/data-foundation/operations.test.mjs'],
+    [
+      '--test',
+      'scripts/data-foundation/operations.test.mjs',
+      'scripts/data-foundation/runtime-role.test.mjs',
+    ],
     { capture: false },
   );
   await runCommand('pnpm', filteredArgs('test'), { capture: false });
