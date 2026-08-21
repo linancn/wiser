@@ -20,14 +20,14 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 23ec3d9b25c6be7da22a69c122a6def4be6dfd04
+lastReviewedCommit: f7410075ab0b7d6c5cb535637da45ad8c1a22070
 ---
 
 ## Boundary and implementation status
 
 Data Foundation is a WISER business system peer to Agent EXCON. It owns DataItems, immutable versions, assets, ingestion, quality, lineage, knowledge, search, and GIS facts. It does not own user sessions, Tenants, Projects, Roles, or tokens. Supabase is the unified identity and control plane; independent data-postgres/PostGIS and S3-compatible object storage form the data authority; search, graph, STAC, and GIS services are rebuildable projections.
 
-`@wiser/data-contracts`, `@wiser/data-core`, data-postgres `@wiser/data-infra`, and the durable-task runtime in `@wiser/data-worker` are now delivered: strict DTOs/Capabilities, pure deterministic policies, checksummed SQL migrations, the authoritative schema, a lease scheduler, and health/metrics endpoints are executable. Object-store and projection adapters, concrete ingestion/projection handlers, and transports must still complete the same boundary, so this milestone is not the final delivery.
+`@wiser/data-contracts`, `@wiser/data-core`, data-postgres/S3 authority `@wiser/data-infra`, and the durable-task runtime in `@wiser/data-worker` are now delivered: strict DTOs/Capabilities, pure deterministic policies, checksummed SQL migrations, the authoritative schema, content-addressed object adapters, a lease scheduler, and health/metrics endpoints are executable. Projection adapters, concrete ingestion/projection handlers, and transports must still complete the same boundary, so this milestone is not the final delivery.
 
 ## One public contract source
 
@@ -86,6 +86,8 @@ Derived data inherits the highest security level of every source. A caller may e
 ## Authoritative commit and projections
 
 Only `APPROVED → COMMITTED` creates a formal version. One data-postgres transaction writes the version, Operation event, audit, and Transactional Outbox. Object content is SHA-256 addressed, and the formal manifest references only verified immutable objects. Supabase, data-postgres, and object storage never pretend to share one distributed transaction.
+
+The S3 authority adapter forces a SeaweedFS path-style endpoint and derives `quarantine`, `raw`, and `versions` keys from validated Tenant/Project/Upload/Version UUIDs plus lowercase SHA-256; callers never supply arbitrary paths. Single-PUT, multipart, and download URLs are bounded to 60–900 seconds. HEAD must match both size and `sha256` metadata before commit. An identical destination is reused, while any different stored hash raises an immutable conflict and is never overwritten. Abort deletes only the derived quarantine key, never raw or version objects, and endpoint failures do not expose credentials or raw storage errors.
 
 The first three pure SQL migrations initialize pgcrypto, PostGIS, btree_gist, unaccent, eight business schemas, `schema_migrations`, and 35 authoritative tables. A fourth migration fixes Job claim, heartbeat, settle, fail, recover, cancel, and atomic Operation-event/Outbox writes. pgSTAC remains managed by the official pyPgSTAC migration rather than a fictional `CREATE EXTENSION pgstac`. The TS7 runner sorts four-digit versions, records filename plus SHA-256, takes one session advisory lock, and executes each file in its own transaction. Missing, renamed, modified, or non-prefix applied history fails closed.
 

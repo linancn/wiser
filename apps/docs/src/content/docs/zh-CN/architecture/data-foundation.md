@@ -20,14 +20,14 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 23ec3d9b25c6be7da22a69c122a6def4be6dfd04
+lastReviewedCommit: f7410075ab0b7d6c5cb535637da45ad8c1a22070
 ---
 
 ## 边界与当前实现
 
 Data Foundation 是 WISER 内与 Agent EXCON 平级的业务系统。它拥有 DataItem、不可变版本、资产、入库会话、质量、血缘、知识、检索与 GIS 事实；不拥有用户 Session、Tenant、Project、Role 或 Token。Supabase 是统一身份与控制面；独立 data-postgres/PostGIS 与 S3 兼容对象存储构成数据权威面；搜索、图谱、STAC 与 GIS 服务均为可重建投影。
 
-当前已落地 `@wiser/data-contracts`、`@wiser/data-core`、data-postgres `@wiser/data-infra`，以及 `@wiser/data-worker` 的持久任务 runtime：严格 DTO/Capability、纯确定性领域政策、校验和 SQL migration、权威 Schema、lease scheduler 与健康/指标入口均可执行。对象存储、投影 adapter、具体入库/投影 Handler 和 transport 仍须沿同一边界完成，当前阶段不等于最终交付。
+当前已落地 `@wiser/data-contracts`、`@wiser/data-core`、data-postgres/S3 authority `@wiser/data-infra`，以及 `@wiser/data-worker` 的持久任务 runtime：严格 DTO/Capability、纯确定性领域政策、校验和 SQL migration、权威 Schema、内容寻址对象 adapter、lease scheduler 与健康/指标入口均可执行。投影 adapter、具体入库/投影 Handler 和 transport 仍须沿同一边界完成，当前阶段不等于最终交付。
 
 ## 唯一公开契约源
 
@@ -86,6 +86,8 @@ REJECTED、PUBLISHED、FAILED、CANCELLED 为终态。
 ## 权威提交与投影
 
 正式版本只能由 `APPROVED → COMMITTED` 流程创建。data-postgres 事务原子写入版本、Operation event、审计和 Transactional Outbox；对象内容以 SHA-256 寻址，正式 manifest 只引用已验证的不可变对象。Supabase、data-postgres 和对象存储之间不伪造分布式事务。
+
+S3 authority adapter 强制 SeaweedFS path-style endpoint，并从经过验证的 Tenant/Project/Upload/Version UUID 与小写 SHA-256 派生 `quarantine`、`raw`、`versions` key，拒绝调用方提供任意路径。单 PUT、multipart 和下载 URL 的 TTL 限制为 60–900 秒。提交前用 HEAD 同时核对 size 与 `sha256` metadata；目标已存在且一致时复用，hash 不同则返回 immutable conflict，绝不覆盖。Abort 只能删除派生的 quarantine key，不能删除 raw 或 version 对象；底层 endpoint 错误不会把凭据或原始错误正文暴露给调用方。
 
 前 3 个纯 SQL migration 初始化 pgcrypto、PostGIS、btree_gist、unaccent、8 个业务 Schema、`schema_migrations` 与 35 张权威表；第 4 个 migration 固化 Job claim、heartbeat、settle、fail、recover、cancel 与 Operation event/Outbox 原子写入。pgSTAC 按官方 pyPgSTAC migration 管理，不伪造成 `CREATE EXTENSION pgstac`。TS7 runner 按四位版本排序，记录文件名和 SHA-256，在 session advisory lock 下逐文件事务执行；已执行文件缺失、改名、内容漂移或非前缀历史都会 fail closed。
 

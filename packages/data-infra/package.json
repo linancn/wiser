@@ -6,7 +6,8 @@
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts",
-    "./migrations": "./src/migrations/index.ts"
+    "./migrations": "./src/migrations/index.ts",
+    "./object-store": "./src/object-store/index.ts"
   },
   "bin": {
     "wiser-data-migrate": "./dist/migrations/cli.js"
@@ -18,6 +19,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1115.0",
+    "@aws-sdk/s3-request-presigner": "3.1115.0",
     "pg": "8.23.0"
   },
   "devDependencies": {
