@@ -17,7 +17,7 @@ describe('WorkBuddy Yongding cookbook documentation', () => {
         read('cookbooks/workbuddy-yongding-tdd/WORKBUDDY_TASK.md'),
         read('cookbooks/workbuddy-yongding-tdd/architecture.md'),
         read('cookbooks/workbuddy-yongding-tdd/failure-injection.md'),
-        read('.codebuddy/skills/wiser-yongding-four-agent-tdd/SKILL.md'),
+        read('skills/wiser-yongding-four-agent-tdd/SKILL.md'),
         read('cookbooks/workbuddy-yongding-tdd/cookbook.yaml'),
       ]);
     const combined = [readme, task, architecture, faults, skill, manifest].join(
@@ -29,6 +29,7 @@ describe('WorkBuddy Yongding cookbook documentation', () => {
     expect(readme).toContain('pnpm cookbook:scripted');
     expect(readme).toContain('pnpm cookbook:rework');
     expect(readme).toContain('WORKBUDDY_LIVE=1 pnpm cookbook:workbuddy');
+    expect(readme).toContain('pnpm codebuddy:install-skill');
     expect(task).toContain('Lead 不计入四个 RunAgent');
     expect(architecture).toContain('四个独立顶层进程');
     expect(architecture).toContain('WISER Message / Artifact');
@@ -51,7 +52,7 @@ describe('WorkBuddy Yongding cookbook documentation', () => {
 
   it('publishes machine-readable host evals and report contracts', async () => {
     const [evalsSource, reportSchemaSource] = await Promise.all([
-      read('.codebuddy/skills/wiser-yongding-four-agent-tdd/evals/evals.json'),
+      read('skills/wiser-yongding-four-agent-tdd/evals/evals.json'),
       read(
         'cookbooks/workbuddy-yongding-tdd/schemas/cookbook-report.schema.json',
       ),
@@ -71,5 +72,25 @@ describe('WorkBuddy Yongding cookbook documentation', () => {
       ]),
     );
     expect(schema.properties).toHaveProperty('authoritative');
+  });
+
+  it('keeps the WorkBuddy installation directory local-only', async () => {
+    const [ignore, manifestSource, installer] = await Promise.all([
+      read('.gitignore'),
+      read('package.json'),
+      read(
+        'cookbooks/workbuddy-yongding-tdd/scripts/install-codebuddy-skill.mjs',
+      ),
+    ]);
+    const manifest = JSON.parse(manifestSource) as {
+      scripts: Record<string, string>;
+    };
+
+    expect(ignore).toMatch(/^\.codebuddy\/$/m);
+    expect(manifest.scripts['codebuddy:install-skill']).toBe(
+      'node cookbooks/workbuddy-yongding-tdd/scripts/install-codebuddy-skill.mjs',
+    );
+    expect(installer).toContain("'.codebuddy'");
+    expect(installer).toContain("'skills'");
   });
 });
