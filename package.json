@@ -36,6 +36,7 @@
     "cookbook:scripted": "tsx cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs --mode scripted",
     "cookbook:rework": "tsx cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs --mode scripted --fault water-evidence-schema-once",
     "cookbook:workbuddy": "tsx cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs --mode workbuddy",
+    "codebuddy:install-skill": "node cookbooks/workbuddy-yongding-tdd/scripts/install-codebuddy-skill.mjs",
     "showcase": "tsx cookbooks/workbuddy-yongding-tdd/showcase/scripts/showcase.mjs",
     "showcase:preflight": "pnpm showcase preflight",
     "showcase:start": "pnpm showcase start",

@@ -25,6 +25,7 @@ WORKBUDDY_LIVE=1 pnpm cookbook:workbuddy
 
 - Node.js 与 pnpm 版本满足根 `package.json` 的 `engines`。
 - 已完成 `pnpm install`。
+- 首次使用或 Skill 更新后运行 `pnpm codebuddy:install-skill`；仓库以 `skills/wiser-yongding-four-agent-tdd/` 为唯一源码，并把本机 `.codebuddy/skills/` 安装副本排除在 Git 之外。
 - 真实路径使用 `/Applications/WorkBuddy.app` 内置的 `codebuddy`；可用 `WORKBUDDY_CLI` 指向另一个绝对路径。
 - 本地端口只绑定 `127.0.0.1`。`NODE_ENV=production` 会拒绝启动 Lab。
 - 真实运行前先执行 `pnpm cookbook:scripted` 和 `pnpm cookbook:rework`。
