@@ -1789,28 +1789,6 @@ code {
     gap: 0.45rem;
   }
 
-  .demo-source {
-    font-size: 0;
-  }
-
-  .demo-source::after {
-    font-family: var(--mono);
-    font-size: 0.55rem;
-    content: 'PREVIEW';
-  }
-
-  .app-shell[lang='zh-CN'] .demo-source::after {
-    content: '预览';
-  }
-
-  .demo-source.source-live::after {
-    content: 'LIVE V2';
-  }
-
-  .app-shell[lang='zh-CN'] .demo-source.source-live::after {
-    content: '实时 V2';
-  }
-
   .global-nav {
     width: 100%;
   }

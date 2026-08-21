@@ -95,7 +95,7 @@ export function RunOverview({
     {
       id: coordinator?.id ?? 'coordination',
       kind: 'role',
-      label: coordinator?.name[locale] ?? 'Coordination',
+      label: coordinator?.name[locale] ?? copy.coordinationFallback,
       status:
         coordinator === undefined
           ? ('pending' as const)
@@ -137,7 +137,7 @@ export function RunOverview({
       <div className={styles.overview}>
         <header className={styles.overviewHeading}>
           <div>
-            <span className={styles.eyebrow}>RUN CONTROL</span>
+            <span className={styles.eyebrow}>{copy.eyebrow}</span>
             <h2>{copy.heading}</h2>
           </div>
           <p>{copy.lede}</p>
@@ -205,7 +205,9 @@ export function RunOverview({
                   role="listitem"
                   key={node.id}
                 >
-                  <span className={styles.nodeType}>{node.kind}</span>
+                  <span className={styles.nodeType}>
+                    {copy.nodeTypes[node.kind as keyof typeof copy.nodeTypes]}
+                  </span>
                   <strong>{node.label}</strong>
                   <small>
                     {node.status === 'complete'
@@ -243,18 +245,24 @@ export function RunOverview({
             >
               <span>
                 <strong>{collaboration.handoffCount}</strong>{' '}
-                {copy.handoffClosedSuffix}
+                {locale === 'en' && collaboration.handoffCount === 1
+                  ? copy.handoffClosedSingular
+                  : copy.handoffClosedSuffix}
               </span>
               <span data-attention={collaboration.openRequestCount > 0}>
                 <strong>{collaboration.openRequestCount}</strong>{' '}
-                {copy.openRequestSuffix}
+                {locale === 'en' && collaboration.openRequestCount === 1
+                  ? copy.openRequestSingular
+                  : copy.openRequestSuffix}
               </span>
               <span>
                 <strong>
                   {collaboration.acknowledgedDeliveries}/
                   {collaboration.totalDeliveries}
                 </strong>{' '}
-                {copy.deliveryClosedSuffix}
+                {locale === 'en' && collaboration.totalDeliveries === 1
+                  ? copy.deliveryClosedSingular
+                  : copy.deliveryClosedSuffix}
               </span>
             </div>
             <ul className={styles.agentList}>

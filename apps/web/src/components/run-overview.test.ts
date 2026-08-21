@@ -25,9 +25,9 @@ describe('Run overview', () => {
     );
 
     expect(html).toContain('导调总览');
-    expect(html).toContain('权威通过');
+    expect(html).toContain('裁决通过');
     expect(html).toContain('遥测有缺口');
-    expect(html).toContain('下一步关注');
+    expect(html).toContain('待办与风险');
     expect(html).toContain('data-testid="run-decision-spine"');
     expect(html.match(/data-testid="decision-node"/g)).toHaveLength(7);
     expect(

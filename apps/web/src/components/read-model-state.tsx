@@ -28,7 +28,7 @@ export function ReadModelUnavailable({
         </div>
         <div>
           <p className="eyebrow">
-            {dictionary.dataSource.unavailableEyebrow} · {reason}
+            {dictionary.dataSource.unavailableEyebrow} · <code>{reason}</code>
           </p>
           <h1>
             {reference

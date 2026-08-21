@@ -51,7 +51,7 @@ export function RunDiagnosticsPanel({
     <section className={styles.panel} aria-labelledby="diagnostics-heading">
       <header className={styles.heading}>
         <div>
-          <span>AUTHORITY × TELEMETRY</span>
+          <span>{copy.eyebrow}</span>
           <h2 id="diagnostics-heading">{copy.heading}</h2>
         </div>
         <p>{copy.lede}</p>
@@ -98,7 +98,10 @@ export function RunDiagnosticsPanel({
               diagnostics.telemetry.participantMode,
               locale,
             )}{' '}
-            · {telemetryFindingCount} {copy.findings}
+            ·{' '}
+            {locale === 'zh-CN'
+              ? `${telemetryFindingCount} 项诊断`
+              : `${telemetryFindingCount} ${telemetryFindingCount === 1 ? 'finding' : 'findings'}`}
           </small>
         </div>
       </section>
@@ -109,7 +112,7 @@ export function RunDiagnosticsPanel({
       >
         <div className={styles.sectionHeading}>
           <div>
-            <span>AUTHORITY FLOW</span>
+            <span>{copy.authorityFlowLabel}</span>
             <h3 id="barrier-heading">{copy.barrierFlow}</h3>
           </div>
           <p>{copy.authorityCopy}</p>
@@ -128,17 +131,17 @@ export function RunDiagnosticsPanel({
       <section className={styles.ledger} aria-labelledby="ledger-heading">
         <div className={styles.sectionHeading}>
           <div>
-            <span>RED → GREEN</span>
+            <span>{copy.redGreenLabel}</span>
             <h3 id="ledger-heading">{copy.revisionLedger}</h3>
           </div>
           <p>{copy.revisionLede}</p>
         </div>
         <div className={styles.ledgerHeader} aria-hidden="true">
           <span>{getDictionary(locale).common.roles}</span>
-          <span>Revision</span>
-          <span>Verdict</span>
-          <span>Evidence</span>
-          <span>Run seq</span>
+          <span>{copy.revisionColumn}</span>
+          <span>{copy.verdictColumn}</span>
+          <span>{copy.evidenceColumn}</span>
+          <span>{copy.runSequenceColumn}</span>
         </div>
         <div className={styles.evaluationRows}>
           {diagnostics.evaluationLanes.flatMap((lane) =>
@@ -185,7 +188,7 @@ export function RunDiagnosticsPanel({
         >
           <div className={styles.sectionHeading}>
             <div>
-              <span>OTEL SIGNALS</span>
+              <span>{copy.otelSignalsLabel}</span>
               <h3 id="signals-heading">{copy.signalMatrix}</h3>
             </div>
             <p>{copy.signalLede}</p>
@@ -208,7 +211,7 @@ export function RunDiagnosticsPanel({
         <section className={styles.findings} aria-labelledby="findings-heading">
           <div className={styles.sectionHeading}>
             <div>
-              <span>TRIAGE</span>
+              <span>{copy.triageLabel}</span>
               <h3 id="findings-heading">{copy.findings}</h3>
             </div>
             <p>{copy.findingsLede}</p>

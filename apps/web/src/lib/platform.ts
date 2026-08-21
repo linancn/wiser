@@ -340,11 +340,11 @@ export const scenarios: readonly PlatformScenario[] = [
     shortName: text('永定河联合调度', 'Yongding joint dispatch'),
     title: text(
       '2023 永定河春季生态补水——京津冀多水源联合调度（事实锚定合成版）',
-      '2023 Yongding River Spring Ecological Replenishment — Jing-Jin-Ji Multi-source Dispatch (Fact-anchored Synthetic Edition)',
+      '2023 Yongding River spring ecological replenishment — multi-source dispatch across Beijing, Tianjin, and Hebei (fact-anchored synthetic scenario)',
     ),
     description: text(
-      '四类专业智能体并行研判来水、工程约束与生态目标，由调度协调智能体汇聚团队方案。',
-      'Four specialist agents analyze inflows, engineering constraints, and ecological targets in parallel before a coordinator converges the team plan.',
+      '三个专业智能体并行研判来水、工程约束与生态目标，由调度协调智能体汇聚团队方案。',
+      'Three specialist agents analyze inflows, engineering constraints, and ecological targets in parallel; a dispatch coordinator combines their outputs into a joint plan.',
     ),
     region: text(
       '京津冀 · 永定河水系统',
@@ -378,7 +378,7 @@ export const scenarios: readonly PlatformScenario[] = [
       {
         id: 'briefing',
         virtualTime: 'T+00:00',
-        title: text('任务展开', 'Mission opened'),
+        title: text('任务展开', 'Exercise launched'),
         contract: text('团队读取初始证据', 'Team reads the initial evidence'),
       },
       {
@@ -398,8 +398,8 @@ export const scenarios: readonly PlatformScenario[] = [
         virtualTime: 'T+14:00',
         title: text('定向反馈', 'Targeted feedback'),
         contract: text(
-          '按 Agent 与团队返回反馈',
-          'Return agent and team feedback',
+          '按智能体及团队维度返回反馈',
+          'Return feedback to individual agents and the team',
         ),
       },
     ],
@@ -416,7 +416,7 @@ export const scenarios: readonly PlatformScenario[] = [
     shortName: text('白洋淀生态协同', 'Baiyangdian ecological coordination'),
     title: text(
       '白洋淀生态水位与多源补水协同（合成演练）',
-      'Baiyangdian ecological level and multi-source replenishment coordination (Synthetic exercise)',
+      'Baiyangdian ecological water levels and multi-source replenishment coordination (synthetic exercise)',
     ),
     description: text(
       '围绕分区水位、生境目标和补水窗口组织多角色协同。',
@@ -448,7 +448,7 @@ export const scenarios: readonly PlatformScenario[] = [
       {
         id: 'window',
         virtualTime: 'T+08:00',
-        title: text('窗口组合', 'Window composition'),
+        title: text('补水窗口组合', 'Replenishment window planning'),
         contract: text(
           '汇聚生境与水源工件',
           'Converge habitat and source artifacts',
@@ -921,7 +921,7 @@ const yongdingInteractions: readonly CollaborationExchange[] = [
     recipientRunAgentIds: ['agent-coordinator'],
     subject: text(
       '生态断面目标工件已交接',
-      'Ecological section targets artifact handed off',
+      'Ecological target artifact handed off',
     ),
     artifactVersionRefs: [
       {
@@ -1036,7 +1036,7 @@ const yongdingReplayReceipts: readonly ReplayReceipt[] = [
     virtualTime: 'T+12:00',
     title: text('阶段检查点恢复', 'Checkpoint resumed'),
     detail: text(
-      '四个 Agent Session 恢复到相同运行检查点。',
+      '四个智能体会话恢复到相同运行检查点。',
       'Four agent sessions resumed at the same run checkpoint.',
     ),
     actorId: 'excon',
@@ -1068,7 +1068,7 @@ const yongdingReplayReceipts: readonly ReplayReceipt[] = [
     category: 'receipt',
     wallTime: '10:31:44.040',
     virtualTime: 'T+12:00',
-    title: text('生态证据已读取', 'Ecology evidence observed'),
+    title: text('生态证据已读取', 'Ecology evidence read'),
     detail: text(
       '生态目标智能体读取当前可见断面目标。',
       'The ecology agent read the currently visible section targets.',
@@ -1122,7 +1122,7 @@ const yongdingReplayReceipts: readonly ReplayReceipt[] = [
     category: 'evaluation',
     wallTime: '10:31:57.900',
     virtualTime: 'T+12:04',
-    title: text('隐藏规则证据固定', 'Private rule evidence pinned'),
+    title: text('隐藏规则证据固定', 'Private evaluation evidence pinned'),
     detail: text(
       '裁决服务固定内部规则与结果哈希。',
       'The evaluator pinned private rules and outcome hashes.',
@@ -1140,7 +1140,7 @@ const yongdingReplayReceipts: readonly ReplayReceipt[] = [
     category: 'submission',
     wallTime: '10:31:55.520',
     virtualTime: 'T+12:04',
-    title: text('团队提交审计载荷', 'Team submission audit payload'),
+    title: text('团队提交审计记录', 'Team submission audit record'),
     detail: text(
       '完整贡献者清单仅向授权导调员展示。',
       'The complete contributor list is visible only to authorized operators.',

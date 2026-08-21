@@ -377,8 +377,13 @@ describe('Web read-model sources', () => {
     );
     expect(result.data.run.diagnostics.status).toBe('incomplete');
     expect(result.data.replayByPerspective.operator).toHaveLength(2);
+    expect(result.data.replayByPerspective.operator[0]).toMatchObject({
+      title: { 'zh-CN': '演练运行已启动' },
+      detail: { 'zh-CN': '运行 · 导调员确认' },
+    });
     expect(result.data.replayByPerspective.operator[1]).toMatchObject({
       category: 'receipt',
+      title: { 'zh-CN': '可见性收据 · 提交' },
       visibleTo: [RUN_AGENT_ID],
     });
     expect(result.gaps.map((gap) => gap.code)).toContain(

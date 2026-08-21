@@ -49,6 +49,21 @@ function operationLabel(operation: ExerciseSpan['operation'], locale: Locale) {
   return labels[operation][locale];
 }
 
+function spanStatusLabel(
+  status: ExerciseSpan['status'] | 'UNSET' | 'OK' | 'ERROR',
+  locale: Locale,
+): string {
+  const labels = {
+    ERROR: { 'zh-CN': '错误', en: 'Error' },
+    OK: { 'zh-CN': '正常', en: 'OK' },
+    UNSET: { 'zh-CN': '未设置', en: 'Not set' },
+    error: { 'zh-CN': '错误', en: 'Error' },
+    ok: { 'zh-CN': '正常', en: 'OK' },
+    running: { 'zh-CN': '进行中', en: 'Running' },
+  } as const;
+  return labels[status][locale];
+}
+
 function AgentIdentity({
   agent,
   locale,
@@ -147,7 +162,7 @@ export function RunTrace({
           >
             <div className="trace-section-heading">
               <div>
-                <p className="eyebrow">TRACE-LEVEL · NO SYNTHETIC SPANS</p>
+                <p className="eyebrow">{dictionary.trace.summaryEyebrow}</p>
                 <h2 id="trace-summary-heading">
                   {dictionary.trace.traceSummaries}
                 </h2>
@@ -187,7 +202,7 @@ export function RunTrace({
                         </div>
                         <div>
                           <dt>{dictionary.trace.status}</dt>
-                          <dd>{trace.status}</dd>
+                          <dd>{spanStatusLabel(trace.status, locale)}</dd>
                         </div>
                         <div>
                           <dt>{dictionary.trace.source}</dt>
@@ -215,7 +230,7 @@ export function RunTrace({
           >
             <div className="trace-section-heading trace-workspace-heading">
               <div>
-                <p className="eyebrow">WALL + VIRTUAL TIME</p>
+                <p className="eyebrow">{dictionary.trace.clockEyebrow}</p>
                 <h2 id="agent-lanes-heading">{dictionary.trace.agentLanes}</h2>
               </div>
               <div className="clock-legend">
@@ -379,7 +394,7 @@ export function RunTrace({
               >
                 <div className="inspector-heading">
                   <span>{dictionary.trace.inspector}</span>
-                  <code>OTel safe projection</code>
+                  <code>{dictionary.trace.safeProjection}</code>
                 </div>
                 {selectedSpan === undefined ? (
                   <p className="inspector-empty">
@@ -415,11 +430,13 @@ export function RunTrace({
                       </div>
                       <div>
                         <dt>{dictionary.trace.status}</dt>
-                        <dd>{selectedSpan.status}</dd>
+                        <dd>{spanStatusLabel(selectedSpan.status, locale)}</dd>
                       </div>
                       <div>
                         <dt>{dictionary.trace.operation}</dt>
-                        <dd>{selectedSpan.operation}</dd>
+                        <dd>
+                          {operationLabel(selectedSpan.operation, locale)}
+                        </dd>
                       </div>
                       <div>
                         <dt>{dictionary.trace.source}</dt>

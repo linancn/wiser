@@ -43,7 +43,10 @@ export function ScenarioOrchestration({
           <div>
             <dt>{copy.rolesHeading}</dt>
             <dd>
-              {scenario.requiredRoles.length} {copy.requiredRoleSuffix}
+              {scenario.requiredRoles.length}{' '}
+              {locale === 'en' && scenario.requiredRoles.length === 1
+                ? copy.requiredRoleSingular
+                : copy.requiredRoleSuffix}
             </dd>
           </div>
           <div>
@@ -170,7 +173,7 @@ export function ScenarioOrchestration({
       >
         <div className={styles.sectionHeading}>
           <div>
-            <span className={styles.eyebrow}>RUNS</span>
+            <span className={styles.eyebrow}>{copy.associatedRunsEyebrow}</span>
             <h2 id="related-runs-heading">{copy.associatedRunsHeading}</h2>
           </div>
           <p>{copy.associatedRunsLede}</p>

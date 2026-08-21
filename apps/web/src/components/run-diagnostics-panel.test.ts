@@ -46,8 +46,8 @@ describe('Run diagnostics panel', () => {
     );
 
     expect(html).toContain('Diagnostics &amp; deterministic evaluation');
-    expect(html).toContain('Authoritative verdicts');
+    expect(html).toContain('Authoritative evaluation');
     expect(html).toContain('Best-effort telemetry');
-    expect(html).toContain('Signal coverage matrix');
+    expect(html).toContain('Telemetry signal coverage');
   });
 });

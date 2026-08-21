@@ -60,7 +60,7 @@ export function ScenarioCenter({
             <dd>{scenarios.length}</dd>
           </div>
           <div>
-            <dt>{dictionary.scenarioCenter.activeRuns}</dt>
+            <dt>{dictionary.scenarioCenter.runningRuns}</dt>
             <dd>{runs.filter(({ state }) => state === 'running').length}</dd>
           </div>
         </dl>

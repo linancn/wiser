@@ -17,15 +17,15 @@ type ReplayProgressStyle = CSSProperties & { '--replay-progress': string };
 
 function categoryLabel(category: string, locale: Locale): string {
   const labels: Record<string, Record<Locale, string>> = {
-    acknowledgement: { 'zh-CN': '接收确认', en: 'Acknowledgement' },
+    acknowledgement: { 'zh-CN': '确认接收', en: 'Acknowledgement' },
     artifact: { 'zh-CN': '工件', en: 'Artifact' },
     contribution: { 'zh-CN': '专业工件', en: 'Contribution' },
     endorsement: { 'zh-CN': '背书', en: 'Endorsement' },
     evaluation: { 'zh-CN': '裁决', en: 'Evaluation' },
     feedback: { 'zh-CN': '反馈', en: 'Feedback' },
-    inject: { 'zh-CN': '注入', en: 'Inject' },
+    inject: { 'zh-CN': '信息注入', en: 'Inject' },
     message: { 'zh-CN': '消息', en: 'Message' },
-    receipt: { 'zh-CN': '收据', en: 'Receipt' },
+    receipt: { 'zh-CN': '可见性收据', en: 'Receipt' },
     run: { 'zh-CN': '运行', en: 'Run' },
     submission: { 'zh-CN': '提交', en: 'Submission' },
   };
@@ -246,12 +246,16 @@ export function RunReplay({
             >
               <div className="panel-heading">
                 <div>
-                  <span>DOMAIN EVENT STORE</span>
+                  <span>{dictionary.replay.eventStoreLabel}</span>
                   <h2 id="replay-stream-heading">
                     {dictionary.replay.eventStream}
                   </h2>
                 </div>
-                <code>{events.length} RECEIPTS</code>
+                <code>
+                  {locale === 'zh-CN'
+                    ? `${events.length} ${dictionary.replay.receiptCountLabel}`
+                    : `${events.length} visibility ${events.length === 1 ? 'receipt' : 'receipts'}`}
+                </code>
               </div>
               {events.length === 0 ? (
                 <p className="empty-state">{dictionary.replay.noEvents}</p>
@@ -292,7 +296,7 @@ export function RunReplay({
             <aside className="receipt-inspector" aria-live="polite">
               <div className="inspector-heading">
                 <span>{dictionary.replay.receipt}</span>
-                <code>CAPTURED, NOT RECOMPUTED</code>
+                <code>{dictionary.replay.capturedNotRecomputed}</code>
               </div>
               {selectedEvent === undefined ? null : (
                 <>
@@ -324,10 +328,10 @@ export function RunReplay({
                     </div>
                   </dl>
                   <div className="receipt-visibility">
-                    <span>VISIBLE TO</span>
+                    <span>{dictionary.replay.visibleToLabel}</span>
                     <div>
                       {selectedEvent.visibility === 'operator' ? (
-                        <code>operator</code>
+                        <code>{dictionary.replay.operatorPerspective}</code>
                       ) : (
                         selectedEvent.visibleTo.map((agentId) => (
                           <code key={agentId}>{agentId}</code>
@@ -337,7 +341,7 @@ export function RunReplay({
                   </div>
                   {selectedEvent.traceId === undefined ? null : (
                     <div className="id-stack">
-                      <span>Trace / Span</span>
+                      <span>{dictionary.replay.traceSpanLabel}</span>
                       <code>{selectedEvent.traceId}</code>
                       <code>{selectedEvent.spanId}</code>
                     </div>

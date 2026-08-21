@@ -261,19 +261,30 @@ export function RunCollaboration({
         >
           <strong id="collaboration-status-heading">{copy.statusLabel}</strong>
           <span>
-            <b>{summary.handoffCount}</b> {copy.handoffClosedSuffix}
+            <b>{summary.handoffCount}</b>{' '}
+            {locale === 'en' && summary.handoffCount === 1
+              ? copy.handoffClosedSingular
+              : copy.handoffClosedSuffix}
           </span>
           <span data-attention={summary.openRequestCount > 0}>
-            <b>{summary.openRequestCount}</b> {copy.openRequestSuffix}
+            <b>{summary.openRequestCount}</b>{' '}
+            {locale === 'en' && summary.openRequestCount === 1
+              ? copy.openRequestSingular
+              : copy.openRequestSuffix}
           </span>
           <span>
-            <b>{summary.responseCount}</b> {copy.responseSuffix}
+            <b>{summary.responseCount}</b>{' '}
+            {locale === 'en' && summary.responseCount === 1
+              ? copy.responseSingular
+              : copy.responseSuffix}
           </span>
           <span>
             <b>
               {summary.acknowledgedDeliveries}/{summary.totalDeliveries}
             </b>{' '}
-            {copy.deliveryClosedSuffix}
+            {locale === 'en' && summary.totalDeliveries === 1
+              ? copy.deliveryClosedSingular
+              : copy.deliveryClosedSuffix}
           </span>
         </section>
 
@@ -295,7 +306,10 @@ export function RunCollaboration({
             ))}
           </div>
           <code>
-            {filtered.length} {copy.exchangeCount}
+            {filtered.length}{' '}
+            {locale === 'en' && filtered.length === 1
+              ? copy.exchangeCountSingular
+              : copy.exchangeCount}
           </code>
         </div>
 

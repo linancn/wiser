@@ -903,17 +903,95 @@ function eventCategory(event: ApiRunEvent): ReplayReceipt['category'] {
   return categories[event.streamType] ?? 'run';
 }
 
+const eventTypeLabels: Readonly<Record<string, LocalizedText>> = {
+  'agent.joined': text('智能体加入运行', 'Agent joined run'),
+  'artifact.published': text('工件首版已发布', 'Artifact published'),
+  'artifact.version-published': text(
+    '工件新版本已发布',
+    'Artifact version published',
+  ),
+  'barrier.created': text('阶段闸门已创建', 'Stage gate created'),
+  'barrier.released': text('阶段闸门已放行', 'Stage gate released'),
+  'barrier.satisfied': text('阶段闸门条件已满足', 'Stage gate satisfied'),
+  'evaluation.completed': text('确定性评测已完成', 'Evaluation completed'),
+  'feedback.created': text('定向反馈已发放', 'Feedback created'),
+  'message.created': text('协作消息已发送', 'Collaboration message sent'),
+  'receipt.acknowledged': text(
+    '可见性收据已确认',
+    'Visibility receipt acknowledged',
+  ),
+  'receipt.issued': text('可见性收据已签发', 'Visibility receipt issued'),
+  'role.assigned': text('运行角色已分配', 'Run role assigned'),
+  'run.created': text('演练运行已创建', 'Exercise run created'),
+  'run.started': text('演练运行已启动', 'Exercise run started'),
+  'submission.created': text('提交已创建', 'Submission created'),
+  'submission.endorsed': text('提交已背书', 'Submission endorsed'),
+  'task.accepted': text('任务已通过', 'Task accepted'),
+  'task.blocked': text('任务等待阶段闸门', 'Task blocked by stage gate'),
+  'task.claimed': text('任务已领取', 'Task claimed'),
+  'task.lease-renewed': text('任务租约已续期', 'Task lease renewed'),
+  'task.ready': text('任务已就绪', 'Task ready'),
+  'task.rework-required': text('任务需要返工', 'Task requires rework'),
+  'task.started': text('任务已开始', 'Task started'),
+  'task.submitted': text('任务结果已提交', 'Task result submitted'),
+};
+
+const streamTypeLabels: Readonly<Record<string, LocalizedText>> = {
+  artifact: text('工件', 'Artifact'),
+  barrier: text('阶段闸门', 'Stage gate'),
+  endorsement: text('背书', 'Endorsement'),
+  evaluation: text('评测', 'Evaluation'),
+  feedback: text('反馈', 'Feedback'),
+  message: text('消息', 'Message'),
+  receipt: text('可见性收据', 'Visibility receipt'),
+  run: text('运行', 'Run'),
+  run_agent: text('运行智能体', 'Run agent'),
+  submission: text('提交', 'Submission'),
+  task: text('任务', 'Task'),
+};
+
+const assertionClassLabels: Readonly<Record<string, LocalizedText>> = {
+  evaluator_derived: text('评测器推导', 'Evaluator-derived'),
+  external_outcome: text('外部结果', 'External outcome'),
+  operator_asserted: text('导调员确认', 'Exercise-controller asserted'),
+  participant_reported: text('参与者上报', 'Participant-reported'),
+  platform_observed: text('平台观测', 'Platform-observed'),
+};
+
+function localizedLabel(
+  labels: Readonly<Record<string, LocalizedText>>,
+  value: string,
+  fallback: LocalizedText,
+): LocalizedText {
+  return labels[value] ?? fallback;
+}
+
 function eventToReceipt(event: ApiRunEvent): ReplayReceipt {
+  const eventTitle = localizedLabel(
+    eventTypeLabels,
+    event.eventType,
+    text('领域事件', event.eventType),
+  );
+  const stream = localizedLabel(
+    streamTypeLabels,
+    event.streamType,
+    text('运行记录', event.streamType),
+  );
+  const assertion = localizedLabel(
+    assertionClassLabels,
+    event.assertionClass,
+    text('来源未分类', event.assertionClass),
+  );
   return {
     id: event.eventId,
     sequence: event.runSeq,
     category: eventCategory(event),
     wallTime: event.recordedAt,
     virtualTime: event.virtualTime,
-    title: text(event.eventType, event.eventType),
+    title: eventTitle,
     detail: text(
-      `${event.streamType} · ${event.assertionClass}`,
-      `${event.streamType} · ${event.assertionClass}`,
+      `${stream['zh-CN']} · ${assertion['zh-CN']}`,
+      `${stream.en} · ${assertion.en}`,
     ),
     actorId: event.actorId,
     visibility: 'operator',
@@ -925,6 +1003,22 @@ function eventToReceipt(event: ApiRunEvent): ReplayReceipt {
 }
 
 function agentReceiptToReplay(receipt: ApiAgentReceipt): ReplayReceipt {
+  const viewKind = localizedLabel(
+    {
+      artifact_grant: text('工件授权', 'Artifact grant'),
+      feedback: text('反馈', 'Feedback'),
+      message: text('消息', 'Message'),
+      submission: text('提交', 'Submission'),
+      task_assignment: text('任务分配', 'Task assignment'),
+    },
+    receipt.viewKind,
+    text('可见内容', receipt.viewKind),
+  );
+  const resourceType = localizedLabel(
+    streamTypeLabels,
+    receipt.resourceType,
+    text('运行资源', receipt.resourceType),
+  );
   return {
     id: receipt.id,
     sequence: receipt.issuedRunSeq,
@@ -932,12 +1026,12 @@ function agentReceiptToReplay(receipt: ApiAgentReceipt): ReplayReceipt {
     wallTime: receipt.issuedAt,
     virtualTime: receipt.issuedVirtualAt,
     title: text(
-      `可见性收据 · ${receipt.viewKind}`,
-      `Visibility receipt · ${receipt.viewKind}`,
+      `可见性收据 · ${viewKind['zh-CN']}`,
+      `Visibility receipt · ${viewKind.en}`,
     ),
     detail: text(
-      `${receipt.resourceType} · ${receipt.resourceId} · Agent 收据 #${receipt.agentReceiptSeq}`,
-      `${receipt.resourceType} · ${receipt.resourceId} · Agent receipt #${receipt.agentReceiptSeq}`,
+      `${resourceType['zh-CN']} · 智能体收据 #${receipt.agentReceiptSeq}`,
+      `${resourceType.en} · Agent receipt #${receipt.agentReceiptSeq}`,
     ),
     actorId: receipt.runAgentId,
     visibility: 'agent',
@@ -1056,33 +1150,33 @@ const liveRunGaps: readonly ReadModelGap[] = [
   {
     code: 'AGENT_IDENTITY_DETAIL_UNAVAILABLE',
     title: text(
-      'Agent Identity 详情未包含在 RunAgent 列表',
+      '智能体身份详情未包含在运行智能体列表',
       'Agent Identity detail is absent from the RunAgent list',
     ),
     detail: text(
-      '显示真实 RunAgent、角色、实例键和版本 ID；模型名称与工具计数保留为空。',
+      '当前显示运行智能体、角色、实例键和版本 ID；模型名称与工具计数暂不展示。',
       'Real RunAgent, role, instance key, and version ID are shown; model names and tool counts remain blank.',
     ),
   },
   {
     code: 'SPAN_DETAIL_UNAVAILABLE',
     title: text(
-      'v2 traces 端点当前只返回 Trace 摘要',
+      'v2 追踪端点当前只返回追踪摘要',
       'The v2 traces endpoint currently returns trace summaries only',
     ),
     detail: text(
-      '不会伪造 participant、model、tool Span 或父子关系；Span 瀑布需等待明细查询 DTO。',
+      '不会补造参与者、模型或工具 Span，也不会推断父子关系；Span 瀑布需等待明细查询 DTO。',
       'Participant, model, and tool spans or parent-child edges are never invented; the waterfall awaits a span-detail query DTO.',
     ),
   },
   {
     code: 'PARTICIPANT_REPLAY_UNAVAILABLE',
     title: text(
-      '实时页面只加载 operator 回放投影',
+      '实时页面只加载导调员回放视图',
       'The live page loads only the operator replay projection',
     ),
     detail: text(
-      'Agent 历史视角必须由显式授权查询加载，不能从 operator 事件反推。',
+      '智能体历史视角必须通过显式授权查询加载，不能从导调员事件反推。',
       'Historical agent views require an explicitly authorized query and are not inferred from operator events.',
     ),
   },

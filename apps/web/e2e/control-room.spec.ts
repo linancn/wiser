@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 const mixedChineseProductTerms =
   /\b(?:Operator|Agent Session|Agent|Run|Trace|Barrier|ArtifactVersion|Receipt|Event|Telemetry|Best-effort|Thread|Operation|Exporter|Revision|Verdict|Evidence|Inject|Feedback|Prompt|Tool|payload|cursor|signal|live|Web|Log|Logs|Metric|Links?|ROLE|BARRIER|VERDICT|AUTHORITY|TELEMETRY|TRIAGE|MESSAGE|ARTIFACTVERSION|FLOW)\b/;
 
-async function visibleNarrativeText(page: import('@playwright/test').Page) {
+async function visibleNarrativeText(page: Page) {
   return page.evaluate(() =>
     [...document.querySelectorAll('body *')]
       .filter((element) => {
@@ -39,6 +40,20 @@ test('opens the Chinese scenario center and preserves the route in English', asy
   await expect(
     page.getByRole('heading', { name: 'Scenario center' }),
   ).toBeVisible();
+
+  for (const route of [
+    'scenarios',
+    'runs/run-yongding-spring-042',
+    'runs/run-yongding-spring-042/collaboration',
+    'runs/run-yongding-spring-042/diagnostics',
+    'runs/run-yongding-spring-042/trace',
+    'runs/run-yongding-spring-042/replay',
+  ]) {
+    await page.goto(`/en/${route}`);
+    await expect(page.locator('main'), route).not.toContainText(
+      /[\u3400-\u9fff]/,
+    );
+  }
 });
 
 test('uses a two-level global navigation and enters Runs through overview', async ({
@@ -104,9 +119,12 @@ test('uses consistent professional Chinese while preserving protocol terms', asy
   }
 
   await page.goto('/zh-CN/scenarios');
-  await expect(page.getByText('Skill', { exact: false })).toBeVisible();
-  await expect(page.getByText('HTTP', { exact: false })).toBeVisible();
-  await expect(page.getByText('MCP', { exact: false })).toBeVisible();
+  await expect(
+    page.getByText(
+      '当前展示导调员使用的管理视图预览。每个场景独立版本化，并明确多智能体角色、阶段契约和评价边界；参训智能体仍通过 Skill、HTTP 或 MCP 与平台交互。',
+      { exact: true },
+    ),
+  ).toBeVisible();
 });
 
 test('separates scenario management from active multi-agent runs', async ({
@@ -116,7 +134,7 @@ test('separates scenario management from active multi-agent runs', async ({
   await page
     .getByTestId('scenario-card')
     .filter({ hasText: '永定河联合调度' })
-    .getByRole('link', { name: '管理场景' })
+    .getByRole('link', { name: '查看场景' })
     .click();
 
   await expect(page.getByRole('heading', { name: '场景编排' })).toBeVisible();
@@ -139,9 +157,9 @@ test('opens a human-first Run overview before technical drill-down', async ({
   await page.goto('/zh-CN/runs/run-yongding-spring-042');
 
   await expect(page.getByRole('heading', { name: '导调总览' })).toBeVisible();
-  await expect(page.getByText('权威通过', { exact: true })).toBeVisible();
+  await expect(page.getByText('裁决通过', { exact: true })).toBeVisible();
   await expect(page.getByText('遥测有缺口', { exact: true })).toBeVisible();
-  await expect(page.getByText('下一步关注', { exact: true })).toBeVisible();
+  await expect(page.getByText('待办与风险', { exact: true })).toBeVisible();
   await expect(page.getByTestId('run-decision-spine')).toBeVisible();
   await expect(page.getByRole('link', { name: '总览' })).toHaveAttribute(
     'aria-current',
@@ -178,16 +196,16 @@ test('observes parallel agents, cross-agent links, and perspective replay', asyn
     'page',
   );
 
-  await page.getByRole('link', { name: 'Trace' }).click();
+  await page.getByRole('link', { name: '追踪' }).click();
   await expect(page).toHaveURL(/\/trace$/);
 
-  await expect(page.getByRole('heading', { name: 'Trace 探索' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '追踪分析' })).toBeVisible();
   await expect(page.getByTestId('agent-lane')).toHaveCount(5);
   await expect(
     page.getByRole('heading', { name: '诊断与确定性评测' }),
   ).toHaveCount(0);
   await page.getByRole('button', { name: /调度协调/ }).click();
-  await expect(page.getByTestId('span-inspector')).toContainText('Agent');
+  await expect(page.getByTestId('span-inspector')).toContainText('智能体');
 
   await page.getByRole('link', { name: '回放' }).click();
   await expect(page).toHaveURL(/\/replay$/);
@@ -316,6 +334,12 @@ test('shows causal agent exchanges and per-recipient delivery without claiming t
       document.documentElement.clientWidth,
   );
   expect(englishOverflow).toBeLessThanOrEqual(1);
+  const replayTab = await page
+    .getByRole('link', { name: 'Replay', exact: true })
+    .boundingBox();
+  expect((replayTab?.x ?? 321) + (replayTab?.width ?? 0)).toBeLessThanOrEqual(
+    320,
+  );
 });
 
 test('keeps the operator workspace usable on a narrow screen', async ({
@@ -324,12 +348,12 @@ test('keeps the operator workspace usable on a narrow screen', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/zh-CN/runs/run-yongding-spring-042/trace');
 
-  await expect(page.getByRole('heading', { name: 'Trace 探索' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '追踪分析' })).toBeVisible();
   await expect(page.getByTestId('mobile-trace-event')).toHaveCount(10);
   await expect(page.getByTestId('mobile-trace-event').first()).toBeVisible();
   await expect(page.locator('.waterfall-panel')).toBeHidden();
   await page.getByTestId('mobile-trace-event').nth(3).click();
-  await expect(page.getByTestId('span-inspector')).toContainText('Agent');
+  await expect(page.getByTestId('span-inspector')).toContainText('智能体');
   const overflow = await page.evaluate(
     () =>
       document.documentElement.scrollWidth -
@@ -391,9 +415,7 @@ test('visually checks the read-only preview at desktop and 390px without browser
     await page.goto('/zh-CN/runs/run-yongding-spring-042/trace');
     await page.waitForLoadState('networkidle');
     await expect(page.getByText('设计预览')).toBeVisible();
-    await expect(
-      page.getByRole('heading', { name: 'Trace 探索' }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: '追踪分析' })).toBeVisible();
     const overflow = await page.evaluate(
       () =>
         document.documentElement.scrollWidth -
