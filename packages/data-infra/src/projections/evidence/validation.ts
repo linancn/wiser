@@ -4,6 +4,8 @@ import type { EvidenceProjectionInput } from './types.js';
 const INPUT_KEYS = Object.freeze([
   'acceptanceStatus',
   'assetId',
+  'businessDomains',
+  'channels',
   'chunkId',
   'chunkingStrategy',
   'content',
@@ -13,8 +15,11 @@ const INPUT_KEYS = Object.freeze([
   'embeddingVersion',
   'evidenceId',
   'language',
+  'limitations',
   'pageOrSection',
+  'policyVersion',
   'projectId',
+  'publicationStatus',
   'qualityGrade',
   'securityLevel',
   'sourceHash',
@@ -29,6 +34,7 @@ const SHA256 = /^[a-f0-9]{64}$/;
 const SAFE_KEY = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const LANGUAGE = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/;
 const VERSION = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
+const DATA_KEY = /^[a-z][a-z0-9-]*(?:[.:][a-z0-9][a-z0-9_-]*)*$/;
 
 function invalid(message: string): never {
   throw new EvidenceProjectionError(
@@ -102,6 +108,25 @@ function oneOf<const Values extends readonly string[]>(
   return value;
 }
 
+function stringArray(
+  value: unknown,
+  field: string,
+  maximum: number,
+  pattern?: RegExp,
+): readonly string[] {
+  if (!Array.isArray(value) || value.length > maximum) {
+    invalid(`Evidence projection ${field} is invalid.`);
+  }
+  const normalized = value.map((entry) => text(entry, field, 2_048));
+  if (
+    pattern !== undefined &&
+    normalized.some((entry) => !pattern.test(entry))
+  ) {
+    invalid(`Evidence projection ${field} is invalid.`);
+  }
+  return Object.freeze([...new Set(normalized)]);
+}
+
 export function validateEvidenceProjectionInput(
   value: unknown,
 ): EvidenceProjectionInput {
@@ -152,6 +177,13 @@ export function validateEvidenceProjectionInput(
   if (!VERSION.test(embeddingVersion)) {
     invalid('Evidence projection embeddingVersion is invalid.');
   }
+  if (
+    typeof candidate.policyVersion !== 'number' ||
+    !Number.isSafeInteger(candidate.policyVersion) ||
+    candidate.policyVersion < 1
+  ) {
+    invalid('Evidence projection policyVersion is invalid.');
+  }
 
   return Object.freeze({
     tenantId: uuid(candidate.tenantId, 'tenantId'),
@@ -181,6 +213,32 @@ export function validateEvidenceProjectionInput(
       'ARCHIVED_ONLY',
       'REJECTED',
     ] as const),
+    publicationStatus: oneOf(candidate.publicationStatus, 'publicationStatus', [
+      'UNPUBLISHED',
+      'PUBLISHING',
+      'PUBLISHED',
+      'WITHDRAWN',
+    ] as const),
+    policyVersion: candidate.policyVersion,
+    businessDomains: stringArray(
+      candidate.businessDomains,
+      'businessDomains',
+      64,
+      DATA_KEY,
+    ),
+    channels: Object.freeze(
+      stringArray(candidate.channels, 'channels', 6).map((channel) =>
+        oneOf(channel, 'channels', [
+          'catalog',
+          'fulltext',
+          'semantic',
+          'graph',
+          'geo',
+          'stac',
+        ] as const),
+      ),
+    ),
+    limitations: stringArray(candidate.limitations, 'limitations', 64),
     documentId: uuid(candidate.documentId, 'documentId'),
     pageOrSection: text(candidate.pageOrSection, 'pageOrSection', 512),
     language,

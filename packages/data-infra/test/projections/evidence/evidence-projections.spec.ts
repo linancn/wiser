@@ -23,6 +23,11 @@ const input = {
   securityLevel: 'L2_RESTRICTED',
   qualityGrade: 'A',
   acceptanceStatus: 'PASSED',
+  publicationStatus: 'PUBLISHED',
+  policyVersion: 7,
+  businessDomains: ['water-monitoring'],
+  channels: ['fulltext', 'semantic'],
+  limitations: [],
   documentId: '99999999-9999-4999-8999-999999999999',
   pageOrSection: '第 12 页 / 水质证据',
   language: 'zh-CN',
@@ -123,6 +128,11 @@ describe('Weaviate evidence projection', () => {
         'securityLevel',
         'qualityGrade',
         'acceptanceStatus',
+        'publicationStatus',
+        'policyVersion',
+        'businessDomains',
+        'channels',
+        'limitations',
         'documentId',
         'pageOrSection',
         'language',
@@ -132,10 +142,29 @@ describe('Weaviate evidence projection', () => {
         'content',
       ]),
     );
+    const propertyTypes = new Map(
+      (
+        create.body as {
+          properties: Array<{ name: string; dataType: string[] }>;
+        }
+      ).properties.map(({ name, dataType }) => [name, dataType]),
+    );
+    expect(propertyTypes.get('businessDomains')).toEqual(['text[]']);
+    expect(propertyTypes.get('channels')).toEqual(['text[]']);
+    expect(propertyTypes.get('limitations')).toEqual(['text[]']);
+    expect(propertyTypes.get('policyVersion')).toEqual(['int']);
   });
 
   it('uses authenticated tenant-scoped idempotent PUT with a worker vector', async () => {
     const http = new FakeHttpClient();
+    http.responses.push(
+      { status: 200 },
+      { status: 404 },
+      { status: 200 },
+      { status: 200 },
+      { status: 200 },
+      { status: 200 },
+    );
     const projection = new WeaviateEvidenceProjection({
       baseUrl: 'http://weaviate:8080',
       apiKey: 'weaviate-secret',
@@ -146,23 +175,26 @@ describe('Weaviate evidence projection', () => {
     const replay = await projection.put(input);
 
     expect(replay).toEqual(first);
-    expect(http.requests).toHaveLength(4);
+    expect(http.requests).toHaveLength(6);
     expect(http.requests[0]).toMatchObject({
       method: 'POST',
       url: `http://weaviate:8080/v1/schema/${WEAVIATE_EVIDENCE_COLLECTION}/tenants`,
       body: [{ name: input.tenantId }],
     });
-    expect(http.requests[2]).toEqual(http.requests[0]);
-    expect(http.requests[1]?.method).toBe('POST');
-    expect(http.requests[1]?.url).toBe(http.requests[3]?.url);
-    expect(http.requests[1]?.url).toContain(
+    expect(http.requests[3]).toEqual(http.requests[0]);
+    expect(http.requests[1]?.method).toBe('GET');
+    expect(http.requests[4]).toEqual(http.requests[1]);
+    expect(http.requests[2]?.method).toBe('POST');
+    expect(http.requests[5]?.method).toBe('PUT');
+    expect(http.requests[1]?.url).toBe(http.requests[5]?.url);
+    expect(http.requests[2]?.url).toContain(
       `/v1/objects?tenant=${input.tenantId}`,
     );
-    expect(http.requests[1]?.headers).toMatchObject({
+    expect(http.requests[2]?.headers).toMatchObject({
       Authorization: 'Bearer weaviate-secret',
       'Content-Type': 'application/json',
     });
-    expect(http.requests[1]?.body).toMatchObject({
+    expect(http.requests[2]?.body).toMatchObject({
       class: WEAVIATE_EVIDENCE_COLLECTION,
       id: first.projectionId,
       tenant: input.tenantId,
@@ -172,6 +204,10 @@ describe('Weaviate evidence projection', () => {
         projectId: input.projectId,
         securityLevel: input.securityLevel,
         sourceHash: input.sourceHash,
+        policyVersion: input.policyVersion,
+        publicationStatus: input.publicationStatus,
+        businessDomains: input.businessDomains,
+        channels: input.channels,
         content: input.content,
       },
     });
@@ -179,7 +215,12 @@ describe('Weaviate evidence projection', () => {
 
   it('replaces the same deterministic object after an id conflict', async () => {
     const http = new FakeHttpClient();
-    http.responses.push({ status: 200 }, { status: 422 }, { status: 200 });
+    http.responses.push(
+      { status: 200 },
+      { status: 404 },
+      { status: 422 },
+      { status: 200 },
+    );
     const projection = new WeaviateEvidenceProjection({
       baseUrl: 'http://weaviate:8080',
       apiKey: 'weaviate-secret',
@@ -190,10 +231,11 @@ describe('Weaviate evidence projection', () => {
 
     expect(http.requests.map(({ method }) => method)).toEqual([
       'POST',
+      'GET',
       'POST',
       'PUT',
     ]);
-    expect(http.requests[2]?.url).toBe(
+    expect(http.requests[3]?.url).toBe(
       `http://weaviate:8080/v1/objects/${WEAVIATE_EVIDENCE_COLLECTION}/${result.projectionId}?tenant=${input.tenantId}`,
     );
   });
@@ -250,6 +292,10 @@ describe('OpenSearch evidence projection', () => {
           securityLevel: { type: 'keyword' },
           qualityGrade: { type: 'keyword' },
           acceptanceStatus: { type: 'keyword' },
+          publicationStatus: { type: 'keyword' },
+          policyVersion: { type: 'long' },
+          businessDomains: { type: 'keyword' },
+          channels: { type: 'keyword' },
           content: { type: 'text', analyzer: 'wiser_icu_zh' },
         },
       },
@@ -285,6 +331,10 @@ describe('OpenSearch evidence projection', () => {
       securityLevel: input.securityLevel,
       qualityGrade: input.qualityGrade,
       acceptanceStatus: input.acceptanceStatus,
+      publicationStatus: input.publicationStatus,
+      policyVersion: input.policyVersion,
+      businessDomains: input.businessDomains,
+      channels: input.channels,
       content: input.content,
     });
   });

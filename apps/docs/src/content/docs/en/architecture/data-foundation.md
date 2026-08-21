@@ -20,14 +20,14 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: b2b07c3d5840e6a27613128f0f1d34f05d071cbf
+lastReviewedCommit: 45e2b9b8348b54bf826e88bdd89b98bbf9fdfa7e
 ---
 
 ## Boundary and implementation status
 
 Data Foundation is a WISER business system peer to Agent EXCON. It owns DataItems, immutable versions, assets, ingestion, quality, lineage, knowledge, search, and GIS facts. It does not own user sessions, Tenants, Projects, Roles, or tokens. Supabase is the unified identity and control plane; independent data-postgres/PostGIS and S3-compatible object storage form the data authority; search, graph, STAC, and GIS services are rebuildable projections.
 
-`@wiser/data-contracts`, `@wiser/data-core`, data-postgres/S3 authority `@wiser/data-infra`, the durable-task runtime in `@wiser/data-worker`, and the complete dependency Compose profile are now delivered: strict DTOs/Capabilities, pure deterministic policies, checksummed SQL migrations, the authoritative schema, content-addressed object adapters, a lease scheduler, health/metrics endpoints, and real pinned services are executable. Projection adapters, concrete ingestion/projection handlers, and transports must still complete the same boundary, so this milestone is not the final delivery.
+`@wiser/data-contracts`, `@wiser/data-core`, data-postgres/S3 authority `@wiser/data-infra`, the durable-task runtime in `@wiser/data-worker`, and the complete dependency Compose profile are now delivered. The rebuildable PostGIS, Weaviate, OpenSearch, Neo4j, and STAC adapters, replay-safe Outbox ledger, fixed backend queries, and governed RRF SearchOrchestrator are also executable. Concrete ingestion handlers, default Worker wiring, and the complete transports must still complete the same boundary, so this milestone is not the final delivery.
 
 ## One public contract source
 
@@ -105,7 +105,7 @@ The official OpenSearch image does not contain `analysis-icu`. A one-shot initia
 
 PostgreSQL 18/PostGIS and GeoServer are currently official amd64-only images, so Compose declares `linux/amd64` for deterministic Apple Silicon emulation. The migration suite has been executed against that PostgreSQL 18.6 container, and SeaweedFS anonymous S3 access is denied. This compatibility evidence does not eliminate the final full-stack smoke gate.
 
-Workers consume the Outbox and idempotently build PostGIS, Weaviate, OpenSearch, Neo4j, STAC, and GIS projections. Projections push down Tenant, Project, Version, security-level, and policy-version filters, while the API still reauthorizes every read, download, export, and publication against the Supabase authority context.
+`ProjectionOutboxConsumer` reads committed-version events after a monotonic checkpoint. Per-target `PENDING/RUNNING/SUCCEEDED/FAILED` rows survive crashes; a replay skips a succeeded target and safely repeats an external write that completed before its ledger update. Adapters use deterministic identities and fixed parameterized requests: source/CGCS2000/Web-Mercator geometry in PostGIS, worker vectors and authenticated tenants in Weaviate, ICU-governed documents in OpenSearch, fixed MERGE facts in Neo4j, and STAC 1.1 Collections/Items in pgSTAC. Their matching search backends push down Tenant, Project, Version, security level, policy version, acceptance, publication, domain, and channel filters without accepting SQL, Cypher, or DSL from a caller. RRF uses `k=60`, deduplicates by DataItem+Version, reauthorizes every hit, and redacts disallowed excerpts. Live pinned containers have returned one authorized replay-safe result through each OpenSearch, Weaviate, Neo4j, and pgSTAC pair. The default Worker still does not register these handlers, and the API must reauthorize every read, download, export, and publication against the Supabase context.
 
 ## Completion gate
 

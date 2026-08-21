@@ -22,6 +22,11 @@ const common = {
   sourceHash: 'a'.repeat(64),
   securityLevel: 'L2_RESTRICTED',
   qualityGrade: 'A',
+  acceptanceStatus: 'PASSED',
+  publicationStatus: 'PUBLISHED',
+  businessDomains: ['water-monitoring'],
+  channels: ['graph', 'stac'],
+  limitations: [],
   confidence: 0.91,
   reviewStatus: 'APPROVED',
   validFrom: '2026-01-01T00:00:00.000Z',
@@ -40,6 +45,8 @@ const graphInput = {
 
 const stacInput = {
   ...common,
+  title: 'Yongding governed asset',
+  description: 'Published WISER STAC evidence.',
   geometry: {
     type: 'Polygon',
     coordinates: [
@@ -115,6 +122,10 @@ describe('Neo4j knowledge graph projection', () => {
       sourceHash: graphInput.sourceHash,
       securityLevel: graphInput.securityLevel,
       qualityGrade: graphInput.qualityGrade,
+      acceptanceStatus: graphInput.acceptanceStatus,
+      publicationStatus: graphInput.publicationStatus,
+      businessDomains: graphInput.businessDomains,
+      channels: graphInput.channels,
       confidence: graphInput.confidence,
       reviewStatus: graphInput.reviewStatus,
       validFrom: graphInput.validFrom,
@@ -221,12 +232,18 @@ describe('STAC 1.1 catalog projection', () => {
       geometry: stacInput.geometry,
       properties: {
         datetime: stacInput.validFrom,
+        title: stacInput.title,
+        description: stacInput.description,
         'wiser:tenant_id': stacInput.tenantId,
         'wiser:project_id': stacInput.projectId,
         'wiser:version_id': stacInput.versionId,
         'wiser:security_level': stacInput.securityLevel,
         'wiser:policy_version': stacInput.policyVersion,
         'wiser:source_hash': stacInput.sourceHash,
+        acceptanceStatus: stacInput.acceptanceStatus,
+        publicationStatus: stacInput.publicationStatus,
+        businessDomains: stacInput.businessDomains,
+        channels: stacInput.channels,
       },
       assets: {
         source: {

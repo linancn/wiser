@@ -23,7 +23,21 @@ export interface GovernedProjectionInput {
   readonly sourceHash: string;
   readonly securityLevel:
     'L0_PUBLIC' | 'L1_INTERNAL' | 'L2_RESTRICTED' | 'L3_CONFIDENTIAL';
-  readonly qualityGrade: string;
+  readonly qualityGrade: 'A' | 'B' | 'C';
+  readonly acceptanceStatus:
+    | 'PENDING'
+    | 'PASSED'
+    | 'CONDITIONALLY_PASSED'
+    | 'CORRECTION_REQUIRED'
+    | 'ARCHIVED_ONLY'
+    | 'REJECTED';
+  readonly publicationStatus:
+    'UNPUBLISHED' | 'PUBLISHING' | 'PUBLISHED' | 'WITHDRAWN';
+  readonly businessDomains: readonly string[];
+  readonly channels: readonly (
+    'catalog' | 'fulltext' | 'semantic' | 'graph' | 'geo' | 'stac'
+  )[];
+  readonly limitations: readonly string[];
   readonly confidence: number;
   readonly reviewStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
   readonly validFrom: string;
@@ -40,6 +54,8 @@ export interface KnowledgeGraphProjectionInput extends GovernedProjectionInput {
 }
 
 export interface StacProjectionInput extends GovernedProjectionInput {
+  readonly title: string;
+  readonly description: string;
   readonly geometry: {
     readonly type:
       | 'Point'

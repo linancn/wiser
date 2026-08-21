@@ -29,6 +29,7 @@ const PROPERTY_NAMES = [
   'securityLevel',
   'qualityGrade',
   'acceptanceStatus',
+  'publicationStatus',
   'documentId',
   'pageOrSection',
   'language',
@@ -36,6 +37,12 @@ const PROPERTY_NAMES = [
   'embeddingModel',
   'embeddingVersion',
   'content',
+] as const;
+
+const ARRAY_PROPERTY_NAMES = [
+  'businessDomains',
+  'channels',
+  'limitations',
 ] as const;
 
 export const WEAVIATE_EVIDENCE_SCHEMA = Object.freeze({
@@ -50,6 +57,10 @@ export const WEAVIATE_EVIDENCE_SCHEMA = Object.freeze({
     ...PROPERTY_NAMES.map((name) =>
       Object.freeze({ name, dataType: ['text'] }),
     ),
+    ...ARRAY_PROPERTY_NAMES.map((name) =>
+      Object.freeze({ name, dataType: ['text[]'] }),
+    ),
+    Object.freeze({ name: 'policyVersion', dataType: ['int'] }),
   ]),
 });
 
@@ -115,22 +126,40 @@ export class WeaviateEvidenceProjection {
       properties: evidenceProperties(input),
       vector: input.vector,
     };
-    const created = await requestProjectionBackend(this.#http, {
-      method: 'POST',
-      url: `${this.#baseUrl}/v1/objects?tenant=${tenant}`,
+    const objectUrl = `${this.#baseUrl}/v1/objects/${WEAVIATE_EVIDENCE_COLLECTION}/${projectionId}?tenant=${tenant}`;
+    const existing = await requestProjectionBackend(this.#http, {
+      method: 'GET',
+      url: objectUrl,
       headers: this.#headers,
-      body,
     });
-    if (created.status === 409 || created.status === 422) {
+    if (existing.status === 200) {
       const updated = await requestProjectionBackend(this.#http, {
         method: 'PUT',
-        url: `${this.#baseUrl}/v1/objects/${WEAVIATE_EVIDENCE_COLLECTION}/${projectionId}?tenant=${tenant}`,
+        url: objectUrl,
         headers: this.#headers,
         body,
       });
       assertBackendAccepted(updated, [200, 204]);
+    } else if (existing.status === 404) {
+      const created = await requestProjectionBackend(this.#http, {
+        method: 'POST',
+        url: `${this.#baseUrl}/v1/objects?tenant=${tenant}`,
+        headers: this.#headers,
+        body,
+      });
+      if (created.status === 409 || created.status === 422) {
+        const racedUpdate = await requestProjectionBackend(this.#http, {
+          method: 'PUT',
+          url: objectUrl,
+          headers: this.#headers,
+          body,
+        });
+        assertBackendAccepted(racedUpdate, [200, 204]);
+      } else {
+        assertBackendAccepted(created, [200, 201]);
+      }
     } else {
-      assertBackendAccepted(created, [200, 201]);
+      assertBackendAccepted(existing, [200, 404]);
     }
     return Object.freeze({ projectionId });
   }

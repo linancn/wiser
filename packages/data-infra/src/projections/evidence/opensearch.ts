@@ -31,6 +31,10 @@ const keywordProperties = [
   'securityLevel',
   'qualityGrade',
   'acceptanceStatus',
+  'publicationStatus',
+  'businessDomains',
+  'channels',
+  'limitations',
   'language',
   'chunkingStrategy',
   'embeddingModel',
@@ -61,6 +65,7 @@ export const OPENSEARCH_EVIDENCE_MAPPING = Object.freeze({
         ]),
       ),
       content: Object.freeze({ type: 'text', analyzer: 'wiser_icu_zh' }),
+      policyVersion: Object.freeze({ type: 'long' }),
     }),
   }),
 });

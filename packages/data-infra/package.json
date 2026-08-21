@@ -7,7 +7,13 @@
   "exports": {
     ".": "./src/index.ts",
     "./migrations": "./src/migrations/index.ts",
-    "./object-store": "./src/object-store/index.ts"
+    "./object-store": "./src/object-store/index.ts",
+    "./projections/evidence": "./src/projections/evidence/index.ts",
+    "./projections/graph-stac": "./src/projections/graph-stac/index.ts",
+    "./projections/outbox": "./src/projections/outbox/index.ts",
+    "./projections/postgis": "./src/projections/postgis/index.ts",
+    "./search": "./src/search/index.ts",
+    "./search/backends": "./src/search/backends/index.ts"
   },
   "bin": {
     "wiser-data-migrate": "./dist/migrations/cli.js"

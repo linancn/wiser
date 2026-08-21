@@ -20,14 +20,14 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: b2b07c3d5840e6a27613128f0f1d34f05d071cbf
+lastReviewedCommit: 45e2b9b8348b54bf826e88bdd89b98bbf9fdfa7e
 ---
 
 ## 边界与当前实现
 
 Data Foundation 是 WISER 内与 Agent EXCON 平级的业务系统。它拥有 DataItem、不可变版本、资产、入库会话、质量、血缘、知识、检索与 GIS 事实；不拥有用户 Session、Tenant、Project、Role 或 Token。Supabase 是统一身份与控制面；独立 data-postgres/PostGIS 与 S3 兼容对象存储构成数据权威面；搜索、图谱、STAC 与 GIS 服务均为可重建投影。
 
-当前已落地 `@wiser/data-contracts`、`@wiser/data-core`、data-postgres/S3 authority `@wiser/data-infra`、`@wiser/data-worker` 的持久任务 runtime，以及完整依赖 Compose profile：严格 DTO/Capability、纯确定性领域政策、校验和 SQL migration、权威 Schema、内容寻址对象 adapter、lease scheduler、健康/指标入口和真实锁定服务均可执行。投影 adapter、具体入库/投影 Handler 和 transport 仍须沿同一边界完成，当前阶段不等于最终交付。
+当前已落地 `@wiser/data-contracts`、`@wiser/data-core`、data-postgres/S3 authority `@wiser/data-infra`、`@wiser/data-worker` 的持久任务 runtime，以及完整依赖 Compose profile。可重建 PostGIS、Weaviate、OpenSearch、Neo4j、STAC adapter，重放安全的 Outbox ledger、固定 backend query 与受治理的 RRF SearchOrchestrator 也已可执行。具体入库 Handler、默认 Worker 接线与完整 transport 仍须沿同一边界完成，当前阶段不等于最终交付。
 
 ## 唯一公开契约源
 
@@ -105,7 +105,7 @@ OpenSearch 官方镜像不含 `analysis-icu`。一次性 initializer 只下载�
 
 PostgreSQL 18/PostGIS 与 GeoServer 当前官方镜像仅有 amd64，因此 Compose 显式声明 `linux/amd64`，在 Apple Silicon 确定性模拟。完整 WISER migration 已在该 PostgreSQL 18.6 容器上执行，SeaweedFS 的匿名 S3 访问也已确认拒绝；这些兼容性证据不能替代最终全栈 smoke 门禁。
 
-Worker 消费 Outbox 后幂等构建 PostGIS、Weaviate、OpenSearch、Neo4j、STAC 与 GIS 投影。投影保存 Tenant、Project、Version、安全等级和策略版本过滤，但任何读取、下载、导出或发布仍由 API 使用 Supabase 权威上下文复核。
+`ProjectionOutboxConsumer` 从单调 checkpoint 后读取版本提交事件。每个 target 的 `PENDING/RUNNING/SUCCEEDED/FAILED` ledger 跨崩溃保留；重放会跳过已成功 target，并安全重复“外部写已完成、ledger 尚未更新”的写入。各 adapter 使用确定性 identity 和固定参数化请求：PostGIS 保存 source/CGCS2000/Web-Mercator geometry，Weaviate 使用 Worker vector 与认证 tenant，OpenSearch 保存 ICU 治理文档，Neo4j 使用固定 MERGE 事实，pgSTAC 使用 STAC 1.1 Collection/Item。对应搜索 backend 下推 Tenant、Project、Version、安全等级、policy version、验收、发布、业务域和 channel 过滤，调用方不能传 SQL、Cypher 或 DSL。RRF 固定 `k=60`，按 DataItem+Version 去重，对每个 hit 再授权并脱敏 excerpt。精确锁定的真实容器已经分别从 OpenSearch、Weaviate、Neo4j 与 pgSTAC 写读对返回 1 条授权且可重放结果。默认 Worker 尚未注册这些 Handler；任何读取、下载、导出或发布仍须由 API 使用 Supabase 权威上下文复核。
 
 ## 完成门槛
 

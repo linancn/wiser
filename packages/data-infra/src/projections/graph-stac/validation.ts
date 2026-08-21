@@ -18,6 +18,29 @@ const SECURITY_LEVELS = new Set([
 ]);
 const REVIEW_STATUSES = new Set(['PENDING', 'APPROVED', 'REJECTED']);
 const QUALITY_GRADES = new Set(['A', 'B', 'C']);
+const ACCEPTANCE_STATUSES = new Set([
+  'PENDING',
+  'PASSED',
+  'CONDITIONALLY_PASSED',
+  'CORRECTION_REQUIRED',
+  'ARCHIVED_ONLY',
+  'REJECTED',
+]);
+const PUBLICATION_STATUSES = new Set([
+  'UNPUBLISHED',
+  'PUBLISHING',
+  'PUBLISHED',
+  'WITHDRAWN',
+]);
+const CHANNELS = new Set([
+  'catalog',
+  'fulltext',
+  'semantic',
+  'graph',
+  'geo',
+  'stac',
+]);
+const DATA_KEY = /^[a-z][a-z0-9-]*(?:[.:][a-z0-9][a-z0-9_-]*)*$/;
 
 export function projectionError(): GraphStacProjectionError {
   return new GraphStacProjectionError('INVALID_PROJECTION_INPUT');
@@ -64,13 +87,32 @@ function exactKeys(value: object, expected: readonly string[]): boolean {
   );
 }
 
-function validTime(value: string): boolean {
+function validTime(value: unknown): value is string {
   return (
+    typeof value === 'string' &&
     value.length <= 64 &&
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(
       value,
     ) &&
     Number.isFinite(Date.parse(value))
+  );
+}
+
+function validStringArray(
+  value: unknown,
+  maximum: number,
+  predicate: (entry: string) => boolean,
+): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length <= maximum &&
+    value.every(
+      (entry) =>
+        typeof entry === 'string' &&
+        entry.length > 0 &&
+        entry.length <= 2_048 &&
+        predicate(entry),
+    )
   );
 }
 
@@ -84,6 +126,21 @@ function validateGovernance(input: GovernedProjectionInput): void {
     !SHA256_PATTERN.test(input.sourceHash) ||
     !SECURITY_LEVELS.has(input.securityLevel) ||
     !QUALITY_GRADES.has(input.qualityGrade) ||
+    !ACCEPTANCE_STATUSES.has(input.acceptanceStatus) ||
+    !PUBLICATION_STATUSES.has(input.publicationStatus) ||
+    !validStringArray(input.businessDomains, 64, (entry) =>
+      DATA_KEY.test(entry),
+    ) ||
+    !validStringArray(input.channels, 6, (entry) => CHANNELS.has(entry)) ||
+    !validStringArray(
+      input.limitations,
+      64,
+      (entry) =>
+        ![...entry].some((character) => {
+          const code = character.charCodeAt(0);
+          return code <= 31 || code === 127;
+        }),
+    ) ||
     !Number.isFinite(input.confidence) ||
     input.confidence < 0 ||
     input.confidence > 1 ||
@@ -111,6 +168,11 @@ const governedKeys = [
   'sourceHash',
   'securityLevel',
   'qualityGrade',
+  'acceptanceStatus',
+  'publicationStatus',
+  'businessDomains',
+  'channels',
+  'limitations',
   'confidence',
   'reviewStatus',
   'validFrom',
@@ -121,30 +183,35 @@ const governedKeys = [
 ] as const;
 
 export function validateGraphInput(
-  value: KnowledgeGraphProjectionInput,
+  value: unknown,
 ): KnowledgeGraphProjectionInput {
+  if (value === null || typeof value !== 'object') {
+    throw projectionError();
+  }
+  const candidate = value as KnowledgeGraphProjectionInput;
   if (
-    value === null ||
-    typeof value !== 'object' ||
     !exactKeys(value, [
       ...governedKeys,
       'entityId',
       'entityType',
       'entityName',
     ]) ||
-    !UUID_PATTERN.test(value.entityId) ||
-    !/^[a-z][a-z0-9_]{0,63}$/.test(value.entityType) ||
-    value.entityName.length === 0 ||
-    value.entityName.length > 512 ||
-    [...value.entityName].some((character) => {
+    typeof candidate.entityId !== 'string' ||
+    typeof candidate.entityType !== 'string' ||
+    typeof candidate.entityName !== 'string' ||
+    !UUID_PATTERN.test(candidate.entityId) ||
+    !/^[a-z][a-z0-9_]{0,63}$/.test(candidate.entityType) ||
+    candidate.entityName.length === 0 ||
+    candidate.entityName.length > 512 ||
+    [...candidate.entityName].some((character) => {
       const code = character.charCodeAt(0);
       return code <= 31 || code === 127;
     })
   ) {
     throw projectionError();
   }
-  validateGovernance(value);
-  return value;
+  validateGovernance(candidate);
+  return candidate;
 }
 
 function finiteCoordinates(value: unknown, depth = 0): boolean {
@@ -156,17 +223,23 @@ function finiteCoordinates(value: unknown, depth = 0): boolean {
   );
 }
 
-function validBbox(value: readonly number[]): boolean {
+function validBbox(value: unknown): value is readonly number[] {
+  if (!Array.isArray(value) || (value.length !== 4 && value.length !== 6)) {
+    return false;
+  }
+  const numbers: readonly unknown[] = value;
   if (
-    (value.length !== 4 && value.length !== 6) ||
-    !value.every(Number.isFinite)
+    !numbers.every(
+      (entry): entry is number =>
+        typeof entry === 'number' && Number.isFinite(entry),
+    )
   ) {
     return false;
   }
-  const dimensions = value.length / 2;
+  const dimensions = numbers.length / 2;
   for (let index = 0; index < dimensions; index += 1) {
-    const minimum = value[index];
-    const maximum = value[index + dimensions];
+    const minimum = numbers[index];
+    const maximum = numbers[index + dimensions];
     if (minimum === undefined || maximum === undefined || minimum > maximum) {
       return false;
     }
@@ -174,22 +247,24 @@ function validBbox(value: readonly number[]): boolean {
   return true;
 }
 
-export function validateStacInput(
-  value: StacProjectionInput,
-): StacProjectionInput {
+export function validateStacInput(value: unknown): StacProjectionInput {
+  if (value === null || typeof value !== 'object') {
+    throw projectionError();
+  }
+  const candidate = value as StacProjectionInput;
   if (
-    value === null ||
-    typeof value !== 'object' ||
     !exactKeys(value, [
       ...governedKeys,
       'geometry',
       'bbox',
+      'title',
+      'description',
       'assetMediaType',
       'assetSizeBytes',
     ]) ||
-    value.geometry === null ||
-    typeof value.geometry !== 'object' ||
-    !exactKeys(value.geometry, ['type', 'coordinates']) ||
+    candidate.geometry === null ||
+    typeof candidate.geometry !== 'object' ||
+    !exactKeys(candidate.geometry, ['type', 'coordinates']) ||
     !new Set([
       'Point',
       'MultiPoint',
@@ -197,17 +272,30 @@ export function validateStacInput(
       'MultiLineString',
       'Polygon',
       'MultiPolygon',
-    ]).has(value.geometry.type) ||
-    !finiteCoordinates(value.geometry.coordinates) ||
-    !validBbox(value.bbox) ||
-    value.assetMediaType.length < 3 ||
-    value.assetMediaType.length > 255 ||
-    !/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i.test(value.assetMediaType) ||
-    !Number.isSafeInteger(value.assetSizeBytes) ||
-    value.assetSizeBytes < 1
+    ]).has(candidate.geometry.type) ||
+    !finiteCoordinates(candidate.geometry.coordinates) ||
+    !validBbox(candidate.bbox) ||
+    typeof candidate.title !== 'string' ||
+    candidate.title.length < 1 ||
+    candidate.title.length > 512 ||
+    typeof candidate.description !== 'string' ||
+    candidate.description.length < 1 ||
+    candidate.description.length > 4_096 ||
+    [...candidate.title, ...candidate.description].some((character) => {
+      const code = character.charCodeAt(0);
+      return code <= 31 || code === 127;
+    }) ||
+    typeof candidate.assetMediaType !== 'string' ||
+    candidate.assetMediaType.length < 3 ||
+    candidate.assetMediaType.length > 255 ||
+    !/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i.test(
+      candidate.assetMediaType,
+    ) ||
+    !Number.isSafeInteger(candidate.assetSizeBytes) ||
+    candidate.assetSizeBytes < 1
   ) {
     throw projectionError();
   }
-  validateGovernance(value);
-  return value;
+  validateGovernance(candidate);
+  return candidate;
 }

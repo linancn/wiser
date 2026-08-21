@@ -54,9 +54,9 @@ class MemoryProjectionRepository implements ProjectionOutboxRepository {
     expect(requestedScope).toEqual(scope);
     expect(consumerName).toBe('projection-worker-v1');
     return Promise.resolve(
-      this.events.filter(
-        ({ outboxEventId }) => Number(outboxEventId) > this.checkpoint,
-      ).slice(0, limit),
+      this.events
+        .filter(({ outboxEventId }) => Number(outboxEventId) > this.checkpoint)
+        .slice(0, limit),
     );
   }
 
@@ -198,8 +198,6 @@ describe('at-least-once projection outbox consumer', () => {
           consumerName: '',
         }),
     ).toThrow('consumerName');
-    expect(() => new ProjectionBatchError(event(1), [])).toThrow(
-      'failedKinds',
-    );
+    expect(() => new ProjectionBatchError(event(1), [])).toThrow('failedKinds');
   });
 });

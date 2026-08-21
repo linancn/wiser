@@ -27,7 +27,9 @@ export function deterministicStacItemId(input: StacProjectionInput): string {
   ]).slice(0, 48)}`;
 }
 
-function collectionId(input: StacProjectionInput): string {
+export function deterministicStacCollectionId(
+  input: Pick<StacProjectionInput, 'tenantId' | 'projectId'>,
+): string {
   return `wiser-${deterministicId('wiser:stac:collection:v1', [
     input.tenantId,
     input.projectId,
@@ -93,10 +95,10 @@ export class StacCatalogProjection {
   }
 
   async put(
-    input: StacProjectionInput,
+    input: unknown,
   ): Promise<{ readonly collectionId: string; readonly itemId: string }> {
     const valid = validateStacInput(input);
-    const scopedCollectionId = collectionId(valid);
+    const scopedCollectionId = deterministicStacCollectionId(valid);
     const itemId = deterministicStacItemId(valid);
     const headers = {
       Authorization: this.#authorization,
@@ -134,6 +136,8 @@ export class StacCatalogProjection {
       geometry: valid.geometry,
       properties: {
         datetime: valid.validFrom,
+        title: valid.title,
+        description: valid.description,
         'wiser:tenant_id': valid.tenantId,
         'wiser:project_id': valid.projectId,
         'wiser:data_item_id': valid.dataItemId,
@@ -143,6 +147,22 @@ export class StacCatalogProjection {
         'wiser:policy_version': valid.policyVersion,
         'wiser:source_hash': valid.sourceHash,
         'wiser:quality_grade': valid.qualityGrade,
+        tenantId: valid.tenantId,
+        projectId: valid.projectId,
+        dataItemId: valid.dataItemId,
+        versionId: valid.versionId,
+        evidenceId: valid.evidenceId,
+        securityLevel: valid.securityLevel,
+        policyVersion: valid.policyVersion,
+        sourceHash: valid.sourceHash,
+        qualityGrade: valid.qualityGrade,
+        acceptanceStatus: valid.acceptanceStatus,
+        publicationStatus: valid.publicationStatus,
+        businessDomains: valid.businessDomains,
+        businessDomainsText: `|${valid.businessDomains.join('|')}|`,
+        channels: valid.channels,
+        channelsText: `|${valid.channels.join('|')}|`,
+        limitations: valid.limitations,
         'wiser:confidence': valid.confidence,
         'wiser:review_status': valid.reviewStatus,
         'wiser:valid_from': valid.validFrom,

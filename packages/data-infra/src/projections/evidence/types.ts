@@ -17,6 +17,14 @@ export interface EvidenceProjectionInput {
     | 'CORRECTION_REQUIRED'
     | 'ARCHIVED_ONLY'
     | 'REJECTED';
+  readonly publicationStatus:
+    'UNPUBLISHED' | 'PUBLISHING' | 'PUBLISHED' | 'WITHDRAWN';
+  readonly policyVersion: number;
+  readonly businessDomains: readonly string[];
+  readonly channels: readonly (
+    'catalog' | 'fulltext' | 'semantic' | 'graph' | 'geo' | 'stac'
+  )[];
+  readonly limitations: readonly string[];
   readonly documentId: string;
   readonly pageOrSection: string;
   readonly language: string;

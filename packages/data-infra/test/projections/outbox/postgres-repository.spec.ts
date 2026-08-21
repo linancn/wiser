@@ -149,11 +149,7 @@ describe('Postgres projection outbox repository', () => {
       'VECTOR_BACKEND_UNAVAILABLE',
     );
     await repository.markSucceeded(event, 'WEAVIATE');
-    await repository.advanceCheckpoint(
-      scope,
-      'projection-worker-v1',
-      event,
-    );
+    await repository.advanceCheckpoint(scope, 'projection-worker-v1', event);
 
     const statements = pool.clients.flatMap((client) => client.queries);
     const prepare = statements.find(({ text }) =>

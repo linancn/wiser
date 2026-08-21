@@ -106,9 +106,7 @@ export class Neo4jKnowledgeGraphProjection {
     this.#http = options.http;
   }
 
-  async put(
-    input: KnowledgeGraphProjectionInput,
-  ): Promise<{ projectionId: string }> {
+  async put(input: unknown): Promise<{ projectionId: string }> {
     const valid = validateGraphInput(input);
     const projectionId = deterministicGraphProjectionId(valid);
     const governance = {
@@ -117,6 +115,11 @@ export class Neo4jKnowledgeGraphProjection {
       sourceHash: valid.sourceHash,
       securityLevel: valid.securityLevel,
       qualityGrade: valid.qualityGrade,
+      acceptanceStatus: valid.acceptanceStatus,
+      publicationStatus: valid.publicationStatus,
+      businessDomains: valid.businessDomains,
+      channels: valid.channels,
+      limitations: valid.limitations,
       confidence: valid.confidence,
       reviewStatus: valid.reviewStatus,
       validFrom: valid.validFrom,
