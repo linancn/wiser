@@ -3733,6 +3733,40 @@ code {
   }
 }
 
+.trace-page .eyebrow,
+.replay-page .eyebrow,
+.trace-page code,
+.trace-page small,
+.trace-page dt,
+.trace-page dd,
+.replay-page code,
+.replay-page small,
+.replay-page dt,
+.replay-page dd,
+.replay-page .receipt-sequence,
+.replay-page .receipt-time,
+.replay-page .receipt-category,
+.replay-page .readonly-badge {
+  font-size: 12px;
+}
+
+.trace-page .mobile-trace-stream time,
+.trace-page .mobile-trace-stream button > span,
+.trace-page .mobile-trace-stream small {
+  font-size: 12px;
+}
+
+.trace-page .span-inspector span,
+.trace-page .span-inspector p,
+.trace-page .span-inspector h4,
+.trace-page .span-inspector button,
+.replay-page .replay-workspace span,
+.replay-page .replay-workspace p,
+.replay-page .replay-workspace button,
+.replay-page .replay-workspace label {
+  font-size: 12px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

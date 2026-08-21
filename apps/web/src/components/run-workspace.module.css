@@ -575,12 +575,12 @@
   }
 
   .statusStrip dt {
-    font-size: 9px;
+    font-size: 12px;
   }
 
   .statusStrip dd {
     font-family: 'Avenir Next', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.25;
   }
 
