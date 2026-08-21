@@ -10,13 +10,14 @@ const TOKEN = 'wdc1.local-locator.local-secret-material';
 
 describe('Data Foundation MCP HTTP client', () => {
   it('sends credentials only as a header and encodes bounded query values', async () => {
-    const fetcher = vi.fn(() =>
-      Promise.resolve(
-        new Response('{"items":[]}', {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      ),
+    const fetcher = vi.fn(
+      (_input: string | URL | Request, _init?: RequestInit) =>
+        Promise.resolve(
+          new Response('{"items":[]}', {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ),
     );
     const client = new FetchDataFoundationHttpClient({
       baseUrl: 'http://127.0.0.1:3001/api/data/v1/',
@@ -38,7 +39,9 @@ describe('Data Foundation MCP HTTP client', () => {
     });
 
     const [url, init] = fetcher.mock.calls[0]!;
-    const requestUrl = new URL(String(url));
+    const requestUrl = new URL(
+      url instanceof Request ? url.url : url instanceof URL ? url.href : url,
+    );
     expect(requestUrl.pathname).toBe('/api/data/v1/catalog/data-items');
     expect(requestUrl.searchParams.get('businessDomains')).toBe(
       'water-monitoring,ecology',
@@ -113,10 +116,9 @@ describe('Data Foundation MCP HTTP client', () => {
       token: TOKEN,
       fetch: () =>
         Promise.resolve(
-          new Response(
-            '{"error":{"details":"postgresql://admin:secret@db"}}',
-            { status: 503 },
-          ),
+          new Response('{"error":{"details":"postgresql://admin:secret@db"}}', {
+            status: 503,
+          }),
         ),
     });
     const error = await client

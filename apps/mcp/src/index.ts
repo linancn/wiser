@@ -6,12 +6,17 @@ import {
   createHttpClientFromEnvironment,
   resolveAgentExconProtocolVersion,
 } from './http-client.js';
+import { createDataFoundationMcpRuntimeFromEnvironment } from './data-foundation/http-client.js';
 import { createAgentExconMcpServer } from './server.js';
 
 async function main(): Promise<void> {
   const protocolVersion = resolveAgentExconProtocolVersion();
   const http = createHttpClientFromEnvironment();
-  const server = createAgentExconMcpServer(http, { protocolVersion });
+  const dataRuntime = createDataFoundationMcpRuntimeFromEnvironment();
+  const server = createAgentExconMcpServer(http, {
+    protocolVersion,
+    modules: dataRuntime === null ? [] : [dataRuntime.module],
+  });
   const transport = new StdioServerTransport();
 
   await server.connect(transport);

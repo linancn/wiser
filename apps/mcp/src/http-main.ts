@@ -7,6 +7,7 @@ import {
   createHttpClientFromEnvironment,
   resolveAgentExconProtocolVersion,
 } from './http-client.js';
+import { createDataFoundationMcpRuntimeFromEnvironment } from './data-foundation/http-client.js';
 import {
   closeWiserMcpHttpServer,
   createWiserMcpHttpServer,
@@ -28,6 +29,7 @@ function main(): void {
   }
   const protocolVersion = resolveAgentExconProtocolVersion();
   const api = createHttpClientFromEnvironment();
+  const dataRuntime = createDataFoundationMcpRuntimeFromEnvironment();
   const activeRequests = new Set<Promise<void>>();
   let ready = true;
   const http = createWiserMcpHttpServer({
@@ -35,7 +37,10 @@ function main(): void {
     ready: () => ready,
     handler(request, response) {
       const work = (async () => {
-        const mcp = createAgentExconMcpServer(api, { protocolVersion });
+        const mcp = createAgentExconMcpServer(api, {
+          protocolVersion,
+          modules: dataRuntime === null ? [] : [dataRuntime.module],
+        });
         const transport = new StreamableHTTPServerTransport({
           enableJsonResponse: true,
         });
