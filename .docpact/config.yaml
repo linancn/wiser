@@ -25,6 +25,23 @@ ownership:
           - packages/contracts/**
           - packages/core/**
       ownerRepo: wiser
+    - id: platform-foundations
+      paths:
+        include:
+          - packages/platform-*/**
+          - apps/api/src/platform/**
+          - apps/web/src/components/platform/**
+      ownerRepo: wiser
+    - id: data-foundation
+      paths:
+        include:
+          - packages/data-*/**
+          - apps/data-worker/**
+          - apps/api/src/data-foundation/**
+          - apps/mcp/src/data-foundation/**
+          - apps/web/src/app/[locale]/data-foundation/**
+          - infrastructure/data-foundation/**
+      ownerRepo: wiser
     - id: runtime-adapters
       paths:
         include:
@@ -73,12 +90,21 @@ coverage:
     - apps/docs/src/mdx-components.tsx
     - apps/docs/source.config.ts
     - apps/docs/next.config.ts
+    - apps/api/src/platform/**
+    - apps/api/src/data-foundation/**
+    - apps/mcp/src/data-foundation/**
+    - apps/data-worker/src/**
+    - apps/web/src/components/platform/**
+    - apps/web/src/app/[locale]/data-foundation/**
     - packages/contracts/src/**
     - packages/core/src/**
     - packages/infra/src/**
+    - packages/platform-*/src/**
+    - packages/data-*/src/**
     - infrastructure/docker/**
     - infrastructure/observability/*.yaml
     - infrastructure/observability/smoke.mjs
+    - infrastructure/data-foundation/**
     - supabase/config.toml
     - supabase/migrations/**
     - supabase/schemas/**
@@ -128,6 +154,22 @@ routing:
         - infrastructure/observability/**
         - apps/web/**
         - apps/docs/src/content/docs/*/architecture/multi-agent-observability.md
+    platform-foundations:
+      paths:
+        - packages/platform-*/**
+        - apps/api/src/platform/**
+        - apps/web/src/components/platform/**
+        - apps/docs/src/content/docs/*/architecture/wiser-platform.md
+        - apps/docs/src/content/docs/*/architecture/unified-auth.md
+        - apps/docs/src/content/docs/*/architecture/design-system.md
+    data-foundation:
+      paths:
+        - packages/data-*/**
+        - apps/data-worker/**
+        - apps/api/src/data-foundation/**
+        - apps/mcp/src/data-foundation/**
+        - apps/web/src/app/*/data-foundation/**
+        - infrastructure/data-foundation/**
     scenario-workflows:
       paths:
         - scenarios/**
@@ -148,6 +190,9 @@ docInventory:
     - apps/docs/src/content/docs/*/architecture/migration-tdd.md
     - apps/docs/src/content/docs/*/architecture/security.md
     - apps/docs/src/content/docs/*/architecture/multi-agent-observability.md
+    - apps/docs/src/content/docs/*/architecture/wiser-platform.md
+    - apps/docs/src/content/docs/*/architecture/unified-auth.md
+    - apps/docs/src/content/docs/*/architecture/design-system.md
     - apps/docs/src/content/docs/*/protocols/http.md
     - apps/docs/src/content/docs/*/protocols/mcp.md
     - apps/docs/src/content/docs/*/quick-start.md
@@ -191,6 +236,34 @@ rules:
       - path: apps/docs/src/content/docs/en/quick-start.md
         mode: review_or_update
     reason: Toolchain changes must keep the bilingual installation and verification workflow accurate.
+  - id: wiser-platform-contracts
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: packages/platform-*/src/**
+        kind: code
+      - path: apps/api/src/platform/**
+        kind: code
+      - path: apps/api/src/auth.ts
+        kind: code
+      - path: apps/api/src/runtime-auth.ts
+        kind: code
+      - path: apps/web/src/app/globals.css
+        kind: code
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/architecture/wiser-platform.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/wiser-platform.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/architecture/unified-auth.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/unified-auth.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/architecture/design-system.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/design-system.md
+        mode: review_or_update
+    reason: Shared identity and platform contract changes must preserve the bilingual multi-system and authorization boundaries.
   - id: local-stack-workflow
     scope: repo
     repo: wiser

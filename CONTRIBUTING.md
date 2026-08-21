@@ -17,7 +17,7 @@ checkPaths:
   - .docpact/config.yaml
   - .github/workflows/**
 lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedCommit: 110051f6f473fa2c145994c37672ea4a542a0eba
 ---
 
 # Contributing / 贡献指南
@@ -49,7 +49,15 @@ refactor: isolate episode transition policy
 docs: explain local codex provider boundary
 ```
 
-允许保留 Red 阶段提交以展示 TDD 轨迹，但发布里程碑与标签必须位于全绿提交。
+Red commits are recoverable checkpoints / Red 提交是可恢复检查点。允许保留 Red 阶段提交以展示 TDD 轨迹，但必须在提交正文写明预期失败原因；每个里程碑和可交接状态必须位于全绿提交。
+
+大型重构仍使用小而单一目的的提交。依赖、数据库迁移、基础设施、UI 和文档不要混进一个巨型提交。提交前显式暂存当前切片，检查 `git status --short`、`git diff --check` 和 staged diff；除非维护者明确要求，不改写已经用于恢复的提交历史。
+
+## 依赖、容器与产品界面
+
+- 新增或升级 npm 包前查询当前最新兼容稳定版本，排除 alpha、beta、RC、canary 和 preview。使用精确版本并同时提交根 lockfile。
+- 容器使用当前最新兼容稳定 tag 与镜像 digest，禁止 `latest`；升级后必须实际运行配置、健康检查和相关 smoke。
+- Agent EXCON 与所有新系统共享 WISER Design System、中文默认/英文同构、浅色/深色主题、响应式和键盘可访问性。新增可见文案和页面必须同时提供两个 locale，并通过相应 Playwright 覆盖。
 
 ## 数据与安全
 

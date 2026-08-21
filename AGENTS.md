@@ -18,30 +18,36 @@ checkPaths:
   - .github/workflows/**
   - package.json
 lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedCommit: 110051f6f473fa2c145994c37672ea4a542a0eba
 ---
 
-# Agent EXCON repository instructions
+# WISER repository instructions
 
 ## Delivery discipline
 
 - Work in small Red → Green → Refactor loops. Confirm every new test fails for the expected reason before implementation.
-- Keep `packages/core` pure and deterministic. It must not import database, HTTP, framework, clock, random, filesystem, or AI provider code.
-- Dependency direction is `contracts <- core <- infra/apps`. MCP calls the HTTP API and never reads the database directly.
+- Red commits are explicit recovery points. End every milestone on a verified Green commit and preserve the small commit history unless the user asks to rewrite it.
+- Keep every system `core` pure and deterministic. Core must not import database, HTTP, framework, clock, random, filesystem, or AI provider code.
+- Dependency direction is `platform contracts <- system contracts <- core <- application <- infra/apps`. A system may consume another system only through public contracts or HTTP, never through its core or infra.
+- MCP, Skills, and browsers call the HTTP API and never read a database or projection store directly.
 - AI never produces deterministic scores or verdicts. Tests and CI use the fake provider; trusted host-only development may use the local Codex CLI provider.
-- Every visible UI message belongs in both locale dictionaries. Chinese (`zh-CN`) is the default.
+- Every product surface follows the WISER Design System established by Agent EXCON, including shared semantic tokens, components, light/dark themes, keyboard access, and responsive behavior.
+- Every visible UI message belongs in both locale dictionaries. Chinese (`zh-CN`) is the default, and English preserves the same routes, states, and actions.
+- Before adding or upgrading an npm package or Docker image, verify the latest compatible stable version from current primary sources. Pin npm packages exactly, commit the lockfile, and pin container images by stable tag and digest; never use `latest`.
 
 ## Database and security
 
-- Create migrations with the Supabase CLI and keep migrations, declarative schema, and tests in sync.
+- For the Supabase-managed database, create migrations with the Supabase CLI and keep migrations, declarative schema, seed data, and pgTAP tests in sync.
+- For the independent Data Foundation database, use its checked-sum SQL migration runner, advisory lock, and canonical `infrastructure/data-foundation/postgres/migrations` directory. Never mix its history with Supabase migrations.
+- Supabase Auth is the single WISER authority for users, sessions, tenants, projects, memberships, and delegated identities. Data stores keep only scoped subject references and never create a second Auth system.
 - Enable RLS on every table in an exposed schema. Authorization must include ownership checks, not only the `authenticated` role.
-- Keep hidden outcomes, rules, jobs, and idempotency records in a private schema.
+- Keep hidden outcomes, rules, jobs, credentials, and idempotency records in private schemas.
 - Complex state changes use explicit PostgreSQL transactions, row locks or optimistic versions, unique constraints, and append-only audit events.
 - Never commit secrets or mount `~/.codex/auth.json` into containers.
 
 ## Verification
 
-- Before coding, run `pnpm docpact:route --paths 'packages/core/src/**'` with the intended path or glob and read the returned documents.
+- Before coding, run `pnpm docpact:route --paths '<actual intended path or glob>'` and read the returned documents.
 - After coding, run `pnpm docpact:check`; update required documents or record an explicit Docpact review before committing.
 - Validate governance changes with `pnpm docpact:validate`. Do not use baselines or waivers as routine suppressions.
 
