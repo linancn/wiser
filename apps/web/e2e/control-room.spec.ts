@@ -75,7 +75,9 @@ test('switches WISER systems without losing locale or color theme', async ({
 
   await page.getByRole('link', { name: 'English' }).click();
   await expect(page).toHaveURL(/\/en\/data-foundation$/);
-  await expect(page.getByRole('heading', { name: 'Data Foundation' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Data Foundation' }),
+  ).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 

@@ -29,6 +29,7 @@ export function AppShell({
   const pathname = usePathname();
   const otherLocale: Locale = locale === 'zh-CN' ? 'en' : 'zh-CN';
   const languageHref = switchLocalePath(pathname, otherLocale);
+  const dataFoundationActive = pathname.includes('/data-foundation');
 
   return (
     <div className={styles.shell} lang={locale}>
@@ -44,18 +45,28 @@ export function AppShell({
           </span>
         </Link>
         <nav className={styles.nav} aria-label={dictionary.shell.mainNav}>
-          <Link
-            href={`/${locale}/scenarios`}
-            aria-current={pathname.includes('/scenarios') ? 'page' : undefined}
-          >
-            {dictionary.nav.scenarios}
-          </Link>
-          <Link
-            href={`/${locale}/runs`}
-            aria-current={pathname.includes('/runs') ? 'page' : undefined}
-          >
-            {dictionary.nav.runs}
-          </Link>
+          {dataFoundationActive ? (
+            <Link href={`/${locale}/data-foundation`} aria-current="page">
+              {dictionary.nav.overview}
+            </Link>
+          ) : (
+            <>
+              <Link
+                href={`/${locale}/scenarios`}
+                aria-current={
+                  pathname.includes('/scenarios') ? 'page' : undefined
+                }
+              >
+                {dictionary.nav.scenarios}
+              </Link>
+              <Link
+                href={`/${locale}/runs`}
+                aria-current={pathname.includes('/runs') ? 'page' : undefined}
+              >
+                {dictionary.nav.runs}
+              </Link>
+            </>
+          )}
         </nav>
         <div className={styles.actions}>
           <ThemeToggle locale={locale} />
@@ -69,6 +80,24 @@ export function AppShell({
           </Link>
         </div>
       </header>
+      <nav
+        className={styles.systemNav}
+        aria-label={dictionary.systems.navigation}
+      >
+        <strong>{dictionary.systems.label}</strong>
+        <Link
+          href={`/${locale}/scenarios`}
+          aria-current={dataFoundationActive ? undefined : 'page'}
+        >
+          {dictionary.systems.agentExcon}
+        </Link>
+        <Link
+          href={`/${locale}/data-foundation`}
+          aria-current={dataFoundationActive ? 'page' : undefined}
+        >
+          {dictionary.systems.dataFoundation}
+        </Link>
+      </nav>
       {children}
       <footer className={styles.footer}>
         <span>{dictionary.footer.product}</span>

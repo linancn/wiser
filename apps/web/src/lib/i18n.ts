@@ -28,19 +28,56 @@ export function isLocale(value: string): value is Locale {
 
 const zhCN = {
   meta: {
-    title: 'WISER 水地图｜多智能体演练可观测性',
-    description: 'WISER Agent EXCON 的多场景管理、协作追踪与可见性收据回放。',
+    title: 'WISER 水地图｜水智能系统与重构引擎',
+    description: 'WISER 的智能体演练、数据基座与水系统智能工作空间。',
   },
   brand: {
     name: 'WISER',
-    product: '水地图 · Agent EXCON',
+    product: '水地图 · 多系统平台',
     motto: 'wiser water, better future',
   },
   nav: {
     scenarios: '场景库',
     runs: '运行指挥',
+    overview: '系统概览',
     trace: '协作追踪',
     docs: '开发文档',
+  },
+  systems: {
+    navigation: '系统导航',
+    label: 'WISER 系统',
+    agentExcon: 'Agent EXCON',
+    dataFoundation: '数据基座',
+  },
+  dataFoundation: {
+    eyebrow: 'WISER DATA FOUNDATION',
+    title: '数据基座',
+    description:
+      '统一承载水系统数据的目录、入库、质量、血缘、知识、检索与 GIS 服务。所有正式版本都经过可审计的入库会话和确定性处理。',
+    phaseLabel: '当前阶段',
+    phase: '平台契约与组合入口已建立',
+    authorityTitle: '权威与服务边界',
+    identityLabel: '统一身份',
+    identityValue: 'Supabase Auth · Tenant · Project',
+    authorityLabel: '权威数据',
+    authorityValue: 'PostgreSQL / PostGIS · S3',
+    projectionLabel: '可重建投影',
+    projectionValue: 'Search · Knowledge · STAC · GIS',
+    domainsTitle: '首批工作域',
+    domains: [
+      {
+        title: '目录与版本',
+        copy: '以 DataItem 为治理粒度，固化来源、授权、质量、安全等级和不可变版本。',
+      },
+      {
+        title: '入库与操作',
+        copy: '从隔离、扫描、画像和审核，到事务提交、Outbox、投影与发布。',
+      },
+      {
+        title: '综合检索与 GIS',
+        copy: '统一全文、向量、图谱、时空资产和地图服务，同时下推权限并返回证据。',
+      },
+    ],
   },
   shell: {
     skip: '跳到主要内容',
@@ -434,27 +471,64 @@ const zhCN = {
     traceSpanLabel: '追踪 / Span',
   },
   footer: {
-    product: 'WISER 水地图 · Agent EXCON · MIT 开源',
-    boundary: '确定性裁决边界 · 多智能体通过 Skill、HTTP 或 MCP 参演',
+    product: 'WISER 水地图 · MIT 开源',
+    boundary: '统一身份与界面 · 各系统保持独立权威事实',
   },
 };
 
 const en: typeof zhCN = {
   meta: {
-    title: 'WISER Water Map | Multi-agent exercise observability',
+    title: 'WISER Water Map | Water intelligence and reconfiguration',
     description:
-      'Multi-scenario management, collaborative traces, and visibility-receipt replay for WISER Agent EXCON.',
+      'Agent exercises, Data Foundation, and water-system intelligence workspaces for WISER.',
   },
   brand: {
     name: 'WISER',
-    product: 'Water Map · Agent EXCON',
+    product: 'Water Map · Multi-system platform',
     motto: 'wiser water, better future',
   },
   nav: {
     scenarios: 'Scenario library',
     runs: 'Run control',
+    overview: 'System overview',
     trace: 'Collaboration trace',
     docs: 'Developer docs',
+  },
+  systems: {
+    navigation: 'System navigation',
+    label: 'WISER systems',
+    agentExcon: 'Agent EXCON',
+    dataFoundation: 'Data Foundation',
+  },
+  dataFoundation: {
+    eyebrow: 'WISER DATA FOUNDATION',
+    title: 'Data Foundation',
+    description:
+      'A unified catalog, ingestion, quality, lineage, knowledge, search, and GIS service for water-system data. Every formal version passes through an auditable ingestion session and deterministic processing.',
+    phaseLabel: 'Current phase',
+    phase: 'Platform contract and composition entry are established',
+    authorityTitle: 'Authority and service boundary',
+    identityLabel: 'Unified identity',
+    identityValue: 'Supabase Auth · Tenant · Project',
+    authorityLabel: 'Authoritative data',
+    authorityValue: 'PostgreSQL / PostGIS · S3',
+    projectionLabel: 'Rebuildable projections',
+    projectionValue: 'Search · Knowledge · STAC · GIS',
+    domainsTitle: 'Initial work domains',
+    domains: [
+      {
+        title: 'Catalog and versions',
+        copy: 'Govern DataItems with provenance, authorization, quality, security level, and immutable versions.',
+      },
+      {
+        title: 'Ingestion and operations',
+        copy: 'Move from quarantine, scanning, profiling, and review through transactional commit, Outbox, projection, and publication.',
+      },
+      {
+        title: 'Federated search and GIS',
+        copy: 'Unify full-text, vector, graph, spatiotemporal assets, and map services while pushing down authorization and returning evidence.',
+      },
+    ],
   },
   shell: {
     skip: 'Skip to main content',
@@ -872,9 +946,9 @@ const en: typeof zhCN = {
     traceSpanLabel: 'Trace / Span',
   },
   footer: {
-    product: 'WISER Water Map · Agent EXCON · MIT licensed',
+    product: 'WISER Water Map · MIT licensed',
     boundary:
-      'Deterministic environment boundary · agents participate through Skill / HTTP / MCP',
+      'Unified identity and interface · system-owned authoritative facts',
   },
 };
 

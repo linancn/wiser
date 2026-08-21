@@ -35,7 +35,12 @@ export function ThemeToggle({ locale }: { locale: Locale }) {
   const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
-    setTheme(activeTheme());
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const restored: Theme =
+      stored === 'light' || stored === 'dark' ? stored : activeTheme();
+    document.documentElement.dataset.theme = restored;
+    document.documentElement.style.colorScheme = restored;
+    setTheme(restored);
   }, []);
 
   const nextTheme: Theme = theme === 'dark' ? 'light' : 'dark';
