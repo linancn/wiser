@@ -395,38 +395,80 @@ test('keeps visible Run workspace text at a human-readable size', async ({
   }
 });
 
-test('visually checks the read-only preview at desktop and 390px without browser errors', async ({
+test('removes the preview badge and persists the selected color theme', async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/zh-CN/scenarios');
+
+  const header = page.getByRole('banner');
+  await expect(header).not.toContainText('设计预览');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+  const themeToggle = page.getByRole('button', { name: '切换至浅色模式' });
+  await expect(themeToggle).toBeVisible();
+  await themeToggle.click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(
+    page.getByRole('button', { name: '切换至深色模式' }),
+  ).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('wiser-theme')))
+    .toBe('light');
+
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+
+  await page.goto('/en/scenarios');
+  await expect(page.locator('header')).not.toContainText('Design preview');
+  await expect(
+    page.getByRole('button', { name: 'Switch to dark mode' }),
+  ).toBeVisible();
+});
+
+test('visually checks both color themes at desktop and 390px without browser errors', async ({
   browser,
 }, testInfo) => {
-  for (const viewport of [
-    { name: 'desktop', width: 1440, height: 1000 },
-    { name: 'mobile-390', width: 390, height: 844 },
-  ]) {
-    const context = await browser.newContext({
-      viewport: { width: viewport.width, height: viewport.height },
-    });
-    const page = await context.newPage();
-    const browserErrors: string[] = [];
-    page.on('console', (message) => {
-      if (message.type() === 'error') browserErrors.push(message.text());
-    });
-    page.on('pageerror', (error) => browserErrors.push(error.message));
+  for (const colorScheme of ['light', 'dark'] as const) {
+    for (const viewport of [
+      { name: 'desktop', width: 1440, height: 1000 },
+      { name: 'mobile-390', width: 390, height: 844 },
+    ]) {
+      const context = await browser.newContext({
+        colorScheme,
+        viewport: { width: viewport.width, height: viewport.height },
+      });
+      const page = await context.newPage();
+      const browserErrors: string[] = [];
+      page.on('console', (message) => {
+        if (message.type() === 'error') browserErrors.push(message.text());
+      });
+      page.on('pageerror', (error) => browserErrors.push(error.message));
 
-    await page.goto('/zh-CN/runs/run-yongding-spring-042/trace');
-    await page.waitForLoadState('networkidle');
-    await expect(page.getByText('设计预览')).toBeVisible();
-    await expect(page.getByRole('heading', { name: '追踪分析' })).toBeVisible();
-    const overflow = await page.evaluate(
-      () =>
-        document.documentElement.scrollWidth -
-        document.documentElement.clientWidth,
-    );
-    expect(overflow).toBeLessThanOrEqual(1);
-    expect(browserErrors).toEqual([]);
-    await page.screenshot({
-      fullPage: true,
-      path: testInfo.outputPath(`${viewport.name}-trace.png`),
-    });
-    await context.close();
+      await page.goto('/zh-CN/runs/run-yongding-spring-042/trace');
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('html')).toHaveAttribute(
+        'data-theme',
+        colorScheme,
+      );
+      await expect(page.getByRole('banner')).not.toContainText('设计预览');
+      await expect(
+        page.getByRole('heading', { name: '追踪分析' }),
+      ).toBeVisible();
+      const overflow = await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(1);
+      expect(browserErrors).toEqual([]);
+      await page.screenshot({
+        fullPage: true,
+        path: testInfo.outputPath(
+          `${viewport.name}-${colorScheme}-trace.png`,
+        ),
+      });
+      await context.close();
+    }
   }
 });

@@ -58,6 +58,8 @@ describe('bilingual product contract', () => {
     );
     expect(dictionaries['zh-CN'].runWorkspace.trace).toBe('追踪');
     expect(dictionaries['zh-CN'].trace.workspaceHeading).toBe('追踪分析');
+    expect(dictionaries['zh-CN'].shell.themeToDark).toBe('切换至深色模式');
+    expect(dictionaries['zh-CN'].shell.themeToLight).toBe('切换至浅色模式');
 
     const productCopy = stringsOf({
       shell: dictionaries['zh-CN'].shell,
