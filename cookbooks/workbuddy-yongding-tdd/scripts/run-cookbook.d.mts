@@ -36,6 +36,14 @@ export interface WorkBuddyCookbookReport {
     readonly releasedBarriers: readonly string[];
     readonly eventCount: number;
     readonly lastRunSeq: number | null;
+    readonly interactions: {
+      readonly interactionCount: number;
+      readonly handoffCount: number;
+      readonly requestCount: number;
+      readonly responseCount: number;
+      readonly openRequestCount: number;
+      readonly acknowledgedDeliveryCount: number;
+    };
   };
   readonly tddCycle: {
     readonly injectedFault: 'water-evidence-schema-once' | null;

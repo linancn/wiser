@@ -34,7 +34,8 @@
         "evaluations",
         "releasedBarriers",
         "eventCount",
-        "lastRunSeq"
+        "lastRunSeq",
+        "interactions"
       ],
       "properties": {
         "evaluations": { "type": "array", "minItems": 0 },
@@ -44,7 +45,30 @@
           "uniqueItems": true
         },
         "eventCount": { "type": "integer", "minimum": 0 },
-        "lastRunSeq": { "type": ["integer", "null"], "minimum": 1 }
+        "lastRunSeq": { "type": ["integer", "null"], "minimum": 1 },
+        "interactions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "interactionCount",
+            "handoffCount",
+            "requestCount",
+            "responseCount",
+            "openRequestCount",
+            "acknowledgedDeliveryCount"
+          ],
+          "properties": {
+            "interactionCount": { "type": "integer", "minimum": 0 },
+            "handoffCount": { "type": "integer", "minimum": 0 },
+            "requestCount": { "type": "integer", "minimum": 0 },
+            "responseCount": { "type": "integer", "minimum": 0 },
+            "openRequestCount": { "type": "integer", "minimum": 0 },
+            "acknowledgedDeliveryCount": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
       }
     },
     "tddCycle": {

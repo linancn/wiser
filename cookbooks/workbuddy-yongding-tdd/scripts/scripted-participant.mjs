@@ -149,7 +149,7 @@ async function sync(client, identity, cursor) {
             headHash: cursor.receiptHeadHash,
           },
         }),
-    maxItems: 50,
+    maxItems: 8,
   });
 }
 
@@ -246,6 +246,27 @@ async function runSpecialist(client, context) {
     content: firstPayload,
     recipientRunAgentIds: [identity.runAgentId, coordinator.runAgentId],
   });
+  await tool(client, 'excon_post_message', {
+    ...identity,
+    idempotencyKey: randomUUID(),
+    kind: 'handoff',
+    recipientRunAgentIds: [coordinator.runAgentId],
+    subject: {
+      'zh-CN': `${roleSlotId} 工件交接`,
+      en: `${roleSlotId} artifact handoff`,
+    },
+    body: {
+      'zh-CN': '请协调智能体使用该固定 ArtifactVersion 汇流团队方案。',
+      en: 'Use this pinned ArtifactVersion when converging the team plan.',
+    },
+    artifactVersionRefs: [
+      {
+        artifactId: published.artifact.id,
+        artifactVersionId: published.artifact.versionId,
+        contentHash: published.artifact.contentHash,
+      },
+    ],
+  });
   let cursor = await sync(client, identity, initial);
   let submitted = await tool(client, 'excon_submit_task_result', {
     taskId: task.id,
@@ -300,6 +321,27 @@ async function runSpecialist(client, context) {
       content: canonicalPayload,
       recipientRunAgentIds: [identity.runAgentId, coordinator.runAgentId],
     });
+    await tool(client, 'excon_post_message', {
+      ...identity,
+      idempotencyKey: randomUUID(),
+      kind: 'handoff',
+      recipientRunAgentIds: [coordinator.runAgentId],
+      subject: {
+        'zh-CN': `${roleSlotId} 修订工件交接`,
+        en: `${roleSlotId} revised artifact handoff`,
+      },
+      body: {
+        'zh-CN': '先前版本已被确定性返工替代，请仅使用该不可变后继版本。',
+        en: 'Deterministic rework superseded the prior version; use only this immutable successor.',
+      },
+      artifactVersionRefs: [
+        {
+          artifactId: published.artifact.id,
+          artifactVersionId: published.artifact.versionId,
+          contentHash: published.artifact.contentHash,
+        },
+      ],
+    });
     cursor = await sync(client, identity, cursor);
     const revisionLease = await claimAndBegin(client, identity, submitted.task);
     const revisionOfId = submitted.submission.id;
@@ -338,13 +380,58 @@ async function runSpecialist(client, context) {
     }
   }
 
+  const requestDelivery = await waitForSync(
+    client,
+    identity,
+    cursor,
+    async ({ batches }) =>
+      receiptSnapshots(batches, 'message').some(
+        (entry) =>
+          entry.kind === 'request' && entry.senderId === coordinator.runAgentId,
+      ),
+  );
+  cursor = requestDelivery.cursor;
+  const reviewRequest = receiptSnapshots(
+    requestDelivery.batches,
+    'message',
+  ).find(
+    (entry) =>
+      entry.kind === 'request' && entry.senderId === coordinator.runAgentId,
+  );
+  if (reviewRequest === undefined) {
+    throw new Error('Coordinator review request is unavailable.');
+  }
+  await tool(client, 'excon_post_message', {
+    ...identity,
+    idempotencyKey: randomUUID(),
+    kind: 'response',
+    replyToMessageId: reviewRequest.id,
+    recipientRunAgentIds: [coordinator.runAgentId],
+    subject: {
+      'zh-CN': `${roleSlotId} 已完成方案复核`,
+      en: `${roleSlotId} review completed`,
+    },
+    body: {
+      'zh-CN': '已按本角色证据边界复核固定团队方案，继续等待权威背书 grant。',
+      en: 'The pinned team plan was reviewed within this role evidence boundary; awaiting the authoritative endorsement grant.',
+    },
+    artifactVersionRefs: [
+      {
+        artifactId: published.artifact.id,
+        artifactVersionId: published.artifact.versionId,
+        contentHash: published.artifact.contentHash,
+      },
+    ],
+  });
+
   const review = await waitForSync(
     client,
     identity,
     cursor,
     async ({ batches }) => {
-      const submissions = receiptSnapshots(batches, 'submission');
-      const feedback = receiptSnapshots(batches, 'feedback');
+      const allBatches = [...requestDelivery.batches, ...batches];
+      const submissions = receiptSnapshots(allBatches, 'submission');
+      const feedback = receiptSnapshots(allBatches, 'feedback');
       return (
         submissions.some((entry) => entry.targetScope === 'team') &&
         feedback.some((entry) => entry.allowedActions?.includes('endorse'))
@@ -400,10 +487,12 @@ async function runCoordinator(client, context) {
     async ({ batches }) => {
       const tasks = receiptSnapshots(batches, 'task');
       const artifacts = receiptSnapshots(batches, 'artifact');
+      const messages = receiptSnapshots(batches, 'message');
       return (
         tasks.some((entry) => entry.state === 'READY') &&
         artifacts.filter((entry) => entry.artifactType === 'role-analysis')
-          .length >= 3
+          .length >= 3 &&
+        messages.filter((entry) => entry.kind === 'handoff').length >= 3
       );
     },
   );
@@ -436,6 +525,30 @@ async function runCoordinator(client, context) {
     content: teamPayload,
     recipientRunAgentIds: roster.map(({ runAgentId }) => runAgentId),
   });
+  const specialistRunAgentIds = roster
+    .filter(({ roleSlotId }) => roleSlotId !== 'dispatch-coordination')
+    .map(({ runAgentId }) => runAgentId);
+  const reviewRequest = await tool(client, 'excon_post_message', {
+    ...identity,
+    idempotencyKey: randomUUID(),
+    kind: 'request',
+    recipientRunAgentIds: specialistRunAgentIds,
+    subject: {
+      'zh-CN': '请求三专业角色复核团队方案',
+      en: 'Request specialist review of the team plan',
+    },
+    body: {
+      'zh-CN': '请按各自证据边界回复该固定版本；回复不替代后续权威背书。',
+      en: 'Respond against this pinned version within each evidence boundary; the response does not replace authoritative endorsement.',
+    },
+    artifactVersionRefs: [
+      {
+        artifactId: teamArtifact.artifact.id,
+        artifactVersionId: teamArtifact.artifact.versionId,
+        contentHash: teamArtifact.artifact.contentHash,
+      },
+    ],
+  });
   cursor = await sync(client, identity, cursor);
   const submission = await tool(client, 'excon_submit_task_result', {
     taskId: task.id,
@@ -465,9 +578,7 @@ async function runCoordinator(client, context) {
         contentHash: teamArtifact.artifact.contentHash,
       },
     ],
-    endorsementRecipientRunAgentIds: roster
-      .filter(({ roleSlotId }) => roleSlotId !== 'dispatch-coordination')
-      .map(({ runAgentId }) => runAgentId),
+    endorsementRecipientRunAgentIds: specialistRunAgentIds,
   });
   const final = await waitForSync(
     client,
@@ -476,9 +587,15 @@ async function runCoordinator(client, context) {
     async ({ batches }) => {
       const tasks = receiptSnapshots(batches, 'task');
       const feedback = receiptSnapshots(batches, 'feedback');
+      const messages = receiptSnapshots(batches, 'message');
       return (
         tasks.some((entry) => entry.state === 'ACCEPTED') &&
-        feedback.some((entry) => entry.targetScope === 'team')
+        feedback.some((entry) => entry.targetScope === 'team') &&
+        messages.filter(
+          (entry) =>
+            entry.kind === 'response' &&
+            entry.replyToMessageId === reviewRequest.message.id,
+        ).length >= 3
       );
     },
   );
@@ -545,7 +662,7 @@ async function main() {
   try {
     structured = await runScriptedParticipant();
     success = true;
-  } catch {
+  } catch (error) {
     structured = {
       schemaVersion: 1,
       roleSlotId,
@@ -557,7 +674,11 @@ async function main() {
       summary:
         'Scripted participant failed; inspect the sanitized runner diagnostic.',
     };
-    process.stderr.write(`Scripted ${roleSlotId} participant failed.\n`);
+    process.stderr.write(
+      `Scripted ${roleSlotId} participant failed: ${
+        error instanceof Error ? error.message : 'Unknown error.'
+      }\n`,
+    );
     process.exitCode = 1;
   }
   process.stdout.write(

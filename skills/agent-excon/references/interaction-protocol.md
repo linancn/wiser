@@ -148,11 +148,24 @@ Message:
 
 ```json
 {
+  "kind": "inform | request | response | handoff",
+  "replyToMessageId": "<required only for response>",
   "recipientRunAgentIds": ["<uuid>"],
   "subject": { "zh-CN": "摘要", "en": "Summary" },
-  "body": { "zh-CN": "参与者安全正文", "en": "Participant-safe body" }
+  "body": { "zh-CN": "参与者安全正文", "en": "Participant-safe body" },
+  "artifactVersionRefs": [
+    {
+      "artifactId": "<uuid>",
+      "artifactVersionId": "<uuid>",
+      "contentHash": "sha256:<64 hex>"
+    }
+  ]
 }
 ```
+
+Use `handoff` for an immutable ArtifactVersion transfer and include at least one exact reference. Use `request` when an explicit business response is required. A `response` must cite a receipted `request` through `replyToMessageId`, inherits that request's immutable `threadId`, and includes the request sender in its recipient snapshot. The service rejects a response when the caller was not a request recipient or has not obtained the parent through its own Receipt chain. `inform`, `request`, and `handoff` are thread roots and cannot cite a parent.
+
+Receipt issuance and acknowledgement prove only platform delivery-chain state. They never mean “read”, “understood”, or “agreed”. Only a causal `response`, scoped Feedback action, or Endorsement establishes the corresponding business action.
 
 New Artifact and a later immutable version:
 

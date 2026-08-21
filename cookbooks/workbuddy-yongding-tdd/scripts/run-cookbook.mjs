@@ -6,6 +6,7 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { startV2LocalLabServer } from '../../../apps/api/src/index.ts';
+import { RunInteractionListSchema } from '../../../packages/contracts/src/index.ts';
 
 import { launchWorkBuddyRoles } from './launch-four-agents.mjs';
 import { renderWorkBuddyRuntime } from './render-workbuddy-config.mjs';
@@ -147,6 +148,26 @@ function eventSummary(value) {
   };
 }
 
+function interactionSummary(value) {
+  const interactions = RunInteractionListSchema.parse(value).items;
+  return {
+    interactionCount: interactions.length,
+    handoffCount: interactions.filter(({ kind }) => kind === 'handoff').length,
+    requestCount: interactions.filter(({ kind }) => kind === 'request').length,
+    responseCount: interactions.filter(({ kind }) => kind === 'response')
+      .length,
+    openRequestCount: interactions.filter(
+      ({ kind, status }) => kind === 'request' && status === 'open',
+    ).length,
+    acknowledgedDeliveryCount: interactions.reduce(
+      (count, { deliveries }) =>
+        count +
+        deliveries.filter(({ state }) => state === 'acknowledged').length,
+      0,
+    ),
+  };
+}
+
 function authoritativePass(
   launch,
   evaluations,
@@ -219,6 +240,14 @@ export async function runWorkBuddyCookbook(options) {
   let launch;
   let evaluations = [];
   let events = { eventCount: 0, lastRunSeq: null, releasedBarriers: [] };
+  let interactions = {
+    interactionCount: 0,
+    handoffCount: 0,
+    requestCount: 0,
+    responseCount: 0,
+    openRequestCount: 0,
+    acknowledgedDeliveryCount: 0,
+  };
   let failure = null;
   try {
     server = await startV2LocalLabServer({
@@ -258,17 +287,20 @@ export async function runWorkBuddyCookbook(options) {
     if (operator.WISER_RUN_ID !== server.lab.manifest.runId) {
       throw new Error('Operator credential Run identity mismatch.');
     }
-    const [evaluationResponse, eventResponse] = await Promise.all([
-      operatorGet(operator, `runs/${operator.WISER_RUN_ID}/evaluations`),
-      collectOperatorEvents((after, limit) =>
-        operatorGet(
-          operator,
-          `runs/${operator.WISER_RUN_ID}/events?after=${after}&limit=${limit}`,
+    const [evaluationResponse, eventResponse, interactionResponse] =
+      await Promise.all([
+        operatorGet(operator, `runs/${operator.WISER_RUN_ID}/evaluations`),
+        collectOperatorEvents((after, limit) =>
+          operatorGet(
+            operator,
+            `runs/${operator.WISER_RUN_ID}/events?after=${after}&limit=${limit}`,
+          ),
         ),
-      ),
-    ]);
+        operatorGet(operator, `runs/${operator.WISER_RUN_ID}/interactions`),
+      ]);
     evaluations = publicEvaluations(evaluationResponse);
     events = eventSummary(eventResponse);
+    interactions = interactionSummary(interactionResponse);
   } catch (error) {
     failure =
       error instanceof Error
@@ -310,6 +342,7 @@ export async function runWorkBuddyCookbook(options) {
       releasedBarriers: events.releasedBarriers,
       eventCount: events.eventCount,
       lastRunSeq: events.lastRunSeq,
+      interactions,
     },
     tddCycle: {
       injectedFault: faultInjection,
