@@ -1,6 +1,9 @@
 {
   "title": "Design boundaries",
   "pages": [
+    "wiser-platform",
+    "design-system",
+    "unified-auth",
     "overview",
     "multi-agent-observability",
     "migration-tdd",

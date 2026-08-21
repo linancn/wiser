@@ -125,9 +125,7 @@ describe('Fumadocs documentation application', () => {
   });
 
   it('presents one WISER documentation system for every product system', () => {
-    const chineseMeta = readJson(
-      'apps/docs/src/content/docs/zh-CN/meta.json',
-    );
+    const chineseMeta = readJson('apps/docs/src/content/docs/zh-CN/meta.json');
     const englishMeta = readJson('apps/docs/src/content/docs/en/meta.json');
 
     expect(chineseMeta.title).toBe('WISER');

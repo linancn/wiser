@@ -1,6 +1,9 @@
 {
   "title": "设计边界",
   "pages": [
+    "wiser-platform",
+    "design-system",
+    "unified-auth",
     "overview",
     "multi-agent-observability",
     "migration-tdd",
