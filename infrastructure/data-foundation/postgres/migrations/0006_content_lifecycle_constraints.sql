@@ -1,3 +1,12 @@
+update catalog.asset
+set lifecycle_state = 'FINGERPRINTED',
+  row_version = row_version + 1,
+  updated_at = clock_timestamp()
+where lifecycle_state = 'QUARANTINED'
+  and version_id is null
+  and content_hash is not null
+  and content_blob_id is not null;
+
 alter table catalog.asset
   add constraint asset_lifecycle_state_check check (
     lifecycle_state in ('QUARANTINED', 'FINGERPRINTED', 'RAW')
