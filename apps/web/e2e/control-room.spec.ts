@@ -164,6 +164,39 @@ test('keeps the operator workspace usable on a narrow screen', async ({
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
+test('keeps visible Run workspace text at a human-readable size', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const route of ['diagnostics', 'trace', 'replay']) {
+    await page.goto(`/zh-CN/runs/run-yongding-spring-042/${route}`);
+    const smallest = await page.evaluate(() =>
+      [...document.querySelectorAll('body *')]
+        .filter((element) => {
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return (
+            style.display !== 'none' &&
+            style.visibility !== 'hidden' &&
+            rect.width > 0 &&
+            rect.height > 0 &&
+            element.children.length === 0 &&
+            (element.textContent ?? '').trim().length > 0
+          );
+        })
+        .reduce(
+          (minimum, element) =>
+            Math.min(
+              minimum,
+              Number.parseFloat(getComputedStyle(element).fontSize),
+            ),
+          Number.POSITIVE_INFINITY,
+        ),
+    );
+    expect(smallest).toBeGreaterThanOrEqual(11.5);
+  }
+});
+
 test('visually checks the read-only preview at desktop and 390px without browser errors', async ({
   browser,
 }, testInfo) => {
