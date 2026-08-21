@@ -144,6 +144,48 @@ test('observes parallel agents, cross-agent links, and perspective replay', asyn
   await expect(page.getByTestId('replay-event')).toHaveCount(5);
 });
 
+test('shows causal agent exchanges and per-recipient delivery without claiming they were read', async ({
+  page,
+}) => {
+  await page.goto('/zh-CN/runs/run-yongding-spring-042/collaboration');
+
+  await expect(page.getByRole('heading', { name: '协作汇流' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '协作' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  await expect(page.getByTestId('collaboration-exchange')).toHaveCount(7);
+  await expect(page.getByTestId('collaboration-handoff')).toHaveCount(3);
+  await expect(page.getByTestId('collaboration-request')).toHaveCount(1);
+  await expect(page.getByText('3 个专业工件已交接')).toBeVisible();
+
+  const request = page.getByTestId('collaboration-request');
+  await request.getByRole('button').click();
+  await expect(page.getByTestId('collaboration-inspector')).toContainText(
+    '来水研判智能体',
+  );
+  await expect(page.getByTestId('collaboration-inspector')).toContainText(
+    '接收批次已确认',
+  );
+  await expect(page.getByText('已读')).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(page.getByTestId('collaboration-exchange')).toHaveCount(7);
+  await page.getByTestId('collaboration-request').getByRole('button').click();
+  await expect(
+    page
+      .getByTestId('collaboration-request')
+      .getByTestId('mobile-exchange-detail'),
+  ).toBeVisible();
+  const overflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
 test('keeps the operator workspace usable on a narrow screen', async ({
   page,
 }) => {
