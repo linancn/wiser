@@ -6,8 +6,11 @@ import { describe, expect, it } from 'vitest';
 import {
   DATA_CAPABILITY_REGISTRY,
   type DataCapabilityId,
-  type UploadSessionDto,
 } from '@wiser/data-contracts';
+import {
+  DATA_INGESTION_PROCESS_JOB_TYPE,
+  type DataIngestionProcessJobPayload,
+} from '@wiser/data-infra';
 
 import type { DataCapabilityExecutionContext } from '../src/data-foundation/capability-handler.js';
 import {
@@ -28,6 +31,7 @@ const OPERATION_ID = 'd2000000-0000-4000-8000-000000000008';
 const IDEMPOTENCY_KEY = 'd2000000-0000-4000-8000-000000000009';
 const NOW = new Date('2026-08-22T05:00:00.000Z');
 const SHA256 = 'a'.repeat(64);
+const REVIEW_HASH = 'b'.repeat(64);
 
 const context: DataCapabilityExecutionContext = {
   principal: {
@@ -72,7 +76,13 @@ class FakeClient implements PostgresDataCommandClient {
   uploadExpiresAt = '2026-08-22T06:00:00.000Z';
   uploadRequestPayload: unknown;
   assetSecurity = 'L1_INTERNAL';
-  existingAsset: Record<string, unknown> | undefined;
+  assetLifecycle = 'QUARANTINED';
+  assetVersionId: string | null = null;
+  boundIngestionId: string | null = null;
+  cancellationJobStatus: string | undefined;
+  cancellationAttemptCount = 2;
+  cancellationLeaseOwner = 'worker-1';
+  cancellationLeaseExpiresAt = '2026-08-22T05:01:00.000Z';
   zeroRowCountFor: string | undefined;
   released = false;
 
@@ -92,6 +102,18 @@ class FakeClient implements PostgresDataCommandClient {
     }
     if (text.includes('data.upload.asset.insert')) {
       this.timeline.push('sql:asset-insert');
+      return Promise.resolve({
+        rows: [
+          {
+            asset_id: values[0],
+            content_hash: null,
+            content_blob_id: null,
+            security_level: values[6],
+            row_version: 1,
+          },
+        ],
+        rowCount: 1,
+      });
     }
     if (text.includes('data.command.idempotency.read')) {
       const payload = this.replay.get(String(values[0]));
@@ -145,7 +167,29 @@ class FakeClient implements PostgresDataCommandClient {
     }
     if (text.includes('data.ingestion.assets.lock')) {
       return Promise.resolve({
-        rows: [{ asset_id: ASSET_ID, security_level: this.assetSecurity }],
+        rows: [
+          {
+            asset_id: ASSET_ID,
+            security_level: this.assetSecurity,
+            policy_version: 7,
+            row_version: 1,
+            lifecycle_state: this.assetLifecycle,
+            version_id: this.assetVersionId,
+            bound_ingestion_id: this.boundIngestionId,
+          },
+        ],
+        rowCount: 1,
+      });
+    }
+    if (text.includes('data.ingestion.asset-security.update')) {
+      return Promise.resolve({
+        rows: [
+          {
+            asset_id: values[0],
+            security_level: values[1],
+            row_version: Number(values[5]) + 1,
+          },
+        ],
         rowCount: 1,
       });
     }
@@ -206,14 +250,104 @@ class FakeClient implements PostgresDataCommandClient {
         rowCount: 1,
       });
     }
-    if (text.includes('data.upload.asset-by-hash.lock')) {
+    if (text.includes('data.ingestion.review-checkpoint.lock')) {
       return Promise.resolve({
-        rows: this.existingAsset === undefined ? [] : [this.existingAsset],
-        rowCount: this.existingAsset === undefined ? 0 : 1,
+        rows: [
+          {
+            transform_plan_id: 'd2000000-0000-4000-8000-000000000098',
+            review_hash: REVIEW_HASH,
+            plan: { reviewHash: REVIEW_HASH },
+            row_version: 1,
+            security_level: 'L1_INTERNAL',
+            policy_version: 7,
+          },
+        ],
+        rowCount: 1,
       });
     }
-    if (text.includes('data.operation.cancel-jobs.update')) {
-      return Promise.resolve({ rows: [], rowCount: 0 });
+    if (text.includes('data.ingestion.review-checkpoint.approve')) {
+      return Promise.resolve({
+        rows: [{ review_hash: REVIEW_HASH }],
+        rowCount: 1,
+      });
+    }
+    if (text.includes('data.operation.ingestion.lock')) {
+      return Promise.resolve({
+        rows: [
+          {
+            ingestion_id: INGESTION_ID,
+            state: this.ingestionState,
+            row_version: this.ingestionVersion,
+            security_level: 'L1_INTERNAL',
+            policy_version: 7,
+          },
+        ],
+        rowCount: 1,
+      });
+    }
+    if (text.includes('data.operation.jobs.lock')) {
+      if (this.cancellationJobStatus === undefined) {
+        return Promise.resolve({ rows: [], rowCount: 0 });
+      }
+      return Promise.resolve({
+        rows: [
+          {
+            job_id: 'd2000000-0000-4000-8000-000000000097',
+            status: this.cancellationJobStatus,
+            row_version: 3,
+            attempt_count: this.cancellationAttemptCount,
+            lease_owner: this.cancellationLeaseOwner,
+            lease_expires_at: this.cancellationLeaseExpiresAt,
+            security_level: 'L1_INTERNAL',
+            policy_version: 7,
+          },
+        ],
+        rowCount: 1,
+      });
+    }
+    if (text.includes('data.operation.job-cancellation.request')) {
+      return Promise.resolve({
+        rows: [
+          {
+            job_id: values[2],
+            status: this.cancellationJobStatus,
+            row_version: 4,
+            attempt_count: this.cancellationAttemptCount,
+            lease_owner: this.cancellationLeaseOwner,
+            lease_expires_at: this.cancellationLeaseExpiresAt,
+            cancel_requested_at: NOW.toISOString(),
+            security_level: 'L1_INTERNAL',
+            policy_version: 7,
+          },
+        ],
+        rowCount: 1,
+      });
+    }
+    if (text.includes('data.operation.after-lifecycle.read')) {
+      return Promise.resolve({
+        rows: [
+          {
+            operation_id: OPERATION_ID,
+            capability_id: 'data.ingestion.create',
+            status:
+              this.cancellationJobStatus === 'RUNNING'
+                ? 'RUNNING'
+                : 'CANCELLED',
+            progress_percent: 30,
+            row_version: this.operationVersion + 1,
+            security_level: 'L1_INTERNAL',
+            policy_version: 7,
+            created_at: NOW.toISOString(),
+            updated_at: NOW.toISOString(),
+            started_at: NOW.toISOString(),
+            completed_at:
+              this.cancellationJobStatus === 'RUNNING'
+                ? null
+                : NOW.toISOString(),
+          },
+        ],
+        rowCount: 1,
+      });
     }
     return Promise.resolve({ rows: [], rowCount: 1 });
   }
@@ -415,8 +549,16 @@ class RollbackCommitPool implements PostgresDataCommandPool {
 
 class SavepointRollbackPool implements PostgresDataCommandPool {
   capturedJobPayload: unknown;
+  capturedAsset: Readonly<Record<string, unknown>> | undefined;
+  capturedJob: Readonly<Record<string, unknown>> | undefined;
 
-  constructor(private readonly client: PoolClient) {}
+  constructor(
+    private readonly client: PoolClient,
+    private readonly capture: {
+      readonly assetId?: string;
+      readonly jobId?: string;
+    } = {},
+  ) {}
 
   connect(): Promise<PostgresDataCommandClient> {
     const client = this.client;
@@ -434,6 +576,24 @@ class SavepointRollbackPool implements PostgresDataCommandPool {
              order by created_at desc limit 1`,
           );
           this.capturedJobPayload = captured.rows[0]?.payload;
+          if (this.capture.assetId !== undefined) {
+            const asset = await client.query<Record<string, unknown>>(
+              `select asset_id, content_hash, content_blob_id, lifecycle_state,
+                 security_level, row_version, version_id
+               from catalog.asset where asset_id = $1::uuid`,
+              [this.capture.assetId],
+            );
+            this.capturedAsset = asset.rows[0];
+          }
+          if (this.capture.jobId !== undefined) {
+            const job = await client.query<Record<string, unknown>>(
+              `select job_id, status, attempt_count, lease_owner,
+                 lease_expires_at, cancel_requested_at, row_version
+               from ingestion.job where job_id = $1::uuid`,
+              [this.capture.jobId],
+            );
+            this.capturedJob = job.rows[0];
+          }
           await client.query('rollback to savepoint command_executor_test');
           const result = await client.query(
             'release savepoint command_executor_test',
@@ -649,7 +809,7 @@ describe('PostgreSQL Data Foundation command executors', () => {
     expect(value.store.calls).toHaveLength(0);
   });
 
-  it('verifies completed objects before inserting authority Asset rows', async () => {
+  it('verifies bytes then creates a distinct unhashed logical Asset', async () => {
     const value = runtime();
     const output = await executor(
       value.runtime,
@@ -672,7 +832,19 @@ describe('PostgreSQL Data Foundation command executors', () => {
     expect(verifyIndex).toBeGreaterThanOrEqual(0);
     expect(insertIndex).toBeGreaterThanOrEqual(0);
     expect(verifyIndex).toBeLessThan(insertIndex);
-    expect(value.pool.client.calls[insertIndex]?.text).not.toMatch(/delete/i);
+    const assetInsert = value.pool.client.calls.find(({ text }) =>
+      text.includes('data.upload.asset.insert'),
+    );
+    expect(assetInsert?.text).toMatch(/content_hash[\s\S]*content_blob_id/i);
+    expect(assetInsert?.text).toMatch(/null, null/i);
+    expect(assetInsert?.text).not.toMatch(/on conflict|decode\(/i);
+    expect(assetInsert?.values.map(String)).not.toContain(SHA256);
+    const completion = value.pool.client.calls.find(({ text }) =>
+      text.includes('data.upload.session.complete.update'),
+    );
+    expect(JSON.parse(String(completion?.values[9]))).toEqual([
+      { assetId: ASSET_ID, claimedSha256: SHA256 },
+    ]);
   });
 
   it('rejects stale upload and operation versions before side effects', async () => {
@@ -790,9 +962,49 @@ describe('PostgreSQL Data Foundation command executors', () => {
     const sql = value.pool.client.calls.map(({ text }) => text).join('\n');
     expect(sql).toContain('data.operation.lock');
     expect(sql).toContain('data.ingestion.cancel.update');
-    expect(sql).toContain('data.operation.cancel-jobs.update');
+    expect(sql).toContain('data.operation.jobs.lock');
     expect(sql).toContain('for update');
     expect(sql).not.toMatch(/delete\s+from/i);
+    expect(sql.indexOf('data.operation.ingestion.lock')).toBeLessThan(
+      sql.indexOf('data.operation.lock'),
+    );
+  });
+
+  it('requests lifecycle cancellation without truncating a RUNNING lease', async () => {
+    const value = runtime();
+    value.pool.client.cancellationJobStatus = 'RUNNING';
+    const output = (await executor(
+      value.runtime,
+      'data.operation.cancel',
+    ).execute({ operationId: OPERATION_ID, expectedVersion: 2 }, context)) as {
+      readonly status: string;
+    };
+
+    expect(output.status).toBe('RUNNING');
+    const request = value.pool.client.calls.find(({ text }) =>
+      text.includes('data.operation.job-cancellation.request'),
+    );
+    expect(request).toBeDefined();
+    const sql = value.pool.client.calls.map(({ text }) => text).join('\n');
+    expect(sql).not.toContain('data.operation.cancel.update');
+    expect(sql).not.toMatch(/lease_owner\s*=\s*null|attempt_count\s*=/i);
+  });
+
+  it('rejects cancellation after the related ingestion reaches an immutable state', async () => {
+    const value = runtime();
+    value.pool.client.ingestionState = 'COMMITTED';
+
+    await expect(
+      executor(value.runtime, 'data.operation.cancel').execute(
+        { operationId: OPERATION_ID, expectedVersion: 2 },
+        context,
+      ),
+    ).rejects.toMatchObject({ code: 'STATE_CONFLICT' });
+    expect(
+      value.pool.client.calls.some(({ text }) =>
+        text.includes('data.operation.lock'),
+      ),
+    ).toBe(false);
   });
 
   it('rolls back and sanitizes S3 failures before Asset insertion', async () => {
@@ -922,6 +1134,41 @@ describe('PostgreSQL Data Foundation command executors', () => {
     expect(sessionInsert?.values[5]).toBe('L2_RESTRICTED');
     expect(inputInsert?.values[6]).toBe('L2_RESTRICTED');
     expect(sessionInsert?.values[5]).not.toBe('L3_CONFIDENTIAL');
+    const elevation = value.pool.client.calls.find(({ text }) =>
+      text.includes('data.ingestion.asset-security.update'),
+    );
+    expect(elevation?.values[1]).toBe('L2_RESTRICTED');
+    expect(elevation?.values[5]).toBe(1);
+  });
+
+  it.each([
+    { name: 'RAW asset', lifecycle: 'RAW', boundIngestionId: null },
+    {
+      name: 'already-bound asset',
+      lifecycle: 'QUARANTINED',
+      boundIngestionId: INGESTION_ID,
+    },
+  ])('refuses a $name instead of reusing it', async (fixture) => {
+    const value = runtime();
+    value.pool.client.assetLifecycle = fixture.lifecycle;
+    value.pool.client.boundIngestionId = fixture.boundIngestionId;
+
+    await expect(
+      executor(value.runtime, 'data.ingestion.create').execute(
+        {
+          assetIds: [ASSET_ID],
+          ownerProjectId: PROJECT_ID,
+          intendedUses: ['hydrology-analysis'],
+          requestedSecurityLevel: 'L1_INTERNAL',
+        },
+        context,
+      ),
+    ).rejects.toMatchObject({ code: 'STATE_CONFLICT' });
+    expect(
+      value.pool.client.calls.some(({ text }) =>
+        text.includes('data.command.operation.insert'),
+      ),
+    ).toBe(false);
   });
 
   it('emits the exact frozen worker payload on submit and approval wake-up', async () => {
@@ -945,75 +1192,45 @@ describe('PostgreSQL Data Foundation command executors', () => {
     const approved = value.pool.client.calls.find(({ text }) =>
       text.includes('data.ingestion.job.wake'),
     );
-    expect(JSON.parse(String(submitted?.values[6]))).toEqual({
-      tenantId: TENANT_ID,
-      projectId: PROJECT_ID,
+    const submittedPayload: DataIngestionProcessJobPayload = JSON.parse(
+      String(submitted?.values[6]),
+    ) as DataIngestionProcessJobPayload;
+    const approvedPayload: DataIngestionProcessJobPayload = JSON.parse(
+      String(approved?.values[1]),
+    ) as DataIngestionProcessJobPayload;
+    expect(DATA_INGESTION_PROCESS_JOB_TYPE).toBe('data.ingestion.process');
+    expect(submittedPayload).toEqual({
       ingestionId: INGESTION_ID,
       expectedState: 'RECEIVED',
       expectedVersion: 1,
     });
-    expect(JSON.parse(String(approved?.values[1]))).toEqual({
-      tenantId: TENANT_ID,
-      projectId: PROJECT_ID,
+    expect(Object.keys(submittedPayload).sort()).toEqual([
+      'expectedState',
+      'expectedVersion',
+      'ingestionId',
+    ]);
+    expect(approvedPayload).toEqual({
       ingestionId: INGESTION_ID,
       expectedState: 'APPROVED',
       expectedVersion: 3,
     });
-  });
-
-  it('deterministically reuses an existing same-hash Asset', async () => {
-    const value = runtime();
-    const existingAssetId = 'd2000000-0000-4000-8000-000000000077';
-    value.pool.client.existingAsset = {
-      asset_id: existingAssetId,
-      storage_key: 'raw/existing',
-      media_type: 'application/geo+json',
-      byte_size: 4_096,
-      security_level: 'L2_RESTRICTED',
-      policy_version: 7,
-    };
-
-    const output = (await executor(
-      value.runtime,
-      'data.uploadSession.complete',
-    ).execute(
-      {
-        uploadSessionId: SESSION_ID,
-        expectedVersion: 1,
-        objects: [{ assetId: ASSET_ID, sizeBytes: 4_096, sha256: SHA256 }],
-      },
-      context,
-    )) as { readonly uploadSession: UploadSessionDto };
-
-    expect(output.uploadSession.assetIds).toEqual([existingAssetId]);
+    expect(Object.keys(approvedPayload).sort()).toEqual([
+      'expectedState',
+      'expectedVersion',
+      'ingestionId',
+    ]);
+    const review = value.pool.client.calls.find(({ text }) =>
+      text.includes('data.ingestion.review.insert'),
+    );
+    expect(JSON.parse(String(review?.values[7]))).toMatchObject({
+      reviewHash: REVIEW_HASH,
+      transformPlanId: 'd2000000-0000-4000-8000-000000000098',
+    });
     expect(
       value.pool.client.calls.some(({ text }) =>
-        text.includes('data.upload.asset.insert'),
+        text.includes('data.ingestion.review-checkpoint.approve'),
       ),
-    ).toBe(false);
-  });
-
-  it('refuses same-hash reuse when immutable size or media metadata differs', async () => {
-    const value = runtime();
-    value.pool.client.existingAsset = {
-      asset_id: 'd2000000-0000-4000-8000-000000000077',
-      storage_key: 'raw/existing',
-      media_type: 'application/pdf',
-      byte_size: 123,
-      security_level: 'L1_INTERNAL',
-      policy_version: 7,
-    };
-
-    await expect(
-      executor(value.runtime, 'data.uploadSession.complete').execute(
-        {
-          uploadSessionId: SESSION_ID,
-          expectedVersion: 1,
-          objects: [{ assetId: ASSET_ID, sizeBytes: 4_096, sha256: SHA256 }],
-        },
-        context,
-      ),
-    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+    ).toBe(true);
   });
 
   it('HEAD-verifies a multipart completion retry after the S3 side effect', async () => {
@@ -1264,23 +1481,226 @@ describe('PostgreSQL Data Foundation command executors', () => {
         const pipelineOperationId = randomUUID();
         const pipelineIngestionId = randomUUID();
         const pipelineAssetId = randomUUID();
+        const rawDataItemId = randomUUID();
+        const rawVersionId = randomUUID();
+        const rawBlobId = randomUUID();
+        const rawAssetId = randomUUID();
+        const uploadOperationId = randomUUID();
+        const uploadAssetId = randomUUID();
         preparedClient = await admin.connect();
         await preparedClient.query('begin');
+        await preparedClient.query(
+          `insert into catalog.data_item (
+             data_item_id, tenant_id, project_id, owner_project_id, name,
+             business_domains, source_natures, source_channels,
+             processing_stage, intended_uses, source_organization,
+             authorization_scope, citation_requirements, unit_definitions,
+             missing_value_rules, anomaly_rules, generation_method,
+             quality_grade, acceptance_status, publication_status,
+             security_level, version, update_mode, policy_version, row_version
+           ) values ($1::uuid, $2::uuid, $3::uuid, $3::uuid,
+             'Existing RAW item', array['water-monitoring'], array['observed'],
+             array['ingestion'], 'RAW', array['hydrology-analysis'],
+             'WISER integration', 'data.catalog.read', '{}', '[]'::jsonb,
+             '[]'::jsonb, '[]'::jsonb, 'OBSERVED', 'C', 'PASSED',
+             'UNPUBLISHED', 'L1_INTERNAL', 1, 'SNAPSHOT', 1, 1)`,
+          [rawDataItemId, TENANT_ID, PROJECT_ID],
+        );
+        await preparedClient.query(
+          `insert into catalog.data_item_version (
+             version_id, tenant_id, project_id, data_item_id, version_number,
+             asset_manifest, source_hash, metadata_hash, processing_stage,
+             generation_method, quality_grade, acceptance_status,
+             publication_status, security_level, policy_version, row_version,
+             committed_at
+           ) values ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 1,
+             jsonb_build_object('fixture', true), decode($5, 'hex'),
+             decode($6, 'hex'), 'RAW', 'OBSERVED', 'C', 'PASSED',
+             'UNPUBLISHED', 'L1_INTERNAL', 1, 1, $7::timestamptz)`,
+          [
+            rawVersionId,
+            TENANT_ID,
+            PROJECT_ID,
+            rawDataItemId,
+            SHA256,
+            'd'.repeat(64),
+            NOW.toISOString(),
+          ],
+        );
+        await preparedClient.query(
+          `insert into catalog.content_blob (
+             content_blob_id, tenant_id, project_id, content_hash, byte_size,
+             raw_storage_key, lifecycle_state, security_level, policy_version,
+             row_version
+           ) values ($1::uuid, $2::uuid, $3::uuid, decode($4, 'hex'), 4096,
+             $5, 'RAW', 'L1_INTERNAL', 1, 1)`,
+          [rawBlobId, TENANT_ID, PROJECT_ID, SHA256, `raw/${rawBlobId}`],
+        );
+        await preparedClient.query(
+          `insert into catalog.asset (
+             asset_id, tenant_id, project_id, version_id, storage_key,
+             content_hash, content_blob_id, media_type, byte_size, lifecycle_state,
+             security_level, policy_version, row_version
+           ) values ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5,
+             decode($6, 'hex'), $7::uuid, 'application/geo+json', 4096, 'RAW',
+             'L1_INTERNAL', 1, 1)`,
+          [
+            rawAssetId,
+            TENANT_ID,
+            PROJECT_ID,
+            rawVersionId,
+            `raw/${rawBlobId}`,
+            SHA256,
+            rawBlobId,
+          ],
+        );
+        const uploadRequest = {
+          assets: [
+            {
+              assetId: uploadAssetId,
+              uploadId: uploadAssetId,
+              fileName: 'duplicate.geojson',
+              sha256: SHA256,
+              sizeBytes: 4_096,
+              contentType: 'application/geo+json',
+              securityLevel: 'L1_INTERNAL',
+              method: 'PRESIGNED_PUT',
+              storageKey: `integration-upload/${uploadAssetId}`,
+            },
+          ],
+          expiresAt: '2026-08-22T06:00:00.000Z',
+          createdAt: NOW.toISOString(),
+          securityLevel: 'L1_INTERNAL',
+        };
+        await preparedClient.query(
+          `insert into service.operation (
+             operation_id, tenant_id, project_id, capability_id, actor_id,
+             status, progress_percent, idempotency_key, request_payload,
+             security_level, policy_version, row_version
+           ) values ($1::uuid, $2::uuid, $3::uuid,
+             'data.uploadSession.create', $4::uuid, 'WAITING_INPUT', 0,
+             $5, $6::jsonb, 'L1_INTERNAL', 1, 1)`,
+          [
+            uploadOperationId,
+            TENANT_ID,
+            PROJECT_ID,
+            ACTOR_ID,
+            `fixture:${uploadOperationId}`,
+            JSON.stringify(uploadRequest),
+          ],
+        );
+        await preparedClient.query(`set role ${roleName}`);
+        const uploadPool = new SavepointRollbackPool(preparedClient, {
+          assetId: uploadAssetId,
+        });
+        const uploadRuntime = createPostgresDataCommandRuntime(
+          uploadPool,
+          new FakeObjectStore(),
+          { clock: () => NOW, idFactory: randomUUID },
+        );
+        await executor(uploadRuntime, 'data.uploadSession.complete').execute(
+          {
+            uploadSessionId: uploadOperationId,
+            expectedVersion: 1,
+            objects: [
+              {
+                assetId: uploadAssetId,
+                sizeBytes: 4_096,
+                sha256: SHA256,
+              },
+            ],
+          },
+          { ...context, idempotencyKey: randomUUID() },
+        );
+        expect(uploadPool.capturedAsset).toMatchObject({
+          asset_id: uploadAssetId,
+          content_hash: null,
+          content_blob_id: null,
+          lifecycle_state: 'QUARANTINED',
+          security_level: 'L1_INTERNAL',
+        });
+        expect(Number(uploadPool.capturedAsset?.['row_version'])).toBe(1);
+        expect(uploadPool.capturedAsset?.['asset_id']).not.toBe(rawAssetId);
+        await uploadRuntime.close();
+        await preparedClient.query('reset role');
+
         await preparedClient.query(
           `insert into catalog.asset (
              asset_id, tenant_id, project_id, storage_key, content_hash,
              media_type, byte_size, lifecycle_state, security_level,
              policy_version, row_version
-           ) values ($1::uuid, $2::uuid, $3::uuid, $4, decode($5, 'hex'),
+           ) values ($1::uuid, $2::uuid, $3::uuid, $4, null,
              'application/json', 128, 'QUARANTINED', 'L1_INTERNAL', 1, 1)`,
           [
             pipelineAssetId,
             TENANT_ID,
             PROJECT_ID,
             `integration/${pipelineAssetId}`,
-            'c'.repeat(64),
           ],
         );
+        await preparedClient.query(`set role ${roleName}`);
+        const elevationPool = new SavepointRollbackPool(preparedClient, {
+          assetId: pipelineAssetId,
+        });
+        const elevationRuntime = createPostgresDataCommandRuntime(
+          elevationPool,
+          new FakeObjectStore(),
+          { clock: () => NOW, idFactory: randomUUID },
+        );
+        await executor(elevationRuntime, 'data.ingestion.create').execute(
+          {
+            assetIds: [pipelineAssetId],
+            ownerProjectId: PROJECT_ID,
+            intendedUses: ['hydrology-analysis'],
+            requestedSecurityLevel: 'L3_CONFIDENTIAL',
+          },
+          {
+            ...context,
+            authorization: {
+              ...context.authorization,
+              maxSecurityLevel: 'L3_CONFIDENTIAL',
+            },
+            effectiveMaxSecurityLevel: 'L3_CONFIDENTIAL',
+            idempotencyKey: randomUUID(),
+          },
+        );
+        expect(elevationPool.capturedAsset).toMatchObject({
+          asset_id: pipelineAssetId,
+          security_level: 'L3_CONFIDENTIAL',
+          version_id: null,
+        });
+        expect(Number(elevationPool.capturedAsset?.['row_version'])).toBe(2);
+        await elevationRuntime.close();
+        await preparedClient.query('reset role');
+        const restoredAsset = await preparedClient.query<{
+          readonly security_level: string;
+          readonly row_version: string;
+        }>(
+          `select security_level, row_version from catalog.asset
+           where asset_id = $1::uuid`,
+          [pipelineAssetId],
+        );
+        expect(restoredAsset.rows[0]?.security_level).toBe('L1_INTERNAL');
+        expect(Number(restoredAsset.rows[0]?.row_version)).toBe(1);
+        await preparedClient.query(`set role ${roleName}`);
+        const rawConflictRuntime = createPostgresDataCommandRuntime(
+          new SavepointRollbackPool(preparedClient),
+          new FakeObjectStore(),
+          { clock: () => NOW, idFactory: randomUUID },
+        );
+        await expect(
+          executor(rawConflictRuntime, 'data.ingestion.create').execute(
+            {
+              assetIds: [rawAssetId],
+              ownerProjectId: PROJECT_ID,
+              intendedUses: ['hydrology-analysis'],
+              requestedSecurityLevel: 'L1_INTERNAL',
+            },
+            { ...context, idempotencyKey: randomUUID() },
+          ),
+        ).rejects.toMatchObject({ code: 'STATE_CONFLICT' });
+        await rawConflictRuntime.close();
+        await preparedClient.query('reset role');
         await preparedClient.query(
           `insert into service.operation (
              operation_id, tenant_id, project_id, capability_id, actor_id,
@@ -1323,6 +1743,25 @@ describe('PostgreSQL Data Foundation command executors', () => {
           ],
         );
         await preparedClient.query(`set role ${roleName}`);
+        const duplicateBindingRuntime = createPostgresDataCommandRuntime(
+          new SavepointRollbackPool(preparedClient),
+          new FakeObjectStore(),
+          { clock: () => NOW, idFactory: randomUUID },
+        );
+        await expect(
+          executor(duplicateBindingRuntime, 'data.ingestion.create').execute(
+            {
+              assetIds: [pipelineAssetId],
+              ownerProjectId: PROJECT_ID,
+              intendedUses: ['hydrology-analysis'],
+              requestedSecurityLevel: 'L1_INTERNAL',
+            },
+            { ...context, idempotencyKey: randomUUID() },
+          ),
+        ).rejects.toMatchObject({ code: 'STATE_CONFLICT' });
+        await duplicateBindingRuntime.close();
+        await preparedClient.query('reset role');
+        await preparedClient.query(`set role ${roleName}`);
         const savepointPool = new SavepointRollbackPool(preparedClient);
         const pipelineRuntime = createPostgresDataCommandRuntime(
           savepointPool,
@@ -1334,8 +1773,6 @@ describe('PostgreSQL Data Foundation command executors', () => {
           { ...context, idempotencyKey: randomUUID() },
         );
         expect(savepointPool.capturedJobPayload).toEqual({
-          tenantId: TENANT_ID,
-          projectId: PROJECT_ID,
           ingestionId: pipelineIngestionId,
           expectedState: 'RECEIVED',
           expectedVersion: 1,
@@ -1362,6 +1799,178 @@ describe('PostgreSQL Data Foundation command executors', () => {
           operation_status: 'WAITING_INPUT',
           job_count: 0,
         });
+
+        const reviewJobId = randomUUID();
+        await preparedClient.query(
+          `update ingestion.session set state = 'REVIEW_REQUIRED', row_version = 2
+           where ingestion_id = $1::uuid`,
+          [pipelineIngestionId],
+        );
+        await preparedClient.query(
+          `update service.operation set status = 'WAITING_REVIEW', row_version = 2
+           where operation_id = $1::uuid`,
+          [pipelineOperationId],
+        );
+        await preparedClient.query(
+          `insert into ingestion.transform_plan (
+             transform_plan_id, tenant_id, project_id, ingestion_id,
+             plan_version, plan, plan_hash, status, security_level,
+             policy_version, row_version
+           ) values ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 1,
+             jsonb_build_object('reviewHash', $5::text), decode($5, 'hex'),
+             'REVIEW_REQUIRED', 'L1_INTERNAL', 1, 1)`,
+          [
+            randomUUID(),
+            TENANT_ID,
+            PROJECT_ID,
+            pipelineIngestionId,
+            REVIEW_HASH,
+          ],
+        );
+        await preparedClient.query(
+          `insert into ingestion.job (
+             job_id, tenant_id, project_id, ingestion_id, operation_id,
+             job_type, status, idempotency_key, payload, security_level,
+             policy_version, row_version
+           ) values ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
+             'data.ingestion.process', 'WAITING_REVIEW', $6, $7::jsonb,
+             'L1_INTERNAL', 1, 1)`,
+          [
+            reviewJobId,
+            TENANT_ID,
+            PROJECT_ID,
+            pipelineIngestionId,
+            pipelineOperationId,
+            `fixture:${reviewJobId}`,
+            JSON.stringify({
+              ingestionId: pipelineIngestionId,
+              expectedState: 'RECEIVED',
+              expectedVersion: 1,
+            }),
+          ],
+        );
+        await preparedClient.query(`set role ${roleName}`);
+        const approvalPool = new SavepointRollbackPool(preparedClient);
+        const approvalRuntime = createPostgresDataCommandRuntime(
+          approvalPool,
+          new FakeObjectStore(),
+          { clock: () => NOW, idFactory: randomUUID },
+        );
+        await executor(approvalRuntime, 'data.ingestion.approve').execute(
+          { ingestionId: pipelineIngestionId, expectedVersion: 2 },
+          { ...context, idempotencyKey: randomUUID() },
+        );
+        expect(approvalPool.capturedJobPayload).toEqual({
+          ingestionId: pipelineIngestionId,
+          expectedState: 'APPROVED',
+          expectedVersion: 3,
+        });
+        await approvalRuntime.close();
+        await preparedClient.query('reset role');
+        const approvalRollback = await preparedClient.query<{
+          readonly session_state: string;
+          readonly operation_status: string;
+          readonly job_status: string;
+          readonly checkpoint_status: string;
+        }>(
+          `select session.state as session_state,
+             operation.status as operation_status,
+             job.status as job_status, plan.status as checkpoint_status
+           from ingestion.session as session
+           join service.operation as operation
+             on operation.operation_id = session.operation_id
+           join ingestion.job as job on job.ingestion_id = session.ingestion_id
+           join ingestion.transform_plan as plan
+             on plan.ingestion_id = session.ingestion_id
+           where session.ingestion_id = $1::uuid`,
+          [pipelineIngestionId],
+        );
+        expect(approvalRollback.rows[0]).toMatchObject({
+          session_state: 'REVIEW_REQUIRED',
+          operation_status: 'WAITING_REVIEW',
+          job_status: 'WAITING_REVIEW',
+          checkpoint_status: 'REVIEW_REQUIRED',
+        });
+        const runningLeaseExpiresAt = '2026-08-22T05:05:00.000Z';
+        await preparedClient.query(
+          `update ingestion.job
+           set status = 'RUNNING', attempt_count = 2, lease_owner = 'worker-1',
+             lease_expires_at = $2::timestamptz, heartbeat_at = $3::timestamptz,
+             row_version = 2
+           where job_id = $1::uuid`,
+          [reviewJobId, runningLeaseExpiresAt, NOW.toISOString()],
+        );
+        await preparedClient.query(
+          `update service.operation set status = 'RUNNING', row_version = 2
+           where operation_id = $1::uuid`,
+          [pipelineOperationId],
+        );
+        await preparedClient.query(`set role ${roleName}`);
+        const cancellationPool = new SavepointRollbackPool(preparedClient, {
+          jobId: reviewJobId,
+        });
+        const cancellationRuntime = createPostgresDataCommandRuntime(
+          cancellationPool,
+          new FakeObjectStore(),
+          { clock: () => NOW, idFactory: randomUUID },
+        );
+        const cancellation = (await executor(
+          cancellationRuntime,
+          'data.operation.cancel',
+        ).execute(
+          { operationId: pipelineOperationId, expectedVersion: 2 },
+          { ...context, idempotencyKey: randomUUID() },
+        )) as { readonly status: string };
+        expect(cancellation.status).toBe('RUNNING');
+        expect(cancellationPool.capturedJob).toMatchObject({
+          job_id: reviewJobId,
+          status: 'RUNNING',
+          attempt_count: 2,
+          lease_owner: 'worker-1',
+        });
+        expect(Number(cancellationPool.capturedJob?.['row_version'])).toBe(3);
+        expect(
+          cancellationPool.capturedJob?.['cancel_requested_at'],
+        ).not.toBeNull();
+        expect(
+          new Date(
+            String(cancellationPool.capturedJob?.['lease_expires_at']),
+          ).toISOString(),
+        ).toBe(runningLeaseExpiresAt);
+        await cancellationRuntime.close();
+        await preparedClient.query('reset role');
+        const cancellationRollback = await preparedClient.query<{
+          readonly job_status: string;
+          readonly attempt_count: number;
+          readonly lease_owner: string;
+          readonly lease_expires_at: Date;
+          readonly cancel_requested_at: Date | null;
+          readonly session_state: string;
+          readonly operation_status: string;
+        }>(
+          `select job.status as job_status, job.attempt_count,
+             job.lease_owner, job.lease_expires_at, job.cancel_requested_at,
+             session.state as session_state,
+             operation.status as operation_status
+           from ingestion.job as job
+           join ingestion.session as session
+             on session.ingestion_id = job.ingestion_id
+           join service.operation as operation
+             on operation.operation_id = job.operation_id
+           where job.job_id = $1::uuid`,
+          [reviewJobId],
+        );
+        expect(cancellationRollback.rows[0]).toMatchObject({
+          job_status: 'RUNNING',
+          attempt_count: 2,
+          lease_owner: 'worker-1',
+          cancel_requested_at: null,
+          session_state: 'REVIEW_REQUIRED',
+          operation_status: 'RUNNING',
+        });
+        expect(
+          cancellationRollback.rows[0]?.lease_expires_at.toISOString(),
+        ).toBe(runningLeaseExpiresAt);
         await preparedClient.query('rollback');
         preparedClient.release();
         preparedClient = null;
