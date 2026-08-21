@@ -280,6 +280,16 @@ describe('Docpact documentation governance', () => {
         'apps/telemetry-ingress/src/**',
         'apps/telemetry-ingress/**',
       ],
+      [
+        'data-foundation-contracts',
+        'packages/data-contracts/src/**',
+        'packages/data-contracts/**',
+      ],
+      [
+        'data-foundation-core',
+        'packages/data-core/src/**',
+        'packages/data-core/**',
+      ],
     ]) {
       const rule = docpactRule(config, ruleId);
       expect(rule, ruleId).toContain(`- path: ${narrowPath}`);
@@ -300,6 +310,19 @@ describe('Docpact documentation governance', () => {
     expect(docpactRule(config, 'evaluation-runtime')).not.toContain(
       '- path: docs/roadmap.md',
     );
+
+    for (const ruleId of [
+      'data-foundation-contracts',
+      'data-foundation-core',
+    ]) {
+      const rule = docpactRule(config, ruleId);
+      expect(rule).toContain(
+        '- path: apps/docs/src/content/docs/zh-CN/architecture/data-foundation.md',
+      );
+      expect(rule).toContain(
+        '- path: apps/docs/src/content/docs/en/architecture/data-foundation.md',
+      );
+    }
 
     for (const ruleId of ['workbuddy-cookbook-runtime', 'workbuddy-showcase']) {
       expect(docpactRule(config, ruleId), ruleId).not.toBe('');
@@ -344,5 +367,7 @@ describe('Docpact documentation governance', () => {
     expect(config).toContain('packages/platform-*/**');
     expect(config).toContain('packages/data-*/**');
     expect(config).toContain('wiser-platform-contracts');
+    expect(config).toContain('data-foundation-contracts');
+    expect(config).toContain('data-foundation-core');
   });
 });
