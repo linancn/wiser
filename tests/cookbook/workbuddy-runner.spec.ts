@@ -9,7 +9,10 @@ import {
   collectOperatorEvents,
   runWorkBuddyCookbook,
 } from '../../cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs';
-import { hasCoordinatorFinalEvidence } from '../../cookbooks/workbuddy-yongding-tdd/scripts/scripted-participant.mjs';
+import {
+  hasCoordinatorFinalEvidence,
+  hasCoordinatorReleaseEvidence,
+} from '../../cookbooks/workbuddy-yongding-tdd/scripts/scripted-participant.mjs';
 
 const temporaryDirectories: string[] = [];
 
@@ -22,6 +25,32 @@ afterEach(async () => {
 });
 
 describe('WorkBuddy Yongding cookbook runner', () => {
+  it('retains release evidence delivered in the coordinator initial sync', () => {
+    const initialBatch = {
+      receipts: [
+        {
+          resourceType: 'task',
+          contentSnapshot: { state: 'READY' },
+        },
+        ...['water', 'hydraulic', 'ecological'].flatMap((senderId) => [
+          {
+            resourceType: 'artifact',
+            contentSnapshot: {
+              artifactType: 'role-analysis',
+              senderId,
+            },
+          },
+          {
+            resourceType: 'message',
+            contentSnapshot: { kind: 'handoff', senderId },
+          },
+        ]),
+      ],
+    };
+
+    expect(hasCoordinatorReleaseEvidence([initialBatch])).toBe(true);
+  });
+
   it('combines early review responses with later authoritative acceptance', () => {
     const reviewResponseBatch = {
       receipts: ['water', 'hydraulic', 'ecological'].map((senderId) => ({

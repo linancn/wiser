@@ -188,6 +188,22 @@ export function hasCoordinatorFinalEvidence(batches, reviewRequestId) {
   );
 }
 
+export function hasCoordinatorReleaseEvidence(batches) {
+  const tasks = receiptSnapshots(batches, 'task');
+  const artifacts = receiptSnapshots(batches, 'artifact');
+  const messages = receiptSnapshots(batches, 'message');
+  return (
+    tasks.some((entry) => entry.state === 'READY') &&
+    artifacts.filter((entry) => entry.artifactType === 'role-analysis')
+      .length >= 3 &&
+    new Set(
+      messages
+        .filter((entry) => entry.kind === 'handoff')
+        .map((entry) => entry.senderId),
+    ).size >= 3
+  );
+}
+
 async function pause(milliseconds) {
   await new Promise((resolvePause) =>
     globalThis.setTimeout(resolvePause, milliseconds),
@@ -499,17 +515,7 @@ async function runCoordinator(client, context) {
     client,
     identity,
     initial,
-    async ({ batches }) => {
-      const tasks = receiptSnapshots(batches, 'task');
-      const artifacts = receiptSnapshots(batches, 'artifact');
-      const messages = receiptSnapshots(batches, 'message');
-      return (
-        tasks.some((entry) => entry.state === 'READY') &&
-        artifacts.filter((entry) => entry.artifactType === 'role-analysis')
-          .length >= 3 &&
-        messages.filter((entry) => entry.kind === 'handoff').length >= 3
-      );
-    },
+    async ({ batches }) => hasCoordinatorReleaseEvidence([initial, ...batches]),
   );
   let cursor = released.cursor;
   const [taskList, artifactList] = await Promise.all([
