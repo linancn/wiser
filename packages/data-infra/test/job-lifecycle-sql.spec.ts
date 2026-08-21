@@ -19,14 +19,19 @@ describe('durable Data Worker SQL lifecycle', () => {
     expect(sql).toMatch(/function ingestion\.claim_jobs_at/i);
     expect(sql).toMatch(/for update skip locked/i);
     expect(sql).toMatch(/lease_owner = worker_id/i);
-    expect(sql).toMatch(/lease_expires_at = observed_at \+ lease_duration/i);
+    expect(sql).toMatch(
+      /lease_expires_at = least\([\s\S]*?clock_timestamp\(\) \+ lease_duration[\s\S]*?timeout_at/i,
+    );
     expect(sql).toMatch(/insert into ingestion\.job_attempt/i);
+    expect(sql).toMatch(
+      /order by claimed_rows\.operation_id, claimed_rows\.job_id/i,
+    );
   });
 
   it('rejects stale leases using owner, expiry, and optimistic row version', () => {
     expect(sql).toMatch(/function ingestion\.heartbeat_job/i);
     expect(sql).toMatch(/lease_owner = worker_id/i);
-    expect(sql).toMatch(/lease_expires_at > observed_at/i);
+    expect(sql).toMatch(/lease_expires_at > clock_timestamp\(\)/i);
     expect(sql).toMatch(/row_version = expected_row_version/i);
     expect(sql).toMatch(/raise exception 'job lease lost/i);
   });
@@ -36,6 +41,7 @@ describe('durable Data Worker SQL lifecycle', () => {
     expect(sql).toMatch(/power\(2::numeric/i);
     expect(sql).toContain("'RETRY_SCHEDULED'");
     expect(sql).toContain("'DEAD_LETTER'");
+    expect(sql).toContain("'FAILED'");
     expect(sql).toContain("'CANCELLED'");
     expect(sql).toContain("'WAITING_INPUT'");
     expect(sql).toContain("'WAITING_REVIEW'");
@@ -47,6 +53,7 @@ describe('durable Data Worker SQL lifecycle', () => {
     expect(sql).toMatch(/lease_expires_at <= observed_at/i);
     expect(sql).toMatch(/timeout_at <= observed_at/i);
     expect(sql).toMatch(/for update skip locked/i);
+    expect(sql).toMatch(/order by candidate\.operation_id, candidate\.job_id/i);
   });
 
   it('records every transition in immutable Operation events and Transactional Outbox', () => {
@@ -54,6 +61,7 @@ describe('durable Data Worker SQL lifecycle', () => {
     expect(sql).toMatch(/insert into service\.operation_event/i);
     expect(sql).toMatch(/insert into event\.outbox_event/i);
     expect(sql).toMatch(/update service\.operation/i);
+    expect(sql).toMatch(/'PROGRESS_REPORTED'/i);
     expect(sql).toMatch(/job_id.*row_version.*status/is);
   });
 

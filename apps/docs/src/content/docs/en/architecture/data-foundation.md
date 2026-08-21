@@ -20,14 +20,14 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: aa7e9c26bff244f7e0350435f203def67184341c
+lastReviewedCommit: 17eb575ce1a914f3689be77ef319e367c165ce02
 ---
 
 ## Boundary and implementation status
 
 Data Foundation is a WISER business system peer to Agent EXCON. It owns DataItems, immutable versions, assets, ingestion, quality, lineage, knowledge, search, and GIS facts. It does not own user sessions, Tenants, Projects, Roles, or tokens. Supabase is the unified identity and control plane; independent data-postgres/PostGIS and S3-compatible object storage form the data authority; search, graph, STAC, and GIS services are rebuildable projections.
 
-`@wiser/data-contracts`, `@wiser/data-core`, and the first data-postgres slice of `@wiser/data-infra` are now delivered: strict DTOs/Capabilities, pure deterministic policies, a checksummed SQL migration runner, and the authoritative schema are executable. Object-store and projection adapters, the complete Worker, and transports must still complete the same boundary, so this milestone is not the final delivery.
+`@wiser/data-contracts`, `@wiser/data-core`, data-postgres `@wiser/data-infra`, and the durable-task runtime in `@wiser/data-worker` are now delivered: strict DTOs/Capabilities, pure deterministic policies, checksummed SQL migrations, the authoritative schema, a lease scheduler, and health/metrics endpoints are executable. Object-store and projection adapters, concrete ingestion/projection handlers, and transports must still complete the same boundary, so this milestone is not the final delivery.
 
 ## One public contract source
 
@@ -85,9 +85,11 @@ Derived data inherits the highest security level of every source. A caller may e
 
 Only `APPROVED → COMMITTED` creates a formal version. One data-postgres transaction writes the version, Operation event, audit, and Transactional Outbox. Object content is SHA-256 addressed, and the formal manifest references only verified immutable objects. Supabase, data-postgres, and object storage never pretend to share one distributed transaction.
 
-Three pure SQL migrations initialize pgcrypto, PostGIS, btree_gist, unaccent, eight business schemas, `schema_migrations`, and 35 authoritative tables. pgSTAC remains managed by the official pyPgSTAC migration rather than a fictional `CREATE EXTENSION pgstac`. The TS7 runner sorts four-digit versions, records filename plus SHA-256, takes one session advisory lock, and executes each file in its own transaction. Missing, renamed, modified, or non-prefix applied history fails closed.
+The first three pure SQL migrations initialize pgcrypto, PostGIS, btree_gist, unaccent, eight business schemas, `schema_migrations`, and 35 authoritative tables. A fourth migration fixes Job claim, heartbeat, settle, fail, recover, cancel, and atomic Operation-event/Outbox writes. pgSTAC remains managed by the official pyPgSTAC migration rather than a fictional `CREATE EXTENSION pgstac`. The TS7 runner sorts four-digit versions, records filename plus SHA-256, takes one session advisory lock, and executes each file in its own transaction. Missing, renamed, modified, or non-prefix applied history fails closed.
 
 All 35 authoritative tables enable and FORCE RLS. A runtime read must set validated Tenant, Project, maximum security level, and policy-version session settings; omitting any setting returns zero rows. Migrations neither create nor grant a runtime role—the deployment layer must explicitly create a least-privilege identity. Database triggers reject UPDATE/DELETE on Operation, Audit, and Outbox events. Durable jobs are claimed with `FOR UPDATE SKIP LOCKED`, lease owner/expiry, attempt count, and priority.
+
+Data Worker uses a static Handler Registry and rejects duplicate job types at startup. Its injected-clock Scheduler recovers timeouts, claims batches, heartbeats, applies deterministic exponential retry, dead-letters, cancels, and enters `WAITING_INPUT/WAITING_REVIEW`; graceful shutdown drains in-flight handlers before closing the database. Native Node HTTP exposes `/health/live`, `/health/ready`, and Prometheus `/metrics` without a second Web framework. The generic runtime is delivered, but the default entrypoint has no concrete business handlers yet and is not a complete ingestion Worker.
 
 Workers consume the Outbox and idempotently build PostGIS, Weaviate, OpenSearch, Neo4j, STAC, and GIS projections. Projections push down Tenant, Project, Version, security-level, and policy-version filters, while the API still reauthorizes every read, download, export, and publication against the Supabase authority context.
 
