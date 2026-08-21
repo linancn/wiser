@@ -311,6 +311,17 @@ describe('Docpact documentation governance', () => {
       '- path: docs/roadmap.md',
     );
 
+    const platformAuthRule = docpactRule(config, 'wiser-platform-auth');
+    for (const webAuthPath of [
+      'apps/web/src/lib/auth.ts',
+      'apps/web/src/app/*/auth/**',
+      'apps/web/src/app/*/login/**',
+      'apps/web/src/components/current-user-control.tsx',
+    ]) {
+      expect(platformAuthRule).toContain(`- path: ${webAuthPath}`);
+    }
+    expect(platformAuthRule).not.toContain('- path: apps/web/src/**');
+
     for (const ruleId of [
       'data-foundation-contracts',
       'data-foundation-core',
