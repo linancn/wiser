@@ -4,6 +4,7 @@ import { getDictionary, type Locale } from '@/lib/i18n';
 import type { ExerciseRun, PlatformScenario } from '@/lib/platform';
 import type { ReadModelGap } from '@/lib/read-model-source';
 import { ReadModelGaps } from './read-model-state';
+import styles from './scenario-workspace.module.css';
 
 export function ScenarioOrchestration({
   locale,
@@ -17,90 +18,83 @@ export function ScenarioOrchestration({
   scenario: PlatformScenario;
 }) {
   const dictionary = getDictionary(locale);
-  const currentRun = runs[0];
+  const copy = dictionary.orchestration;
+  const currentVersion = scenario.versions.find(
+    ({ id }) => id === scenario.currentVersionId,
+  );
 
   return (
-    <main id="main-content" className="page-main orchestration-page">
-      <nav className="breadcrumb" aria-label={dictionary.common.back}>
-        <Link href={`/${locale}/scenarios`}>
-          ← {dictionary.orchestration.returnCatalog}
-        </Link>
+    <main id="main-content" className={styles.page}>
+      <nav className={styles.breadcrumb} aria-label={dictionary.common.back}>
+        <Link href={`/${locale}/scenarios`}>← {copy.returnCatalog}</Link>
       </nav>
-      <header className="orchestration-hero">
-        <div className="orchestration-title">
-          <p className="eyebrow">{dictionary.orchestration.eyebrow}</p>
-          <h1>{dictionary.orchestration.heading}</h1>
-          <p>{scenario.title[locale]}</p>
+
+      <header className={styles.hero}>
+        <div>
+          <span className={styles.eyebrow}>{copy.eyebrow}</span>
+          <h1>{copy.heading}</h1>
+          <h2>{scenario.title[locale]}</h2>
         </div>
-        <div className="orchestration-summary">
-          <span className="status-badge simulation">
-            {dictionary.common.simulationOnly}
-          </span>
-          <p>{dictionary.orchestration.lede}</p>
-          {currentRun === undefined ? null : (
-            <Link
-              className="primary-action"
-              href={`/${locale}/runs/${currentRun.id}/trace`}
-            >
-              {dictionary.orchestration.openTrace}
-              <span aria-hidden="true">→</span>
-            </Link>
-          )}
-        </div>
+        <dl className={styles.summary} data-testid="scenario-contract-summary">
+          <div>
+            <dt>{copy.immutableVersion}</dt>
+            <dd>{currentVersion?.label ?? '—'}</dd>
+          </div>
+          <div>
+            <dt>{copy.rolesHeading}</dt>
+            <dd>
+              {scenario.requiredRoles.length} {copy.requiredRoleSuffix}
+            </dd>
+          </div>
+          <div>
+            <dt>{copy.checkpointsHeading}</dt>
+            <dd>{scenario.checkpoints.length}</dd>
+          </div>
+          <div>
+            <dt>{copy.associatedRunsHeading}</dt>
+            <dd>{runs.length}</dd>
+          </div>
+        </dl>
       </header>
 
       <ReadModelGaps gaps={gaps} locale={locale} />
 
-      <section
-        className="management-boundary"
-        aria-labelledby="management-boundary-heading"
-      >
-        <span className="boundary-lock" aria-hidden="true">
-          ◇
-        </span>
+      <section className={styles.boundary} aria-labelledby="boundary-heading">
+        <span aria-hidden="true">◇</span>
         <div>
-          <h2 id="management-boundary-heading">
-            {dictionary.orchestration.managementBoundary}
-          </h2>
-          <p>{dictionary.orchestration.managementCopy}</p>
+          <h2 id="boundary-heading">{copy.managementBoundary}</h2>
+          <p>{copy.managementCopy}</p>
         </div>
-        <code>{dictionary.shell.participantBoundary}</code>
       </section>
 
-      <section
-        className="orchestration-section"
-        aria-labelledby="role-contract-heading"
-      >
-        <div className="section-heading split-heading">
+      <section className={styles.section} aria-labelledby="roles-heading">
+        <div className={styles.sectionHeading}>
           <div>
-            <p className="eyebrow">01 · TEAM CONTRACT</p>
-            <h2 id="role-contract-heading">
-              {dictionary.orchestration.rolesHeading}
-            </h2>
+            <span className={styles.eyebrow}>{copy.roleContractLabel}</span>
+            <h2 id="roles-heading">{copy.rolesHeading}</h2>
           </div>
-          <p>{dictionary.orchestration.rolesLede}</p>
+          <p>{copy.rolesLede}</p>
         </div>
-        <div className="role-contract-grid">
+        <div className={styles.roles}>
           {scenario.requiredRoles.map((role, index) => (
             <article
-              className={`role-slot accent-${role.accent}`}
+              className={styles.role}
               data-testid="role-slot"
+              data-accent={role.accent}
               key={role.id}
             >
-              <div className="role-slot-head">
-                <span className="role-number">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                <span className="required-mark">REQUIRED</span>
+              <div className={styles.roleHeader}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <span>{copy.required}</span>
               </div>
               <h3>{role.name[locale]}</h3>
               <dl>
                 <div>
-                  <dt>{dictionary.orchestration.mission}</dt>
+                  <dt>{copy.mission}</dt>
                   <dd>{role.mission[locale]}</dd>
                 </div>
                 <div>
-                  <dt>{dictionary.orchestration.artifact}</dt>
+                  <dt>{copy.artifact}</dt>
                   <dd>{role.expectedArtifact[locale]}</dd>
                 </div>
               </dl>
@@ -112,82 +106,55 @@ export function ScenarioOrchestration({
 
       {scenario.checkpoints.length === 0 ? null : (
         <section
-          className="orchestration-section checkpoints-section"
+          className={styles.section}
           aria-labelledby="checkpoint-heading"
         >
-          <div className="section-heading split-heading">
+          <div className={styles.sectionHeading}>
             <div>
-              <p className="eyebrow">02 · DUAL CLOCK</p>
-              <h2 id="checkpoint-heading">
-                {dictionary.orchestration.checkpointsHeading}
-              </h2>
+              <span className={styles.eyebrow}>{copy.checkpointsLabel}</span>
+              <h2 id="checkpoint-heading">{copy.checkpointsHeading}</h2>
             </div>
-            <p>{dictionary.orchestration.checkpointsLede}</p>
+            <p>{copy.checkpointsLede}</p>
           </div>
-          <ol className="checkpoint-flow">
-            {scenario.checkpoints.map((checkpoint, index) => (
+          <ol className={styles.checkpoints}>
+            {scenario.checkpoints.map((checkpoint) => (
               <li key={checkpoint.id}>
-                <span className="checkpoint-time">
-                  {checkpoint.virtualTime}
-                </span>
-                <i aria-hidden="true" />
+                <time>{checkpoint.virtualTime}</time>
                 <strong>{checkpoint.title[locale]}</strong>
                 <p>{checkpoint.contract[locale]}</p>
-                {index < scenario.checkpoints.length - 1 ? (
-                  <span className="flow-arrow" aria-hidden="true">
-                    →
-                  </span>
-                ) : null}
               </li>
             ))}
           </ol>
         </section>
       )}
 
-      <div className="orchestration-lower-grid">
-        {scenario.topology.length === 0 ? null : (
-          <section
-            className="topology-panel"
-            aria-labelledby="topology-heading"
+      <div className={styles.lowerGrid}>
+        <section className={styles.panel} aria-labelledby="topology-heading">
+          <span className={styles.eyebrow}>{copy.topologyLabel}</span>
+          <h2 id="topology-heading">{copy.topologyHeading}</h2>
+          <div
+            className={styles.topology}
+            role="img"
+            aria-label={scenario.region[locale]}
           >
-            <p className="eyebrow">03 · WATER SYSTEM</p>
-            <h2 id="topology-heading">
-              {dictionary.orchestration.topologyHeading}
-            </h2>
-            <div
-              className="topology-river"
-              role="img"
-              aria-label={scenario.region[locale]}
-            >
-              {scenario.topology.map((node, index) => (
-                <div key={node.en}>
-                  <span>{node[locale]}</span>
-                  <i aria-hidden="true" />
-                  {index < scenario.topology.length - 1 ? (
-                    <b aria-hidden="true" />
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+            {scenario.topology.map((node) => (
+              <div key={node.en}>
+                <i aria-hidden="true" />
+                <span>{node[locale]}</span>
+              </div>
+            ))}
+          </div>
+        </section>
 
-        <section className="version-panel" aria-labelledby="versions-heading">
-          <p className="eyebrow">04 · IMMUTABLE</p>
-          <h2 id="versions-heading">
-            {dictionary.orchestration.versionsHeading}
-          </h2>
-          <p className="version-notice">
-            {dictionary.orchestration.versionNotice}
-          </p>
-          <ol className="version-list">
+        <section className={styles.panel} aria-labelledby="versions-heading">
+          <span className={styles.eyebrow}>{copy.versionsLabel}</span>
+          <h2 id="versions-heading">{copy.versionsHeading}</h2>
+          <ol className={styles.versionList}>
             {scenario.versions.map((version) => (
               <li key={version.id}>
-                <div>
+                <div className={styles.versionHeader}>
                   <strong>{version.label}</strong>
-                  <span className={`status-badge ${version.status}`}>
-                    {dictionary.common[version.status]}
-                  </span>
+                  <span>{dictionary.common[version.status]}</span>
                 </div>
                 <p>{version.summary[locale]}</p>
                 <code>{version.contentHash}</code>
@@ -196,6 +163,35 @@ export function ScenarioOrchestration({
           </ol>
         </section>
       </div>
+
+      <section
+        className={styles.section}
+        aria-labelledby="related-runs-heading"
+      >
+        <div className={styles.sectionHeading}>
+          <div>
+            <span className={styles.eyebrow}>RUNS</span>
+            <h2 id="related-runs-heading">{copy.associatedRunsHeading}</h2>
+          </div>
+          <p>{copy.associatedRunsLede}</p>
+        </div>
+        <ol className={styles.runList}>
+          {runs.map((run) => (
+            <li data-testid="associated-run" key={run.id}>
+              <div className={styles.runHeader}>
+                <div>
+                  <strong>{run.name[locale]}</strong>
+                  <p>
+                    {dictionary.common[run.state]} · {run.currentVirtualTime}
+                  </p>
+                  <code>{run.id}</code>
+                </div>
+                <Link href={`/${locale}/runs/${run.id}`}>{copy.openRun} →</Link>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
     </main>
   );
 }
