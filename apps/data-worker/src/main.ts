@@ -1,9 +1,4 @@
-import { randomUUID } from 'node:crypto';
-
-import {
-  PostgresDataJobRepository,
-  type DataJobScope,
-} from '@wiser/data-infra';
+import { PostgresDataJobRepository } from '@wiser/data-infra';
 
 import {
   closeDataWorkerHttpServer,
@@ -12,28 +7,7 @@ import {
   StaticJobHandlerRegistry,
   type DataWorkerLogger,
 } from './index.js';
-
-function required(environment: NodeJS.ProcessEnv, name: string): string {
-  const value = environment[name];
-  if (value === undefined || value.length === 0) {
-    throw new Error(`${name} is required.`);
-  }
-  return value;
-}
-
-function positiveInteger(
-  environment: NodeJS.ProcessEnv,
-  name: string,
-  fallback: number,
-): number {
-  const value = environment[name];
-  if (value === undefined) return fallback;
-  const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed < 1) {
-    throw new Error(`${name} must be a positive integer.`);
-  }
-  return parsed;
-}
+import { loadDataWorkerConfig } from './config.js';
 
 const logger: DataWorkerLogger = {
   info(event, context) {
@@ -48,36 +22,26 @@ const logger: DataWorkerLogger = {
 };
 
 async function main(environment: NodeJS.ProcessEnv): Promise<void> {
-  const scope: DataJobScope = {
-    tenantId: required(environment, 'WISER_DATA_TENANT_ID'),
-    projectId: required(environment, 'WISER_DATA_PROJECT_ID'),
-    maxSecurityLevel: required(
-      environment,
-      'WISER_DATA_MAX_SECURITY_LEVEL',
-    ) as DataJobScope['maxSecurityLevel'],
-    policyVersion: positiveInteger(environment, 'WISER_DATA_POLICY_VERSION', 1),
-  };
-  const repository = PostgresDataJobRepository.connect(
-    required(environment, 'DATA_DATABASE_URL'),
-  );
+  const config = loadDataWorkerConfig(environment);
+  if (config.deprecatedAliases.length > 0) {
+    logger.warn('data_worker_deprecated_environment_aliases', {
+      aliases: config.deprecatedAliases,
+    });
+  }
+  const repository = PostgresDataJobRepository.connect(config.databaseUrl);
   const scheduler = new DataWorkerScheduler({
     repository,
     handlers: new StaticJobHandlerRegistry([]),
     logger,
-    scope,
-    workerId: environment['WISER_DATA_WORKER_ID'] ?? `worker-${randomUUID()}`,
-    claimLimit: positiveInteger(environment, 'WISER_DATA_CLAIM_LIMIT', 8),
-    leaseMs: positiveInteger(environment, 'WISER_DATA_LEASE_MS', 120_000),
-    heartbeatIntervalMs: positiveInteger(
-      environment,
-      'WISER_DATA_HEARTBEAT_MS',
-      30_000,
-    ),
-    pollIntervalMs: positiveInteger(environment, 'WISER_DATA_POLL_MS', 1_000),
+    scope: config.scope,
+    workerId: config.workerId,
+    claimLimit: config.claimLimit,
+    leaseMs: config.leaseMs,
+    heartbeatIntervalMs: config.heartbeatIntervalMs,
+    pollIntervalMs: config.pollIntervalMs,
   });
   const server = createDataWorkerHttpServer(scheduler);
-  const port = positiveInteger(environment, 'DATA_WORKER_PORT', 3003);
-  server.listen(port, '0.0.0.0');
+  server.listen(config.healthPort, config.healthHost);
 
   const abort = new AbortController();
   const shutdown = () => abort.abort();

@@ -1,6 +1,6 @@
 ---
 title: 快速开始
-description: 在本机验证 Agent EXCON v2 多智能体协议纵切、MCP 与观测链路。
+description: 在本机验证 WISER 统一 Auth、Agent EXCON 与 Data Foundation 完整依赖 profile。
 docType: workflow
 scope: repository
 status: active
@@ -16,7 +16,7 @@ checkPaths:
   - compose.yaml
   - .env.example
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
+lastReviewedCommit: 9574bdf87831a5022039be31ad7dfbd22443c51f
 ---
 
 ## 先认识当前边界
@@ -24,6 +24,8 @@ lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
 当前默认开发协议是 `/api/v2`，Agent EXCON Skill 与 MCP 也默认使用 v2。Fastify 已实现多场景、RunAgent `/sync`、Task 租约、Message/Artifact、Submission/endorsement 和安全回放，但使用**内存协议适配器**；Supabase v2 schema/RLS 已交付，尚未由 API 使用。因此进程重启会丢失 v2 API 状态，本页展示的是协议/TDD/本地调试纵切，不是持久化生产部署。
 
 v1 Episode 仍可运行，但只能显式选择 compatibility 模式；它目前不是 v2 事实之上的 facade，v2 失败也不会触发自动降级。
+
+Data Foundation 已交付独立权威数据库/S3 adapter、纯领域规则、通用持久 Job runtime 与完整依赖 profile；具体投影消费者和 REST/GraphQL/MCP/Skill/Web 的最终纵切仍未完成。本页的数据 smoke 在当前里程碑验证真实镜像健康、WISER/pgSTAC migration、确定性 seed、API readiness 与 22 项 Capability，不应被解释为最终 18 步入库验收。
 
 ## 环境基线
 
@@ -89,6 +91,51 @@ WISER_DELEGATED_CREDENTIAL_HMAC_KEYS='{"activeKeyId":"primary-local","keys":{"pr
 每个 HMAC key 必须来自至少 32 个密码学安全随机字节，并将整段 JSON 只保留在服务端。Key ring 缺失、过短、带 padding 或格式畸形时 API 会拒绝启动；浏览器永远不能接收该值。
 
 生产环境默认强制 `supabase`，缺少任一变量会失败关闭。浏览器只使用 `NEXT_PUBLIC_SUPABASE_*`；服务器变量和数据库连接不得加 `NEXT_PUBLIC_`。
+
+## 启动 Data Foundation profile
+
+复制环境模板，为所有留空的 credential 生成本机专用随机值；不要提交 `.env`：
+
+```bash
+cp .env.example .env
+pnpm data:up
+pnpm data:migrate
+pnpm data:seed
+pnpm data:smoke
+```
+
+`data:up` 会构建共享 WISER 应用镜像，并启动默认服务及 `data-foundation` profile。镜像直接锁定 tag+digest；OpenSearch ICU 初始化还验证官方 artifact 的 SHA-512。GeoServer 与 PostgreSQL 18/PostGIS 3.6 官方镜像目前仅有 amd64，因此 Apple Silicon 通过 Compose 显式模拟；其余核心镜像使用原生 arm64。
+
+| 数据服务              | 本机入口                             |
+| --------------------- | ------------------------------------ |
+| data-postgres         | `127.0.0.1:55432`                    |
+| SeaweedFS S3          | `http://127.0.0.1:18333`             |
+| Weaviate              | `http://127.0.0.1:18080`             |
+| OpenSearch            | `https://127.0.0.1:19200`            |
+| OpenSearch Dashboards | `http://127.0.0.1:15601`             |
+| Neo4j HTTP            | `http://127.0.0.1:17474`             |
+| GeoServer             | `http://127.0.0.1:18081/geoserver`   |
+| STAC API              | `http://127.0.0.1:18082`             |
+| TiTiler               | `http://127.0.0.1:18000`             |
+| Martin                | `http://127.0.0.1:13000`             |
+| Tika                  | `http://127.0.0.1:19998`             |
+| ClamAV                | `127.0.0.1:13310`                    |
+| Data Worker health    | `http://127.0.0.1:13003/health/live` |
+| MCP Streamable HTTP   | `http://127.0.0.1:13004/mcp`         |
+
+普通停止保留数据：
+
+```bash
+pnpm data:down
+```
+
+只有确实要删除 Data Foundation 的受控命名卷时才运行：
+
+```bash
+WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
+```
+
+脚本先核对 Compose project 与精确 allowlist，不会删除 Supabase 或 observability 卷。
 
 ## 启动本地服务
 

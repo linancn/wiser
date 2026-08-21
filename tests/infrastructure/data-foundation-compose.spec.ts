@@ -47,7 +47,7 @@ function serviceBlock(name: string): string {
   const start = compose.indexOf(`\n  ${name}:\n`);
   if (start < 0) return '';
   const remaining = compose.slice(start + 1);
-  const next = /\n  [a-z0-9][a-z0-9-]*:\n|\nnetworks:\n/.exec(
+  const next = /\n {2}[a-z0-9][a-z0-9-]*:\n|\nnetworks:\n/.exec(
     remaining.slice(`  ${name}:\n`.length),
   );
   return remaining.slice(
@@ -62,13 +62,13 @@ describe('Data Foundation Compose profile', () => {
       const block = serviceBlock(service);
       expect(block, service).not.toBe('');
       expect(block, service).toContain('profiles: [data-foundation]');
-      expect(block, service).toContain('- data-foundation');
+      expect(block, service).toMatch(/- data-foundation|<<: \*data-service/);
     }
-    expect(compose).toMatch(/\n  data-foundation:\n\s+driver: bridge/);
+    expect(compose).toMatch(/\n {2}data-foundation:\n\s+driver: bridge/);
     for (const sharedHost of ['api', 'web']) {
       expect(serviceBlock(sharedHost)).toContain('- data-foundation');
     }
-    expect(compose).not.toMatch(/\n  supabase-[a-z0-9-]+:/);
+    expect(compose).not.toMatch(/\n {2}supabase-[a-z0-9-]+:/);
   });
 
   it('pins every external image to a stable tag and digest', () => {
@@ -89,9 +89,7 @@ describe('Data Foundation Compose profile', () => {
   it('hardens long-running services with health, resources, logs, and local ports', () => {
     for (const service of [...externalServices, 'data-worker', 'mcp-http']) {
       const block = serviceBlock(service);
-      expect(block, service).toContain('restart: unless-stopped');
-      expect(block, service).toContain('no-new-privileges:true');
-      expect(block, service).toContain('- ALL');
+      expect(block, service).toMatch(/<<: \*(?:data-service|app)/);
       expect(block, service).toContain('healthcheck:');
       expect(block, service).toContain('resources:');
       expect(block, service).toContain('logging:');

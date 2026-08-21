@@ -85,11 +85,21 @@ function safeCredential(
 export function loadSeaweedFsS3AuthorityConfig(
   environment: Readonly<Record<string, string | undefined>>,
 ): SeaweedFsS3AuthorityConfig {
-  const endpoint = safeEndpoint(environment['WISER_DATA_S3_ENDPOINT']);
-  const region = environment['WISER_DATA_S3_REGION'];
-  const bucket = environment['WISER_DATA_S3_BUCKET'];
-  const accessKeyId = environment['WISER_DATA_S3_ACCESS_KEY_ID'];
-  const secretAccessKey = environment['WISER_DATA_S3_SECRET_ACCESS_KEY'];
+  const configured = (canonical: string, legacy: string) =>
+    environment[canonical] ?? environment[legacy];
+  const endpoint = safeEndpoint(
+    configured('DATA_S3_ENDPOINT', 'WISER_DATA_S3_ENDPOINT'),
+  );
+  const region = configured('DATA_S3_REGION', 'WISER_DATA_S3_REGION');
+  const bucket = configured('DATA_S3_BUCKET', 'WISER_DATA_S3_BUCKET');
+  const accessKeyId = configured(
+    'DATA_S3_ACCESS_KEY_ID',
+    'WISER_DATA_S3_ACCESS_KEY_ID',
+  );
+  const secretAccessKey = configured(
+    'DATA_S3_SECRET_ACCESS_KEY',
+    'WISER_DATA_S3_SECRET_ACCESS_KEY',
+  );
   if (
     endpoint === null ||
     !safeRegion(region) ||

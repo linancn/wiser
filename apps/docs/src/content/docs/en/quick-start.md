@@ -1,6 +1,6 @@
 ---
 title: Quick start
-description: Verify the Agent EXCON v2 multi-agent protocol slice, MCP adapter, and observability path locally.
+description: Verify unified Auth, Agent EXCON, and the complete Data Foundation dependency profile locally.
 docType: workflow
 scope: repository
 status: active
@@ -16,7 +16,7 @@ checkPaths:
   - compose.yaml
   - .env.example
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
+lastReviewedCommit: 9574bdf87831a5022039be31ad7dfbd22443c51f
 ---
 
 ## Know the current boundary first
@@ -24,6 +24,8 @@ lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
 The default development protocol is `/api/v2`, and the Agent EXCON Skill and MCP server also default to v2. Fastify implements multi-scenario management, RunAgent `/sync`, Task leases, Messages/Artifacts, Submissions/endorsements, and safe replay through an **in-memory protocol adapter**. The Supabase v2 schema/RLS exists but is not yet used by the API. A process restart therefore loses v2 API state: this is a protocol/TDD/local-debugging slice, not a durable production deployment.
 
 The v1 Episode remains runnable only through explicit compatibility selection. It is not yet a facade over v2 facts, and a v2 failure never causes automatic downgrade.
+
+Data Foundation now has an independent authority database/S3 adapter, pure domain policies, a generic durable-job runtime, and the complete dependency profile. Concrete projection consumers and the final REST/GraphQL/MCP/Skill/Web slice remain unfinished. At this milestone, the data smoke verifies real image health, WISER/pgSTAC migrations, the deterministic seed, API readiness, and all 22 Capabilities; it is not yet the final 18-step ingestion acceptance test.
 
 ## Baseline
 
@@ -89,6 +91,51 @@ WISER_DELEGATED_CREDENTIAL_HMAC_KEYS='{"activeKeyId":"primary-local","keys":{"pr
 Generate every HMAC key from at least 32 cryptographically random bytes and keep the JSON server-side. The API refuses malformed, short, padded, or missing key rings and never accepts this value from a browser.
 
 Production defaults to mandatory `supabase` mode and fails closed when any value is missing. Browsers use only `NEXT_PUBLIC_SUPABASE_*`; server variables and database connections never receive the `NEXT_PUBLIC_` prefix.
+
+## Start the Data Foundation profile
+
+Copy the environment template and generate local-only random values for every blank credential. Never commit `.env`:
+
+```bash
+cp .env.example .env
+pnpm data:up
+pnpm data:migrate
+pnpm data:seed
+pnpm data:smoke
+```
+
+`data:up` builds the shared WISER application image and starts both the default services and the `data-foundation` profile. Images are locked directly by tag+digest, and the OpenSearch ICU initializer also verifies the official artifact's SHA-512. The current official GeoServer and PostgreSQL 18/PostGIS 3.6 images are amd64-only, so Compose explicitly emulates them on Apple Silicon; the other core images use native arm64.
+
+| Data service          | Local entrypoint                     |
+| --------------------- | ------------------------------------ |
+| data-postgres         | `127.0.0.1:55432`                    |
+| SeaweedFS S3          | `http://127.0.0.1:18333`             |
+| Weaviate              | `http://127.0.0.1:18080`             |
+| OpenSearch            | `https://127.0.0.1:19200`            |
+| OpenSearch Dashboards | `http://127.0.0.1:15601`             |
+| Neo4j HTTP            | `http://127.0.0.1:17474`             |
+| GeoServer             | `http://127.0.0.1:18081/geoserver`   |
+| STAC API              | `http://127.0.0.1:18082`             |
+| TiTiler               | `http://127.0.0.1:18000`             |
+| Martin                | `http://127.0.0.1:13000`             |
+| Tika                  | `http://127.0.0.1:19998`             |
+| ClamAV                | `127.0.0.1:13310`                    |
+| Data Worker health    | `http://127.0.0.1:13003/health/live` |
+| MCP Streamable HTTP   | `http://127.0.0.1:13004/mcp`         |
+
+Normal shutdown preserves data:
+
+```bash
+pnpm data:down
+```
+
+Only when you deliberately intend to remove the allowlisted Data Foundation volumes, run:
+
+```bash
+WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
+```
+
+The script first verifies the Compose project and exact allowlist; it cannot remove Supabase or observability volumes.
 
 ## Start local services
 

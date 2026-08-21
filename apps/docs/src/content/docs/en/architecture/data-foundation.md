@@ -20,14 +20,14 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: f7410075ab0b7d6c5cb535637da45ad8c1a22070
+lastReviewedCommit: 9574bdf87831a5022039be31ad7dfbd22443c51f
 ---
 
 ## Boundary and implementation status
 
 Data Foundation is a WISER business system peer to Agent EXCON. It owns DataItems, immutable versions, assets, ingestion, quality, lineage, knowledge, search, and GIS facts. It does not own user sessions, Tenants, Projects, Roles, or tokens. Supabase is the unified identity and control plane; independent data-postgres/PostGIS and S3-compatible object storage form the data authority; search, graph, STAC, and GIS services are rebuildable projections.
 
-`@wiser/data-contracts`, `@wiser/data-core`, data-postgres/S3 authority `@wiser/data-infra`, and the durable-task runtime in `@wiser/data-worker` are now delivered: strict DTOs/Capabilities, pure deterministic policies, checksummed SQL migrations, the authoritative schema, content-addressed object adapters, a lease scheduler, and health/metrics endpoints are executable. Projection adapters, concrete ingestion/projection handlers, and transports must still complete the same boundary, so this milestone is not the final delivery.
+`@wiser/data-contracts`, `@wiser/data-core`, data-postgres/S3 authority `@wiser/data-infra`, the durable-task runtime in `@wiser/data-worker`, and the complete dependency Compose profile are now delivered: strict DTOs/Capabilities, pure deterministic policies, checksummed SQL migrations, the authoritative schema, content-addressed object adapters, a lease scheduler, health/metrics endpoints, and real pinned services are executable. Projection adapters, concrete ingestion/projection handlers, and transports must still complete the same boundary, so this milestone is not the final delivery.
 
 ## One public contract source
 
@@ -94,6 +94,16 @@ The first three pure SQL migrations initialize pgcrypto, PostGIS, btree_gist, un
 All 35 authoritative tables enable and FORCE RLS. A runtime read must set validated Tenant, Project, maximum security level, and policy-version session settings; omitting any setting returns zero rows. Migrations neither create nor grant a runtime role—the deployment layer must explicitly create a least-privilege identity. Database triggers reject UPDATE/DELETE on Operation, Audit, and Outbox events. Durable jobs are claimed with `FOR UPDATE SKIP LOCKED`, lease owner/expiry, attempt count, and priority.
 
 Data Worker uses a static Handler Registry and rejects duplicate job types at startup. Its injected-clock Scheduler recovers timeouts, claims batches, heartbeats, applies deterministic exponential retry, dead-letters, cancels, and enters `WAITING_INPUT/WAITING_REVIEW`; graceful shutdown drains in-flight handlers before closing the database. Native Node HTTP exposes `/health/live`, `/health/ready`, and Prometheus `/metrics` without a second Web framework. The generic runtime is delivered, but the default entrypoint has no concrete business handlers yet and is not a complete ingestion Worker.
+
+The Worker loads canonical `DATA_*` environment names at startup and fails closed on invalid database URLs, UUID scopes, security levels, lease/heartbeat relationships, hosts, and ports. The previous `WISER_DATA_*` names remain temporary, observable compatibility aliases; canonical values always win and aliases are never used as fallback after an invalid canonical value.
+
+## Exactly pinned local dependency profile
+
+The `data-foundation` Compose profile runs an independent PostgreSQL 18.6/PostGIS 3.6 authority database plus pyPgSTAC 0.9.12, SeaweedFS 4.43, Weaviate 1.39.0, OpenSearch/Dashboards 3.8.0, Neo4j 2026.07.1, GeoServer 3.0.1, STAC API 6.3.1, TiTiler 2.2.1, Martin 1.14.0, Tika 3.3.1.0, and ClamAV 1.5.4. Every image is a literal stable tag plus sha256 digest in Compose and is audited again in `infrastructure/data-foundation/versions.env`.
+
+The official OpenSearch image does not contain `analysis-icu`. A one-shot initializer downloads only the 3.8.0 official artifact, verifies SHA-512 before installation, and places it in a read-only named plugin volume. OpenSearch readiness verifies both cluster health and the loaded plugin. All services drop every Linux capability first; PostgreSQL, SeaweedFS, and the initializer add back only the volume/UID/GID capabilities their upstream entrypoints demonstrably require. Ports bind to loopback, credentials are non-default local values, logs rotate, resources are bounded, and no service uses the host network.
+
+PostgreSQL 18/PostGIS and GeoServer are currently official amd64-only images, so Compose declares `linux/amd64` for deterministic Apple Silicon emulation. The migration suite has been executed against that PostgreSQL 18.6 container, and SeaweedFS anonymous S3 access is denied. This compatibility evidence does not eliminate the final full-stack smoke gate.
 
 Workers consume the Outbox and idempotently build PostGIS, Weaviate, OpenSearch, Neo4j, STAC, and GIS projections. Projections push down Tenant, Project, Version, security-level, and policy-version filters, while the API still reauthorizes every read, download, export, and publication against the Supabase authority context.
 

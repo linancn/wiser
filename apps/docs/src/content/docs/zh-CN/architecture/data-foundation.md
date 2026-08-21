@@ -20,14 +20,14 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: f7410075ab0b7d6c5cb535637da45ad8c1a22070
+lastReviewedCommit: 9574bdf87831a5022039be31ad7dfbd22443c51f
 ---
 
 ## 边界与当前实现
 
 Data Foundation 是 WISER 内与 Agent EXCON 平级的业务系统。它拥有 DataItem、不可变版本、资产、入库会话、质量、血缘、知识、检索与 GIS 事实；不拥有用户 Session、Tenant、Project、Role 或 Token。Supabase 是统一身份与控制面；独立 data-postgres/PostGIS 与 S3 兼容对象存储构成数据权威面；搜索、图谱、STAC 与 GIS 服务均为可重建投影。
 
-当前已落地 `@wiser/data-contracts`、`@wiser/data-core`、data-postgres/S3 authority `@wiser/data-infra`，以及 `@wiser/data-worker` 的持久任务 runtime：严格 DTO/Capability、纯确定性领域政策、校验和 SQL migration、权威 Schema、内容寻址对象 adapter、lease scheduler 与健康/指标入口均可执行。投影 adapter、具体入库/投影 Handler 和 transport 仍须沿同一边界完成，当前阶段不等于最终交付。
+当前已落地 `@wiser/data-contracts`、`@wiser/data-core`、data-postgres/S3 authority `@wiser/data-infra`、`@wiser/data-worker` 的持久任务 runtime，以及完整依赖 Compose profile：严格 DTO/Capability、纯确定性领域政策、校验和 SQL migration、权威 Schema、内容寻址对象 adapter、lease scheduler、健康/指标入口和真实锁定服务均可执行。投影 adapter、具体入库/投影 Handler 和 transport 仍须沿同一边界完成，当前阶段不等于最终交付。
 
 ## 唯一公开契约源
 
@@ -94,6 +94,16 @@ S3 authority adapter 强制 SeaweedFS path-style endpoint，并从经过验证�
 全部 35 张权威表启用并 FORCE RLS。runtime 读取必须同时设置经过验证的 Tenant、Project、最高安全等级和 policy version Session 参数；缺任一参数时返回零行。Migration 不创建也不授权 runtime role，部署层必须显式创建最小权限角色。Operation event、Audit event 与 Outbox event 使用数据库 trigger 拒绝 UPDATE/DELETE；持久任务通过 `FOR UPDATE SKIP LOCKED`、lease owner/expiry、attempt count 与优先级领取。
 
 Data Worker 使用静态 Handler Registry；重复 job type 在启动时拒绝。Scheduler 注入时钟，执行超时回收、批量 claim、heartbeat、确定性指数退避、dead letter、取消及 `WAITING_INPUT/WAITING_REVIEW`；优雅停机会等待 in-flight Handler 后再关闭连接。Node 原生 HTTP 暴露 `/health/live`、`/health/ready` 与 Prometheus `/metrics`，不引入第二个 Web framework。通用 runtime 已交付，但默认入口尚未注册具体业务 Handler，因此不能被描述为完整入库 Worker。
+
+Worker 在启动时读取 canonical `DATA_*` 环境变量；数据库 URL、UUID scope、安全等级、lease/heartbeat 关系、host 或端口无效时 fail closed。旧 `WISER_DATA_*` 只作为临时且可观测的兼容 alias；canonical 值始终优先，canonical 已提供但无效时绝不回退 alias。
+
+## 精确锁定的本机依赖 profile
+
+`data-foundation` Compose profile 运行独立 PostgreSQL 18.6/PostGIS 3.6 权威库与 pyPgSTAC 0.9.12，以及 SeaweedFS 4.43、Weaviate 1.39.0、OpenSearch/Dashboards 3.8.0、Neo4j 2026.07.1、GeoServer 3.0.1、STAC API 6.3.1、TiTiler 2.2.1、Martin 1.14.0、Tika 3.3.1.0 和 ClamAV 1.5.4。Compose 中每个镜像都直接写稳定 tag 与 sha256 digest，并在 `infrastructure/data-foundation/versions.env` 再次审计登记。
+
+OpenSearch 官方镜像不含 `analysis-icu`。一次性 initializer 只下载官方 3.8.0 artifact，先验证 SHA-512，再写入只读 named plugin volume；OpenSearch readiness 同时验证 cluster health 与插件已加载。所有服务先 drop 全部 Linux capability；PostgreSQL、SeaweedFS 和 initializer 只加回上游入口经真实启动证明所需的卷与 UID/GID capability。所有端口绑定回环地址，使用非默认本机 credential，日志轮转、资源受限，且无 host network。
+
+PostgreSQL 18/PostGIS 与 GeoServer 当前官方镜像仅有 amd64，因此 Compose 显式声明 `linux/amd64`，在 Apple Silicon 确定性模拟。完整 WISER migration 已在该 PostgreSQL 18.6 容器上执行，SeaweedFS 的匿名 S3 访问也已确认拒绝；这些兼容性证据不能替代最终全栈 smoke 门禁。
 
 Worker 消费 Outbox 后幂等构建 PostGIS、Weaviate、OpenSearch、Neo4j、STAC 与 GIS 投影。投影保存 Tenant、Project、Version、安全等级和策略版本过滤，但任何读取、下载、导出或发布仍由 API 使用 Supabase 权威上下文复核。
 

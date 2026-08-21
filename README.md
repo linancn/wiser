@@ -16,7 +16,7 @@ checkPaths:
   - compose.yaml
   - docs/roadmap.md
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
+lastReviewedCommit: 9574bdf87831a5022039be31ad7dfbd22443c51f
 ---
 
 # WISER · 水地图
@@ -31,7 +31,7 @@ lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
 
 WISER 面向水系统的感知、推演、决策与重构。当前首个开源核心子系统是**智能体演练场 / Agent EXCON**：它把真实世界任务封装为可运行、可回放、可验证的演练场景，并通过 HTTP、MCP 与文件化 Skill 向异构智能体开放。
 
-仓库现已采用 WISER 多系统平台边界：Fastify、Next.js、MCP、Fumadocs、Supabase Auth 和 WISER Design System 是共享宿主，Agent EXCON 保持独立领域事实；第二个系统 **Data Foundation / 数据基座** 已建立平台契约、静态组合入口和统一 Web 导航，完整数据权威面与投影仍按本仓库的 Red → Green 里程碑推进。
+仓库现已采用 WISER 多系统平台边界：Fastify、Next.js、MCP、Fumadocs、Supabase Auth 和 WISER Design System 是共享宿主，Agent EXCON 保持独立领域事实；第二个系统 **Data Foundation / 数据基座** 已交付严格契约、纯领域规则、独立 PostgreSQL/PostGIS 与 S3 权威适配器、持久任务 runtime，以及精确锁定的完整 Compose profile。具体投影、完整 transport 与产品纵切仍按本仓库的 Red → Green 里程碑推进，不能把当前基础设施里程碑称为最终数据基座。
 
 仓库从一个可验证的单智能体兼容纵切开始：京津冀永定河流域生态补水与多水源联合调度。当前默认开发协议已是 v2 多场景、多角色团队演练：水情证据、水动力约束、生态目标与调度协调智能体获得不同 Receipt、并行完成 Task，并以 Message、ArtifactVersion、Submission 和 Feedback 显式协作。
 
@@ -64,8 +64,9 @@ WISER 面向水系统的感知、推演、决策与重构。当前首个开源�
 apps/          HTTP API、只读 Web、Worker、MCP 与 Fumadocs 文档
 cookbooks/     本机多智能体 TDD、WorkBuddy 启动与脱敏报告
 packages/      协议、纯领域核心与基础设施适配器
+infrastructure/ 精确镜像、data-postgres 迁移、Compose 与可观测性配置
 scenarios/     版本化演练场景及来源清单
-skills/        可独立发布的 Agent EXCON Skill
+skills/        可独立发布的 WISER 系统 Skills
 supabase/      配置、迁移、种子与数据库测试
 tests/         跨边界验收测试
 ```
@@ -103,6 +104,19 @@ pnpm stack:up
 
 这会先由 Supabase CLI 启动 Auth/PostgreSQL 17/Storage/Studio，再由 Compose 启动 API、只读 Web、Worker 和文档。默认地址为 Web `:3000`、API `:3001`、Worker health `:3002`、文档 `:4321`、Supabase Studio `:56323`。停止使用 `pnpm stack:down`。
 
+启动 Data Foundation profile：
+
+```bash
+cp .env.example .env
+# 为 .env 中留空的 DATA_* credential 生成本机专用值
+pnpm data:up
+pnpm data:migrate
+pnpm data:seed
+pnpm data:smoke
+```
+
+该 profile 使用独立的 PostgreSQL 18.6/PostGIS 3.6、SeaweedFS、Weaviate、带 `analysis-icu` 的 OpenSearch、Neo4j、GeoServer、pgSTAC/STAC API、TiTiler、Martin、Tika 与 ClamAV；所有宿主端口只绑定 `127.0.0.1`。`infrastructure/data-foundation/versions.env` 登记镜像的精确 tag+digest 和 ICU artifact SHA-512。普通停止使用 `pnpm data:down`；删除数据还要求精确确认变量，不能误删 Supabase 或观测卷。
+
 按需启动本地技术观测栈：
 
 ```bash
@@ -115,7 +129,7 @@ pnpm observability:up
 
 ## 项目状态
 
-v2 的契约、纯领域核心、内存 HTTP 协作纵切、数据库 schema/RLS、Skill、18 个 MCP 工具、Submission 安全恢复、确定性评价/返工/背书闭环和认证观测链路已经可验证；[WorkBuddy TDD Cookbook](./cookbooks/workbuddy-yongding-tdd/README.md) 提供可重复的四智能体本机入口。持久化接线仍在进行。v1 Episode 保留为**显式兼容协议**，目前仍是独立实现，而不是已完成的 v2 facade。范围与验收标准记录在 [`docs/roadmap.md`](./docs/roadmap.md)，完整设计见 [`docs/design/v2-multi-scenario-multi-agent-observability.md`](./docs/design/v2-multi-scenario-multi-agent-observability.md)，贡献约定见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
+v2 的契约、纯领域核心、内存 HTTP 协作纵切、数据库 schema/RLS、Skill、18 个 MCP 工具、Submission 安全恢复、确定性评价/返工/背书闭环和认证观测链路已经可验证；[WorkBuddy TDD Cookbook](./cookbooks/workbuddy-yongding-tdd/README.md) 提供可重复的四智能体本机入口。Agent EXCON 的持久化接线仍在进行。Data Foundation 已达到“权威 schema/S3 + 通用 Worker + 完整依赖 profile”里程碑，但投影消费者、完整 REST/GraphQL/MCP/Skill/Web 纵切尚未完成。v1 Episode 保留为**显式兼容协议**，目前仍是独立实现，而不是已完成的 v2 facade。范围与验收标准记录在 [`docs/roadmap.md`](./docs/roadmap.md)，完整设计见 [`docs/design/v2-multi-scenario-multi-agent-observability.md`](./docs/design/v2-multi-scenario-multi-agent-observability.md)，贡献约定见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
 
 ## 许可
 

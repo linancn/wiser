@@ -1,0 +1,40 @@
+{
+  "type": "FeatureCollection",
+  "name": "wiser-data-foundation-smoke-stations",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "EPSG:4490"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "station-guanting",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [115.6078, 40.2217]
+      },
+      "properties": {
+        "stationCode": "GT-001",
+        "name": "Guanting Reservoir",
+        "flowM3s": 20.0,
+        "observedAt": "2023-03-22T07:00:00+08:00"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "station-lugouqiao",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [116.2186, 39.8496]
+      },
+      "properties": {
+        "stationCode": "LGQ-001",
+        "name": "Lugouqiao",
+        "flowM3s": 16.72,
+        "observedAt": "2023-03-22T13:00:00+08:00"
+      }
+    }
+  ]
+}

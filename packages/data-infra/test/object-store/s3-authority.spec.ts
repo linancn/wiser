@@ -387,6 +387,31 @@ describe('S3-compatible authority object store', () => {
 });
 
 describe('SeaweedFS S3 authority configuration', () => {
+  it('prefers canonical DATA_S3_* names over compatibility aliases', () => {
+    expect(
+      loadSeaweedFsS3AuthorityConfig({
+        DATA_S3_ENDPOINT: 'http://seaweedfs:8333',
+        DATA_S3_REGION: 'us-east-1',
+        DATA_S3_BUCKET: 'wiser-canonical',
+        DATA_S3_ACCESS_KEY_ID: 'canonical-access',
+        DATA_S3_SECRET_ACCESS_KEY: 'canonical-secret',
+        WISER_DATA_S3_ENDPOINT: 'http://legacy-store:9000',
+        WISER_DATA_S3_REGION: 'legacy-region',
+        WISER_DATA_S3_BUCKET: 'wiser-legacy',
+        WISER_DATA_S3_ACCESS_KEY_ID: 'legacy-access',
+        WISER_DATA_S3_SECRET_ACCESS_KEY: 'legacy-secret',
+      }),
+    ).toMatchObject({
+      endpoint: 'http://seaweedfs:8333',
+      region: 'us-east-1',
+      bucket: 'wiser-canonical',
+      credentials: {
+        accessKeyId: 'canonical-access',
+        secretAccessKey: 'canonical-secret',
+      },
+    });
+  });
+
   it('forces path-style access and exact server-only credentials', () => {
     expect(
       loadSeaweedFsS3AuthorityConfig({
@@ -405,6 +430,21 @@ describe('SeaweedFS S3 authority configuration', () => {
         accessKeyId: 'local-access-key',
         secretAccessKey: 'local-secret-key-value',
       },
+    });
+  });
+
+  it('keeps the previous WISER_DATA_S3_* names as a compatibility alias', () => {
+    expect(
+      loadSeaweedFsS3AuthorityConfig({
+        WISER_DATA_S3_ENDPOINT: 'http://seaweedfs:8333',
+        WISER_DATA_S3_REGION: 'us-east-1',
+        WISER_DATA_S3_BUCKET: 'wiser-authority',
+        WISER_DATA_S3_ACCESS_KEY_ID: 'legacy-access-key',
+        WISER_DATA_S3_SECRET_ACCESS_KEY: 'legacy-secret-key-value',
+      }),
+    ).toMatchObject({
+      endpoint: 'http://seaweedfs:8333',
+      bucket: 'wiser-authority',
     });
   });
 

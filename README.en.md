@@ -16,7 +16,7 @@ checkPaths:
   - compose.yaml
   - docs/roadmap.md
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
+lastReviewedCommit: 9574bdf87831a5022039be31ad7dfbd22443c51f
 ---
 
 # WISER · Water Intelligence System & Engine for Reconfiguration
@@ -31,7 +31,7 @@ English · [中文（默认）](./README.md)
 
 WISER supports perception, simulation, decision-making, and reconfiguration for water systems. Its first open-source core subsystem is **Agent Exercise Control Infrastructure / Agent EXCON**, which packages real-world work as runnable, replayable, and verifiable scenarios exposed through HTTP, MCP, and versioned file-based Skills.
 
-The repository now follows a WISER multi-system platform boundary: Fastify, Next.js, MCP, Fumadocs, Supabase Auth, and the WISER Design System are shared hosts while Agent EXCON retains its own authoritative domain facts. The second system, **Data Foundation**, has established its platform contract, static composition entry, and unified Web navigation; its complete authoritative data plane and projections continue through the repository's Red → Green milestones.
+The repository now follows a WISER multi-system platform boundary: Fastify, Next.js, MCP, Fumadocs, Supabase Auth, and the WISER Design System are shared hosts while Agent EXCON retains its own authoritative domain facts. The second system, **Data Foundation**, now has strict contracts, pure domain policies, independent PostgreSQL/PostGIS and S3 authority adapters, a durable-task runtime, and an exactly pinned full Compose profile. Concrete projections and the complete transport/product slice remain Red → Green work, so this infrastructure milestone is not the final Data Foundation delivery.
 
 The repository began with a testable single-agent compatibility slice for ecological replenishment and multi-source allocation in the Yongding River system. The default development protocol is now the v2 multi-scenario, multi-role team exercise: evidence, hydraulic, ecology, and dispatch-coordination agents receive different Receipts, execute Tasks concurrently, and collaborate explicitly through Messages, ArtifactVersions, Submissions, and Feedback.
 
@@ -64,8 +64,9 @@ Important unfinished boundaries are the PostgreSQL API adapter and the v1-to-v2 
 apps/          HTTP API, read-only Web, worker, MCP, and Fumadocs documentation
 cookbooks/     Local multi-agent TDD, WorkBuddy launch, and redacted reports
 packages/      Contracts, pure domain core, and infrastructure adapters
+infrastructure/ Exact images, data-postgres migrations, Compose, and observability
 scenarios/     Versioned scenarios and provenance manifests
-skills/        Independently publishable Agent EXCON Skill
+skills/        Independently publishable WISER system Skills
 supabase/      Configuration, migrations, seeds, and database tests
 tests/         Cross-boundary acceptance tests
 ```
@@ -103,6 +104,19 @@ pnpm stack:up
 
 Supabase CLI first starts Auth/PostgreSQL 17/Storage/Studio, then Compose starts API, read-only Web, worker, and docs. Defaults are Web `:3000`, API `:3001`, worker health `:3002`, docs `:4321`, and Supabase Studio `:56323`. Stop with `pnpm stack:down`.
 
+Start the Data Foundation profile with:
+
+```bash
+cp .env.example .env
+# Generate local-only values for the blank DATA_* credentials in .env.
+pnpm data:up
+pnpm data:migrate
+pnpm data:seed
+pnpm data:smoke
+```
+
+The profile uses independent PostgreSQL 18.6/PostGIS 3.6, SeaweedFS, Weaviate, OpenSearch with `analysis-icu`, Neo4j, GeoServer, pgSTAC/STAC API, TiTiler, Martin, Tika, and ClamAV. Every host port binds only to `127.0.0.1`. `infrastructure/data-foundation/versions.env` records exact image tag+digest values and the ICU artifact SHA-512. Use `pnpm data:down` for normal shutdown; deletion additionally requires the exact confirmation variable and cannot target Supabase or observability volumes.
+
 Start the optional local technical-observability stack with:
 
 ```bash
@@ -115,7 +129,7 @@ Codex subscription auth is host-only for trusted local development. Containers a
 
 ## Project status
 
-The v2 contracts, pure domain core, in-memory HTTP collaboration slice, database schema/RLS, Skill, 18 MCP tools, safe Submission recovery, deterministic evaluation/rework/endorsement loop, and authenticated observability path are verifiable today. The [WorkBuddy TDD Cookbook](./cookbooks/workbuddy-yongding-tdd/README.md) provides a repeatable local four-agent entrypoint. Durable wiring is still in progress. The v1 Episode is an **explicit compatibility protocol** and is still a separate implementation, not a completed v2 facade. Scope and acceptance criteria live in [`docs/roadmap.md`](./docs/roadmap.md), with the complete design in [`docs/design/v2-multi-scenario-multi-agent-observability.md`](./docs/design/v2-multi-scenario-multi-agent-observability.md). Contribution rules are in [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+The v2 contracts, pure domain core, in-memory HTTP collaboration slice, database schema/RLS, Skill, 18 MCP tools, safe Submission recovery, deterministic evaluation/rework/endorsement loop, and authenticated observability path are verifiable today. The [WorkBuddy TDD Cookbook](./cookbooks/workbuddy-yongding-tdd/README.md) provides a repeatable local four-agent entrypoint. Agent EXCON durable wiring remains in progress. Data Foundation has reached the authority-schema/S3, generic Worker, and complete dependency-profile milestone, while its projection consumers and complete REST/GraphQL/MCP/Skill/Web slice remain unfinished. The v1 Episode is an **explicit compatibility protocol** and is still a separate implementation, not a completed v2 facade. Scope and acceptance criteria live in [`docs/roadmap.md`](./docs/roadmap.md), with the complete design in [`docs/design/v2-multi-scenario-multi-agent-observability.md`](./docs/design/v2-multi-scenario-multi-agent-observability.md). Contribution rules are in [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ## License
 
