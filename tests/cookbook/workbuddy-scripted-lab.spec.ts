@@ -8,7 +8,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { startV2LocalLabServer } from '../../apps/api/src/index.js';
 import { launchWorkBuddyRoles } from '../../cookbooks/workbuddy-yongding-tdd/scripts/launch-four-agents.mjs';
 import { renderWorkBuddyRuntime } from '../../cookbooks/workbuddy-yongding-tdd/scripts/render-workbuddy-config.mjs';
-import { RunEvaluationListSchema } from '../../packages/contracts/src/index.js';
+import {
+  RunEvaluationListSchema,
+  RunInteractionListSchema,
+} from '../../packages/contracts/src/index.js';
 
 const temporaryDirectories: string[] = [];
 const closeCallbacks: Array<() => Promise<void>> = [];
@@ -117,6 +120,52 @@ describe('scripted four-agent Yongding lab', () => {
           verdict: 'ACCEPTED',
         },
       ]),
+    );
+
+    const interactions = RunInteractionListSchema.parse(
+      (
+        await server.app.inject({
+          method: 'GET',
+          url: `/api/v2/runs/${server.lab.manifest.runId}/interactions`,
+          headers: { authorization: `Bearer ${server.lab.operatorToken}` },
+        })
+      ).json(),
+    ).items;
+    const coordinator = server.lab.manifest.roster.find(
+      ({ roleSlotId }) => roleSlotId === 'dispatch-coordination',
+    )!;
+    const specialists = server.lab.manifest.roster.filter(
+      ({ roleSlotId }) => roleSlotId !== 'dispatch-coordination',
+    );
+    const handoffs = interactions.filter(
+      ({ kind, recipientRunAgentIds, artifactVersionRefs }) =>
+        kind === 'handoff' &&
+        recipientRunAgentIds.includes(coordinator.runAgentId) &&
+        artifactVersionRefs.length === 1,
+    );
+    expect(handoffs).toHaveLength(3);
+    expect(
+      handoffs.every(({ deliveries }) =>
+        deliveries.every(({ state }) => state === 'acknowledged'),
+      ),
+    ).toBe(true);
+
+    const reviewRequest = interactions.find(
+      ({ kind, senderId, recipientRunAgentIds }) =>
+        kind === 'request' &&
+        senderId === coordinator.runAgentId &&
+        specialists.every(({ runAgentId }) =>
+          recipientRunAgentIds.includes(runAgentId),
+        ),
+    );
+    expect(reviewRequest).toMatchObject({ status: 'responded' });
+    const responses = interactions.filter(
+      ({ kind, replyToMessageId }) =>
+        kind === 'response' && replyToMessageId === reviewRequest?.id,
+    );
+    expect(responses).toHaveLength(3);
+    expect(new Set(responses.map(({ senderId }) => senderId))).toEqual(
+      new Set(specialists.map(({ runAgentId }) => runAgentId)),
     );
   }, 40_000);
 });
