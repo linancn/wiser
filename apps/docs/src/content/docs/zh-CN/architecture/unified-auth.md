@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 44a40c2e1d2ed4d6c0e071fa391f16d277e7e08d
+lastReviewedCommit: 0ccec4db0435f04becdd27c377b977f1e3f238f4
 ---
 
 ## 单一身份源
@@ -57,7 +57,7 @@ platform_private.control_outbox
 - Actor 统一表示 human、agent 与 service；human actor 关联 `auth.users.id`。
 - Tenant 是顶级隔离边界；Project 是业务资源所有权边界。
 - Tenant Membership 不自动授予任意 Project 数据访问。
-- Role 与 Scope 分开建模；Scope 使用 `platform.*`、`excon.*`、`data.*` 命名空间。
+- Role 与 Scope 分开建模；Scope 使用 `platform.*`、`excon.*`、`data.*` 命名空间。每个 Role 还带 fail-closed 的 L0–L3 安全等级 ceiling；实时授权上下文取调用方 active bindings 中的最高 ceiling。
 - 所有暴露表启用 RLS，并同时使用主体、Tenant、Project 和所有权谓词；`TO authenticated` 本身不构成授权。
 - 特权函数进入未暴露 schema，固定安全 `search_path`，撤销默认 `PUBLIC EXECUTE`。
 
@@ -68,7 +68,7 @@ Bearer credential
 → Supabase JWT / delegated / local Resolver
 → 验证签名、issuer、audience、expiry、session 或 delegation
 → 查询 Supabase Membership/Role/Scope
-→ PlatformPrincipal + AuthorizedContext
+→ PlatformPrincipal + AuthorizedContext（包含 maxSecurityLevel）
 → AuthorizationService(capability, purpose, resource, security level, fields, volume)
 → 系统 Handler
 → append-only 审计

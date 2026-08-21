@@ -37,6 +37,14 @@ export const PlatformPurposeSchema = z
   .regex(/^[a-z][a-z0-9-]*$/);
 export type PlatformPurpose = z.infer<typeof PlatformPurposeSchema>;
 
+export const PlatformSecurityLevelSchema = z.enum([
+  'L0_PUBLIC',
+  'L1_INTERNAL',
+  'L2_RESTRICTED',
+  'L3_CONFIDENTIAL',
+]);
+export type PlatformSecurityLevel = z.infer<typeof PlatformSecurityLevelSchema>;
+
 const PlatformPrincipalFields = {
   actorType: PlatformActorTypeSchema,
   actorId: PlatformUuidSchema,
@@ -105,6 +113,7 @@ export const AuthorizedContextSchema = z.strictObject({
   roles: z.array(PlatformRoleKeySchema).max(64),
   scopes: z.array(PlatformScopeSchema).max(256),
   purpose: PlatformPurposeSchema,
+  maxSecurityLevel: PlatformSecurityLevelSchema,
   authzVersion: z.number().int().nonnegative(),
 });
 export type AuthorizedContext = z.infer<typeof AuthorizedContextSchema>;

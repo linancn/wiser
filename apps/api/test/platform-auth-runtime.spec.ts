@@ -67,6 +67,7 @@ describe('WISER platform auth runtime', () => {
             project_id: PROJECT_ID,
             roles: ['data-reader'],
             scopes: ['data.catalog.read'],
+            max_security_level: 'L1_INTERNAL',
             authz_version: 2,
           },
         ],
@@ -106,6 +107,7 @@ describe('WISER platform auth runtime', () => {
       actorId: USER_ID,
       tenantId: TENANT_ID,
       projectId: PROJECT_ID,
+      maxSecurityLevel: 'L1_INTERNAL',
     });
 
     await app.close();

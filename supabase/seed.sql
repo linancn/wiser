@@ -1240,38 +1240,44 @@ insert into platform.roles (
   id,
   role_key,
   system_id,
-  status
+  status,
+  max_security_level
 )
 values
   (
     'b3000000-0000-4000-8000-000000000001',
     'platform-owner',
     'platform',
-    'active'
+    'active',
+    'L3_CONFIDENTIAL'
   ),
   (
     'b3000000-0000-4000-8000-000000000002',
     'excon-operator',
     'excon',
-    'active'
+    'active',
+    'L2_RESTRICTED'
   ),
   (
     'b3000000-0000-4000-8000-000000000003',
     'excon-run-agent',
     'excon',
-    'active'
+    'active',
+    'L2_RESTRICTED'
   ),
   (
     'b3000000-0000-4000-8000-000000000004',
     'data-steward',
     'data',
-    'active'
+    'active',
+    'L3_CONFIDENTIAL'
   ),
   (
     'b3000000-0000-4000-8000-000000000005',
     'data-reader',
     'data',
-    'active'
+    'active',
+    'L1_INTERNAL'
   )
 on conflict (id) do nothing;
 

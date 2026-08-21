@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 44a40c2e1d2ed4d6c0e071fa391f16d277e7e08d
+lastReviewedCommit: 0ccec4db0435f04becdd27c377b977f1e3f238f4
 ---
 
 ## One identity authority
@@ -57,7 +57,7 @@ platform_private.control_outbox
 - Actor represents a human, agent, or service; human actors reference `auth.users.id`.
 - Tenant is the top-level isolation boundary; Project is the resource-ownership boundary.
 - Tenant membership does not automatically grant access to every Project.
-- Roles and scopes are separate; scopes use `platform.*`, `excon.*`, and `data.*` namespaces.
+- Roles and scopes are separate; scopes use `platform.*`, `excon.*`, and `data.*` namespaces. Every Role also has a fail-closed L0-L3 security ceiling, and the live authorization context uses the highest ceiling among the caller's active bindings.
 - Every exposed table enables RLS with subject, Tenant, Project, and ownership predicates. `TO authenticated` alone is not authorization.
 - Privileged functions live in an unexposed schema, set a safe `search_path`, and revoke default `PUBLIC EXECUTE`.
 
@@ -68,7 +68,7 @@ Bearer credential
 → Supabase JWT / delegated / local Resolver
 → verify signature, issuer, audience, expiry, session or delegation
 → query Supabase Membership/Role/Scope
-→ PlatformPrincipal + AuthorizedContext
+→ PlatformPrincipal + AuthorizedContext (including maxSecurityLevel)
 → AuthorizationService(capability, purpose, resource, security level, fields, volume)
 → system Handler
 → append-only audit

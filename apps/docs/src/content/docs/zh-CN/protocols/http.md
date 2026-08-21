@@ -15,8 +15,8 @@ checkPaths:
   - apps/api/**
   - packages/contracts/**
   - skills/agent-excon/**
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: 0ccec4db0435f04becdd27c377b977f1e3f238f4
 ---
 
 ## 默认协议与实现状态
@@ -29,7 +29,7 @@ HTTP 是唯一业务协议底座。Web、Skill、MCP 和未来 SDK 都调用 HTT
 
 Fastify 是 WISER 的共享 HTTP 组合宿主。每个系统以静态导入的 `WiserApiModule` 注册路由；模块 ID 必须使用命名空间且全局唯一，重复 ID 会使 readiness 失败。静态注册不扫描 TypeScript AST，也不允许模块绕过 application/authorization 边界。现有 Agent EXCON 路由保持兼容，Data Foundation 和未来系统复用同一宿主。
 
-`WISER_AUTH_MODE=supabase` 时，默认 API 进程会创建 Supabase `getClaims` client、PostgreSQL Membership loader 并注册平台身份模块。`GET /api/platform/v1/me` 要求 Bearer、Tenant、Project 与 Purpose，只返回安全的 Actor、Role、Scope 与授权版本。生产默认使用该模式且缺少 URL、publishable key 或数据库连接时拒绝启动；非生产 `off` 模式保留旧本机兼容入口。
+`WISER_AUTH_MODE=supabase` 时，默认 API 进程会创建 Supabase `getClaims` client、PostgreSQL Membership loader 并注册平台身份模块。`GET /api/platform/v1/me` 要求 Bearer、Tenant、Project 与 Purpose，只返回安全的 Actor、Role、Scope、最高安全等级与授权版本。生产默认使用该模式且缺少 URL、publishable key 或数据库连接时拒绝启动；非生产 `off` 模式保留旧本机兼容入口。
 
 ## 公共场景目录
 

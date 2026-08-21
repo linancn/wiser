@@ -125,6 +125,15 @@ create table platform.roles (
     check (system_id in ('platform', 'excon', 'data')),
   status text not null default 'active'
     check (status in ('active', 'retired')),
+  max_security_level text not null default 'L0_PUBLIC'
+    check (
+      max_security_level in (
+        'L0_PUBLIC',
+        'L1_INTERNAL',
+        'L2_RESTRICTED',
+        'L3_CONFIDENTIAL'
+      )
+    ),
   created_at timestamptz not null default now()
 );
 

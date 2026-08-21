@@ -1,4 +1,7 @@
-import type { AuthorizedContext } from '@wiser/platform-contracts';
+import {
+  PlatformSecurityLevelSchema,
+  type AuthorizedContext,
+} from '@wiser/platform-contracts';
 
 import type {
   AuthorizationContextLoader,
@@ -10,6 +13,7 @@ export interface AuthorizationRow {
   readonly project_id: string;
   readonly roles: readonly string[] | null;
   readonly scopes: readonly string[] | null;
+  readonly max_security_level: string;
   readonly authz_version: number | string;
 }
 
@@ -32,6 +36,22 @@ select
       filter (where role_scope.scope is not null),
     array[]::text[]
   ) as scopes,
+  case coalesce(
+    max(
+      case role.max_security_level
+        when 'L0_PUBLIC' then 0
+        when 'L1_INTERNAL' then 1
+        when 'L2_RESTRICTED' then 2
+        when 'L3_CONFIDENTIAL' then 3
+      end
+    ),
+    0
+  )
+    when 0 then 'L0_PUBLIC'
+    when 1 then 'L1_INTERNAL'
+    when 2 then 'L2_RESTRICTED'
+    when 3 then 'L3_CONFIDENTIAL'
+  end as max_security_level,
   greatest(
     actor.authz_version,
     tenant.version,
@@ -100,13 +120,23 @@ function toAuthorizedContext(
   input: AuthorizationContextLoadInput,
 ): AuthorizedContext | null {
   const authzVersion = Number(row.authz_version);
-  if (!Number.isSafeInteger(authzVersion) || authzVersion < 0) return null;
+  const maxSecurityLevel = PlatformSecurityLevelSchema.safeParse(
+    row.max_security_level,
+  );
+  if (
+    !Number.isSafeInteger(authzVersion) ||
+    authzVersion < 0 ||
+    !maxSecurityLevel.success
+  ) {
+    return null;
+  }
   return {
     tenantId: row.tenant_id,
     projectId: row.project_id,
     roles: [...(row.roles ?? [])],
     scopes: [...(row.scopes ?? [])],
     purpose: input.purpose,
+    maxSecurityLevel: maxSecurityLevel.data,
     authzVersion,
   };
 }

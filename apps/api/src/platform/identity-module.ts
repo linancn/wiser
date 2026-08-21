@@ -75,6 +75,7 @@ export function createPlatformIdentityModule(
           roles: context.authorization.roles,
           scopes: context.authorization.scopes,
           purpose: context.authorization.purpose,
+          maxSecurityLevel: context.authorization.maxSecurityLevel,
           authzVersion: context.authorization.authzVersion,
         };
       });
