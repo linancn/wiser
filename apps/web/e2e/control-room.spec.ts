@@ -144,6 +144,11 @@ test('keeps the operator workspace usable on a narrow screen', async ({
   await page.goto('/zh-CN/runs/run-yongding-spring-042/trace');
 
   await expect(page.getByRole('heading', { name: 'Trace 探索' })).toBeVisible();
+  await expect(page.getByTestId('mobile-trace-event')).toHaveCount(10);
+  await expect(page.getByTestId('mobile-trace-event').first()).toBeVisible();
+  await expect(page.locator('.waterfall-panel')).toBeHidden();
+  await page.getByTestId('mobile-trace-event').nth(3).click();
+  await expect(page.getByTestId('span-inspector')).toContainText('Agent');
   const overflow = await page.evaluate(
     () =>
       document.documentElement.scrollWidth -
