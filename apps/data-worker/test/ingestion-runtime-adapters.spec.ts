@@ -1054,10 +1054,44 @@ describe('ClamAV and Tika ingestion clients', () => {
       }),
     ).resolves.toMatchObject({
       kind: 'document',
-      metadata: { title: 'Report' },
+      metadata: { title: 'Report', 'wiser:excerpt': 'hello water' },
     });
     expect(requests[0]?.url).toBe('http://tika:9998/rmeta/text');
     expect(requests[0]?.init?.method).toBe('PUT');
+  });
+
+  it('preserves an allowlisted GeoJSON source CRS instead of assuming WGS84', async () => {
+    const source = new TextEncoder().encode(
+      JSON.stringify({
+        type: 'FeatureCollection',
+        crs: { type: 'name', properties: { name: 'EPSG:4490' } },
+        features: [
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [116.2, 39.8] },
+            properties: {},
+          },
+        ],
+      }),
+    );
+    const parser = new TikaIngestionParser({
+      endpoint: 'http://tika:9998',
+      read: () => Promise.resolve(source),
+      timeoutMs: 1_000,
+      maximumInputBytes: 1024,
+      maximumResponseBytes: 2048,
+    });
+
+    await expect(
+      parser.parse({
+        objectRef: 'quarantine/object',
+        mediaType: 'application/geo+json',
+        sourceKind: 'geojson',
+      }),
+    ).resolves.toMatchObject({
+      kind: 'geojson',
+      metadata: { sourceCrs: 'EPSG:4490' },
+    });
   });
 
   it('cancels an oversized Tika response stream', async () => {
