@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 89cde4733d5f1772db7495fbfa0bd1b6cf4a18bf
+lastReviewedCommit: 494eb337076f2a0ff670168c2dc55ef894862056
 ---
 
 ## Boundary and implementation status
@@ -55,6 +55,8 @@ data.operation.cancel            data.operation.events
 ```
 
 The REST mapping for `data.operation.events` explicitly uses SSE. Graph operations remain structured `graph.expand/findPath` inputs rather than arbitrary Cypher, and no query Capability accepts arbitrary SQL or OpenSearch DSL.
+
+Upload contracts are discriminated rather than ambiguous. `PRESIGNED_PUT` exposes one URL and forbids multipart fields; `MULTIPART` exposes the opaque upload id, contiguous part numbers, exact part sizes, per-part URLs/expiries, and no single-object URL. Completion supplies the same opaque id plus contiguous ETags. Unknown, mixed-mode, or out-of-order payloads fail before object-store I/O.
 
 The shared Fastify host now has an injectable `data.foundation` module. `/api/data/v1/capabilities` serializes the ordered Registry directly through Zod 4's draft-7 generator, so clients can inspect all four transport mappings without AST scanning. `/api/data/v1/health` reports data-postgres, object-store, and Worker readiness from injected probes and returns 503 whenever any authority dependency is missing. The default process does not yet register concrete probes and therefore cannot claim a ready Data Foundation runtime.
 

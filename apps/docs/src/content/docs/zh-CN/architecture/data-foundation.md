@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 89cde4733d5f1772db7495fbfa0bd1b6cf4a18bf
+lastReviewedCommit: 494eb337076f2a0ff670168c2dc55ef894862056
 ---
 
 ## 边界与当前实现
@@ -55,6 +55,8 @@ data.operation.cancel            data.operation.events
 ```
 
 `data.operation.events` 的 REST mapping 明确使用 SSE。图查询仍由结构化 `graph.expand/findPath` 输入表达，不开放任意 Cypher；查询能力均禁止任意 SQL 或 OpenSearch DSL。
+
+上传契约使用可判别且无歧义的模式。`PRESIGNED_PUT` 只暴露单一 URL，并禁止 multipart 字段；`MULTIPART` 暴露不透明 upload id、连续 part number、精确 part size、逐 part URL/过期时间，且不提供单对象 URL。完成请求携带同一不透明 id 与连续 ETag；未知字段、混合模式或乱序 payload 在对象存储 I/O 前即失败。
 
 共享 Fastify 宿主现已提供可注入的 `data.foundation` 模块。`/api/data/v1/capabilities` 直接通过 Zod 4 draft-7 generator 序列化有序 Registry，客户端无需 AST 扫描即可读取四类 transport mapping。`/api/data/v1/health` 从注入 probe 报告 data-postgres、对象存储与 Worker readiness；任一权威依赖缺失即返回 503。默认进程尚未注册具体 probe，因此不能宣称 Data Foundation runtime ready。
 

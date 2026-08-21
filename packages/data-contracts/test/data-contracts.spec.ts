@@ -6,6 +6,7 @@ import { z } from 'zod';
 import {
   AcceptanceStatusSchema,
   CapabilityDefinitionSchema,
+  CompletedUploadObjectSchema,
   DATA_CAPABILITY_IDS,
   DATA_CAPABILITY_REGISTRY,
   DataItemSchema,
@@ -17,6 +18,7 @@ import {
   PublicationStatusSchema,
   QualityGradeSchema,
   SecurityLevelSchema,
+  UploadTargetSchema,
   type DataCapabilityId,
 } from '../src/index.js';
 
@@ -575,10 +577,10 @@ const expectedJsonSchemaHashes = {
   },
   'data.uploadSession.create': {
     input: 'e8c8f8eb84563ca0b1c61f0ca9dbe55d00f5672f8c4117913b81dc21424d46e0',
-    output: '6148abb3f3c2c150dd9ab9edbdff520a99a18af32fbbb27b5168ef6b8fc2763e',
+    output: '5a8ac9619274b6675e52cd747a3926680a2cf69ee6a89fc4603bcdb22034a385',
   },
   'data.uploadSession.complete': {
-    input: 'cb0cacc5b3b0687f6f2c8d4aa22eca8429327d757ebf201abd86b2a0626fce2d',
+    input: 'c29e2142c899890da4ebb00c081c040bd7b92dfc8a14c12b2ace9aed39a83838',
     output: 'b4475e14d0689a99bf4c89f7ce14b0bba97a4e3fa465dc71ea2af9e340146077',
   },
   'data.ingestion.get': {
@@ -688,6 +690,65 @@ describe('Data Foundation status contracts', () => {
     expect(SecurityLevelSchema.safeParse('SECRET').success).toBe(false);
     expect(QualityGradeSchema.safeParse('PASSED').success).toBe(false);
     expect(AcceptanceStatusSchema.safeParse('A').success).toBe(false);
+  });
+});
+
+describe('Data Foundation multipart upload contracts', () => {
+  it('distinguishes single PUT and complete multipart plans', () => {
+    expect(
+      UploadTargetSchema.parse({
+        assetId: ASSET_ID,
+        method: 'PRESIGNED_PUT',
+        uploadUrl: 'http://127.0.0.1:18333/wiser-authority/object',
+        headers: { 'x-amz-meta-sha256': 'a'.repeat(64) },
+      }),
+    ).toMatchObject({ method: 'PRESIGNED_PUT' });
+    expect(
+      UploadTargetSchema.parse({
+        assetId: ASSET_ID,
+        method: 'MULTIPART',
+        headers: {},
+        multipartUploadId: 'multipart-1',
+        partSizeBytes: 5 * 1024 * 1024,
+        parts: [
+          {
+            partNumber: 1,
+            sizeBytes: 5 * 1024 * 1024,
+            uploadUrl: 'http://127.0.0.1:18333/part/1',
+            expiresAt: '2026-08-22T05:00:00.000Z',
+          },
+          {
+            partNumber: 2,
+            sizeBytes: 17,
+            uploadUrl: 'http://127.0.0.1:18333/part/2',
+            expiresAt: '2026-08-22T05:00:00.000Z',
+          },
+        ],
+      }),
+    ).toMatchObject({ method: 'MULTIPART', multipartUploadId: 'multipart-1' });
+  });
+
+  it('rejects ambiguous or non-contiguous multipart payloads', () => {
+    expect(
+      UploadTargetSchema.safeParse({
+        assetId: ASSET_ID,
+        method: 'MULTIPART',
+        uploadUrl: 'http://127.0.0.1:18333/object',
+        headers: {},
+      }).success,
+    ).toBe(false);
+    expect(
+      CompletedUploadObjectSchema.safeParse({
+        assetId: ASSET_ID,
+        sizeBytes: 4096,
+        sha256: 'a'.repeat(64),
+        multipartUploadId: 'multipart-1',
+        parts: [
+          { partNumber: 2, etag: 'etag-2' },
+          { partNumber: 1, etag: 'etag-1' },
+        ],
+      }).success,
+    ).toBe(false);
   });
 });
 
