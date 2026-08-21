@@ -261,6 +261,12 @@ rules:
         kind: code
       - path: apps/api/src/runtime-auth.ts
         kind: code
+      - path: apps/api/src/platform/auth-runtime.ts
+        kind: code
+      - path: apps/api/src/platform/identity-module.ts
+        kind: code
+      - path: apps/api/src/platform/delegation-module.ts
+        kind: code
       - path: apps/web/src/lib/supabase/**
         kind: code
       - path: apps/web/src/lib/auth.ts
