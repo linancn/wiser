@@ -294,6 +294,41 @@ describe('Data Foundation schema-first GraphQL transport', () => {
     expect(handler.execute).not.toHaveBeenCalled();
   });
 
+  it('cannot hide multiple commands behind fragments or variable page sizes', async () => {
+    const mutationRuntime = appWith();
+    const fragmentedMutation = await mutationRuntime.app.inject({
+      method: 'POST',
+      url: '/graphql',
+      headers: headers(true),
+      payload: {
+        query: `mutation Commands {
+          ...TwoCommands
+        }
+        fragment TwoCommands on Mutation {
+          submitDataIngestion(id: "${INGESTION_ID}") { operationId }
+          cancelDataOperation(id: "${OPERATION_ID}") { operationId }
+        }`,
+      },
+    });
+    expect(responseErrors(fragmentedMutation)).toBeDefined();
+    expect(mutationRuntime.handler.execute).not.toHaveBeenCalled();
+
+    const complexityRuntime = appWith({ maxComplexity: 50 });
+    const variablePage = await complexityRuntime.app.inject({
+      method: 'POST',
+      url: '/graphql',
+      headers: headers(),
+      payload: {
+        query: `query VariablePage($first: Int) {
+          dataCatalog(first: $first) { nodes { dataItemId } pageInfo { hasNextPage } }
+        }`,
+        variables: { first: 100 },
+      },
+    });
+    expect(responseErrors(variablePage)).toBeDefined();
+    expect(complexityRuntime.handler.execute).not.toHaveBeenCalled();
+  });
+
   it('exposes only POST and rejects missing request context before execution', async () => {
     const { app, handler } = appWith({ context: null });
     expect(
