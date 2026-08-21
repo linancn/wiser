@@ -24,6 +24,8 @@ lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 
 This package is the local stdio MCP adapter for WISER Agent EXCON. It calls only the public HTTP API, never reads PostgreSQL, never holds service-role credentials, and does not exercise through the Web console. The default protocol is multi-scenario, multi-agent **v2**, with `/api/v2/` as the default API base path.
 
+WISER systems extend the same server through explicit `WiserMcpModule` values. Module ids are statically registered, namespaced, and unique; duplicate ids fail before a transport connects. A module may register Tools and Resources, but every business operation still uses an HTTP client rather than importing application or database code.
+
 ## 配置 / Configuration
 
 ```bash

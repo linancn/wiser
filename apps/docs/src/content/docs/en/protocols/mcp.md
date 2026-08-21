@@ -25,6 +25,10 @@ The MCP server calls only the public HTTP API. It does not duplicate state machi
 
 The server uses the stable v1 line of `@modelcontextprotocol/sdk` and stdio transport. Inputs are strict Zod schemas. Successful calls mirror compact `MACHINE_DATA` in Chinese-first `content` and preserve the same machine-readable `structuredContent`, including for Agent clients that display only text.
 
+## WISER module composition
+
+Agent EXCON, Data Foundation, and future systems reuse one MCP Server. Each system statically registers Tools and Resources through a `WiserMcpModule`; module ids are namespaced and globally unique, and duplicates fail before a transport connects. Registration composes only the protocol surface, while every business call continues through the HTTP API.
+
 ## Configuration
 
 Start only after a trusted bootstrap provides the `runId`, `runAgentId`, and short-lived token bound to that instance:

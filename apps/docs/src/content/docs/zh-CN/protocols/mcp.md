@@ -25,6 +25,10 @@ MCP Server 只调用公开 HTTP API，不复制状态机、权限、Receipt 或�
 
 当前 server 使用 `@modelcontextprotocol/sdk` v1 稳定线和 stdio transport。输入是 strict Zod schema；成功结果在中文优先的 `content` 中镜像紧凑 `MACHINE_DATA`，同时返回同一份机器可读 `structuredContent`，兼容只展示文本的 Agent 客户端。
 
+## WISER 模块组合
+
+Agent EXCON、Data Foundation 与未来系统复用同一个 MCP Server。每个系统通过静态 `WiserMcpModule` 注册 Tool/Resource；模块 ID 必须命名空间化且全局唯一，重复 ID 会在连接 transport 前失败。模块注册只组合协议面，所有业务调用仍必须经 HTTP API。
+
 ## 配置
 
 只有在可信 bootstrap 已提供 `runId`、`runAgentId` 和绑定到该实例的短期 token 后才启动：

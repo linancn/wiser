@@ -26,6 +26,10 @@ import {
   type JsonValue,
 } from './http-client.js';
 import {
+  registerWiserMcpModules,
+  type WiserMcpModule,
+} from './platform/modules.js';
+import {
   YONGDING_SCENARIO_MARKDOWN,
   YONGDING_SCENARIO_RESOURCE_URI,
   YONGDING_V1_COMPATIBILITY_SCENARIO_MARKDOWN,
@@ -1583,6 +1587,7 @@ function createAgentExconV2McpServer(http: AgentExconHttpClient): McpServer {
 
 export interface AgentExconMcpServerOptions {
   readonly protocolVersion?: 'v1' | 'v2';
+  readonly modules?: readonly WiserMcpModule[];
 }
 
 /**
@@ -1593,7 +1598,15 @@ export function createAgentExconMcpServer(
   http: AgentExconHttpClient,
   options: AgentExconMcpServerOptions = {},
 ): McpServer {
-  return options.protocolVersion === 'v1'
-    ? createAgentExconV1CompatibilityMcpServer(http)
-    : createAgentExconV2McpServer(http);
+  const server =
+    options.protocolVersion === 'v1'
+      ? createAgentExconV1CompatibilityMcpServer(http)
+      : createAgentExconV2McpServer(http);
+  registerWiserMcpModules(server, options.modules ?? []);
+  return server;
 }
+
+export {
+  registerWiserMcpModules,
+  type WiserMcpModule,
+} from './platform/modules.js';
