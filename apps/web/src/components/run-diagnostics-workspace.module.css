@@ -1,7 +1,7 @@
 .content {
   margin-top: 24px;
   padding: 34px 0 64px;
-  background: #eef4f0;
+  background: var(--canvas);
 }
 
 @media (max-width: 760px) {

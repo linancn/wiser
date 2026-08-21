@@ -407,11 +407,12 @@ test('removes the preview badge and persists the selected color theme', async ({
 
   const themeToggle = page.getByRole('button', { name: '切换至浅色模式' });
   await expect(themeToggle).toBeVisible();
+  await expect(themeToggle).toHaveAttribute('aria-pressed', 'true');
   await themeToggle.click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect(
     page.getByRole('button', { name: '切换至深色模式' }),
-  ).toBeVisible();
+  ).toHaveAttribute('aria-pressed', 'false');
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem('wiser-theme')))
     .toBe('light');
@@ -420,7 +421,7 @@ test('removes the preview badge and persists the selected color theme', async ({
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 
   await page.goto('/en/scenarios');
-  await expect(page.locator('header')).not.toContainText('Design preview');
+  await expect(page.getByRole('banner')).not.toContainText('Design preview');
   await expect(
     page.getByRole('button', { name: 'Switch to dark mode' }),
   ).toBeVisible();
@@ -464,9 +465,7 @@ test('visually checks both color themes at desktop and 390px without browser err
       expect(browserErrors).toEqual([]);
       await page.screenshot({
         fullPage: true,
-        path: testInfo.outputPath(
-          `${viewport.name}-${colorScheme}-trace.png`,
-        ),
+        path: testInfo.outputPath(`${viewport.name}-${colorScheme}-trace.png`),
       });
       await context.close();
     }

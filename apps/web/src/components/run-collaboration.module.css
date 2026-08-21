@@ -16,7 +16,7 @@
 .ledgerHeader span,
 .routingMap header span,
 .inspectorLabel {
-  color: #007a8a;
+  color: var(--accent-strong);
   font-family: 'SFMono-Regular', 'IBM Plex Mono', monospace;
   font-size: 12px;
   font-weight: 800;
@@ -37,7 +37,7 @@
 .toolHeader > p {
   max-width: 760px;
   margin: 0;
-  color: #557069;
+  color: var(--text-secondary);
   font-size: 16px;
   line-height: 1.7;
 }
@@ -48,8 +48,8 @@
   align-items: center;
   gap: 0;
   min-height: 58px;
-  border-top: 1px solid #b9ccc4;
-  border-bottom: 1px solid #b9ccc4;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
 .refreshBar {
@@ -59,25 +59,25 @@
   gap: 12px;
   min-height: 42px;
   margin-bottom: 10px;
-  color: #5d746d;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
 .refreshBar button {
   min-height: 34px;
   padding: 6px 12px;
-  border: 1px solid #9eb8b0;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
-  color: #006d7a;
-  background: #fff;
+  color: var(--accent-strong);
+  background: var(--surface-raised);
   font: inherit;
   font-weight: 800;
   cursor: pointer;
 }
 
 .refreshBar button:hover {
-  border-color: #007a8a;
-  background: #f2f8f5;
+  border-color: var(--accent);
+  background: var(--surface);
 }
 
 .refreshBar button:disabled {
@@ -86,7 +86,7 @@
 }
 
 .refreshBar button:focus-visible {
-  outline: 3px solid #55bfd0;
+  outline: 3px solid var(--accent-bright);
   outline-offset: 2px;
 }
 
@@ -95,27 +95,27 @@
   display: inline-flex;
   align-items: center;
   padding: 0 20px;
-  color: #fff;
-  background: #173630;
+  color: var(--text-on-strong);
+  background: var(--surface-strong);
   font-size: 13px;
   letter-spacing: 0.04em;
 }
 
 .statusBand > span {
   padding: 8px 20px;
-  border-right: 1px solid #ccd9d3;
-  color: #58716a;
+  border-right: 1px solid var(--border);
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
 .statusBand b {
-  color: #173630;
+  color: var(--text-primary);
   font-family: 'SFMono-Regular', 'IBM Plex Mono', monospace;
   font-size: 15px;
 }
 
 .statusBand span[data-attention='true'] b {
-  color: #9a5c00;
+  color: var(--warning);
 }
 
 .filterBar {
@@ -135,9 +135,9 @@
 .filterBar button {
   min-height: 38px;
   padding: 7px 14px;
-  border: 1px solid #b9ccc4;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  color: #3f5d55;
+  color: var(--text-primary);
   background: transparent;
   font: inherit;
   font-size: 13px;
@@ -147,22 +147,22 @@
 
 .filterBar button:hover,
 .filterBar button[aria-pressed='true'] {
-  border-color: #007a8a;
-  color: #fff;
-  background: #007a8a;
+  border-color: var(--accent);
+  color: var(--text-on-strong);
+  background: var(--accent-fill);
 }
 
 .filterBar code {
-  color: #607871;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
 .routingMap {
   padding: 20px;
   border-radius: 16px;
-  color: #fff;
-  background: #173630;
-  box-shadow: 0 16px 38px rgba(23, 54, 48, 0.12);
+  color: var(--text-on-strong);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-soft);
 }
 
 .routingMap header {
@@ -174,11 +174,11 @@
 }
 
 .routingMap header span {
-  color: #8dd3dd;
+  color: var(--accent-bright);
 }
 
 .routingMap header small {
-  color: #87a39b;
+  color: var(--text-on-strong-muted);
   font-family: 'SFMono-Regular', 'IBM Plex Mono', monospace;
   font-size: 12px;
 }
@@ -193,14 +193,14 @@
   position: relative;
   min-width: 0;
   padding: 16px;
-  border: 1px solid #477067;
+  border: 1px solid var(--border-on-strong);
   border-radius: 12px;
-  background: #20463e;
+  background: var(--surface-strong-raised);
 }
 
 .routingMap article[data-coordinator='true'] {
-  border-color: #55bfd0;
-  background: #24584f;
+  border-color: var(--accent);
+  background: var(--channel-soft);
 }
 
 .routingMap article > i {
@@ -209,7 +209,7 @@
   height: 9px;
   margin-bottom: 10px;
   border-radius: 50%;
-  background: #55bfd0;
+  background: var(--accent-bright);
 }
 
 .routingMap article strong,
@@ -226,7 +226,7 @@
 
 .routingMap article > small {
   margin-top: 3px;
-  color: #a9c1ba;
+  color: var(--text-on-strong-muted);
   font-size: 12px;
 }
 
@@ -243,13 +243,13 @@
 }
 
 .routingMap dt {
-  color: #9cb6ae;
+  color: var(--text-on-strong-muted);
   font-size: 12px;
 }
 
 .routingMap dd {
   margin: 0;
-  color: #fff;
+  color: var(--text-on-strong);
   font-family: 'SFMono-Regular', 'IBM Plex Mono', monospace;
   font-size: 14px;
   font-weight: 800;
@@ -266,10 +266,10 @@
 .ledger,
 .inspector {
   overflow: hidden;
-  border: 1px solid #c8d6d0;
+  border: 1px solid var(--border);
   border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 12px 32px rgba(23, 54, 48, 0.06);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-soft);
 }
 
 .ledgerHeader {
@@ -278,7 +278,7 @@
   justify-content: space-between;
   gap: 32px;
   padding: 20px 22px;
-  border-bottom: 1px solid #d4e0da;
+  border-bottom: 1px solid var(--border);
 }
 
 .ledgerHeader h3 {
@@ -289,7 +289,7 @@
 .ledgerHeader p {
   max-width: 430px;
   margin: 0;
-  color: #657b75;
+  color: var(--text-tertiary);
   font-size: 13px;
   text-align: right;
 }
@@ -301,7 +301,7 @@
 }
 
 .exchangeList > li {
-  border-bottom: 1px solid #dbe4df;
+  border-bottom: 1px solid var(--border);
 }
 
 .exchangeList > li:last-child {
@@ -309,19 +309,19 @@
 }
 
 .exchangeShell {
-  border-left: 4px solid #5b8077;
+  border-left: 4px solid var(--text-tertiary);
 }
 
 .exchangeList > li[data-kind='request'] .exchangeShell {
-  border-left-color: #9a5c00;
+  border-left-color: var(--warning);
 }
 
 .exchangeList > li[data-kind='response'] .exchangeShell {
-  border-left-color: #4b8a68;
+  border-left-color: var(--success);
 }
 
 .exchangeList > li[data-kind='handoff'] .exchangeShell {
-  border-left-color: #007a8a;
+  border-left-color: var(--accent);
 }
 
 .exchangeButton {
@@ -333,7 +333,7 @@
   min-height: 88px;
   padding: 14px 18px;
   border: 0;
-  color: #173630;
+  color: var(--text-primary);
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -341,13 +341,13 @@
 
 .exchangeButton:hover,
 .exchangeButton[aria-pressed='true'] {
-  background: #f1f7f4;
+  background: var(--surface);
 }
 
 .exchangeButton:focus-visible,
 .filterBar button:focus-visible,
 .responseLinks button:focus-visible {
-  outline: 3px solid #55bfd0;
+  outline: 3px solid var(--accent-bright);
   outline-offset: -3px;
 }
 
@@ -359,7 +359,7 @@
 
 .exchangeMeta code,
 .exchangeMeta time {
-  color: #607872;
+  color: var(--text-secondary);
   font-family: 'SFMono-Regular', 'IBM Plex Mono', monospace;
   font-size: 12px;
 }
@@ -369,19 +369,19 @@
   width: fit-content;
   padding: 3px 7px;
   border: 1px solid currentColor;
-  color: #006d7a;
+  color: var(--accent-strong);
   font-size: 12px;
   font-weight: 800;
 }
 
 .exchangeMeta > span[data-kind='request'],
 .detailHeader > span[data-kind='request'] {
-  color: #8a5500;
+  color: var(--warning);
 }
 
 .exchangeMeta > span[data-kind='response'],
 .detailHeader > span[data-kind='response'] {
-  color: #387458;
+  color: var(--success-strong);
 }
 
 .exchangeRoute {
@@ -393,14 +393,14 @@
 
 .exchangeRoute small {
   overflow: hidden;
-  color: #49665e;
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.45;
   text-overflow: ellipsis;
 }
 
 .exchangeRoute i {
-  color: #007a8a;
+  color: var(--accent-strong);
   font-style: normal;
   font-weight: 800;
 }
@@ -418,20 +418,20 @@
 }
 
 .exchangeState small {
-  color: #506d65;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
 .exchangeState b {
-  color: #006d7a;
+  color: var(--accent-strong);
   font-size: 12px;
 }
 
 .inspector {
   position: sticky;
   top: 132px;
-  color: #fff;
-  background: #173630;
+  color: var(--text-on-strong);
+  background: var(--surface-strong);
 }
 
 .inspectorLabel {
@@ -440,12 +440,12 @@
   justify-content: space-between;
   gap: 14px;
   padding: 16px 18px;
-  border-bottom: 1px solid #3f655d;
-  color: #b3c9c2;
+  border-bottom: 1px solid var(--border-on-strong);
+  color: var(--text-on-strong-muted);
 }
 
 .inspectorLabel code {
-  color: #efb653;
+  color: var(--warning-bright);
   font-size: 12px;
 }
 
@@ -466,20 +466,20 @@
 
 .detailHeader p {
   margin: 0;
-  color: #a9c2ba;
+  color: var(--text-on-strong-muted);
   font-size: 13px;
 }
 
 .detailHeader > span {
-  color: #8dd3dd;
+  color: var(--accent-bright);
 }
 
 .detailFacts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin: 0;
-  border-top: 1px solid #3f655d;
-  border-bottom: 1px solid #3f655d;
+  border-top: 1px solid var(--border-on-strong);
+  border-bottom: 1px solid var(--border-on-strong);
 }
 
 .detailFacts > div {
@@ -488,16 +488,16 @@
 }
 
 .detailFacts > div:nth-child(odd) {
-  border-right: 1px solid #3f655d;
+  border-right: 1px solid var(--border-on-strong);
 }
 
 .detailFacts > div:nth-child(n + 3) {
-  border-top: 1px solid #3f655d;
+  border-top: 1px solid var(--border-on-strong);
 }
 
 .detailFacts dt,
 .detailSection h4 {
-  color: #9fb9b1;
+  color: var(--text-on-strong-muted);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -515,7 +515,7 @@
 }
 
 .detailSection {
-  border-bottom: 1px solid #3f655d;
+  border-bottom: 1px solid var(--border-on-strong);
 }
 
 .detailSection h4 {
@@ -537,9 +537,9 @@
   gap: 12px;
   align-items: center;
   padding: 11px;
-  border: 1px solid #41685f;
+  border: 1px solid var(--border-on-strong);
   border-radius: 9px;
-  background: #20463e;
+  background: var(--surface-strong-raised);
 }
 
 .deliveryList li::before {
@@ -547,7 +547,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #4b8a68;
+  background: var(--success-fill);
   content: '';
 }
 
@@ -563,14 +563,14 @@
 
 .deliveryList small {
   margin-top: 2px;
-  color: #a8c0b9;
+  color: var(--text-on-strong-muted);
   font-size: 12px;
 }
 
 .deliveryList code {
   grid-column: 2;
   grid-row: 1;
-  color: #8dd3dd;
+  color: var(--accent-bright);
   font-size: 12px;
 }
 
@@ -578,8 +578,8 @@
   display: grid;
   gap: 4px;
   padding: 10px;
-  border-left: 3px solid #55bfd0;
-  background: #20463e;
+  border-left: 3px solid var(--accent-bright);
+  background: var(--surface-strong-raised);
 }
 
 .artifactList code,
@@ -588,12 +588,12 @@
 }
 
 .artifactList code {
-  color: #fff;
+  color: var(--text-on-strong);
   font-size: 12px;
 }
 
 .artifactList small {
-  color: #95b3aa;
+  color: var(--text-on-strong-muted);
   font-size: 12px;
 }
 
@@ -609,10 +609,10 @@
   align-items: center;
   width: 100%;
   padding: 10px;
-  border: 1px solid #41685f;
+  border: 1px solid var(--border-on-strong);
   border-radius: 8px;
-  color: #fff;
-  background: #20463e;
+  color: var(--text-on-strong);
+  background: var(--surface-strong-raised);
   text-align: left;
   cursor: pointer;
 }
@@ -624,16 +624,16 @@
 }
 
 .responseLinks span {
-  color: #8dd3dd;
+  color: var(--accent-bright);
 }
 
 .responseLinks small {
-  color: #efb653;
+  color: var(--warning-bright);
 }
 
 .trustNote {
   margin: 0;
-  color: #b4c8c2;
+  color: var(--text-on-strong-muted);
   font-size: 12px;
   line-height: 1.65;
 }
@@ -641,7 +641,7 @@
 .empty {
   margin: 0;
   padding: 28px 22px;
-  color: #637a73;
+  color: var(--text-tertiary);
   font-size: 14px;
 }
 
@@ -690,9 +690,9 @@
   .statusBand {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    border: 1px solid #c8d6d0;
+    border: 1px solid var(--border);
     border-radius: 12px;
-    background: #fff;
+    background: var(--surface-raised);
   }
 
   .refreshBar {
@@ -716,12 +716,12 @@
     min-height: 58px;
     padding: 10px 12px;
     border-right: 0;
-    border-bottom: 1px solid #d8e2dd;
+    border-bottom: 1px solid var(--border);
     font-size: 12px;
   }
 
   .statusBand > span:nth-of-type(odd) {
-    border-right: 1px solid #d8e2dd;
+    border-right: 1px solid var(--border);
   }
 
   .filterBar {
@@ -848,9 +848,9 @@
 
   .mobileDetail {
     display: block;
-    border-top: 1px solid #d4e0da;
-    color: #fff;
-    background: #173630;
+    border-top: 1px solid var(--border);
+    color: var(--text-on-strong);
+    background: var(--surface-strong);
   }
 
   .detailHeader h3 {

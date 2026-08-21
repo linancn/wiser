@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 import { getDictionary, switchLocalePath, type Locale } from '@/lib/i18n';
-import type { WebDataMode } from '@/lib/read-model-source';
 import styles from './app-shell.module.css';
+import { ThemeToggle } from './theme-toggle';
 
 function RiverMark() {
   return (
@@ -21,11 +21,9 @@ function RiverMark() {
 export function AppShell({
   children,
   locale,
-  mode,
 }: {
   children: ReactNode;
   locale: Locale;
-  mode: WebDataMode;
 }) {
   const dictionary = getDictionary(locale);
   const pathname = usePathname();
@@ -60,19 +58,7 @@ export function AppShell({
           </Link>
         </nav>
         <div className={styles.actions}>
-          <span
-            className={styles.source}
-            data-mode={mode}
-            title={
-              mode === 'reference'
-                ? dictionary.shell.demoDetail
-                : dictionary.shell.liveDetail
-            }
-          >
-            {mode === 'reference'
-              ? dictionary.shell.demo
-              : dictionary.shell.live}
-          </span>
+          <ThemeToggle locale={locale} />
           <Link
             className={styles.language}
             href={languageHref}

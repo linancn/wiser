@@ -1,10 +1,9 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 import { AppShell } from '@/components/app-shell';
 import { getDictionary, isLocale, LOCALES } from '@/lib/i18n';
-import { getWebDataMode } from '@/lib/read-model-source.server';
 
 import '../globals.css';
 
@@ -12,6 +11,32 @@ interface LocaleLayoutProps {
   children: ReactNode;
   params: Promise<{ locale: string }>;
 }
+
+const themeInitializer = `
+  (function () {
+    try {
+      var stored = localStorage.getItem('wiser-theme');
+      var theme = stored === 'light' || stored === 'dark'
+        ? stored
+        : window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light';
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.style.colorScheme = theme;
+    } catch (_) {
+      document.documentElement.dataset.theme = 'light';
+      document.documentElement.style.colorScheme = 'light';
+    }
+  })();
+`;
+
+export const viewport: Viewport = {
+  colorScheme: 'light dark',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#edf5f6' },
+    { media: '(prefers-color-scheme: dark)', color: '#071a21' },
+  ],
+};
 
 export function generateStaticParams() {
   return LOCALES.map((locale) => ({ locale }));
@@ -46,11 +71,12 @@ export default async function LocaleLayout({
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   return (
-    <html lang={locale} data-scroll-behavior="smooth">
+    <html lang={locale} data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitializer }} />
+      </head>
       <body>
-        <AppShell locale={locale} mode={await getWebDataMode()}>
-          {children}
-        </AppShell>
+        <AppShell locale={locale}>{children}</AppShell>
       </body>
     </html>
   );
