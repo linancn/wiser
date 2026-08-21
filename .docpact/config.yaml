@@ -244,11 +244,21 @@ rules:
         kind: code
       - path: apps/api/src/platform/**
         kind: code
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/architecture/wiser-platform.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/wiser-platform.md
+        mode: review_or_update
+    reason: Shared composition and platform contract changes must preserve the bilingual multi-system boundary.
+  - id: wiser-platform-auth
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: packages/platform-auth/src/**
+        kind: code
       - path: apps/api/src/auth.ts
         kind: code
       - path: apps/api/src/runtime-auth.ts
-        kind: code
-      - path: apps/web/src/app/globals.css
         kind: code
     requiredDocs:
       - path: apps/docs/src/content/docs/zh-CN/architecture/wiser-platform.md
@@ -259,11 +269,21 @@ rules:
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/architecture/unified-auth.md
         mode: review_or_update
+    reason: Authentication and authorization changes must preserve the single Supabase identity boundary in both locales.
+  - id: wiser-design-system
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: apps/web/src/app/globals.css
+        kind: code
+      - path: apps/web/src/components/platform/**
+        kind: code
+    requiredDocs:
       - path: apps/docs/src/content/docs/zh-CN/architecture/design-system.md
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/architecture/design-system.md
         mode: review_or_update
-    reason: Shared identity and platform contract changes must preserve the bilingual multi-system and authorization boundaries.
+    reason: Shared UI token and platform component changes must preserve the bilingual light/dark WISER Design System.
   - id: local-stack-workflow
     scope: repo
     repo: wiser
