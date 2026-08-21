@@ -1,16 +1,15 @@
-import type { CSSProperties } from 'react';
-
 import { getDictionary, getTelemetryModeLabel, type Locale } from '../lib/i18n';
 import type { ExerciseRun, PlatformScenario } from '../lib/platform';
 import type { DiagnosticSignal, RunDiagnostics } from '../lib/run-diagnostics';
+import styles from './run-diagnostics-panel.module.css';
 
 function statusLabel(status: RunDiagnostics['status'], locale: Locale): string {
-  const dictionary = getDictionary(locale).diagnostics;
+  const copy = getDictionary(locale).diagnostics;
   return {
-    failed: dictionary.failed,
-    incomplete: dictionary.incomplete,
-    passed: dictionary.passed,
-    passed_with_gaps: dictionary.passedWithGaps,
+    failed: copy.failed,
+    incomplete: copy.incomplete,
+    passed: copy.passed,
+    passed_with_gaps: copy.passedWithGaps,
   }[status];
 }
 
@@ -42,183 +41,155 @@ export function RunDiagnosticsPanel({
   readonly scenario: PlatformScenario;
 }) {
   const copy = getDictionary(locale).diagnostics;
+  const traceCopy = getDictionary(locale).trace;
   const diagnostics = run.diagnostics;
+  const telemetryFindingCount = diagnostics.findings.filter(
+    ({ source }) => source === 'telemetry',
+  ).length;
 
   return (
-    <section
-      id="diagnostics"
-      className="diagnostics-board"
-      aria-labelledby="diagnostics-heading"
-    >
-      <header className="diagnostics-heading">
+    <section className={styles.panel} aria-labelledby="diagnostics-heading">
+      <header className={styles.heading}>
         <div>
-          <p className="eyebrow">02 · {copy.eyebrow}</p>
+          <span>AUTHORITY × TELEMETRY</span>
           <h2 id="diagnostics-heading">{copy.heading}</h2>
         </div>
         <p>{copy.lede}</p>
       </header>
 
-      <div className="diagnostic-tracks">
-        <article
-          className="authority-track"
-          data-source="authoritative"
-          data-status={diagnostics.status}
-        >
-          <header>
-            <span>01 / AUTHORITY</span>
-            <strong>{copy.authorityTrack}</strong>
-            <p>{copy.authorityCopy}</p>
-          </header>
-          <div className="authority-verdict">
-            <span className="verdict-pulse" aria-hidden="true" />
-            <div>
-              <small>{statusLabel(diagnostics.status, locale)}</small>
-              <b>
-                {diagnostics.authoritative.acceptedRoleCount} /{' '}
-                {diagnostics.authoritative.requiredRoleCount}
-              </b>
-              <span>{copy.acceptedRoles}</span>
-            </div>
-          </div>
-          <dl className="authority-facts">
-            <div>
-              <dt>{copy.releasedBarriers}</dt>
-              <dd>
-                {diagnostics.authoritative.releasedBarrierCount} /{' '}
-                {diagnostics.authoritative.requiredBarrierCount}
-              </dd>
-            </div>
-            <div>
-              <dt>{copy.deterministic}</dt>
-              <dd>
-                {diagnostics.authoritative.deterministic ? copy.yes : copy.no}
-              </dd>
-            </div>
-          </dl>
-          <ol className="barrier-rail" aria-label={copy.barrierFlow}>
-            {diagnostics.barriers.map((barrier, index) => (
-              <li
-                className={barrier.released ? 'is-released' : 'is-pending'}
-                key={barrier.key}
-              >
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <div>
-                  <code>{barrier.key}</code>
-                  <small>
-                    {barrier.released ? copy.released : copy.pending}
-                  </small>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </article>
-
-        <article className="telemetry-track" data-source="telemetry">
-          <header>
-            <span>02 / OTEL</span>
-            <strong>{copy.telemetryTrack}</strong>
-            <p>{copy.telemetryCopy}</p>
-          </header>
-          <div className="coverage-orbit">
-            <div
-              className="coverage-dial"
-              style={
-                {
-                  '--coverage': `${Math.round(
-                    diagnostics.telemetry.boundaryCoverage * 100,
-                  )}%`,
-                } as CSSProperties
-              }
-            >
-              <b>{Math.round(diagnostics.telemetry.boundaryCoverage * 100)}%</b>
-              <small>{copy.boundaryCoverage}</small>
-            </div>
-            <dl>
-              <div>
-                <dt>{copy.participantMode}</dt>
-                <dd>
-                  {getTelemetryModeLabel(
-                    diagnostics.telemetry.participantMode,
-                    locale,
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt>{getDictionary(locale).trace.platformSpans}</dt>
-                <dd>{diagnostics.telemetry.platformSpanCount}</dd>
-              </div>
-              <div>
-                <dt>{getDictionary(locale).trace.participantSpans}</dt>
-                <dd>{diagnostics.telemetry.participantSpanCount}</dd>
-              </div>
-              <div>
-                <dt>{getDictionary(locale).trace.droppedSpans}</dt>
-                <dd>{diagnostics.telemetry.droppedSpanCount}</dd>
-              </div>
-              <div>
-                <dt>{getDictionary(locale).trace.lateSpans}</dt>
-                <dd>{diagnostics.telemetry.lateSpanCount}</dd>
-              </div>
-            </dl>
-          </div>
-        </article>
-      </div>
-
-      <section className="evaluation-ledger" aria-labelledby="ledger-heading">
-        <header>
+      <section
+        className={styles.summary}
+        data-testid="diagnostic-summary"
+        data-source="authoritative"
+        data-status={diagnostics.status}
+      >
+        <div className={styles.verdict}>
+          <span>
+            {copy.authorityTrack} · {statusLabel(diagnostics.status, locale)}
+          </span>
+          <strong>
+            {diagnostics.authoritative.acceptedRoleCount} /{' '}
+            {diagnostics.authoritative.requiredRoleCount}
+          </strong>
+          <small>{copy.acceptedRoles}</small>
+        </div>
+        <dl className={styles.summaryFacts}>
           <div>
-            <span>03 / RED → GREEN</span>
-            <h3 id="ledger-heading">{copy.revisionLedger}</h3>
+            <dt>{copy.releasedBarriers}</dt>
+            <dd>
+              {diagnostics.authoritative.releasedBarrierCount} /{' '}
+              {diagnostics.authoritative.requiredBarrierCount}
+            </dd>
           </div>
-          <p>{copy.revisionLede}</p>
-        </header>
-        <div className="evaluation-lanes">
-          {diagnostics.evaluationLanes.map((lane, laneIndex) => (
-            <article key={lane.roleSlotId}>
-              <div className="evaluation-role">
-                <span>{String(laneIndex + 1).padStart(2, '0')}</span>
-                <strong>{roleLabel(lane.roleSlotId, scenario, locale)}</strong>
-                <code>{lane.roleSlotId}</code>
-              </div>
-              <ol>
-                {lane.revisions.length === 0 ? (
-                  <li className="evaluation-empty">{copy.noEvaluation}</li>
-                ) : (
-                  lane.revisions.map((revision, revisionIndex) => (
-                    <li
-                      className={
-                        revision.verdict === 'ACCEPTED'
-                          ? 'revision-accepted'
-                          : 'revision-rework'
-                      }
-                      key={revision.id}
-                    >
-                      <span>R{revisionIndex + 1}</span>
-                      <strong>
-                        {revision.verdict === 'ACCEPTED'
-                          ? copy.accepted
-                          : copy.rework}
-                      </strong>
-                      <small>run_seq {revision.createdRunSeq}</small>
-                      {revision.issueCodes.map((code) => (
-                        <code key={code}>{code}</code>
-                      ))}
-                    </li>
-                  ))
-                )}
-              </ol>
-            </article>
-          ))}
+          <div>
+            <dt>{copy.deterministic}</dt>
+            <dd>
+              {diagnostics.authoritative.deterministic ? copy.yes : copy.no}
+            </dd>
+          </div>
+        </dl>
+        <div className={styles.telemetrySummary} data-source="telemetry">
+          <span>{copy.telemetryTrack}</span>
+          <strong>
+            {Math.round(diagnostics.telemetry.boundaryCoverage * 100)}%
+          </strong>
+          <small>
+            {getTelemetryModeLabel(
+              diagnostics.telemetry.participantMode,
+              locale,
+            )}{' '}
+            · {telemetryFindingCount} {copy.findings}
+          </small>
         </div>
       </section>
 
-      <div className="diagnostic-lower-grid">
-        <section className="signal-matrix" data-source="telemetry">
-          <header>
-            <span>04 / SIGNALS</span>
-            <h3>{copy.signalMatrix}</h3>
+      <section
+        className={styles.barrierSection}
+        aria-labelledby="barrier-heading"
+      >
+        <div className={styles.sectionHeading}>
+          <div>
+            <span>AUTHORITY FLOW</span>
+            <h3 id="barrier-heading">{copy.barrierFlow}</h3>
+          </div>
+          <p>{copy.authorityCopy}</p>
+        </div>
+        <ol className={styles.barriers}>
+          {diagnostics.barriers.map((barrier, index) => (
+            <li data-released={barrier.released} key={barrier.key}>
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <code>{barrier.key}</code>
+              <strong>{barrier.released ? copy.released : copy.pending}</strong>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className={styles.ledger} aria-labelledby="ledger-heading">
+        <div className={styles.sectionHeading}>
+          <div>
+            <span>RED → GREEN</span>
+            <h3 id="ledger-heading">{copy.revisionLedger}</h3>
+          </div>
+          <p>{copy.revisionLede}</p>
+        </div>
+        <div className={styles.ledgerHeader} aria-hidden="true">
+          <span>{getDictionary(locale).common.roles}</span>
+          <span>Revision</span>
+          <span>Verdict</span>
+          <span>Evidence</span>
+          <span>Run seq</span>
+        </div>
+        <div className={styles.evaluationRows}>
+          {diagnostics.evaluationLanes.flatMap((lane) =>
+            lane.revisions.map((revision, revisionIndex) => (
+              <article
+                className={styles.evaluationRow}
+                data-testid="evaluation-row"
+                data-verdict={revision.verdict}
+                key={revision.id}
+              >
+                <div>
+                  <strong>
+                    {roleLabel(lane.roleSlotId, scenario, locale)}
+                  </strong>
+                  <code>{lane.roleSlotId}</code>
+                </div>
+                <span>R{revisionIndex + 1}</span>
+                <strong>
+                  {revision.verdict === 'ACCEPTED'
+                    ? copy.accepted
+                    : copy.rework}
+                </strong>
+                <div className={styles.issueCodes}>
+                  {revision.issueCodes.length === 0 ? (
+                    <span>—</span>
+                  ) : (
+                    revision.issueCodes.map((code) => (
+                      <code key={code}>{code}</code>
+                    ))
+                  )}
+                </div>
+                <code>{revision.createdRunSeq}</code>
+              </article>
+            )),
+          )}
+        </div>
+      </section>
+
+      <div className={styles.lowerGrid}>
+        <section
+          className={styles.signals}
+          data-source="telemetry"
+          aria-labelledby="signals-heading"
+        >
+          <div className={styles.sectionHeading}>
+            <div>
+              <span>OTEL SIGNALS</span>
+              <h3 id="signals-heading">{copy.signalMatrix}</h3>
+            </div>
             <p>{copy.signalLede}</p>
-          </header>
+          </div>
           <ol>
             {diagnostics.signals.map((signal) => (
               <li data-status={signal.status} key={signal.id}>
@@ -234,15 +205,14 @@ export function RunDiagnosticsPanel({
           </ol>
         </section>
 
-        <section
-          className="diagnostic-findings"
-          aria-labelledby="findings-heading"
-        >
-          <header>
-            <span>05 / FINDINGS</span>
-            <h3 id="findings-heading">{copy.findings}</h3>
+        <section className={styles.findings} aria-labelledby="findings-heading">
+          <div className={styles.sectionHeading}>
+            <div>
+              <span>TRIAGE</span>
+              <h3 id="findings-heading">{copy.findings}</h3>
+            </div>
             <p>{copy.findingsLede}</p>
-          </header>
+          </div>
           <ol>
             {diagnostics.findings.map((finding, index) => (
               <li
@@ -250,13 +220,14 @@ export function RunDiagnosticsPanel({
                 data-source={finding.source}
                 key={`${finding.code}-${index}`}
               >
-                <span>{String(index + 1).padStart(2, '0')}</span>
+                <i aria-hidden="true">
+                  {finding.severity === 'error'
+                    ? '!'
+                    : finding.severity === 'warning'
+                      ? '△'
+                      : 'i'}
+                </i>
                 <div>
-                  <small>
-                    {finding.source === 'authoritative'
-                      ? copy.sourceAuthoritative
-                      : copy.sourceTelemetry}
-                  </small>
                   <strong>{copy.findingLabels[finding.code]}</strong>
                   <code>{finding.code}</code>
                 </div>
@@ -264,6 +235,10 @@ export function RunDiagnosticsPanel({
               </li>
             ))}
           </ol>
+          <footer>
+            <span>{traceCopy.platformObserved}</span>
+            <span>{traceCopy.participantReported}</span>
+          </footer>
         </section>
       </div>
     </section>
