@@ -1,0 +1,4 @@
+interface:
+  display_name: "Docpact"
+  short_description: "Use docpact in direct task workflows and one-finding repair."
+  default_prompt: "Use $docpact to decide which docpact CLI command to run before coding, after coding, during ongoing trust checks, or when one explicit lint finding needs repair."

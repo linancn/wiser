@@ -1,0 +1,42 @@
+# Use the smallest section that matches the repository's current config model.
+
+# --------------------------------------------------------------------
+# Repo-local routing intents
+# --------------------------------------------------------------------
+routing:
+  intents:
+    <intent-alias>:
+      paths:
+        - <repo-relative-path-glob>
+
+# --------------------------------------------------------------------
+# Workspace profile routing intents
+# Place under workspace.profiles.<profile-name>.routing
+# --------------------------------------------------------------------
+routing:
+  intents:
+    <shared-intent-alias>:
+      paths:
+        - <repo-relative-path-glob>
+
+# --------------------------------------------------------------------
+# Child repo routing override with merge
+# Place under overrides.routing
+# --------------------------------------------------------------------
+routing:
+  mode: merge
+  intents:
+    <intent-alias>:
+      paths:
+        - <repo-relative-path-glob>
+
+# --------------------------------------------------------------------
+# Child repo routing override with replace
+# Place under overrides.routing
+# --------------------------------------------------------------------
+routing:
+  mode: replace
+  intents:
+    <intent-alias>:
+      paths:
+        - <repo-relative-path-glob>

@@ -1,0 +1,19 @@
+version: 1
+layout: repo
+lastReviewedAt: 2026-04-22
+lastReviewedCommit: starter-workspace-child-config
+inherit:
+  workspace_profile: default
+overrides:
+  rules:
+    add:
+      - id: local-domain-docs
+        scope: repo
+        repo: your-child-repo
+        triggers:
+          - path: src/domain/**
+            kind: code
+        requiredDocs:
+          - path: docs/domain.md
+            mode: review_or_update
+        reason: Domain-specific changes should refresh the matching local document.

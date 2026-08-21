@@ -4,6 +4,7 @@
 **/next-env.d.ts
 **/node_modules/
 **/out/
+.agents/skills/
 coverage/
 playwright-report/
 supabase/.temp/

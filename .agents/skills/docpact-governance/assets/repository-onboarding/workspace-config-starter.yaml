@@ -1,0 +1,40 @@
+version: 1
+layout: workspace
+lastReviewedAt: 2026-04-22
+lastReviewedCommit: starter-workspace-config
+coverage:
+  include:
+    - docs/**
+workspace:
+  name: your-workspace
+  profiles:
+    default:
+      coverage:
+        include:
+          - src/**
+      rules:
+        - id: repo-bootstrap
+          scope: repo
+          repo: workspace-default
+          triggers:
+            - path: src/**
+              kind: code
+          requiredDocs:
+            - path: README.md
+              mode: review_or_update
+            - path: .docpact/config.yaml
+              mode: review_or_update
+          reason: Default repo changes should refresh local docs and governance metadata.
+rules:
+  - id: workspace-governance
+    scope: workspace
+    repo: your-workspace
+    triggers:
+      - path: docs/**
+        kind: doc-contract
+    requiredDocs:
+      - path: AGENTS.md
+        mode: review_or_update
+      - path: .docpact/config.yaml
+        mode: review_or_update
+    reason: Root governance changes should refresh top-level guidance and governance config.
