@@ -2,42 +2,27 @@ import Link from 'next/link';
 
 import { getDictionary, type Locale } from '@/lib/i18n';
 import type { ExerciseRun, PlatformScenario } from '@/lib/platform';
-import { ReadModelGaps } from './read-model-state';
 import type { ReadModelGap, WebDataMode } from '@/lib/read-model-source';
+import styles from './catalog.module.css';
+import { ReadModelGaps } from './read-model-state';
 
-function ScenarioRiver({
-  index,
-  scenario,
-  locale,
-}: {
-  index: number;
-  scenario: PlatformScenario;
-  locale: Locale;
-}) {
-  const paths = [
-    'M8 61C48 15 82 83 128 42s69-25 110 5 72 31 114 4',
-    'M8 38c42 31 71-24 117 1s72 33 112 3 70-25 115 8',
-    'M8 56c40-43 80 7 120-14s72-4 108 15 75-14 116-25',
-  ];
-  const path = paths[index % paths.length] ?? paths[0];
-
-  return (
-    <div className="scenario-river" aria-label={scenario.region[locale]}>
-      <svg viewBox="0 0 360 88" aria-hidden="true">
-        <path className="river-bed" d={path} />
-        <path className="river-current" d={path} />
-        {scenario.topology.slice(0, 5).map((node, nodeIndex) => (
-          <g
-            key={node.en}
-            transform={`translate(${36 + nodeIndex * (286 / Math.max(1, Math.min(4, scenario.topology.length - 1)))} ${[48, 38, 50, 43, 52][nodeIndex] ?? 45})`}
-          >
-            <circle r="5" />
-          </g>
-        ))}
-      </svg>
-      <span>{scenario.region[locale]}</span>
-    </div>
-  );
+function priorityRun(runs: readonly ExerciseRun[]): ExerciseRun | undefined {
+  const weights: Readonly<Record<ExerciseRun['state'], number>> = {
+    failed: 0,
+    running: 1,
+    paused: 2,
+    completing: 3,
+    ready: 4,
+    forming: 5,
+    created: 6,
+    completed: 7,
+    cancelled: 8,
+  };
+  return [...runs].sort(
+    (left, right) =>
+      weights[left.state] - weights[right.state] ||
+      right.wallStartedAt.localeCompare(left.wallStartedAt),
+  )[0];
 }
 
 export function ScenarioCenter({
@@ -56,10 +41,12 @@ export function ScenarioCenter({
   const dictionary = getDictionary(locale);
 
   return (
-    <main id="main-content" className="page-main scenario-center-page">
-      <header className="page-hero compact-hero">
+    <main id="main-content" className={styles.page}>
+      <header className={styles.intro}>
         <div>
-          <p className="eyebrow">{dictionary.scenarioCenter.eyebrow}</p>
+          <span className={styles.eyebrow}>
+            {dictionary.scenarioCenter.eyebrow}
+          </span>
           <h1>{dictionary.scenarioCenter.heading}</h1>
         </div>
         <p>
@@ -67,23 +54,28 @@ export function ScenarioCenter({
             ? dictionary.scenarioCenter.lede
             : dictionary.scenarioCenter.liveLede}
         </p>
+        <dl className={styles.summary}>
+          <div>
+            <dt>{dictionary.scenarioCenter.catalogLabel}</dt>
+            <dd>{scenarios.length}</dd>
+          </div>
+          <div>
+            <dt>{dictionary.scenarioCenter.activeRuns}</dt>
+            <dd>{runs.filter(({ state }) => state === 'running').length}</dd>
+          </div>
+        </dl>
       </header>
 
       <ReadModelGaps gaps={gaps} locale={locale} />
 
-      <section
-        className="catalog-section"
-        aria-labelledby="scenario-catalog-heading"
-      >
-        <div className="section-heading ruled-heading">
+      <section aria-labelledby="scenario-catalog-heading">
+        <div className={styles.sectionHeader}>
           <h2 id="scenario-catalog-heading">
             {dictionary.scenarioCenter.catalogLabel}
           </h2>
-          <span className="mono-count">
-            {String(scenarios.length).padStart(2, '0')}
-          </span>
+          <span>{String(scenarios.length).padStart(2, '0')}</span>
         </div>
-        <div className="scenario-grid">
+        <div className={styles.scenarioList}>
           {scenarios.map((scenario, index) => {
             const currentVersion = scenario.versions.find(
               (version) => version.id === scenario.currentVersionId,
@@ -91,41 +83,44 @@ export function ScenarioCenter({
             const scenarioRuns = runs.filter(
               (run) => run.scenarioId === scenario.id,
             );
-            const firstRun = scenarioRuns[0];
+            const firstRun = priorityRun(scenarioRuns);
             return (
               <article
-                className="scenario-card"
+                className={styles.scenarioRow}
                 data-testid="scenario-card"
                 key={scenario.id}
               >
-                <div className="scenario-card-index" aria-hidden="true">
-                  SCN-{String(index + 1).padStart(2, '0')}
+                <div
+                  className={styles.topology}
+                  aria-label={scenario.region[locale]}
+                >
+                  <span>{scenario.region[locale]}</span>
+                  <div className={styles.topologyNodes} aria-hidden="true">
+                    {scenario.requiredRoles.map((role, roleIndex) => (
+                      <i key={role.id}>
+                        {String(roleIndex + 1).padStart(2, '0')}
+                      </i>
+                    ))}
+                  </div>
+                  <code>SCN-{String(index + 1).padStart(2, '0')}</code>
                 </div>
-                <ScenarioRiver
-                  index={index}
-                  locale={locale}
-                  scenario={scenario}
-                />
-                <div className="scenario-card-copy">
-                  <div className="card-badges">
-                    <span className="status-badge simulation">
+                <div className={styles.scenarioCopy}>
+                  <div className={styles.badges}>
+                    <span className={styles.badge}>
                       {dictionary.common.simulationOnly}
                     </span>
                     <span
-                      className={`status-badge ${currentVersion?.status ?? 'draft'}`}
+                      className={styles.badge}
+                      data-status={currentVersion?.status ?? 'draft'}
                     >
                       {dictionary.common[currentVersion?.status ?? 'draft']}
                     </span>
                   </div>
-                  <p className="scenario-short-name">
-                    {scenario.shortName[locale]}
-                  </p>
+                  <span>{scenario.shortName[locale]}</span>
                   <h2>{scenario.title[locale]}</h2>
-                  <p className="scenario-description">
-                    {scenario.description[locale]}
-                  </p>
+                  <p>{scenario.description[locale]}</p>
                 </div>
-                <dl className="scenario-card-stats">
+                <dl className={styles.facts}>
                   <div>
                     <dt>{dictionary.scenarioCenter.currentVersion}</dt>
                     <dd>{currentVersion?.label ?? '—'}</dd>
@@ -138,23 +133,27 @@ export function ScenarioCenter({
                     <dt>{dictionary.scenarioCenter.activeRuns}</dt>
                     <dd>{scenarioRuns.length}</dd>
                   </div>
+                  <div>
+                    <dt>{dictionary.common.virtualTime}</dt>
+                    <dd>{firstRun?.currentVirtualTime ?? '—'}</dd>
+                  </div>
                 </dl>
-                <div className="scenario-card-actions">
+                <div className={styles.actions}>
                   <Link
-                    className="primary-action"
+                    className={styles.primary}
                     href={`/${locale}/scenarios/${scenario.id}`}
                   >
                     {dictionary.scenarioCenter.manage}
-                    <span aria-hidden="true">↗</span>
+                    <span aria-hidden="true">→</span>
                   </Link>
                   {firstRun === undefined ? (
-                    <span className="muted-action">
+                    <span className={styles.muted}>
                       {dictionary.scenarioCenter.noLiveRun}
                     </span>
                   ) : (
                     <Link
-                      className="text-action"
-                      href={`/${locale}/runs/${firstRun.id}/trace`}
+                      className={styles.secondary}
+                      href={`/${locale}/runs/${firstRun.id}`}
                     >
                       {dictionary.scenarioCenter.observeRun}
                     </Link>

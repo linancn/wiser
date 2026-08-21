@@ -6,15 +6,13 @@ import type { ReactNode } from 'react';
 
 import { getDictionary, switchLocalePath, type Locale } from '@/lib/i18n';
 import type { WebDataMode } from '@/lib/read-model-source';
+import styles from './app-shell.module.css';
 
 function RiverMark() {
   return (
-    <svg className="brand-mark" viewBox="0 0 52 52" aria-hidden="true">
-      <path
-        className="brand-water"
-        d="M5 30c8 0 9-12 18-12s9 12 18 12c3 0 5-1 7-4"
-      />
-      <path className="brand-bank" d="M8 39h36" />
+    <svg className={styles.mark} viewBox="0 0 52 52" aria-hidden="true">
+      <path d="M5 30c8 0 9-12 18-12s9 12 18 12c3 0 5-1 7-4" />
+      <path className={styles.bank} d="M8 39h36" />
       <circle cx="23" cy="18" r="3.5" />
     </svg>
   );
@@ -35,39 +33,48 @@ export function AppShell({
   const languageHref = switchLocalePath(pathname, otherLocale);
 
   return (
-    <div className="app-shell" lang={locale}>
-      <a className="skip-link" href="#main-content">
+    <div className={styles.shell} lang={locale}>
+      <a className={styles.skip} href="#main-content">
         {dictionary.shell.skip}
       </a>
-      <header className="app-header">
-        <Link className="brand-lockup" href={`/${locale}/scenarios`}>
+      <header className={styles.header}>
+        <Link className={styles.brand} href={`/${locale}/scenarios`}>
           <RiverMark />
           <span>
             <strong>{dictionary.brand.name}</strong>
             <small>{dictionary.brand.product}</small>
           </span>
         </Link>
-        <nav className="global-nav" aria-label={dictionary.brand.product}>
-          <Link href={`/${locale}/scenarios`}>{dictionary.nav.scenarios}</Link>
-          <Link href={`/${locale}/runs`}>{dictionary.nav.runs}</Link>
-          <Link href={`/${locale}/runs`}>{dictionary.nav.trace}</Link>
+        <nav className={styles.nav} aria-label={dictionary.shell.mainNav}>
+          <Link
+            href={`/${locale}/scenarios`}
+            aria-current={pathname.includes('/scenarios') ? 'page' : undefined}
+          >
+            {dictionary.nav.scenarios}
+          </Link>
+          <Link
+            href={`/${locale}/runs`}
+            aria-current={pathname.includes('/runs') ? 'page' : undefined}
+          >
+            {dictionary.nav.runs}
+          </Link>
         </nav>
-        <div className="header-actions">
+        <div className={styles.actions}>
           <span
-            className={`demo-source source-${mode}`}
+            className={styles.source}
+            data-mode={mode}
             title={
               mode === 'reference'
                 ? dictionary.shell.demoDetail
                 : dictionary.shell.liveDetail
             }
           >
-            <i aria-hidden="true" />
             {mode === 'reference'
               ? dictionary.shell.demo
               : dictionary.shell.live}
           </span>
           <Link
-            className="language-switch"
+            className={styles.language}
             href={languageHref}
             hrefLang={otherLocale}
             aria-label={`${dictionary.shell.language}：${dictionary.shell.otherLanguage}`}
@@ -76,12 +83,8 @@ export function AppShell({
           </Link>
         </div>
       </header>
-      <div className="boundary-strip" role="note">
-        <span>{dictionary.shell.participantBoundary}</span>
-        <span>{dictionary.shell.observerBoundary}</span>
-      </div>
       {children}
-      <footer className="app-footer">
+      <footer className={styles.footer}>
         <span>{dictionary.footer.product}</span>
         <span>{dictionary.footer.boundary}</span>
       </footer>
