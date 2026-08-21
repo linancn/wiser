@@ -236,6 +236,7 @@ export async function runWorkBuddyCookbook(options) {
   const labRuntimeDirectory = join(outputDirectory, 'lab');
   const workBuddyRuntimeDirectory = join(outputDirectory, 'workbuddy');
   const port = await freeLoopbackPort();
+  const apiBaseUrl = `http://127.0.0.1:${port}/api/v2/`;
   let server;
   let launch;
   let evaluations = [];
@@ -254,10 +255,17 @@ export async function runWorkBuddyCookbook(options) {
       config: {
         host: '127.0.0.1',
         port,
-        apiBaseUrl: `http://127.0.0.1:${port}/api/v2/`,
+        apiBaseUrl,
         runtimeDirectory: labRuntimeDirectory,
       },
       environment,
+    });
+    await options.onLabReady?.({
+      apiBaseUrl,
+      operatorToken: server.lab.operatorToken,
+      runId: server.lab.manifest.runId,
+      scenarioVersionId: server.lab.manifest.scenarioVersionId,
+      roster: server.lab.manifest.roster,
     });
     const rendered = await renderWorkBuddyRuntime({
       labManifestPath: server.bundle.manifestPath,
@@ -301,6 +309,13 @@ export async function runWorkBuddyCookbook(options) {
     evaluations = publicEvaluations(evaluationResponse);
     events = eventSummary(eventResponse);
     interactions = interactionSummary(interactionResponse);
+    await options.onObservationReady?.({
+      evaluations,
+      events,
+      interactions,
+      participantResults: launch.report.results,
+      runId: server.lab.manifest.runId,
+    });
   } catch (error) {
     failure =
       error instanceof Error

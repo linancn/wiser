@@ -35,6 +35,11 @@
     "cookbook:scripted": "tsx cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs --mode scripted",
     "cookbook:rework": "tsx cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs --mode scripted --fault water-evidence-schema-once",
     "cookbook:workbuddy": "tsx cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs --mode workbuddy",
+    "showcase": "tsx cookbooks/workbuddy-yongding-tdd/showcase/scripts/showcase.mjs",
+    "showcase:preflight": "pnpm showcase preflight",
+    "showcase:start": "pnpm showcase start",
+    "showcase:status": "pnpm showcase status",
+    "showcase:stop": "pnpm showcase stop",
     "stack:up": "pnpm supabase:start && pnpm compose:up",
     "stack:down": "pnpm compose:down && pnpm supabase:stop"
   },

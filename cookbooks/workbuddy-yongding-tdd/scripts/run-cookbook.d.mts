@@ -9,6 +9,29 @@ export interface RunWorkBuddyCookbookOptions {
   readonly repositoryRoot: string;
   readonly timeoutMs?: number;
   readonly workBuddyCli?: string;
+  readonly onLabReady?: (context: {
+    readonly apiBaseUrl: string;
+    readonly operatorToken: string;
+    readonly runId: string;
+    readonly scenarioVersionId: string;
+    readonly roster: readonly {
+      readonly roleSlotId: string;
+      readonly runAgentId: string;
+      readonly agentVersionId: string;
+      readonly instanceKey: string;
+    }[];
+  }) => void | Promise<void>;
+  readonly onObservationReady?: (context: {
+    readonly evaluations: WorkBuddyCookbookReport['authoritative']['evaluations'];
+    readonly events: {
+      readonly eventCount: number;
+      readonly lastRunSeq: number | null;
+      readonly releasedBarriers: readonly string[];
+    };
+    readonly interactions: WorkBuddyCookbookReport['authoritative']['interactions'];
+    readonly participantResults: WorkBuddyLaunchReport['results'];
+    readonly runId: string;
+  }) => void | Promise<void>;
 }
 
 export interface WorkBuddyCookbookReport {
