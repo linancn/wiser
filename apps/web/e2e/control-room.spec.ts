@@ -71,7 +71,14 @@ test('separates scenario management from active multi-agent runs', async ({
   await expect(
     page.getByRole('heading', { name: '角色与协作契约' }),
   ).toBeVisible();
+  await expect(page.getByTestId('scenario-contract-summary')).toContainText(
+    '4 个必需角色',
+  );
   await expect(page.getByTestId('role-slot')).toHaveCount(4);
+  await expect(page.getByTestId('associated-run')).toHaveCount(1);
+  await expect(
+    page.getByTestId('associated-run').getByRole('link', { name: '打开运行' }),
+  ).toHaveAttribute('href', '/zh-CN/runs/run-yongding-spring-042');
 });
 
 test('opens a human-first Run overview before technical drill-down', async ({
