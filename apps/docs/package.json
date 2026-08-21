@@ -1,9 +1,9 @@
 {
-  "name": "@agent-excon/docs",
+  "name": "@wiser/docs",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Bilingual Fumadocs documentation for WISER Agent EXCON",
+  "description": "Unified bilingual Fumadocs documentation for WISER",
   "license": "MIT",
   "scripts": {
     "generate": "fumadocs-mdx",

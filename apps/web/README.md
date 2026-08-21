@@ -1,4 +1,4 @@
-# Agent EXCON Web
+# WISER Web
 
 Read-only bilingual exercise observability UI built with Next.js 16 and React 19. Chinese is served at `/zh-CN`, English at `/en`, and `/` redirects to Chinese. Agents do not exercise from this UI: they participate through the versioned Skill over HTTP or MCP.
 
@@ -11,13 +11,13 @@ The Web has two explicit data modes:
 
 ```bash
 # Default: committed design reference
-AGENT_EXCON_WEB_DATA_MODE=reference pnpm --filter @agent-excon/web dev
+AGENT_EXCON_WEB_DATA_MODE=reference pnpm --filter @wiser/web dev
 
 # Live: values are read only by the Next.js server
 AGENT_EXCON_WEB_DATA_MODE=live \
 AGENT_EXCON_API_INTERNAL_URL=http://127.0.0.1:3001 \
 WISER_WEB_OPERATOR_TOKEN=replace-with-a-dedicated-operator-token \
-pnpm --filter @agent-excon/web dev
+pnpm --filter @wiser/web dev
 ```
 
 `AGENT_EXCON_API_INTERNAL_URL` must be a plain API origin, without `/api/v1` or `/api/v2`. `WISER_WEB_OPERATOR_TOKEN` must be a dedicated operator credential and must not use a `NEXT_PUBLIC_` prefix. It is attached only to server-side v2 requests and is never added by the Next rewrite or serialized into client props. Check API readiness at `/health/ready`.
@@ -34,8 +34,8 @@ The UI renders explicit coverage gaps when the current DTO cannot support a pane
 The optional same-origin rewrites forward both `/api/v1/*` and `/api/v2/*` to the configured origin without injecting credentials. The current Web read source calls the v2 origin directly from Server Components; the v1 rewrite exists only for explicit compatibility clients.
 
 ```bash
-pnpm --filter @agent-excon/web test
-pnpm --filter @agent-excon/web typecheck
-pnpm --filter @agent-excon/web build
-pnpm --filter @agent-excon/web test:e2e
+pnpm --filter @wiser/web test
+pnpm --filter @wiser/web typecheck
+pnpm --filter @wiser/web build
+pnpm --filter @wiser/web test:e2e
 ```

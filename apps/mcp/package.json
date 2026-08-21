@@ -1,11 +1,12 @@
 {
-  "name": "agent-excon-mcp-server",
+  "name": "@wiser/mcp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Local stdio MCP adapter for the Agent EXCON HTTP API",
+  "description": "Shared MCP composition host for WISER HTTP capabilities",
   "license": "MIT",
   "bin": {
+    "wiser-mcp": "dist/index.js",
     "agent-excon-mcp-server": "dist/index.js"
   },
   "exports": {

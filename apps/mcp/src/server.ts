@@ -689,7 +689,7 @@ export function createAgentExconV1CompatibilityMcpServer(
   http: AgentExconHttpClient,
 ): McpServer {
   const server = new McpServer({
-    name: 'agent-excon-mcp-server',
+    name: 'wiser-mcp-server',
     version: '0.1.0',
   });
 
@@ -1161,7 +1161,7 @@ function registerTaskLeaseCommandTool(
 
 function createAgentExconV2McpServer(http: AgentExconHttpClient): McpServer {
   const server = new McpServer({
-    name: 'agent-excon-mcp-server',
+    name: 'wiser-mcp-server',
     version: '0.1.0',
   });
 

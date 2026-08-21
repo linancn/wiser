@@ -31,6 +31,8 @@ English · [中文（默认）](./README.md)
 
 WISER supports perception, simulation, decision-making, and reconfiguration for water systems. Its first open-source core subsystem is **Agent Exercise Control Infrastructure / Agent EXCON**, which packages real-world work as runnable, replayable, and verifiable scenarios exposed through HTTP, MCP, and versioned file-based Skills.
 
+The repository now follows a WISER multi-system platform boundary: Fastify, Next.js, MCP, Fumadocs, Supabase Auth, and the WISER Design System are shared hosts while Agent EXCON retains its own authoritative domain facts. The second system, **Data Foundation**, has established its platform contract, static composition entry, and unified Web navigation; its complete authoritative data plane and projections continue through the repository's Red → Green milestones.
+
 The repository began with a testable single-agent compatibility slice for ecological replenishment and multi-source allocation in the Yongding River system. The default development protocol is now the v2 multi-scenario, multi-role team exercise: evidence, hydraulic, ecology, and dispatch-coordination agents receive different Receipts, execute Tasks concurrently, and collaborate explicitly through Messages, ArtifactVersions, Submissions, and Feedback.
 
 Agents load [`skills/agent-excon`](./skills/agent-excon/SKILL.md) and participate through HTTP or MCP. Web never impersonates a participant; it provides multi-scenario management, run status, per-agent OTel-style traces, and historical-perspective replay backed by domain events and receipts.

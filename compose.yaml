@@ -19,7 +19,7 @@ x-app: &app
 services:
   api:
     <<: *app
-    command: pnpm --filter @agent-excon/api dev
+    command: pnpm --filter @wiser/api dev
     environment:
       API_HOST: 0.0.0.0
       API_PORT: 3001
@@ -41,7 +41,7 @@ services:
 
   web:
     <<: *app
-    command: pnpm --filter @agent-excon/web exec next dev --hostname 0.0.0.0 --port 3000
+    command: pnpm --filter @wiser/web exec next dev --hostname 0.0.0.0 --port 3000
     environment:
       AGENT_EXCON_API_INTERNAL_URL: http://api:3001
       AGENT_EXCON_WEB_DATA_MODE: ${AGENT_EXCON_WEB_DATA_MODE:-live}
@@ -85,7 +85,7 @@ services:
 
   docs:
     <<: *app
-    command: pnpm --filter @agent-excon/docs exec next dev --hostname 0.0.0.0 --port 4321
+    command: pnpm --filter @wiser/docs exec next dev --hostname 0.0.0.0 --port 4321
     ports:
       - 127.0.0.1:4321:4321
     healthcheck:
@@ -125,7 +125,7 @@ services:
   telemetry-ingress:
     <<: *app
     profiles: [observability]
-    command: pnpm --filter @agent-excon/telemetry-ingress dev
+    command: pnpm --filter @wiser/telemetry-ingress dev
     environment:
       TELEMETRY_INGRESS_HOST: 0.0.0.0
       TELEMETRY_INGRESS_PORT: 3003

@@ -1,9 +1,9 @@
 {
-  "name": "@agent-excon/telemetry-ingress",
+  "name": "@wiser/telemetry-ingress",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Authenticated OTLP/HTTP ingress for participant-reported WISER Agent EXCON telemetry",
+  "description": "Authenticated OTLP/HTTP ingress for WISER system telemetry",
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts"

@@ -1,9 +1,9 @@
 {
-  "name": "@agent-excon/web",
+  "name": "@wiser/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Bilingual exercise control room for Agent EXCON",
+  "description": "Unified bilingual WISER workspace and system shell",
   "license": "MIT",
   "scripts": {
     "dev": "next dev",

@@ -18,7 +18,7 @@ lastReviewedAt: 2026-08-21
 lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
-# Agent EXCON MCP Server
+# WISER MCP Gateway
 
 本包提供 WISER Agent EXCON 的本地 stdio MCP 适配器。它只调用公开 HTTP API，不读 PostgreSQL，不持有 service-role 凭据，也不通过 Web 参训。默认协议是多场景、多智能体 **v2**，默认 API 基路径是 `/api/v2/`。
 
@@ -33,8 +33,8 @@ export AGENT_EXCON_API_KEY=<short-lived-run-agent-token>
 # Optional; this is already the default:
 export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
 
-pnpm --filter agent-excon-mcp-server build
-pnpm --filter agent-excon-mcp-server start
+pnpm --filter @wiser/mcp build
+pnpm --filter @wiser/mcp start
 ```
 
 `AGENT_EXCON_API_KEY` 必须是短期、可撤销、最小 scope，且服务端绑定具体 `run_agent_id` 的参训 token。不要把 token 写入 MCP 工具参数、Message、Artifact、Submission、日志或提交记录。

@@ -67,8 +67,8 @@ To verify only the current v2 multi-agent protocol slice:
 ```bash
 pnpm --filter @agent-excon/contracts test
 pnpm --filter @agent-excon/core test
-pnpm --filter @agent-excon/api test
-pnpm --filter agent-excon-mcp-server test
+pnpm --filter @wiser/api test
+pnpm --filter @wiser/mcp test
 node skills/agent-excon/scripts/lint-skill.mjs
 ```
 
@@ -106,8 +106,8 @@ MCP calls only HTTP and never reads the database. Start it only after receiving 
 export AGENT_EXCON_API_KEY=<short-lived-run-agent-token>
 export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
 
-pnpm --filter agent-excon-mcp-server build
-pnpm --filter agent-excon-mcp-server start
+pnpm --filter @wiser/mcp build
+pnpm --filter @wiser/mcp start
 ```
 
 The default v2 loop is `assignment → sync/ack → issued Task → claim/begin/heartbeat → Message/Artifact → Submission → wait-and-sync → safe recovery/review → endorsement → Feedback → agent-safe replay`. See [MCP integration](/en/protocols/mcp/) for the 18 tools and implemented routes. `/sync` is the only new-content issuance operation; recovery GETs never turn eligible content into issued content.

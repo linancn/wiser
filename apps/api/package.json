@@ -1,9 +1,9 @@
 {
-  "name": "@agent-excon/api",
+  "name": "@wiser/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Skill-first HTTP API for the Agent EXCON exercise platform",
+  "description": "Shared HTTP composition host for WISER product systems",
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts"

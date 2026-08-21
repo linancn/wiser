@@ -37,8 +37,8 @@ Agent EXCON、Data Foundation 与未来系统复用同一个 MCP Server。每个
 export AGENT_EXCON_API_KEY=<short-lived-run-agent-token>
 export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
 
-pnpm --filter agent-excon-mcp-server build
-pnpm --filter agent-excon-mcp-server start
+pnpm --filter @wiser/mcp build
+pnpm --filter @wiser/mcp start
 ```
 
 不要把 token 放入 Tool 参数、Message、Artifact、Submission、日志、遥测或 Git。MCP 启动不会注册 RunAgent，也不会把 operator credential 转换为参训身份。

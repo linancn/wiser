@@ -31,6 +31,8 @@ lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 
 WISER 面向水系统的感知、推演、决策与重构。当前首个开源核心子系统是**智能体演练场 / Agent EXCON**：它把真实世界任务封装为可运行、可回放、可验证的演练场景，并通过 HTTP、MCP 与文件化 Skill 向异构智能体开放。
 
+仓库现已采用 WISER 多系统平台边界：Fastify、Next.js、MCP、Fumadocs、Supabase Auth 和 WISER Design System 是共享宿主，Agent EXCON 保持独立领域事实；第二个系统 **Data Foundation / 数据基座** 已建立平台契约、静态组合入口和统一 Web 导航，完整数据权威面与投影仍按本仓库的 Red → Green 里程碑推进。
+
 仓库从一个可验证的单智能体兼容纵切开始：京津冀永定河流域生态补水与多水源联合调度。当前默认开发协议已是 v2 多场景、多角色团队演练：水情证据、水动力约束、生态目标与调度协调智能体获得不同 Receipt、并行完成 Task，并以 Message、ArtifactVersion、Submission 和 Feedback 显式协作。
 
 演练由智能体加载 [`skills/agent-excon`](./skills/agent-excon/SKILL.md) 后通过 HTTP 或 MCP 运行。Web 不模拟智能体参训；它负责多场景管理、导调态势、按 Agent 的 OTel 式 Trace 和基于领域事件/Receipt 的当时视角回放。

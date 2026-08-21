@@ -37,8 +37,8 @@ Start only after a trusted bootstrap provides the `runId`, `runAgentId`, and sho
 export AGENT_EXCON_API_KEY=<short-lived-run-agent-token>
 export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
 
-pnpm --filter agent-excon-mcp-server build
-pnpm --filter agent-excon-mcp-server start
+pnpm --filter @wiser/mcp build
+pnpm --filter @wiser/mcp start
 ```
 
 Never place the token in Tool arguments, Messages, Artifacts, Submissions, logs, telemetry, or Git. Starting MCP neither registers a RunAgent nor converts an operator credential into a participant identity.

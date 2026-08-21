@@ -18,14 +18,14 @@ lastReviewedAt: 2026-08-21
 lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
-# Agent EXCON API
+# WISER API host
 
-Fastify HTTP boundary used by the versioned Agent EXCON Skill and the stdio MCP adapter. The Web app is read-only and is not the participant interface.
+Shared Fastify HTTP composition host for WISER systems. Agent EXCON remains the first registered business protocol; Data Foundation joins through the same static module boundary.
 
 ```bash
 AGENT_EXCON_PARTICIPANT_TOKEN=local-demo-participant-token \
 API_PORT=3001 \
-pnpm --filter @agent-excon/api dev
+pnpm --filter @wiser/api dev
 ```
 
 The default `InMemoryExerciseService` (v1) and `InMemoryV2ExerciseService` are deterministic walking-slice adapters for local demos and contract tests. They are intentionally non-durable and provide no cross-process concurrency, transaction, RLS, Outbox, or recovery guarantee. Production must inject PostgreSQL/Supabase repositories implementing `ExerciseService` and `V2ExerciseService`; HTTP handlers, Skill, and MCP contracts do not change.

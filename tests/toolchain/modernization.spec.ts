@@ -190,9 +190,7 @@ describe('Fumadocs documentation application', () => {
     const docsManifest = readJson('apps/docs/package.json');
     const docsScripts = docsManifest.scripts as Record<string, string>;
 
-    expect(rootScripts.prelint).toBe(
-      'pnpm --filter @wiser/docs generate',
-    );
+    expect(rootScripts.prelint).toBe('pnpm --filter @wiser/docs generate');
     expect(docsScripts.generate).toBe('fumadocs-mdx');
 
     const rootIgnore = new Set(

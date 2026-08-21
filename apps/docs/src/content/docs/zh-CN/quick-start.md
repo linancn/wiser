@@ -67,8 +67,8 @@ pnpm docpact:check
 ```bash
 pnpm --filter @agent-excon/contracts test
 pnpm --filter @agent-excon/core test
-pnpm --filter @agent-excon/api test
-pnpm --filter agent-excon-mcp-server test
+pnpm --filter @wiser/api test
+pnpm --filter @wiser/mcp test
 node skills/agent-excon/scripts/lint-skill.mjs
 ```
 
@@ -106,8 +106,8 @@ MCP 只调用 HTTP API，不读数据库。只有在已经获得可信的 `runId
 export AGENT_EXCON_API_KEY=<short-lived-run-agent-token>
 export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
 
-pnpm --filter agent-excon-mcp-server build
-pnpm --filter agent-excon-mcp-server start
+pnpm --filter @wiser/mcp build
+pnpm --filter @wiser/mcp start
 ```
 
 默认 v2 循环是：`assignment → sync/ack → issued Task → claim/begin/heartbeat → Message/Artifact → Submission → wait-and-sync → safe recovery/review → endorsement → Feedback → agent-safe replay`。18 个工具和实际路由见 [MCP 接入](/protocols/mcp/)；`/sync` 是发放新内容的唯一入口，recovery GET 不能使 eligible 内容提前变成 issued。
