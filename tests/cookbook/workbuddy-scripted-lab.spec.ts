@@ -77,7 +77,10 @@ describe('scripted four-agent Yongding lab', () => {
       timeoutMs: 30_000,
     });
 
-    expect(launched.exitCode).toBe(0);
+    expect(
+      launched.exitCode,
+      JSON.stringify(launched.report.results, null, 2),
+    ).toBe(0);
     expect(launched.report.results).toHaveLength(4);
     expect(
       launched.report.results.every(({ status }) => status === 'completed'),

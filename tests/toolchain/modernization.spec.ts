@@ -27,6 +27,10 @@ function markdownFiles(path: string): string[] {
 }
 
 describe('TypeScript 7 native toolchain', () => {
+  it('serializes process-spawning integration files on constrained CI runners', () => {
+    expect(read('vitest.config.ts')).toContain('fileParallelism: false');
+  });
+
   it('uses Oxlint with the TypeScript 7 native type-aware engine', () => {
     const rootPackage = readJson('package.json');
     const scripts = rootPackage.scripts as Record<string, string>;
