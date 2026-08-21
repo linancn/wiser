@@ -6,6 +6,10 @@
 Codex 会在本任务末尾注明请求的 profile。只接受 `scripted`、`rework` 或
 `workbuddy`。
 
+`scripted` 与 `rework` 只保证四个参训进程不调用模型。你作为 WorkBuddy
+Lead 执行本任务时，Lead 本身仍可能使用已登录的 WorkBuddy 订阅。最终
+报告必须区分这两层用量；不得把整个 scripted 展示描述为“无模型调用”。
+
 1. 在仓库根目录运行 `pnpm showcase:preflight`，失败即报告并停止。
 2. 确认没有活动展示会话后，按请求运行以下唯一对应命令：
 
@@ -40,4 +44,6 @@ live 四路均出现 429；当前再遇到 429 立即停止，不自动重试、
 Act only as the host controller. Start the requested bounded profile, report
 the redacted session and collaboration URL, and stop with verified TTL cleanup.
 Live WorkBuddy requires an explicit current-authorization statement from Codex;
-stop without retry on 429. Never become a participant or share role secrets.
+stop without retry on 429. Scripted participants are model-free, but the
+WorkBuddy Lead may use the signed-in subscription; report those separately.
+Never become a participant or share role secrets.
