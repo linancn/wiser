@@ -18,6 +18,8 @@ export type DataCapabilityHandlerErrorCode =
   | 'NOT_AUTHENTICATED'
   | 'VALIDATION_FAILED'
   | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'CONFLICT'
   | 'IDEMPOTENCY_KEY_REQUIRED'
   | 'SECURITY_LEVEL_EXCEEDED'
   | 'CAPABILITY_TIMEOUT'
@@ -35,6 +37,10 @@ const ERROR_MESSAGES: Readonly<Record<DataCapabilityHandlerErrorCode, string>> =
       '数据能力输入未通过校验。 / The Data Capability input failed validation.',
     FORBIDDEN:
       '当前身份无权执行该数据能力。 / The current identity cannot execute this data capability.',
+    NOT_FOUND:
+      '请求的数据资源不存在。 / The requested data resource was not found.',
+    CONFLICT:
+      '数据资源状态或版本已变化。 / The data resource state or version changed.',
     IDEMPOTENCY_KEY_REQUIRED:
       '该写操作需要 UUID Idempotency-Key。 / This command requires a UUID Idempotency-Key.',
     SECURITY_LEVEL_EXCEEDED:
@@ -197,6 +203,19 @@ function error(code: DataCapabilityHandlerErrorCode) {
   return new DataCapabilityHandlerError(code);
 }
 
+function translatedExecutorError(caught: unknown): DataCapabilityHandlerError {
+  if (caught instanceof DataCapabilityHandlerError) return caught;
+  if (caught !== null && typeof caught === 'object') {
+    const descriptor = Object.getOwnPropertyDescriptor(caught, 'statusCode');
+    const status: unknown = descriptor?.value;
+    if (status === 400 || status === 422) return error('VALIDATION_FAILED');
+    if (status === 403) return error('FORBIDDEN');
+    if (status === 404) return error('NOT_FOUND');
+    if (status === 409) return error('CONFLICT');
+  }
+  return error('EXECUTION_FAILED');
+}
+
 export class DataCapabilityHandler {
   readonly #executors: ReadonlyMap<DataCapabilityId, DataCapabilityExecutor>;
   readonly #audit: DataCapabilityAuditPort;
@@ -317,10 +336,7 @@ export class DataCapabilityHandler {
         timeout,
       ]);
     } catch (caught) {
-      const handlerError =
-        caught instanceof DataCapabilityHandlerError
-          ? caught
-          : error('EXECUTION_FAILED');
+      const handlerError = translatedExecutorError(caught);
       await this.#record({
         ...auditBase,
         decision: 'FAILED',

@@ -16,7 +16,7 @@ checkPaths:
   - packages/contracts/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 89cde4733d5f1772db7495fbfa0bd1b6cf4a18bf
+lastReviewedCommit: bf610e20dfca64f3a28f201241788430cebe2a82
 ---
 
 ## Default protocol and implementation status
@@ -46,7 +46,9 @@ Commands require a UUID `Idempotency-Key`; all routes require Bearer, Tenant, Pr
 
 ## Data Foundation discovery
 
-`GET /api/data/v1/health` is a non-cacheable aggregate of data-postgres, object-store, and Data Worker readiness; it returns 503 when any required authority dependency is unavailable. `GET /api/data/v1/capabilities` returns the complete ordered Registry with draft-7 input/output JSON Schemas and exact REST, GraphQL, MCP, and Skill mappings. These discovery endpoints are implemented by the injectable `data.foundation` module. The shared `DataCapabilityHandler` now requires exactly one executor for each of the 22 static Capabilities, validates input and output with the Registry Zod schemas, enforces live Scope/security ceilings and command idempotency, applies the declared timeout, and writes only payload hashes to the audit port. Concrete business executors and the remaining REST routes are not registered yet; REST and GraphQL will dispatch through this one handler, while MCP and Skills reach it only through HTTP.
+`GET /api/data/v1/health` is a non-cacheable aggregate of data-postgres, object-store, and Data Worker readiness; it returns 503 when any required authority dependency is unavailable. `GET /api/data/v1/capabilities` returns the complete ordered Registry with draft-7 input/output JSON Schemas and exact REST, GraphQL, MCP, and Skill mappings. These discovery endpoints are implemented by the injectable `data.foundation` module. The shared `DataCapabilityHandler` now requires exactly one executor for each of the 22 static Capabilities, validates input and output with the Registry Zod schemas, enforces live Scope/security ceilings and command idempotency, applies the declared timeout, and writes only payload hashes to the audit port. Concrete business executors are not yet complete; REST and GraphQL dispatch through this one handler, while MCP and Skills reach it only through HTTP.
+
+The injectable `data.foundation.rest` module now registers all 22 Registry REST mappings without duplicating discovery routes. It resolves the unified WISER principal, composes path/query/body fields without collisions, enforces UUID idempotency and strong `If-Match: "vN"` on versioned commands, emits ETags/no-store, and maps the Operation-event page to a bounded SSE snapshot. The transport is complete and tested; runtime composition still needs the remaining business executors before every route can succeed against authority data.
 
 ## Public scenario catalog
 

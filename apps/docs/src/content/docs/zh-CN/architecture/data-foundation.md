@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 964a6d046f977e6b84da512b23c69d40c36fb919
+lastReviewedCommit: bf610e20dfca64f3a28f201241788430cebe2a82
 ---
 
 ## 边界与当前实现
@@ -61,6 +61,8 @@ data.operation.cancel            data.operation.events
 共享 Fastify 宿主现已提供可注入的 `data.foundation` 模块。`/api/data/v1/capabilities` 直接通过 Zod 4 draft-7 generator 序列化有序 Registry，客户端无需 AST 扫描即可读取四类 transport mapping。`/api/data/v1/health` 从注入 probe 报告 data-postgres、对象存储与 Worker readiness；任一权威依赖缺失即返回 503。默认进程尚未注册具体 probe，因此不能宣称 Data Foundation runtime ready。
 
 Transport-neutral `DataCapabilityHandler` 已完成：每个 Registry 条目对应一个静态 executor，统一执行 Zod 输入/输出门禁、实时 Scope 与安全上限、command 幂等、有界执行 signal 和仅含 hash 的 audit 事实。具体 executor 与路由仍是下一接线边界；Handler 存在不等于 REST/GraphQL 已完整交付。
+
+该 Handler 的 REST 投影也已覆盖全部 Registry mapping，包括无碰撞输入组合、UUID 幂等、强版本前置条件、ETag、no-store 与有界 Operation SSE。7 个读取 executor 已通过短 data-postgres RLS 事务提供目录/数据条/版本、入库、Operation 与事件分页，并使用 scope-bound cursor 和仅 hash 的 append-only audit。Command 与专用查询 executor 仍阻塞默认 runtime 注册。
 
 `DataItem` 是最小治理粒度，不等于文件、表或图层。质量等级、验收状态、发布状态和安全等级是四个独立维度；任何适配器都不能把它们压缩成一个“状态”。
 

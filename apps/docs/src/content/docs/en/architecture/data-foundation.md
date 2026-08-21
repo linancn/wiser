@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 964a6d046f977e6b84da512b23c69d40c36fb919
+lastReviewedCommit: bf610e20dfca64f3a28f201241788430cebe2a82
 ---
 
 ## Boundary and implementation status
@@ -61,6 +61,8 @@ Upload contracts are discriminated rather than ambiguous. `PRESIGNED_PUT` expose
 The shared Fastify host now has an injectable `data.foundation` module. `/api/data/v1/capabilities` serializes the ordered Registry directly through Zod 4's draft-7 generator, so clients can inspect all four transport mappings without AST scanning. `/api/data/v1/health` reports data-postgres, object-store, and Worker readiness from injected probes and returns 503 whenever any authority dependency is missing. The default process does not yet register concrete probes and therefore cannot claim a ready Data Foundation runtime.
 
 The transport-neutral `DataCapabilityHandler` is complete: one static executor per Registry entry, Zod input/output gates, live Scope and security-ceiling checks, command idempotency, bounded execution signals, and hash-only audit facts. Concrete executors and routes remain the next integration boundary; its existence does not make the REST or GraphQL surface complete.
+
+The REST projection of that Handler is also complete for all Registry mappings, including collision-safe input composition, UUID idempotency, strong version preconditions, ETags, no-store, and bounded Operation SSE. Seven read executors now use short data-postgres RLS transactions for catalog/items/versions, ingestion, Operation, and event pages with scope-bound cursors and hash-only append-only audits. Command and specialized query executors still block default runtime registration.
 
 A `DataItem` is the smallest governance unit, not a file, table, or layer. Quality grade, acceptance status, publication status, and security level are four independent dimensions; adapters must never collapse them into one “status.”
 

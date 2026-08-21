@@ -16,7 +16,7 @@ checkPaths:
   - packages/contracts/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 89cde4733d5f1772db7495fbfa0bd1b6cf4a18bf
+lastReviewedCommit: bf610e20dfca64f3a28f201241788430cebe2a82
 ---
 
 ## 默认协议与实现状态
@@ -46,7 +46,9 @@ Fastify 是 WISER 的共享 HTTP 组合宿主。每个系统以静态导入的 `
 
 ## Data Foundation 发现接口
 
-`GET /api/data/v1/health` 是不可缓存的 data-postgres、对象存储与 Data Worker readiness 聚合；任何必需权威依赖不可用时返回 503。`GET /api/data/v1/capabilities` 返回完整有序 Registry，包括 draft-7 输入/输出 JSON Schema 与精确 REST、GraphQL、MCP、Skill mapping。这两个发现接口由可注入的 `data.foundation` 模块实现。共享 `DataCapabilityHandler` 现要求 22 项静态 Capability 各有且仅有一个 executor，以 Registry Zod schema 同时校验输入/输出，执行实时 Scope、安全等级上限、command 幂等和声明 timeout，并只把 payload hash 写入 audit port。具体业务 executor 与其余 REST 路由尚未注册；REST/GraphQL 将共用该 Handler，MCP/Skill 只能通过 HTTP 到达它。
+`GET /api/data/v1/health` 是不可缓存的 data-postgres、对象存储与 Data Worker readiness 聚合；任何必需权威依赖不可用时返回 503。`GET /api/data/v1/capabilities` 返回完整有序 Registry，包括 draft-7 输入/输出 JSON Schema 与精确 REST、GraphQL、MCP、Skill mapping。这两个发现接口由可注入的 `data.foundation` 模块实现。共享 `DataCapabilityHandler` 现要求 22 项静态 Capability 各有且仅有一个 executor，以 Registry Zod schema 同时校验输入/输出，执行实时 Scope、安全等级上限、command 幂等和声明 timeout，并只把 payload hash 写入 audit port。具体业务 executor 尚未完整；REST/GraphQL 共用该 Handler，MCP/Skill 只能通过 HTTP 到达它。
+
+可注入的 `data.foundation.rest` 模块现已注册全部 22 项 Registry REST mapping，且不重复发现路由。它解析统一 WISER principal，无碰撞组合 path/query/body，强制 command UUID 幂等键与版本化命令的强 `If-Match: "vN"`，输出 ETag/no-store，并把 Operation event page 映射为有界 SSE snapshot。Transport 本身已完成并受测；runtime 仍需接齐其余业务 executor，全部路由才能访问权威数据成功。
 
 ## 公共场景目录
 

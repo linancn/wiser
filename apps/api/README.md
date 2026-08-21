@@ -15,7 +15,7 @@ checkPaths:
   - packages/contracts/**
   - packages/core/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 89cde4733d5f1772db7495fbfa0bd1b6cf4a18bf
+lastReviewedCommit: bf610e20dfca64f3a28f201241788430cebe2a82
 ---
 
 # WISER API host
@@ -39,6 +39,8 @@ The default `InMemoryExerciseService` (v1) and `InMemoryV2ExerciseService` are d
 `createDataFoundationModule()` mounts Data Foundation beside Agent EXCON without a second Fastify process. Its injected readiness probe drives truthful `GET /api/data/v1/health` status across data-postgres, object storage, and Worker. `GET /api/data/v1/capabilities` projects the ordered 22-item Zod 4 Registry into draft-7 input/output JSON Schema plus exact REST, GraphQL, MCP, and Skill mappings. Both responses are non-cacheable; the default process does not report Data Foundation ready until concrete authority probes are wired.
 
 `DataCapabilityHandler` is the single in-process application boundary planned for Data Foundation REST and schema-first GraphQL. Startup fails unless every Registry Capability has exactly one executor. Each call validates Registry input/output, live Scopes, requested L0-L3 ceiling, UUID command idempotency, and the declared timeout; its audit record contains identity/context plus canonical SHA-256 hashes, never the payload. The Handler is delivered, but concrete business executors and the remaining REST/GraphQL routes are not yet runtime-wired. MCP and Skills must continue through HTTP rather than importing it.
+
+`createDataFoundationRestModule()` projects all 22 Registry mappings through that Handler. Its route boundary shares the platform Resolver, rejects path/query/body collisions and prototype keys, normalizes bounded GET arrays/numbers, requires command idempotency and version ETags, and produces stable safe errors. Operation events use a one-shot SSE snapshot with exact event ids/types/data plus the continuation cursor. The module is not registered by `main.ts` until the complete executor set is available.
 
 `main.ts` creates the concrete Supabase `getClaims` client, PostgreSQL Membership/delegated loaders, transactional delegation service, and prefix-routed composite Resolver when `WISER_AUTH_MODE=supabase`. A `wdc1.` token is never retried as JWT after delegated verification fails. Production defaults to Supabase mode and refuses missing `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `DATABASE_URL`, or `WISER_DELEGATED_CREDENTIAL_HMAC_KEYS`; non-production defaults to `off` for the legacy local-token compatibility profile. The bounded shared Pool is closed through the Fastify lifecycle.
 

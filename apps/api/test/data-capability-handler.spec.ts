@@ -220,4 +220,27 @@ describe('DataCapabilityHandler security boundary', () => {
     );
     expect(error).not.toHaveProperty('cause');
   });
+
+  it('translates only allowlisted executor status classes into public errors', async () => {
+    const audit = new MemoryAudit();
+    const missing = executor('data.catalog.get');
+    vi.mocked(missing.execute).mockRejectedValue(
+      Object.assign(new Error('private database detail'), { statusCode: 404 }),
+    );
+    const handler = new DataCapabilityHandler({
+      executors: allExecutors(missing),
+      audit,
+    });
+
+    await expect(
+      handler.execute({
+        capabilityId: 'data.catalog.get',
+        input: { dataItemId: 'a1000000-0000-4000-8000-000000000005' },
+        requestContext: context,
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    expect(JSON.stringify(audit.records)).not.toContain(
+      'private database detail',
+    );
+  });
 });

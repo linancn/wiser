@@ -1,5 +1,34 @@
 export { buildApp, type BuildAppOptions } from './app.js';
 export {
+  DataCapabilityHandler,
+  DataCapabilityHandlerError,
+  type DataCapabilityAuditPort,
+  type DataCapabilityAuditRecord,
+  type DataCapabilityExecutionContext,
+  type DataCapabilityExecutor,
+  type ExecuteDataCapabilityInput,
+} from './data-foundation/capability-handler.js';
+export {
+  createDataFoundationModule,
+  type DataFoundationModuleOptions,
+  type DataFoundationReadiness,
+} from './data-foundation/plugin.js';
+export {
+  PostgresDataReadCursorError,
+  PostgresDataReadError,
+  PostgresDataReadNotFoundError,
+  createPostgresDataReadRuntime,
+  type PostgresDataReadClient,
+  type PostgresDataReadPool,
+  type PostgresDataReadRuntime,
+} from './data-foundation/postgres-read-executors.js';
+export {
+  createDataFoundationRestModule,
+  type DataFoundationRequestContextResolver,
+  type DataFoundationRestCapabilityHandler,
+  type DataFoundationRestModuleOptions,
+} from './data-foundation/rest-module.js';
+export {
   registerWiserApiModules,
   type WiserApiModule,
 } from './platform/modules.js';
