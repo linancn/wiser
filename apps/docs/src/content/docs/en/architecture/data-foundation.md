@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: dea8cf4b30c75e0d456ec368bd910d2321fadc08
+lastReviewedCommit: 9465d7fada3ed33d926f6afac5041f8f9980c817
 ---
 
 ## Boundary and implementation status
@@ -45,6 +45,8 @@ data.ingestion.submit     data.operation.get
 ```
 
 A `DataItem` is the smallest governance unit, not a file, table, or layer. Quality grade, acceptance status, publication status, and security level are four independent dimensions; adapters must never collapse them into one “status.”
+
+The initial Capabilities use nine unique scopes: `data.catalog.read`, `data.query.execute`, `data.search.execute`, `data.knowledge.read`, `data.graph.read`, `data.geo.read`, `data.ingestion.write`, `data.operation.read`, and `data.publish`. The local Supabase `data-steward` role must cover all of them. A new Capability must align its Registry mapping and Role seed/management command in the same Green milestone.
 
 ## Deterministic domain policies
 

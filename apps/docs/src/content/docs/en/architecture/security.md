@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 0ccec4db0435f04becdd27c377b977f1e3f238f4
+lastReviewedCommit: 9465d7fada3ed33d926f6afac5041f8f9980c817
 ---
 
 ## Separate four data classes

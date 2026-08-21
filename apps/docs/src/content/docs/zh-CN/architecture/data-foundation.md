@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: dea8cf4b30c75e0d456ec368bd910d2321fadc08
+lastReviewedCommit: 9465d7fada3ed33d926f6afac5041f8f9980c817
 ---
 
 ## 边界与当前实现
@@ -45,6 +45,8 @@ data.ingestion.submit     data.operation.get
 ```
 
 `DataItem` 是最小治理粒度，不等于文件、表或图层。质量等级、验收状态、发布状态和安全等级是四个独立维度；任何适配器都不能把它们压缩成一个“状态”。
+
+首批 Capability 使用 9 个唯一 Scope：`data.catalog.read`、`data.query.execute`、`data.search.execute`、`data.knowledge.read`、`data.graph.read`、`data.geo.read`、`data.ingestion.write`、`data.operation.read` 与 `data.publish`。Supabase 的 `data-steward` 本地角色必须完整覆盖它们；新增 Capability 时 Registry 与 Role seed/管理命令必须在同一 Green 里对齐。
 
 ## 确定性领域政策
 
