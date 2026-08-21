@@ -1,0 +1,29 @@
+{
+  "name": "@wiser/data-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx src/main.ts",
+    "start": "node dist/main.js",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@wiser/data-infra": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "4.23.12",
+    "typescript": "catalog:",
+    "vitest": "4.1.11"
+  },
+  "engines": {
+    "node": ">=24.18.0 <25"
+  }
+}
