@@ -13,7 +13,7 @@ afterEach(async () => {
 const testModule: WiserApiModule = {
   id: 'test.catalog',
   register(app) {
-    app.get('/api/test/v1/ping', async () => ({ module: 'test.catalog' }));
+    app.get('/api/test/v1/ping', () => ({ module: 'test.catalog' }));
   },
 };
 

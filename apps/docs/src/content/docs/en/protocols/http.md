@@ -25,6 +25,10 @@ HTTP is the only business protocol foundation. Web, Skills, MCP, and future SDKs
 
 The `/api/v2` routes and contracts are executable and tested, but Fastify currently uses an **in-memory protocol adapter**. The Supabase v2 schema/RLS exists, while a PostgreSQL API adapter does not. Responses, Events, Receipts, and idempotency records therefore disappear on process restart. The tables below list registered routes only; they do not present future ADR endpoints as implemented behavior.
 
+## WISER module composition
+
+Fastify is the shared WISER HTTP composition host. Each system registers routes through a statically imported `WiserApiModule`; module ids are namespaced and globally unique, and a duplicate id fails readiness. Static registration does not scan the TypeScript AST and never lets a module bypass application or authorization boundaries. Existing Agent EXCON routes remain compatible while Data Foundation and future systems reuse the same host.
+
 ## Public scenario catalog
 
 These reads need no bearer credential. They expose published safe DTOs and cannot reveal drafts or validation failures.

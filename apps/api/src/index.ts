@@ -1,4 +1,8 @@
 export { buildApp, type BuildAppOptions } from './app.js';
+export {
+  registerWiserApiModules,
+  type WiserApiModule,
+} from './platform/modules.js';
 export { StaticParticipantAuthenticator } from './auth.js';
 export {
   InMemoryExerciseService,

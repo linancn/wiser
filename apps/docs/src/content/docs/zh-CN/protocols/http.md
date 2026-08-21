@@ -25,6 +25,10 @@ HTTP 是唯一业务协议底座。Web、Skill、MCP 和未来 SDK 都调用 HTT
 
 当前 `/api/v2` 路由和契约已经可执行并有测试覆盖，但 Fastify 使用**内存协议适配器**。Supabase v2 schema/RLS 已存在，尚无 PostgreSQL API adapter；因此当前响应、Event、Receipt 和幂等记录在进程重启后不会保留。以下表只列实际注册的路由，不把 ADR 中的未来端点写成现有能力。
 
+## WISER 模块组合
+
+Fastify 是 WISER 的共享 HTTP 组合宿主。每个系统以静态导入的 `WiserApiModule` 注册路由；模块 ID 必须使用命名空间且全局唯一，重复 ID 会使 readiness 失败。静态注册不扫描 TypeScript AST，也不允许模块绕过 application/authorization 边界。现有 Agent EXCON 路由保持兼容，Data Foundation 和未来系统复用同一宿主。
+
 ## 公共场景目录
 
 这些读取不需要 bearer credential，只返回已发布的安全 DTO，不能推断草稿或校验错误。

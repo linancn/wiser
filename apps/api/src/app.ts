@@ -13,6 +13,10 @@ import { z, ZodError, type ZodType } from 'zod';
 
 import { StaticParticipantAuthenticator } from './auth.js';
 import { InMemoryExerciseService } from './in-memory-service.js';
+import {
+  registerWiserApiModules,
+  type WiserApiModule,
+} from './platform/modules.js';
 import { InMemoryV2ExerciseService } from './v2-in-memory-service.js';
 import { registerV2Routes } from './v2-routes.js';
 import {
@@ -47,6 +51,7 @@ export interface BuildAppOptions {
   readonly authenticator?: ParticipantAuthenticator;
   readonly corsOrigin?: string | readonly string[];
   readonly logger?: boolean;
+  readonly modules?: readonly WiserApiModule[];
 }
 
 interface ErrorMapping {
@@ -627,6 +632,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   );
 
   registerV2Routes(app, v2Service, authenticator);
+  registerWiserApiModules(app, options.modules ?? []);
 
   app.addHook('onClose', async () => {
     await Promise.all([service.close(), v2Service.close()]);

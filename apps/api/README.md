@@ -30,6 +30,8 @@ pnpm --filter @agent-excon/api dev
 
 The default `InMemoryExerciseService` (v1) and `InMemoryV2ExerciseService` are deterministic walking-slice adapters for local demos and contract tests. They are intentionally non-durable and provide no cross-process concurrency, transaction, RLS, Outbox, or recovery guarantee. Production must inject PostgreSQL/Supabase repositories implementing `ExerciseService` and `V2ExerciseService`; HTTP handlers, Skill, and MCP contracts do not change.
 
+`buildApp()` is the WISER Fastify composition root. Additional product systems register explicit, statically imported `WiserApiModule` values through `BuildAppOptions.modules`; module ids are namespaced and unique, and duplicate ids fail during readiness. Agent EXCON routes remain available while Data Foundation and future systems join the same process without copying the HTTP host.
+
 Participant requests use `Authorization: Bearer <token>`. Every POST uses a UUID `Idempotency-Key`; observe, submit, and advance also include `episodeVersion`.
 
 Key routes:
