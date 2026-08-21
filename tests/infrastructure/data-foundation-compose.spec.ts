@@ -6,7 +6,10 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(import.meta.dirname, '../..');
 const compose = readFileSync(resolve(root, 'compose.yaml'), 'utf8');
 const environment = readFileSync(resolve(root, '.env.example'), 'utf8');
-const workflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
+const workflow = readFileSync(
+  resolve(root, '.github/workflows/ci.yml'),
+  'utf8',
+);
 const rootPackage = JSON.parse(
   readFileSync(resolve(root, 'package.json'), 'utf8'),
 ) as { readonly scripts: Readonly<Record<string, string>> };
