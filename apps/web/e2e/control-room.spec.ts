@@ -56,6 +56,29 @@ test('opens the Chinese scenario center and preserves the route in English', asy
   }
 });
 
+test('switches WISER systems without losing locale or color theme', async ({
+  page,
+}) => {
+  await page.goto('/zh-CN/scenarios');
+
+  const systems = page.getByRole('navigation', { name: '系统导航' });
+  await expect(systems.getByRole('link')).toHaveCount(2);
+  await expect(
+    systems.getByRole('link', { name: 'Agent EXCON' }),
+  ).toHaveAttribute('aria-current', 'page');
+
+  await page.getByRole('button', { name: '切换至深色模式' }).click();
+  await systems.getByRole('link', { name: '数据基座' }).click();
+  await expect(page).toHaveURL(/\/zh-CN\/data-foundation$/);
+  await expect(page.getByRole('heading', { name: '数据基座' })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+  await page.getByRole('link', { name: 'English' }).click();
+  await expect(page).toHaveURL(/\/en\/data-foundation$/);
+  await expect(page.getByRole('heading', { name: 'Data Foundation' })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+});
+
 test('uses a two-level global navigation and enters Runs through overview', async ({
   page,
 }) => {
