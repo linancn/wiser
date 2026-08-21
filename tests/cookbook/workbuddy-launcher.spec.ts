@@ -7,7 +7,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -53,7 +53,7 @@ async function launchFixture() {
         mcpServers: {
           'agent-excon': {
             type: 'stdio',
-            command: '/opt/homebrew/bin/node',
+            command: '/definitely-missing/wiser-node',
             args: ['/Users/example/wiser/apps/mcp/dist/index.js'],
             env: {
               AGENT_EXCON_PROTOCOL_VERSION: 'v2',
@@ -145,6 +145,24 @@ describe('four-process WorkBuddy launcher', () => {
     expect(JSON.parse(await readFile(result.reportPath, 'utf8'))).toEqual(
       result.report,
     );
+  });
+
+  it('preserves bounded sanitized participant stderr on failure', async () => {
+    const fixture = await launchFixture();
+    const result = await launchWorkBuddyRoles({
+      environment: {},
+      launchManifestPath: fixture.launchManifestPath,
+      mode: 'scripted',
+      repositoryRoot: resolve(import.meta.dirname, '../..'),
+      timeoutMs: 10_000,
+    });
+
+    expect(result.exitCode).toBe(1);
+    for (const record of result.report.results) {
+      expect(record.diagnostic).toMatch(/Scripted .* participant failed:/);
+      expect(record.diagnostic).not.toContain('launcher_secret');
+      expect(record.diagnostic?.length).toBeLessThanOrEqual(2_048);
+    }
   });
 
   it('requires explicit live opt-in before invoking the installed WorkBuddy', async () => {

@@ -140,6 +140,14 @@ function redactText(source, sensitiveValues) {
   return result;
 }
 
+function boundedDiagnostic(primary, safeStderr) {
+  const stderr = safeStderr.trim();
+  const diagnostic = stderr === '' ? primary : `${primary}\n${stderr}`;
+  return diagnostic.length <= 2_048
+    ? diagnostic
+    : `${diagnostic.slice(0, 2_047)}…`;
+}
+
 export function parseWorkBuddyJson(value) {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
@@ -348,7 +356,10 @@ async function runRole({
       diagnostic:
         semanticSuccess && processResult.exitCode === 0
           ? null
-          : 'WorkBuddy did not complete the participant contract.',
+          : boundedDiagnostic(
+              'WorkBuddy did not complete the participant contract.',
+              safeStderr,
+            ),
     };
   } catch (error) {
     record = {
@@ -362,9 +373,12 @@ async function runRole({
       processSignal: processResult.signal,
       semanticSuccess: false,
       sessionId: null,
-      diagnostic: redactText(
-        error instanceof Error ? error.message : 'Unknown WorkBuddy error.',
-        sensitiveValues,
+      diagnostic: boundedDiagnostic(
+        redactText(
+          error instanceof Error ? error.message : 'Unknown WorkBuddy error.',
+          sensitiveValues,
+        ),
+        safeStderr,
       ),
     };
   }
