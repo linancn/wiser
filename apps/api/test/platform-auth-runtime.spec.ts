@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 
@@ -35,6 +37,14 @@ describe('WISER platform auth runtime', () => {
         WISER_AUTH_MODE: 'off',
       }),
     ).toThrow('WISER_AUTH_MODE=off is forbidden in production');
+    expect(() =>
+      loadPlatformAuthRuntimeConfig({
+        NODE_ENV: 'production',
+        SUPABASE_URL: 'http://127.0.0.1:56321',
+        SUPABASE_PUBLISHABLE_KEY: 'publishable-test-key-long-enough',
+        DATABASE_URL: 'postgresql://test:test@127.0.0.1:56322/postgres',
+      }),
+    ).toThrow('WISER_DELEGATED_CREDENTIAL_HMAC_KEYS');
   });
 
   it('keeps the platform identity module opt-in for local compatibility', () => {
@@ -85,6 +95,12 @@ describe('WISER platform auth runtime', () => {
         SUPABASE_URL: 'http://127.0.0.1:56321',
         SUPABASE_PUBLISHABLE_KEY: 'publishable-test-key-long-enough',
         DATABASE_URL: 'postgresql://test:test@127.0.0.1:56322/postgres',
+        WISER_DELEGATED_CREDENTIAL_HMAC_KEYS: JSON.stringify({
+          activeKeyId: 'primary-2026-08',
+          keys: {
+            'primary-2026-08': Buffer.alloc(32, 7).toString('base64url'),
+          },
+        }),
       },
       factories,
     );

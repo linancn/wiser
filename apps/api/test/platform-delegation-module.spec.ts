@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 
 import type { PlatformRequestContext } from '@wiser/platform-contracts';
+import { PlatformDelegationServiceError } from '@wiser/platform-auth';
 
 import { buildApp } from '../src/app.js';
 import {
@@ -352,5 +353,38 @@ describe('WISER platform delegation HTTP module', () => {
 
     expect(response.statusCode).toBe(422);
     expect(createDelegation).not.toHaveBeenCalled();
+  });
+
+  it('maps transactional conflicts and unrecoverable secret replays to stable no-store errors', async () => {
+    for (const [code, expectedStatus] of [
+      ['IDEMPOTENCY_CONFLICT', 409],
+      ['DELEGATION_VERSION_CONFLICT', 409],
+      ['SECRET_NOT_RECOVERABLE', 409],
+      ['NOT_AUTHORIZED', 403],
+    ] as const) {
+      const service = commandService({
+        createDelegation: vi.fn(() =>
+          Promise.reject(new PlatformDelegationServiceError(code)),
+        ),
+      });
+      const { app } = appWith(humanContext, service);
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/platform/v1/delegations',
+        headers: requestHeaders(),
+        payload: {
+          delegateActorId: DELEGATE_ID,
+          scopes: ['data.catalog.read'],
+          purpose: 'operate',
+          maxSecurityLevel: 'L1_INTERNAL',
+          expiresInSeconds: 900,
+        },
+      });
+
+      expect(response.statusCode).toBe(expectedStatus);
+      expect(response.headers['cache-control']).toContain('no-store');
+      expect(response.json()).toMatchObject({ code });
+      expect(response.body).not.toContain('wdc1.');
+    }
   });
 });
