@@ -33,22 +33,22 @@ class FakeClient implements MigrationClient {
     private readonly failingSql?: string,
   ) {}
 
-  async query<Row extends Record<string, unknown> = Record<string, unknown>>(
+  query(
     text: string,
     values?: readonly unknown[],
-  ): Promise<{ readonly rows: readonly Row[] }> {
+  ): Promise<{ readonly rows: readonly Record<string, unknown>[] }> {
     this.queries.push(values === undefined ? { text } : { text, values });
     if (text === this.failingSql) {
-      throw new Error('synthetic migration failure');
+      return Promise.reject(new Error('synthetic migration failure'));
     }
     if (
       /select\s+version,\s*filename,\s*checksum\s+from\s+public\.schema_migrations/i.test(
         text,
       )
     ) {
-      return { rows: this.applied as readonly Row[] };
+      return Promise.resolve({ rows: this.applied.map((row) => ({ ...row })) });
     }
-    return { rows: [] };
+    return Promise.resolve({ rows: [] });
   }
 
   release(): void {
@@ -59,8 +59,8 @@ class FakeClient implements MigrationClient {
 class FakePool implements MigrationPool {
   constructor(readonly client: FakeClient) {}
 
-  async connect(): Promise<MigrationClient> {
-    return this.client;
+  connect(): Promise<MigrationClient> {
+    return Promise.resolve(this.client);
   }
 }
 
@@ -135,6 +135,30 @@ describe('data-postgres migration execution', () => {
     expect(client.queries.at(0)?.text).toMatch(/pg_advisory_lock/);
     expect(client.queries.at(-1)?.text).toMatch(/pg_advisory_unlock/);
     expect(client.released).toBe(true);
+  });
+
+  it('rejects a non-prefix history instead of backfilling an earlier migration', async () => {
+    const directory = await migrationDirectory({
+      '0002_catalog.sql': 'select 2;\n',
+      '0001_bootstrap.sql': 'select 1;\n',
+    });
+    const secondChecksum = calculateMigrationChecksum('select 2;\n');
+    const client = new FakeClient([
+      {
+        version: '0002',
+        filename: '0002_catalog.sql',
+        checksum: secondChecksum,
+      },
+    ]);
+
+    await expect(
+      runMigrations({ directory, pool: new FakePool(client) }),
+    ).rejects.toThrow('not a contiguous prefix');
+
+    expect(client.queries.some(({ text }) => text === 'select 1;\n')).toBe(
+      false,
+    );
+    expect(client.queries.at(-1)?.text).toMatch(/pg_advisory_unlock/);
   });
 
   it('holds one session advisory lock and commits each file in its own transaction', async () => {

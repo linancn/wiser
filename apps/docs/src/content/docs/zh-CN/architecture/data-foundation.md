@@ -20,14 +20,14 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: da0b06a2286bd856bc3948de7b4f7303a62da2cf
+lastReviewedCommit: aa7e9c26bff244f7e0350435f203def67184341c
 ---
 
 ## 边界与当前实现
 
 Data Foundation 是 WISER 内与 Agent EXCON 平级的业务系统。它拥有 DataItem、不可变版本、资产、入库会话、质量、血缘、知识、检索与 GIS 事实；不拥有用户 Session、Tenant、Project、Role 或 Token。Supabase 是统一身份与控制面；独立 data-postgres/PostGIS 与 S3 兼容对象存储构成数据权威面；搜索、图谱、STAC 与 GIS 服务均为可重建投影。
 
-当前已落地 `@wiser/data-contracts` 与 `@wiser/data-core`：前者提供严格 Zod 4 DTO 和静态 Capability Registry；后者只包含纯净、同步、确定性的领域政策。数据库、对象存储、任务、Outbox、投影及 transport 仍须沿同一边界完成，当前阶段不等于最终交付。
+当前已落地 `@wiser/data-contracts`、`@wiser/data-core`，以及 `@wiser/data-infra` 的首个 data-postgres 纵切：严格 DTO/Capability、纯确定性领域政策、校验和 SQL migration runner 与权威 Schema 均可执行。对象存储、投影 adapter、完整 Worker 和 transport 仍须沿同一边界完成，当前阶段不等于最终交付。
 
 ## 唯一公开契约源
 
@@ -84,6 +84,10 @@ REJECTED、PUBLISHED、FAILED、CANCELLED 为终态。
 ## 权威提交与投影
 
 正式版本只能由 `APPROVED → COMMITTED` 流程创建。data-postgres 事务原子写入版本、Operation event、审计和 Transactional Outbox；对象内容以 SHA-256 寻址，正式 manifest 只引用已验证的不可变对象。Supabase、data-postgres 和对象存储之间不伪造分布式事务。
+
+当前 3 个纯 SQL migration 初始化 pgcrypto、PostGIS、btree_gist、unaccent、8 个业务 Schema、`schema_migrations` 与 35 张权威表。pgSTAC 按官方 pyPgSTAC migration 管理，不伪造成 `CREATE EXTENSION pgstac`。TS7 runner 按四位版本排序，记录文件名和 SHA-256，在 session advisory lock 下逐文件事务执行；已执行文件缺失、改名、内容漂移或非前缀历史都会 fail closed。
+
+全部 35 张权威表启用并 FORCE RLS。runtime 读取必须同时设置经过验证的 Tenant、Project、最高安全等级和 policy version Session 参数；缺任一参数时返回零行。Migration 不创建也不授权 runtime role，部署层必须显式创建最小权限角色。Operation event、Audit event 与 Outbox event 使用数据库 trigger 拒绝 UPDATE/DELETE；持久任务通过 `FOR UPDATE SKIP LOCKED`、lease owner/expiry、attempt count 与优先级领取。
 
 Worker 消费 Outbox 后幂等构建 PostGIS、Weaviate、OpenSearch、Neo4j、STAC 与 GIS 投影。投影保存 Tenant、Project、Version、安全等级和策略版本过滤，但任何读取、下载、导出或发布仍由 API 使用 Supabase 权威上下文复核。
 

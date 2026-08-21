@@ -9,7 +9,7 @@
     "./migrations": "./src/migrations/index.ts"
   },
   "bin": {
-    "wiser-data-migrate": "./src/migrations/cli.ts"
+    "wiser-data-migrate": "./dist/migrations/cli.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

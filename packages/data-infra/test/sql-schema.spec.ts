@@ -172,12 +172,25 @@ describe('authoritative Data Foundation SQL', () => {
     );
     expect(sql).toMatch(/create trigger operation_event_append_only/i);
     expect(sql).toMatch(/create trigger outbox_event_append_only/i);
+    expect(sql).toMatch(/create trigger audit_event_append_only/i);
     expect(sql).toMatch(
       /raise exception 'append-only relation % cannot be mutated'/i,
+    );
+    expect(sql).toMatch(
+      /function event\.reject_append_only_mutation\(\)[\s\S]*?set search_path = pg_catalog/i,
+    );
+    expect(sql).toMatch(
+      /revoke all on all functions in schema ingestion, security, event from public/i,
+    );
+    expect(sql).toMatch(
+      /alter default privileges in schema event revoke execute on functions from public/i,
     );
   });
 
   it('enables forced RLS and indexes foreign-key and scoped access paths', () => {
+    expect(sql).toMatch(
+      /function security\.security_rank\(candidate text\)[\s\S]*?else null[\s\S]*?end::smallint/i,
+    );
     for (const table of AUTHORITATIVE_TABLES) {
       const escaped = table.replace('.', '\\.');
       expect(sql, `${table} RLS`).toMatch(
