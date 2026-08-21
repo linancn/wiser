@@ -255,8 +255,6 @@ export function RunCollaboration({
           locale={locale}
         />
 
-        <ReadModelGaps gaps={gaps} locale={locale} />
-
         <section
           className={styles.statusBand}
           aria-labelledby="collaboration-status-heading"
@@ -456,6 +454,8 @@ export function RunCollaboration({
             )}
           </aside>
         </div>
+
+        <ReadModelGaps gaps={gaps} locale={locale} />
       </section>
     </main>
   );
