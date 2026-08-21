@@ -115,11 +115,23 @@ describe('Fumadocs documentation application', () => {
     const chinese = markdownFiles('apps/docs/src/content/docs/zh-CN').sort();
     const english = markdownFiles('apps/docs/src/content/docs/en').sort();
 
-    expect(chinese).toHaveLength(10);
     expect(english).toEqual(chinese);
     expect(chinese).toContain('index.mdx');
+    expect(chinese).toContain('architecture/wiser-platform.md');
+    expect(chinese).toContain('architecture/unified-auth.md');
+    expect(chinese).toContain('architecture/design-system.md');
     expect(chinese).toContain('protocols/mcp.md');
     expect(chinese).toContain('scenarios/yongding-river-dispatch.md');
+  });
+
+  it('presents one WISER documentation system for every product system', () => {
+    const chineseMeta = readJson(
+      'apps/docs/src/content/docs/zh-CN/meta.json',
+    );
+    const englishMeta = readJson('apps/docs/src/content/docs/en/meta.json');
+
+    expect(chineseMeta.title).toBe('WISER');
+    expect(englishMeta.title).toBe('WISER');
   });
 
   it('runs the independent docs service through Next.js', () => {
