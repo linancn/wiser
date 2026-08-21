@@ -1,3 +1,22 @@
+---
+title: WISER WorkBuddy 四智能体演练展示包
+docType: runbook
+scope: workbuddy-showcase
+status: active
+authoritative: true
+owner: wiser
+language: zh-CN
+whenToUse:
+  - 启动或验证 WorkBuddy 四智能体协作展示时
+whenToUpdate:
+  - showcase profile、脚本、session schema 或 GUI 流程变化时
+checkPaths:
+  - cookbooks/workbuddy-yongding-tdd/showcase/**
+  - skills/wiser-workbuddy-showcase/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+---
+
 # WISER WorkBuddy 四智能体演练展示包
 
 这个展示包让本机 Codex 操作 WorkBuddy GUI，由 WorkBuddy Lead 启动四个

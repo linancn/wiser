@@ -13,6 +13,16 @@ function readJson(path: string): Record<string, unknown> {
   return JSON.parse(read(path)) as Record<string, unknown>;
 }
 
+function docpactRule(config: string, id: string): string {
+  const marker = `  - id: ${id}\n`;
+  const start = config.indexOf(marker);
+  if (start === -1) {
+    return '';
+  }
+  const next = config.indexOf('\n  - id: ', start + marker.length);
+  return config.slice(start, next === -1 ? undefined : next);
+}
+
 function markdownFiles(path: string): string[] {
   const root = resolve(repositoryRoot, path);
   return readdirSync(root).flatMap((entry) => {
@@ -166,5 +176,91 @@ describe('Fumadocs documentation application', () => {
     ]) {
       expect(rootIgnore).toContain(generated);
     }
+  });
+});
+
+describe('Docpact documentation governance', () => {
+  it('keeps deterministic local and CI governance entry points', () => {
+    expect(existsSync(resolve(repositoryRoot, '.docpact/config.yaml'))).toBe(
+      true,
+    );
+
+    const rootPackage = readJson('package.json');
+    const scripts = rootPackage.scripts as Record<string, string>;
+    expect(scripts['docpact:validate']).toBe(
+      'docpact validate-config --root . --strict',
+    );
+    expect(scripts['docpact:check']).toBe(
+      'docpact lint --root . --worktree --mode enforce --fail-on-uncovered-change --fail-on-stale-docs',
+    );
+
+    const workflow = read('.github/workflows/ci.yml');
+    expect(workflow).toContain(
+      'Biaoo/docpact@d07ba8c500c6a10d90edfd7fb062018d2d3cbf96',
+    );
+    expect(workflow).toContain('args: validate-config --root . --strict');
+    expect(workflow).toContain('--fail-on-uncovered-change');
+    expect(workflow).toContain('--fail-on-stale-docs');
+
+    expect(read('.gitignore')).toContain('.docpact/runs/');
+  });
+
+  it('keeps rule triggers narrower than package roots and binds the smallest stable docs', () => {
+    const config = read('.docpact/config.yaml');
+
+    for (const [ruleId, narrowPath, broadPath] of [
+      [
+        'domain-contracts',
+        'packages/contracts/src/**',
+        'packages/contracts/**',
+      ],
+      ['http-api', 'apps/api/src/**', 'apps/api/**'],
+      ['mcp-adapter', 'apps/mcp/src/**', 'apps/mcp/**'],
+      ['evaluation-runtime', 'apps/worker/src/**', 'apps/worker/**'],
+      ['product-observatory', 'apps/web/src/**', 'apps/web/**'],
+      [
+        'telemetry-stack',
+        'apps/telemetry-ingress/src/**',
+        'apps/telemetry-ingress/**',
+      ],
+    ]) {
+      const rule = docpactRule(config, ruleId);
+      expect(rule, ruleId).toContain(`- path: ${narrowPath}`);
+      expect(rule, ruleId).not.toContain(`- path: ${broadPath}`);
+    }
+
+    const domainRule = docpactRule(config, 'domain-contracts');
+    expect(domainRule).toContain('- path: packages/core/src/**');
+    expect(domainRule).not.toContain('- path: packages/core/**');
+
+    const databaseRule = docpactRule(config, 'database-schema');
+    expect(databaseRule).toContain('- path: supabase/migrations/**');
+    expect(databaseRule).toContain('- path: supabase/schemas/**');
+    expect(databaseRule).not.toContain('- path: supabase/**');
+    expect(docpactRule(config, 'product-observatory')).not.toContain(
+      '- path: README.md',
+    );
+    expect(docpactRule(config, 'evaluation-runtime')).not.toContain(
+      '- path: docs/roadmap.md',
+    );
+
+    for (const ruleId of [
+      'participant-protocol-skill',
+      'participant-scenario-guidance',
+      'participant-skill-tooling',
+      'workbuddy-cookbook-runtime',
+      'workbuddy-showcase',
+      'workbuddy-four-agent-skill',
+    ]) {
+      expect(docpactRule(config, ruleId), ruleId).not.toBe('');
+    }
+    expect(docpactRule(config, 'participant-skill')).toBe('');
+    expect(docpactRule(config, 'workbuddy-workflows')).toBe('');
+    expect(docpactRule(config, 'participant-protocol-skill')).not.toContain(
+      '- path: skills/agent-excon/**',
+    );
+    expect(docpactRule(config, 'workbuddy-cookbook-runtime')).not.toContain(
+      '- path: cookbooks/workbuddy-yongding-tdd/**',
+    );
   });
 });

@@ -1,6 +1,22 @@
 ---
 title: 多智能体导调与可观测性
 description: 场景管理、多 Agent Run、OTel 式 Trace 和当时视角回放的 v2 设计。
+docType: architecture
+scope: observability
+status: active
+authoritative: true
+owner: wiser
+language: zh-CN
+whenToUse:
+  - 修改导调台、回放或技术观测链路时
+whenToUpdate:
+  - 权威事实、Telemetry 信任或展示行为变化时
+checkPaths:
+  - apps/web/**
+  - apps/telemetry-ingress/**
+  - infrastructure/observability/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## 一个 Run 是一次团队演练

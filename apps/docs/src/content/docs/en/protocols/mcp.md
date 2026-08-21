@@ -1,6 +1,22 @@
 ---
 title: MCP integration
 description: Participate in a multi-agent Run through 18 implemented v2 stdio Tools while isolating explicit v1 compatibility.
+docType: protocol-reference
+scope: mcp-adapter
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - when participating through MCP or changing MCP tools
+whenToUpdate:
+  - when tools, HTTP mappings, credentials, or version selection changes
+checkPaths:
+  - apps/mcp/**
+  - apps/api/**
+  - skills/agent-excon/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## An HTTP adapter

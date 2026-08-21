@@ -1,3 +1,23 @@
+---
+title: WorkBuddy Cookbook architecture and trust boundary
+docType: architecture
+scope: workbuddy-yongding-tdd
+status: active
+authoritative: true
+owner: wiser
+language: zh-CN
+whenToUse:
+  - 理解四个隔离进程、身份和 MCP 信任边界时
+whenToUpdate:
+  - 进程拓扑、凭据隔离或权威报告边界变化时
+checkPaths:
+  - cookbooks/workbuddy-yongding-tdd/scripts/**
+  - cookbooks/workbuddy-yongding-tdd/cookbook.yaml
+  - apps/api/src/v2-local-lab-runtime.ts
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+---
+
 # 运行架构与信任边界
 
 ```text

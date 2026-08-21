@@ -1,3 +1,24 @@
+---
+title: WISER project overview
+docType: overview
+scope: repository
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - when learning the project boundary, current status, and local entry points
+whenToUpdate:
+  - when product boundaries, delivery status, or development entry points change
+checkPaths:
+  - apps/**
+  - packages/**
+  - compose.yaml
+  - docs/roadmap.md
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+---
+
 # WISER · Water Intelligence System & Engine for Reconfiguration
 
 English · [中文（默认）](./README.md)
@@ -61,6 +82,16 @@ corepack enable
 pnpm install
 pnpm verify
 ```
+
+The repository uses Docpact 0.1.9 to deterministically connect code changes to documentation obligations. Install it, route the reading path before coding, and inspect worktree changes afterward:
+
+```bash
+cargo install docpact --version 0.1.9
+pnpm docpact:route --paths 'packages/core/src/**'
+pnpm docpact:check
+```
+
+Rules live in [`.docpact/config.yaml`](./.docpact/config.yaml), and pull requests run the blocking check in CI.
 
 Start the complete development stack:
 

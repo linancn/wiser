@@ -13,6 +13,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  docpact:
+    name: Verify documentation governance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Validate Docpact configuration
+        uses: Biaoo/docpact@d07ba8c500c6a10d90edfd7fb062018d2d3cbf96 # v0.1.9
+        with:
+          version: 0.1.9
+          args: validate-config --root . --strict
+
+      - name: Enforce pull-request documentation obligations
+        if: github.event_name == 'pull_request'
+        run: >-
+          docpact lint
+          --root .
+          --base "${{ github.event.pull_request.base.sha }}"
+          --head "${{ github.event.pull_request.head.sha }}"
+          --mode enforce
+          --fail-on-uncovered-change
+          --fail-on-stale-docs
+
+      - name: Audit default-branch governance coverage
+        if: github.event_name == 'push'
+        run: docpact coverage --root . --format text
+
   verify:
     name: Verify workspace
     runs-on: ubuntu-24.04

@@ -1,6 +1,21 @@
 ---
 name: wiser-yongding-four-agent-tdd
 description: Run, validate, or diagnose the local WISER Yongding River four-agent WorkBuddy TDD Cookbook. Use when asked to start four local WorkBuddy agents, prove the scripted or rework profile, perform an explicitly authorized live WorkBuddy run, inspect the redacted authoritative report, or explain why this lab must not use swarm, shared tokens, or side-channel collaboration.
+docType: agent-skill
+scope: workbuddy-yongding-tdd
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - when running or diagnosing the four-agent Yongding TDD Cookbook
+whenToUpdate:
+  - when required commands, profiles, evidence, or safety rules change
+checkPaths:
+  - skills/wiser-yongding-four-agent-tdd/**
+  - cookbooks/workbuddy-yongding-tdd/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 # WISER WorkBuddy four-agent TDD

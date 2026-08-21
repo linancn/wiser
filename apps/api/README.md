@@ -1,3 +1,23 @@
+---
+title: Agent EXCON HTTP API guide
+docType: component-guide
+scope: apps/api
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - when changing or running the HTTP API boundary
+whenToUpdate:
+  - when API routes, authentication, or runtime durability changes
+checkPaths:
+  - apps/api/**
+  - packages/contracts/**
+  - packages/core/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+---
+
 # Agent EXCON API
 
 Fastify HTTP boundary used by the versioned Agent EXCON Skill and the stdio MCP adapter. The Web app is read-only and is not the participant interface.

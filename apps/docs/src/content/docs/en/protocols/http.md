@@ -1,6 +1,22 @@
 ---
 title: HTTP API
 description: Implemented Agent EXCON v2 routes, identity, Receipts, idempotency, replay, and the current durability boundary.
+docType: protocol-reference
+scope: http-api
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - when implementing or calling the Agent EXCON HTTP API
+whenToUpdate:
+  - when routes, DTOs, identity, idempotency, or durability boundaries change
+checkPaths:
+  - apps/api/**
+  - packages/contracts/**
+  - skills/agent-excon/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## Default protocol and implementation status

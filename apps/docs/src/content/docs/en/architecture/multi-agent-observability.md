@@ -1,6 +1,22 @@
 ---
 title: Multi-agent control and observability
 description: The v2 design for scenario management, multi-agent Runs, OTel-style traces, and historical-perspective replay.
+docType: architecture
+scope: observability
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - when changing the observatory, replay, or technical telemetry path
+whenToUpdate:
+  - when authority, telemetry trust, or presentation behavior changes
+checkPaths:
+  - apps/web/**
+  - apps/telemetry-ingress/**
+  - infrastructure/observability/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## A Run is a team exercise

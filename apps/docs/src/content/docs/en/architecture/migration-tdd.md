@@ -1,6 +1,22 @@
 ---
 title: v1 migration and v2 TDD
 description: The online cutover from single-agent Episodes to multi-agent Runs and the first failing tests.
+docType: migration-guide
+scope: agent-excon-v2
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - when changing v1 compatibility, v2 migration, or deterministic evaluation
+whenToUpdate:
+  - when migration order, TDD gates, or persistence status changes
+checkPaths:
+  - apps/worker/**
+  - packages/infra/**
+  - supabase/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## Migration invariant

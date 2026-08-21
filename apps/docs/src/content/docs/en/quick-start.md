@@ -1,6 +1,22 @@
 ---
 title: Quick start
 description: Verify the Agent EXCON v2 multi-agent protocol slice, MCP adapter, and observability path locally.
+docType: workflow
+scope: repository
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - when first installing, verifying, or starting the local development stack
+whenToUpdate:
+  - when toolchain, commands, ports, or local service entry points change
+checkPaths:
+  - package.json
+  - compose.yaml
+  - .env.example
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## Know the current boundary first
@@ -33,6 +49,18 @@ corepack enable
 pnpm install
 pnpm verify
 ```
+
+## Documentation governance
+
+The repository uses Docpact 0.1.9 to map implementation paths to documents that must be read, updated, or explicitly reviewed. Install the CLI, query the route before coding, and inspect unstaged worktree changes afterward:
+
+```bash
+cargo install docpact --version 0.1.9
+pnpm docpact:route --paths 'packages/core/src/**'
+pnpm docpact:check
+```
+
+Run `pnpm docpact:validate` after changing `.docpact/config.yaml` or CI. The pull-request gate blocks unmet documentation obligations and uncovered implementation changes.
 
 To verify only the current v2 multi-agent protocol slice:
 

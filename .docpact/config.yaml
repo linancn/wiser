@@ -1,0 +1,504 @@
+version: 1
+layout: repo
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+catalog:
+  repos:
+    - id: wiser
+      path: .
+      canonicalRepo: linancn/wiser
+      entryDoc: AGENTS.md
+      branchPolicyDoc: CONTRIBUTING.md
+      workflowDocs:
+        - README.md
+        - README.en.md
+        - apps/docs/src/content/docs/zh-CN/quick-start.md
+        - apps/docs/src/content/docs/en/quick-start.md
+      integrationDocs:
+        - docs/design/v2-multi-scenario-multi-agent-observability.md
+      workspaceIntegrationRequired: false
+ownership:
+  domains:
+    - id: domain-model
+      paths:
+        include:
+          - packages/contracts/**
+          - packages/core/**
+      ownerRepo: wiser
+    - id: runtime-adapters
+      paths:
+        include:
+          - apps/api/**
+          - apps/mcp/**
+          - apps/worker/**
+          - packages/infra/**
+      ownerRepo: wiser
+    - id: product-surfaces
+      paths:
+        include:
+          - apps/web/**
+          - apps/docs/**
+      ownerRepo: wiser
+    - id: persistence-and-observability
+      paths:
+        include:
+          - apps/telemetry-ingress/**
+          - infrastructure/**
+          - supabase/**
+      ownerRepo: wiser
+    - id: scenarios-and-agent-workflows
+      paths:
+        include:
+          - cookbooks/**
+          - scenarios/**
+          - skills/**
+      ownerRepo: wiser
+coverage:
+  include:
+    - .docpact/config.yaml
+    - .github/workflows/**
+    - .env.example
+    - compose.yaml
+    - package.json
+    - pnpm-workspace.yaml
+    - tsconfig.json
+    - tsconfig.base.json
+    - apps/api/src/**
+    - apps/mcp/src/**
+    - apps/worker/src/**
+    - apps/telemetry-ingress/src/**
+    - apps/web/src/**
+    - apps/docs/src/app/**
+    - apps/docs/src/components/**
+    - apps/docs/src/lib/**
+    - apps/docs/src/mdx-components.tsx
+    - apps/docs/source.config.ts
+    - apps/docs/next.config.ts
+    - packages/contracts/src/**
+    - packages/core/src/**
+    - packages/infra/src/**
+    - infrastructure/docker/**
+    - infrastructure/observability/*.yaml
+    - infrastructure/observability/smoke.mjs
+    - supabase/config.toml
+    - supabase/migrations/**
+    - supabase/schemas/**
+    - supabase/seed.sql
+    - scenarios/**/facts/**
+    - scenarios/**/fixture/**
+    - scenarios/**/manifest.json
+    - scenarios/**/provenance/**
+    - scenarios/**/v2/**
+    - skills/**
+    - cookbooks/workbuddy-yongding-tdd/cookbook.yaml
+    - cookbooks/workbuddy-yongding-tdd/failure-injection.md
+    - cookbooks/workbuddy-yongding-tdd/roles/**
+    - cookbooks/workbuddy-yongding-tdd/schemas/**
+    - cookbooks/workbuddy-yongding-tdd/scripts/**
+    - cookbooks/workbuddy-yongding-tdd/showcase/schemas/**
+    - cookbooks/workbuddy-yongding-tdd/showcase/scripts/**
+    - cookbooks/workbuddy-yongding-tdd/showcase/showcase.yaml
+freshness:
+  warn_after_commits: 50
+  warn_after_days: 90
+  critical_after_days: 180
+routing:
+  intents:
+    governance:
+      paths:
+        - .docpact/**
+        - .github/workflows/**
+        - AGENTS.md
+        - CONTRIBUTING.md
+    domain-model:
+      paths:
+        - packages/contracts/**
+        - packages/core/**
+        - docs/design/**
+    participant-protocol:
+      paths:
+        - apps/api/**
+        - apps/mcp/**
+        - skills/agent-excon/**
+        - apps/docs/src/content/docs/*/protocols/**
+    persistence-security:
+      paths:
+        - supabase/**
+        - apps/docs/src/content/docs/*/architecture/security.md
+    observability:
+      paths:
+        - apps/telemetry-ingress/**
+        - infrastructure/observability/**
+        - apps/web/**
+        - apps/docs/src/content/docs/*/architecture/multi-agent-observability.md
+    scenario-workflows:
+      paths:
+        - scenarios/**
+        - cookbooks/**
+        - skills/wiser-*/**
+        - apps/docs/src/content/docs/*/scenarios/**
+docInventory:
+  include:
+    - AGENTS.md
+    - CONTRIBUTING.md
+    - README.md
+    - README.en.md
+    - apps/api/README.md
+    - apps/docs/README.md
+    - apps/mcp/README.md
+    - infrastructure/observability/README.md
+    - docs/design/v2-multi-scenario-multi-agent-observability.md
+    - apps/docs/src/content/docs/*/architecture/overview.md
+    - apps/docs/src/content/docs/*/architecture/migration-tdd.md
+    - apps/docs/src/content/docs/*/architecture/security.md
+    - apps/docs/src/content/docs/*/architecture/multi-agent-observability.md
+    - apps/docs/src/content/docs/*/protocols/http.md
+    - apps/docs/src/content/docs/*/protocols/mcp.md
+    - apps/docs/src/content/docs/*/quick-start.md
+    - apps/docs/src/content/docs/*/scenarios/yongding-river-dispatch.md
+    - cookbooks/workbuddy-yongding-tdd/README.md
+    - cookbooks/workbuddy-yongding-tdd/architecture.md
+    - cookbooks/workbuddy-yongding-tdd/showcase/README.md
+    - scenarios/jjj-yongding-replenishment-2023/PROVENANCE.md
+    - skills/agent-excon/SKILL.md
+    - skills/wiser-workbuddy-showcase/SKILL.md
+    - skills/wiser-yongding-four-agent-tdd/SKILL.md
+repo:
+  id: wiser
+  owner: wiser
+  runtime: node
+rules:
+  - id: governance-workflow
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: .docpact/config.yaml
+        kind: governance
+      - path: .github/workflows/**
+        kind: automation
+    requiredDocs:
+      - path: AGENTS.md
+        mode: review_or_update
+      - path: CONTRIBUTING.md
+        mode: review_or_update
+    reason: Governance and CI changes must keep agent and contributor instructions current.
+  - id: developer-toolchain
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: package.json
+        kind: automation
+      - path: pnpm-workspace.yaml
+        kind: automation
+      - path: tsconfig*.json
+        kind: automation
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/quick-start.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/quick-start.md
+        mode: review_or_update
+    reason: Toolchain changes must keep the bilingual installation and verification workflow accurate.
+  - id: local-stack-workflow
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: compose.yaml
+        kind: automation
+      - path: .env.example
+        kind: configuration
+      - path: infrastructure/docker/**
+        kind: automation
+    requiredDocs:
+      - path: README.md
+        mode: review_or_update
+      - path: README.en.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/quick-start.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/quick-start.md
+        mode: review_or_update
+    reason: Local stack changes must keep both repository and detailed startup paths accurate.
+  - id: domain-contracts
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: packages/contracts/src/**
+        kind: code
+      - path: packages/core/src/**
+        kind: code
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/architecture/overview.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/overview.md
+        mode: review_or_update
+      - path: docs/design/v2-multi-scenario-multi-agent-observability.md
+        mode: review_or_update
+    reason: Contract and deterministic-domain changes can alter the documented v2 architecture.
+  - id: http-api
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: apps/api/src/**
+        kind: code
+    requiredDocs:
+      - path: apps/api/README.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/protocols/http.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/protocols/http.md
+        mode: review_or_update
+    reason: HTTP boundary changes must keep the public participant protocol accurate in both locales.
+  - id: mcp-adapter
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: apps/mcp/src/**
+        kind: code
+    requiredDocs:
+      - path: apps/mcp/README.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/protocols/mcp.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/protocols/mcp.md
+        mode: review_or_update
+      - path: skills/agent-excon/SKILL.md
+        mode: review_or_update
+    reason: MCP changes must remain aligned with HTTP-only delegation and the participant Skill.
+  - id: evaluation-runtime
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: apps/worker/src/**
+        kind: code
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/architecture/migration-tdd.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/migration-tdd.md
+        mode: review_or_update
+    reason: Evaluation worker changes can alter deterministic evaluation and migration behavior.
+  - id: ai-infrastructure
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: packages/infra/src/**
+        kind: code
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/architecture/security.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/security.md
+        mode: review_or_update
+    reason: AI provider adapter changes must preserve the documented host-only credential and fake-provider boundary.
+  - id: product-observatory
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: apps/web/src/**
+        kind: code
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/architecture/multi-agent-observability.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/multi-agent-observability.md
+        mode: review_or_update
+    reason: Observatory implementation changes must stay aligned with its bilingual authority and telemetry boundary.
+  - id: docs-application
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: apps/docs/src/app/**
+        kind: code
+      - path: apps/docs/src/components/**
+        kind: code
+      - path: apps/docs/src/lib/**
+        kind: code
+      - path: apps/docs/src/mdx-components.tsx
+        kind: code
+      - path: apps/docs/source.config.ts
+        kind: configuration
+      - path: apps/docs/next.config.ts
+        kind: configuration
+    requiredDocs:
+      - path: apps/docs/README.md
+        mode: review_or_update
+    reason: Documentation-runtime changes must keep its local development contract current.
+  - id: database-schema
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: supabase/migrations/**
+        kind: database
+      - path: supabase/schemas/**
+        kind: database
+      - path: supabase/seed.sql
+        kind: database
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/architecture/security.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/security.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/architecture/migration-tdd.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/migration-tdd.md
+        mode: review_or_update
+    reason: Schema, migration, RLS, and seed changes must keep security and migration guidance current.
+  - id: database-runtime-config
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: supabase/config.toml
+        kind: configuration
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/architecture/security.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/security.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/quick-start.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/quick-start.md
+        mode: review_or_update
+    reason: Supabase runtime configuration changes must keep local setup and security guidance current.
+  - id: telemetry-stack
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: apps/telemetry-ingress/src/**
+        kind: code
+      - path: infrastructure/observability/*.yaml
+        kind: configuration
+      - path: infrastructure/observability/smoke.mjs
+        kind: configuration
+    requiredDocs:
+      - path: infrastructure/observability/README.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/architecture/multi-agent-observability.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/multi-agent-observability.md
+        mode: review_or_update
+    reason: Telemetry plumbing must preserve the documented trust and authority boundary.
+  - id: scenario-pack
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: scenarios/**/facts/**
+        kind: scenario
+      - path: scenarios/**/fixture/**
+        kind: scenario
+      - path: scenarios/**/manifest.json
+        kind: scenario
+      - path: scenarios/**/provenance/**
+        kind: scenario
+      - path: scenarios/**/v2/**
+        kind: scenario
+    requiredDocs:
+      - path: scenarios/jjj-yongding-replenishment-2023/PROVENANCE.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/scenarios/yongding-river-dispatch.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/scenarios/yongding-river-dispatch.md
+        mode: review_or_update
+    reason: Scenario facts, fixtures, and provenance must stay synchronized with the public scenario guide.
+  - id: participant-protocol-skill
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: skills/agent-excon/SKILL.md
+        kind: agent-workflow
+      - path: skills/agent-excon/references/evidence-rules.md
+        kind: agent-workflow
+      - path: skills/agent-excon/references/feedback-and-errors.md
+        kind: agent-workflow
+      - path: skills/agent-excon/references/interaction-protocol.md
+        kind: agent-workflow
+      - path: skills/agent-excon/references/v1-compatibility.md
+        kind: agent-workflow
+    requiredDocs:
+      - path: skills/agent-excon/SKILL.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/protocols/http.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/protocols/http.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/protocols/mcp.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/protocols/mcp.md
+        mode: review_or_update
+    reason: Participant protocol instructions must remain aligned with both HTTP and MCP contracts.
+  - id: participant-scenario-guidance
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: skills/agent-excon/references/yongding-allocation.md
+        kind: agent-workflow
+      - path: skills/agent-excon/scripts/validate-allocation-plan.mjs
+        kind: agent-workflow
+    requiredDocs:
+      - path: skills/agent-excon/SKILL.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/scenarios/yongding-river-dispatch.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/scenarios/yongding-river-dispatch.md
+        mode: review_or_update
+    reason: Yongding-specific participant guidance must stay aligned with the public scenario contract.
+  - id: participant-skill-tooling
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: skills/agent-excon/agents/**
+        kind: agent-workflow
+      - path: skills/agent-excon/evals/**
+        kind: agent-workflow
+      - path: skills/agent-excon/scripts/lint-skill.mjs
+        kind: agent-workflow
+    requiredDocs:
+      - path: skills/agent-excon/SKILL.md
+        mode: review_or_update
+    reason: Skill metadata, evals, and lint tooling must remain aligned with the published Skill entrypoint.
+  - id: workbuddy-cookbook-runtime
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: cookbooks/workbuddy-yongding-tdd/cookbook.yaml
+        kind: agent-workflow
+      - path: cookbooks/workbuddy-yongding-tdd/failure-injection.md
+        kind: agent-workflow
+      - path: cookbooks/workbuddy-yongding-tdd/roles/**
+        kind: agent-workflow
+      - path: cookbooks/workbuddy-yongding-tdd/schemas/**
+        kind: agent-workflow
+      - path: cookbooks/workbuddy-yongding-tdd/scripts/**
+        kind: agent-workflow
+    requiredDocs:
+      - path: cookbooks/workbuddy-yongding-tdd/README.md
+        mode: review_or_update
+      - path: cookbooks/workbuddy-yongding-tdd/architecture.md
+        mode: review_or_update
+    reason: Cookbook runtime, roles, schemas, and failure paths must keep the executable runbook and trust boundary current.
+  - id: workbuddy-showcase
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: cookbooks/workbuddy-yongding-tdd/showcase/schemas/**
+        kind: agent-workflow
+      - path: cookbooks/workbuddy-yongding-tdd/showcase/scripts/**
+        kind: agent-workflow
+      - path: cookbooks/workbuddy-yongding-tdd/showcase/showcase.yaml
+        kind: agent-workflow
+      - path: skills/wiser-workbuddy-showcase/**
+        kind: agent-workflow
+    requiredDocs:
+      - path: cookbooks/workbuddy-yongding-tdd/showcase/README.md
+        mode: review_or_update
+      - path: skills/wiser-workbuddy-showcase/SKILL.md
+        mode: review_or_update
+    reason: Showcase automation and its host-controller Skill must describe the same GUI workflow.
+  - id: workbuddy-four-agent-skill
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: skills/wiser-yongding-four-agent-tdd/**
+        kind: agent-workflow
+    requiredDocs:
+      - path: skills/wiser-yongding-four-agent-tdd/SKILL.md
+        mode: review_or_update
+      - path: cookbooks/workbuddy-yongding-tdd/README.md
+        mode: review_or_update
+    reason: The four-agent controller Skill must remain aligned with the Cookbook entrypoint it operates.
