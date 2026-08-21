@@ -101,6 +101,42 @@ const evaluations = {
   ],
 } as const;
 
+const interactions = {
+  items: [
+    {
+      id: 'a9eebdfc-a264-471a-b8d1-4710c8069386',
+      runId: RUN_ID,
+      threadId: '5ed83e79-a6c7-48ca-9022-a35d7c65e945',
+      kind: 'handoff',
+      senderType: 'RUN_AGENT',
+      senderId: RUN_AGENT_ID,
+      recipientRunAgentIds: [RUN_AGENT_ID],
+      subject: localized('来水工件交接', 'Inflow artifact handoff'),
+      artifactVersionRefs: [
+        {
+          artifactId: 'dad56a02-3183-4dbb-a892-71d7fbc66dd6',
+          artifactVersionId: 'b487fa18-5fae-4c95-b8f7-061e99158f13',
+          contentHash: HASH,
+        },
+      ],
+      createdRunSeq: 4,
+      createdVirtualAt: '2026-08-20T06:00:00.000Z',
+      createdAt: '2026-08-20T06:00:01.000Z',
+      deliveries: [
+        {
+          recipientRunAgentId: RUN_AGENT_ID,
+          state: 'acknowledged',
+          agentReceiptSeq: 2,
+          issuedRunSeq: 5,
+          acknowledgedRunSeq: 6,
+        },
+      ],
+      responseMessageIds: [],
+      status: 'complete',
+    },
+  ],
+} as const;
+
 const event = {
   eventId: 'd37c450a-8f80-4714-84fb-19242719ad61',
   runId: RUN_ID,
@@ -200,6 +236,7 @@ function response(body: unknown, status = 200): Response {
 }
 
 interface LiveFetchOverrides {
+  readonly interactions?: unknown;
   readonly scenarioDetail?: unknown;
   readonly scenarioVersions?: unknown;
   readonly replay?: unknown;
@@ -249,6 +286,9 @@ function liveFetch(overrides: LiveFetchOverrides = {}) {
     }
     if (url.pathname === `/api/v2/runs/${RUN_ID}/evaluations`) {
       return Promise.resolve(response(evaluations));
+    }
+    if (url.pathname === `/api/v2/runs/${RUN_ID}/interactions`) {
+      return Promise.resolve(response(overrides.interactions ?? interactions));
     }
     return Promise.resolve(response({ code: 'NOT_FOUND' }, 404));
   });
@@ -306,6 +346,12 @@ describe('Web read-model sources', () => {
     expect(result.data.run.participants).toHaveLength(1);
     expect(result.data.run.spans).toEqual([]);
     expect(result.data.run.traceSummaries).toHaveLength(1);
+    expect(result.data.interactions).toMatchObject([
+      {
+        kind: 'handoff',
+        deliveries: [{ state: 'acknowledged' }],
+      },
+    ]);
     expect(result.data.run.diagnostics.evaluationLanes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -427,6 +473,49 @@ describe('Web read-model sources', () => {
       });
     },
   );
+
+  it('rejects an interaction projection from another Run', async () => {
+    const source = createLiveReadModelSource({
+      apiOrigin: 'http://api:3001',
+      operatorToken: 'operator-secret',
+      fetcher: liveFetch({
+        interactions: {
+          items: interactions.items.map((interaction) => ({
+            ...interaction,
+            runId: OTHER_RUN_ID,
+          })),
+        },
+      }),
+    });
+
+    await expect(source.readRunWorkspace(RUN_ID)).resolves.toMatchObject({
+      status: 'unavailable',
+      reason: 'contract',
+    });
+  });
+
+  it('rejects an invented interaction delivery state', async () => {
+    const source = createLiveReadModelSource({
+      apiOrigin: 'http://api:3001',
+      operatorToken: 'operator-secret',
+      fetcher: liveFetch({
+        interactions: {
+          items: interactions.items.map((interaction) => ({
+            ...interaction,
+            deliveries: interaction.deliveries.map((delivery) => ({
+              ...delivery,
+              state: 'read',
+            })),
+          })),
+        },
+      }),
+    });
+
+    await expect(source.readRunWorkspace(RUN_ID)).resolves.toMatchObject({
+      status: 'unavailable',
+      reason: 'contract',
+    });
+  });
 
   it('rejects a scenario detail whose current version does not match currentVersionId', async () => {
     const source = createLiveReadModelSource({

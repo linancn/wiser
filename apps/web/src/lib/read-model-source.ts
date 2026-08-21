@@ -1,10 +1,12 @@
 import {
   exerciseRuns,
+  getReferenceInteractions,
   getReplayEventsForPerspective,
   getRunById,
   getScenarioById,
   scenarios,
   type AgentSession,
+  type CollaborationExchange,
   type ExerciseRun,
   type LocalizedText,
   type PlatformScenario,
@@ -50,6 +52,7 @@ export interface RunCatalogReadModel {
 export interface RunWorkspaceReadModel {
   readonly scenario: PlatformScenario;
   readonly run: ExerciseRun;
+  readonly interactions: readonly CollaborationExchange[];
   readonly replayByPerspective: Readonly<
     Record<string, readonly ReplayReceipt[]>
   >;
@@ -203,6 +206,39 @@ interface ApiRunEvaluation extends DiagnosticEvaluation {
   readonly runAgentId: string;
 }
 
+interface ApiCollaborationArtifactReference {
+  readonly artifactId: string;
+  readonly artifactVersionId: string;
+  readonly contentHash: string;
+}
+
+interface ApiCollaborationDelivery {
+  readonly recipientRunAgentId: string;
+  readonly state: 'pending_sync' | 'issued' | 'acknowledged';
+  readonly agentReceiptSeq?: number;
+  readonly issuedRunSeq?: number;
+  readonly acknowledgedRunSeq?: number;
+}
+
+interface ApiRunInteraction {
+  readonly id: string;
+  readonly runId: string;
+  readonly threadId: string;
+  readonly kind: 'inform' | 'request' | 'response' | 'handoff';
+  readonly replyToMessageId?: string;
+  readonly senderType: 'EXCON' | 'RUN_AGENT';
+  readonly senderId: string;
+  readonly recipientRunAgentIds: readonly string[];
+  readonly subject: LocalizedText;
+  readonly artifactVersionRefs: readonly ApiCollaborationArtifactReference[];
+  readonly createdRunSeq: number;
+  readonly createdVirtualAt: string;
+  readonly createdAt: string;
+  readonly deliveries: readonly ApiCollaborationDelivery[];
+  readonly responseMessageIds: readonly string[];
+  readonly status: 'open' | 'responded' | 'complete';
+}
+
 interface ApiAgentReceipt {
   readonly id: string;
   readonly runId: string;
@@ -336,7 +372,12 @@ export function createReferenceReadModelSource(): WebReadModelSource {
         );
       }
       return Promise.resolve(
-        ready('reference', { scenario, run, replayByPerspective }),
+        ready('reference', {
+          scenario,
+          run,
+          interactions: getReferenceInteractions(run.id),
+          replayByPerspective,
+        }),
       );
     },
   };
@@ -549,6 +590,71 @@ function isApiRunEvaluation(value: unknown): value is ApiRunEvaluation {
   );
 }
 
+function isApiCollaborationArtifactReference(
+  value: unknown,
+): value is ApiCollaborationArtifactReference {
+  return (
+    isRecord(value) &&
+    hasStringFields(value, ['artifactId', 'artifactVersionId', 'contentHash'])
+  );
+}
+
+function optionalPositiveInteger(value: unknown): boolean {
+  return value === undefined || (Number.isInteger(value) && Number(value) > 0);
+}
+
+function isApiCollaborationDelivery(
+  value: unknown,
+): value is ApiCollaborationDelivery {
+  return (
+    isRecord(value) &&
+    isString(value.recipientRunAgentId) &&
+    (value.state === 'pending_sync' ||
+      value.state === 'issued' ||
+      value.state === 'acknowledged') &&
+    optionalPositiveInteger(value.agentReceiptSeq) &&
+    optionalPositiveInteger(value.issuedRunSeq) &&
+    optionalPositiveInteger(value.acknowledgedRunSeq)
+  );
+}
+
+function isApiRunInteraction(value: unknown): value is ApiRunInteraction {
+  return (
+    isRecord(value) &&
+    hasStringFields(value, [
+      'id',
+      'runId',
+      'threadId',
+      'senderId',
+      'createdVirtualAt',
+      'createdAt',
+    ]) &&
+    (value.kind === 'inform' ||
+      value.kind === 'request' ||
+      value.kind === 'response' ||
+      value.kind === 'handoff') &&
+    (value.replyToMessageId === undefined ||
+      isString(value.replyToMessageId)) &&
+    (value.senderType === 'EXCON' || value.senderType === 'RUN_AGENT') &&
+    Array.isArray(value.recipientRunAgentIds) &&
+    value.recipientRunAgentIds.length > 0 &&
+    value.recipientRunAgentIds.every(isString) &&
+    isLocalizedText(value.subject) &&
+    Array.isArray(value.artifactVersionRefs) &&
+    value.artifactVersionRefs.every(isApiCollaborationArtifactReference) &&
+    Number.isInteger(value.createdRunSeq) &&
+    Number(value.createdRunSeq) > 0 &&
+    Array.isArray(value.deliveries) &&
+    value.deliveries.length > 0 &&
+    value.deliveries.every(isApiCollaborationDelivery) &&
+    Array.isArray(value.responseMessageIds) &&
+    value.responseMessageIds.every(isString) &&
+    (value.status === 'open' ||
+      value.status === 'responded' ||
+      value.status === 'complete')
+  );
+}
+
 function isApiAgentReceipt(value: unknown): value is ApiAgentReceipt {
   if (!isRecord(value)) return false;
   return (
@@ -752,9 +858,17 @@ function runAgentToReadModel(
 }
 
 function eventCategory(event: ApiRunEvent): ReplayReceipt['category'] {
+  if (
+    event.streamType === 'receipt' &&
+    event.eventType === 'receipt.acknowledged'
+  ) {
+    return 'acknowledgement';
+  }
   const categories: Record<string, ReplayReceipt['category']> = {
-    artifact: 'contribution',
+    artifact: 'artifact',
+    endorsement: 'endorsement',
     feedback: 'feedback',
+    message: 'message',
     receipt: 'receipt',
     run: 'run',
     submission: 'submission',
@@ -1093,12 +1207,14 @@ class LiveReadModelSource implements WebReadModelSource {
           `Run ${runId} references a scenario version missing from /api/v2/scenarios.`,
         );
       }
-      const [agents, replay, telemetry, evaluations] = await Promise.all([
-        this.runAgents(runId),
-        this.replay(runId),
-        this.telemetry(runId),
-        this.evaluations(runId),
-      ]);
+      const [agents, replay, telemetry, evaluations, interactions] =
+        await Promise.all([
+          this.runAgents(runId),
+          this.replay(runId),
+          this.telemetry(runId),
+          this.evaluations(runId),
+          this.interactions(runId),
+        ]);
       if (replay.authoritativeProjection.run.id !== apiRun.id) {
         throw new ReadModelSourceError(
           'contract',
@@ -1122,7 +1238,8 @@ class LiveReadModelSource implements WebReadModelSource {
         replay.bestEffortTelemetryOverlay.traces.some(
           (trace) => trace.runId !== runId,
         ) ||
-        evaluations.some((evaluation) => evaluation.runId !== runId)
+        evaluations.some((evaluation) => evaluation.runId !== runId) ||
+        interactions.some((interaction) => interaction.runId !== runId)
       ) {
         throw new ReadModelSourceError(
           'contract',
@@ -1159,6 +1276,7 @@ class LiveReadModelSource implements WebReadModelSource {
         {
           scenario,
           run,
+          interactions,
           replayByPerspective: { operator: run.replayReceipts },
         },
         gaps,
@@ -1346,6 +1464,20 @@ class LiveReadModelSource implements WebReadModelSource {
       throw new ReadModelSourceError(
         'contract',
         `${path} did not match the expected deterministic evaluation-list contract.`,
+      );
+    }
+    return value.items;
+  }
+
+  private async interactions(
+    runId: string,
+  ): Promise<readonly CollaborationExchange[]> {
+    const path = `/api/v2/runs/${encodeURIComponent(runId)}/interactions`;
+    const value = await this.request(path, true);
+    if (!isItems(value, isApiRunInteraction)) {
+      throw new ReadModelSourceError(
+        'contract',
+        `${path} did not match the expected v2 interaction-list contract.`,
       );
     }
     return value.items;

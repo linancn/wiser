@@ -129,7 +129,11 @@ export interface ReplayReceipt {
     | 'run'
     | 'inject'
     | 'receipt'
+    | 'acknowledgement'
+    | 'artifact'
     | 'contribution'
+    | 'endorsement'
+    | 'message'
     | 'submission'
     | 'evaluation'
     | 'feedback';
@@ -143,6 +147,44 @@ export interface ReplayReceipt {
   readonly traceId?: string;
   readonly spanId?: string;
   readonly digest: string;
+}
+
+export type CollaborationKind = 'inform' | 'request' | 'response' | 'handoff';
+
+export type CollaborationDeliveryState =
+  'pending_sync' | 'issued' | 'acknowledged';
+
+export interface CollaborationArtifactReference {
+  readonly artifactId: string;
+  readonly artifactVersionId: string;
+  readonly contentHash: string;
+}
+
+export interface CollaborationDelivery {
+  readonly recipientRunAgentId: string;
+  readonly state: CollaborationDeliveryState;
+  readonly agentReceiptSeq?: number;
+  readonly issuedRunSeq?: number;
+  readonly acknowledgedRunSeq?: number;
+}
+
+export interface CollaborationExchange {
+  readonly id: string;
+  readonly runId: string;
+  readonly threadId: string;
+  readonly kind: CollaborationKind;
+  readonly replyToMessageId?: string;
+  readonly senderType: 'EXCON' | 'RUN_AGENT';
+  readonly senderId: string;
+  readonly recipientRunAgentIds: readonly string[];
+  readonly subject: LocalizedText;
+  readonly artifactVersionRefs: readonly CollaborationArtifactReference[];
+  readonly createdRunSeq: number;
+  readonly createdVirtualAt: string;
+  readonly createdAt: string;
+  readonly deliveries: readonly CollaborationDelivery[];
+  readonly responseMessageIds: readonly string[];
+  readonly status: 'open' | 'responded' | 'complete';
 }
 
 export interface ExerciseRun {
@@ -803,6 +845,188 @@ const yongdingSpans: readonly ExerciseSpan[] = [
 
 const allYongdingAgents = yongdingParticipants.map(({ id }) => id);
 
+const acknowledgedDelivery = (
+  recipientRunAgentId: string,
+  agentReceiptSeq: number,
+  issuedRunSeq: number,
+  acknowledgedRunSeq: number,
+): CollaborationDelivery => ({
+  recipientRunAgentId,
+  state: 'acknowledged',
+  agentReceiptSeq,
+  issuedRunSeq,
+  acknowledgedRunSeq,
+});
+
+const yongdingInteractions: readonly CollaborationExchange[] = [
+  {
+    id: 'message-inflow-handoff',
+    runId: 'run-yongding-spring-042',
+    threadId: 'thread-inflow-handoff',
+    kind: 'handoff',
+    senderType: 'RUN_AGENT',
+    senderId: 'agent-inflow',
+    recipientRunAgentIds: ['agent-coordinator'],
+    subject: text(
+      '来水边界工件已固定并交接',
+      'Inflow boundary artifact pinned and handed off',
+    ),
+    artifactVersionRefs: [
+      {
+        artifactId: 'artifact-inflow-boundary',
+        artifactVersionId: 'artifact-inflow-boundary-v2',
+        contentHash: 'sha256:2e0c…b712',
+      },
+    ],
+    createdRunSeq: 132,
+    createdVirtualAt: 'T+12:01',
+    createdAt: '2026-08-20T10:31:50.460+08:00',
+    deliveries: [acknowledgedDelivery('agent-coordinator', 7, 133, 137)],
+    responseMessageIds: [],
+    status: 'complete',
+  },
+  {
+    id: 'message-hydraulic-handoff',
+    runId: 'run-yongding-spring-042',
+    threadId: 'thread-hydraulic-handoff',
+    kind: 'handoff',
+    senderType: 'RUN_AGENT',
+    senderId: 'agent-hydraulics',
+    recipientRunAgentIds: ['agent-coordinator'],
+    subject: text(
+      '输水通道约束工件已交接',
+      'Conveyance constraints artifact handed off',
+    ),
+    artifactVersionRefs: [
+      {
+        artifactId: 'artifact-hydraulic-envelope',
+        artifactVersionId: 'artifact-hydraulic-envelope-v1',
+        contentHash: 'sha256:73af…961c',
+      },
+    ],
+    createdRunSeq: 134,
+    createdVirtualAt: 'T+12:01',
+    createdAt: '2026-08-20T10:31:51.030+08:00',
+    deliveries: [acknowledgedDelivery('agent-coordinator', 8, 135, 137)],
+    responseMessageIds: [],
+    status: 'complete',
+  },
+  {
+    id: 'message-ecology-handoff',
+    runId: 'run-yongding-spring-042',
+    threadId: 'thread-ecology-handoff',
+    kind: 'handoff',
+    senderType: 'RUN_AGENT',
+    senderId: 'agent-ecology',
+    recipientRunAgentIds: ['agent-coordinator'],
+    subject: text(
+      '生态断面目标工件已交接',
+      'Ecological section targets artifact handed off',
+    ),
+    artifactVersionRefs: [
+      {
+        artifactId: 'artifact-ecological-targets',
+        artifactVersionId: 'artifact-ecological-targets-v1',
+        contentHash: 'sha256:cc82…0a4d',
+      },
+    ],
+    createdRunSeq: 136,
+    createdVirtualAt: 'T+12:02',
+    createdAt: '2026-08-20T10:31:51.550+08:00',
+    deliveries: [acknowledgedDelivery('agent-coordinator', 9, 138, 142)],
+    responseMessageIds: [],
+    status: 'complete',
+  },
+  {
+    id: 'message-coordination-review-request',
+    runId: 'run-yongding-spring-042',
+    threadId: 'thread-coordination-review',
+    kind: 'request',
+    senderType: 'RUN_AGENT',
+    senderId: 'agent-coordinator',
+    recipientRunAgentIds: ['agent-inflow', 'agent-hydraulics', 'agent-ecology'],
+    subject: text(
+      '请复核联合调度草案的三项边界',
+      'Review three boundaries in the joint dispatch draft',
+    ),
+    artifactVersionRefs: [],
+    createdRunSeq: 143,
+    createdVirtualAt: 'T+12:03',
+    createdAt: '2026-08-20T10:31:53.040+08:00',
+    deliveries: [
+      acknowledgedDelivery('agent-inflow', 6, 144, 148),
+      acknowledgedDelivery('agent-hydraulics', 6, 145, 149),
+      acknowledgedDelivery('agent-ecology', 6, 146, 150),
+    ],
+    responseMessageIds: [
+      'message-inflow-response',
+      'message-hydraulic-response',
+      'message-ecology-response',
+    ],
+    status: 'responded',
+  },
+  {
+    id: 'message-inflow-response',
+    runId: 'run-yongding-spring-042',
+    threadId: 'thread-coordination-review',
+    kind: 'response',
+    replyToMessageId: 'message-coordination-review-request',
+    senderType: 'RUN_AGENT',
+    senderId: 'agent-inflow',
+    recipientRunAgentIds: ['agent-coordinator'],
+    subject: text('来水边界复核完成', 'Inflow boundary review complete'),
+    artifactVersionRefs: [],
+    createdRunSeq: 151,
+    createdVirtualAt: 'T+12:03',
+    createdAt: '2026-08-20T10:31:53.810+08:00',
+    deliveries: [acknowledgedDelivery('agent-coordinator', 10, 152, 158)],
+    responseMessageIds: [],
+    status: 'complete',
+  },
+  {
+    id: 'message-hydraulic-response',
+    runId: 'run-yongding-spring-042',
+    threadId: 'thread-coordination-review',
+    kind: 'response',
+    replyToMessageId: 'message-coordination-review-request',
+    senderType: 'RUN_AGENT',
+    senderId: 'agent-hydraulics',
+    recipientRunAgentIds: ['agent-coordinator'],
+    subject: text(
+      '输水能力与容差复核完成',
+      'Capacity and tolerance review complete',
+    ),
+    artifactVersionRefs: [],
+    createdRunSeq: 153,
+    createdVirtualAt: 'T+12:03',
+    createdAt: '2026-08-20T10:31:54.110+08:00',
+    deliveries: [acknowledgedDelivery('agent-coordinator', 11, 154, 158)],
+    responseMessageIds: [],
+    status: 'complete',
+  },
+  {
+    id: 'message-ecology-response',
+    runId: 'run-yongding-spring-042',
+    threadId: 'thread-coordination-review',
+    kind: 'response',
+    replyToMessageId: 'message-coordination-review-request',
+    senderType: 'RUN_AGENT',
+    senderId: 'agent-ecology',
+    recipientRunAgentIds: ['agent-coordinator'],
+    subject: text(
+      '生态连续性边界复核完成',
+      'Ecological continuity boundary review complete',
+    ),
+    artifactVersionRefs: [],
+    createdRunSeq: 155,
+    createdVirtualAt: 'T+12:04',
+    createdAt: '2026-08-20T10:31:54.720+08:00',
+    deliveries: [acknowledgedDelivery('agent-coordinator', 12, 156, 158)],
+    responseMessageIds: [],
+    status: 'complete',
+  },
+];
+
 const yongdingReplayReceipts: readonly ReplayReceipt[] = [
   {
     id: 'receipt-181',
@@ -1167,6 +1391,12 @@ export function getScenarioById(id: string): PlatformScenario | undefined {
 
 export function getRunById(id: string): ExerciseRun | undefined {
   return exerciseRuns.find((run) => run.id === id);
+}
+
+export function getReferenceInteractions(
+  runId: string,
+): readonly CollaborationExchange[] {
+  return runId === 'run-yongding-spring-042' ? yongdingInteractions : [];
 }
 
 export function getRunsForScenario(scenarioId: string): readonly ExerciseRun[] {

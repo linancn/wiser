@@ -17,10 +17,14 @@ type ReplayProgressStyle = CSSProperties & { '--replay-progress': string };
 
 function categoryLabel(category: string, locale: Locale): string {
   const labels: Record<string, Record<Locale, string>> = {
+    acknowledgement: { 'zh-CN': '接收确认', en: 'Acknowledgement' },
+    artifact: { 'zh-CN': '工件', en: 'Artifact' },
     contribution: { 'zh-CN': '专业工件', en: 'Contribution' },
+    endorsement: { 'zh-CN': '背书', en: 'Endorsement' },
     evaluation: { 'zh-CN': '裁决', en: 'Evaluation' },
     feedback: { 'zh-CN': '反馈', en: 'Feedback' },
     inject: { 'zh-CN': '注入', en: 'Inject' },
+    message: { 'zh-CN': '消息', en: 'Message' },
     receipt: { 'zh-CN': '收据', en: 'Receipt' },
     run: { 'zh-CN': '运行', en: 'Run' },
     submission: { 'zh-CN': '提交', en: 'Submission' },
