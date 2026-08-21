@@ -1,6 +1,7 @@
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
@@ -77,6 +78,17 @@ async function migrationDirectory(
 }
 
 describe('data-postgres migration discovery', () => {
+  it('prefers the canonical migration URL and keeps the legacy alias secondary', () => {
+    const source = readFileSync(
+      resolve(import.meta.dirname, '../src/migrations/cli.ts'),
+      'utf8',
+    );
+    expect(source).toContain('process.env.DATA_DATABASE_MIGRATION_URL');
+    expect(source.indexOf('DATA_DATABASE_MIGRATION_URL')).toBeLessThan(
+      source.indexOf('DATA_POSTGRES_URL'),
+    );
+  });
+
   it('discovers canonical SQL files in fixed numeric order with SHA-256 checksums', async () => {
     const directory = await migrationDirectory({
       '0002_catalog.sql': 'select 2;\n',
