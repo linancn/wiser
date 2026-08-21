@@ -5,6 +5,8 @@ import type { FastifyInstance } from 'fastify';
 
 import type {
   AuthorizationQuery,
+  DelegatedCredentialAuthorizationQuery,
+  PlatformDelegationTransactionPool,
   SupabaseClaimsClient,
 } from '@wiser/platform-auth';
 
@@ -84,9 +86,21 @@ describe('WISER platform auth runtime', () => {
       }),
     );
     const close = vi.fn(() => Promise.resolve());
+    const delegatedCredentialQuery: DelegatedCredentialAuthorizationQuery =
+      vi.fn(() => Promise.resolve({ rows: [] }));
+    const transactionPool: PlatformDelegationTransactionPool = {
+      connect: vi.fn(() =>
+        Promise.reject(new Error('transaction pool was not expected')),
+      ),
+    };
     const factories: PlatformAuthRuntimeFactories = {
       createClaimsClient: vi.fn(() => claimsClient),
-      createAuthorizationDatabase: vi.fn(() => ({ query, close })),
+      createAuthorizationDatabase: vi.fn(() => ({
+        query,
+        delegatedCredentialQuery,
+        transactionPool,
+        close,
+      })),
     };
     const module = createPlatformAuthModuleFromEnvironment(
       {

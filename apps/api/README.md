@@ -15,7 +15,7 @@ checkPaths:
   - packages/contracts/**
   - packages/core/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 23ec3d9b25c6be7da22a69c122a6def4be6dfd04
+lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
 ---
 
 # WISER API host
@@ -34,11 +34,11 @@ The default `InMemoryExerciseService` (v1) and `InMemoryV2ExerciseService` are d
 
 `createPlatformIdentityModule()` adds the protected `GET /api/platform/v1/me` vertical slice when a `PlatformPrincipalResolver` is injected. It requires Bearer, Tenant, Project, and Purpose context and returns only the safe actor, role, scope, maximum-security-level, and authorization-version projection; credentials and Session ids never enter the response.
 
-`createPlatformDelegationModule()` defines the human-only delegated-credential command surface. A verified Supabase principal must have `platform.delegation.manage`; requested Scope, Purpose, TTL, and L0-L3 ceiling may not exceed the live context. Every command requires a UUID `Idempotency-Key`, every response is `private, no-store`, metadata reads never expose a token, and issue/rotate are the only one-time plaintext responses. The module is transport-only and requires an injected transactional `PlatformDelegationCommandService`; default-process PostgreSQL wiring remains the next slice.
+`createPlatformDelegationModule()` defines the human-only delegated-credential command surface. A verified Supabase principal must have `platform.delegation.manage`; requested Scope, Purpose, TTL, and L0-L3 ceiling may not exceed the live context. Every command requires a UUID `Idempotency-Key`, every response is `private, no-store`, metadata reads never expose a token, and issue/rotate are the only one-time plaintext responses. In Supabase mode the default process injects `PostgresPlatformDelegationService`, the live delegated Resolver, and the same bounded Pool.
 
 `createDataFoundationModule()` mounts Data Foundation beside Agent EXCON without a second Fastify process. Its injected readiness probe drives truthful `GET /api/data/v1/health` status across data-postgres, object storage, and Worker. `GET /api/data/v1/capabilities` projects the ordered 22-item Zod 4 Registry into draft-7 input/output JSON Schema plus exact REST, GraphQL, MCP, and Skill mappings. Both responses are non-cacheable; the default process does not report Data Foundation ready until concrete authority probes are wired.
 
-`main.ts` creates the concrete Supabase `getClaims` client and PostgreSQL Membership loader when `WISER_AUTH_MODE=supabase`. Production defaults to that mode and refuses missing `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, or `DATABASE_URL`; non-production defaults to `off` for the legacy local-token compatibility profile. The authorization pool is closed through the Fastify lifecycle.
+`main.ts` creates the concrete Supabase `getClaims` client, PostgreSQL Membership/delegated loaders, transactional delegation service, and prefix-routed composite Resolver when `WISER_AUTH_MODE=supabase`. A `wdc1.` token is never retried as JWT after delegated verification fails. Production defaults to Supabase mode and refuses missing `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `DATABASE_URL`, or `WISER_DELEGATED_CREDENTIAL_HMAC_KEYS`; non-production defaults to `off` for the legacy local-token compatibility profile. The bounded shared Pool is closed through the Fastify lifecycle.
 
 Participant requests use `Authorization: Bearer <token>`. Every POST uses a UUID `Idempotency-Key`; observe, submit, and advance also include `episodeVersion`.
 

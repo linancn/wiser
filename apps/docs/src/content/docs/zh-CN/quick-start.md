@@ -15,8 +15,8 @@ checkPaths:
   - package.json
   - compose.yaml
   - .env.example
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
 ---
 
 ## 先认识当前边界
@@ -83,7 +83,10 @@ WISER_AUTH_MODE=supabase
 SUPABASE_URL=http://127.0.0.1:56321
 SUPABASE_PUBLISHABLE_KEY=<local-publishable-key>
 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:56322/postgres
+WISER_DELEGATED_CREDENTIAL_HMAC_KEYS='{"activeKeyId":"primary-local","keys":{"primary-local":"<unpadded-base64url-of-32+-random-bytes>"}}'
 ```
+
+每个 HMAC key 必须来自至少 32 个密码学安全随机字节，并将整段 JSON 只保留在服务端。Key ring 缺失、过短、带 padding 或格式畸形时 API 会拒绝启动；浏览器永远不能接收该值。
 
 生产环境默认强制 `supabase`，缺少任一变量会失败关闭。浏览器只使用 `NEXT_PUBLIC_SUPABASE_*`；服务器变量和数据库连接不得加 `NEXT_PUBLIC_`。
 

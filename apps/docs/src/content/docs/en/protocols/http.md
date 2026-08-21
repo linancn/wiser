@@ -16,7 +16,7 @@ checkPaths:
   - packages/contracts/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 23ec3d9b25c6be7da22a69c122a6def4be6dfd04
+lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
 ---
 
 ## Default protocol and implementation status
@@ -42,7 +42,7 @@ The injectable `platform.delegation` module defines these control-plane routes:
 | POST   | `/api/platform/v1/delegations/:delegationId:revoke`             | Revoke a Delegation                 |
 | POST   | `/api/platform/v1/credentials/:credentialId:revoke`             | Revoke one Credential               |
 
-Commands require a UUID `Idempotency-Key`; all routes require Bearer, Tenant, Project, and Purpose headers plus a Supabase human with `platform.delegation.manage`. The concrete transactional command service is not yet registered by the default runtime.
+Commands require a UUID `Idempotency-Key`; all routes require Bearer, Tenant, Project, and Purpose headers plus a Supabase human with `platform.delegation.manage`. Supabase runtime mode registers the concrete transactional command service and delegated Resolver; service conflicts use stable no-store 4xx errors.
 
 ## Data Foundation discovery
 

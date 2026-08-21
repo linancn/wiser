@@ -160,3 +160,8 @@ export {
   type PlatformDelegationView,
   type PostgresPlatformDelegationServiceOptions,
 } from './postgres-platform-delegation-service.js';
+export {
+  PlatformCredentialPrincipalResolver,
+  type PlatformCredentialPrincipalResolverOptions,
+  type PlatformPrincipalResolverLike,
+} from './platform-credential-principal-resolver.js';

@@ -15,8 +15,8 @@ checkPaths:
   - package.json
   - compose.yaml
   - .env.example
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
 ---
 
 ## Know the current boundary first
@@ -83,7 +83,10 @@ WISER_AUTH_MODE=supabase
 SUPABASE_URL=http://127.0.0.1:56321
 SUPABASE_PUBLISHABLE_KEY=<local-publishable-key>
 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:56322/postgres
+WISER_DELEGATED_CREDENTIAL_HMAC_KEYS='{"activeKeyId":"primary-local","keys":{"primary-local":"<unpadded-base64url-of-32+-random-bytes>"}}'
 ```
+
+Generate every HMAC key from at least 32 cryptographically random bytes and keep the JSON server-side. The API refuses malformed, short, padded, or missing key rings and never accepts this value from a browser.
 
 Production defaults to mandatory `supabase` mode and fails closed when any value is missing. Browsers use only `NEXT_PUBLIC_SUPABASE_*`; server variables and database connections never receive the `NEXT_PUBLIC_` prefix.
 

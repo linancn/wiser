@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: f7410075ab0b7d6c5cb535637da45ad8c1a22070
+lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
 ---
 
 ## One identity authority
@@ -29,11 +29,11 @@ A JWT proves the subject, authentication assurance, and session. Dynamic Tenant,
 
 Delivered now: the `platform` / `platform_private` schemas, automatic user provisioning, Tenant/Project/Membership, Role/Scope/Binding, Delegation, private Credential/Audit/Outbox storage, least-privilege grants, and 50 pgTAP control-plane contract checks. The framework-independent `SupabaseJwtPrincipalResolver`, `getClaims` result verifier, and single-query PostgreSQL Membership loader compose and fail closed. Delegated-credential issuance remains the next authorization wiring milestone.
 
-Fastify exposes the `platform.identity` module and safe `/api/platform/v1/me` projection. `WISER_AUTH_MODE=supabase` creates the current stable `supabase-js` client, bounded PostgreSQL pool, and fail-closed Resolver in the default process. Production refuses any missing required configuration, and process shutdown closes the pool. Delegated-credential issuance remains a later milestone.
+Fastify exposes the safe `/api/platform/v1/me` projection and delegated command surface. `WISER_AUTH_MODE=supabase` creates the current stable `supabase-js` client, bounded PostgreSQL pool, prefix-routed JWT/delegated Resolver, and transactional Delegation service in the default process. Production refuses missing Supabase, database, or HMAC key-ring configuration, and process shutdown closes the shared pool.
 
 Web now uses the current stable `@supabase/ssr` Browser/Server clients and Next.js 16 `proxy.ts`. Proxy calls `getClaims()` before a response is produced, writes refreshed cookies to both request and response, and sets `private, no-store`. Bilingual password login, PKCE callback, POST-only local sign-out, and the shared Shell's current-session state are executable. Every continuation target is normalized to the active locale and rejected if it leaves the WISER origin or re-enters an Auth endpoint; every Auth response is non-cacheable.
 
-The delegated-credential cryptographic boundary is now executable. It strictly parses `wdc1.<key-id>.<secret>`, generates independent 128-bit locators and 256-bit secrets with Node's secure random source, and stores only a domain-separated HMAC-SHA-256. The JSON key-ring configuration requires canonical unpadded base64url keys of at least 256 bits, names one active key for issuance, retains previous keys for verification during rotation, and fails closed without echoing secret configuration. The delegated principal Resolver, single-query PostgreSQL adapter, and transactional create/issue/rotate/revoke service are delivered; default-process runtime composition remains the next authorization slice.
+The delegated-credential cryptographic boundary is now executable. It strictly parses `wdc1.<key-id>.<secret>`, generates independent 128-bit locators and 256-bit secrets with Node's secure random source, and stores only a domain-separated HMAC-SHA-256. The JSON key-ring configuration requires canonical unpadded base64url keys of at least 256 bits, names one active key for issuance, retains previous keys for verification during rotation, and fails closed without echoing secret configuration. The delegated principal Resolver, single-query PostgreSQL adapter, transactional create/issue/rotate/revoke service, and default-process runtime composition are delivered.
 
 ## Control-plane model
 

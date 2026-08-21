@@ -9,6 +9,7 @@ import fastify, {
   type FastifyRequest,
 } from 'fastify';
 import { DomainError } from '@agent-excon/core';
+import { PlatformDelegationServiceError } from '@wiser/platform-auth';
 import { z, ZodError, type ZodType } from 'zod';
 
 import { StaticParticipantAuthenticator } from './auth.js';
@@ -55,7 +56,7 @@ export interface BuildAppOptions {
 }
 
 interface ErrorMapping {
-  readonly code: ApiErrorCode;
+  readonly code: string;
   readonly status: number;
   readonly message: string;
   readonly details?: Readonly<Record<string, unknown>>;
@@ -170,6 +171,25 @@ function principal(request: FastifyRequest): ParticipantPrincipal {
 }
 
 function mapError(error: unknown): ErrorMapping {
+  if (error instanceof PlatformDelegationServiceError) {
+    const statusByCode = {
+      NOT_AUTHORIZED: 403,
+      VALIDATION_FAILED: 422,
+      DELEGATION_NOT_FOUND: 404,
+      CREDENTIAL_NOT_FOUND: 404,
+      DELEGATION_VERSION_CONFLICT: 409,
+      DELEGATION_STATE_CONFLICT: 409,
+      IDEMPOTENCY_CONFLICT: 409,
+      SECRET_NOT_RECOVERABLE: 409,
+      PERSISTENCE_CONTRACT_VIOLATION: 500,
+      INVALID_CONFIGURATION: 500,
+    } as const;
+    return {
+      code: error.code,
+      status: statusByCode[error.code],
+      message: error.message,
+    };
+  }
   if (error instanceof ExerciseServiceError) {
     return {
       code: error.code,
@@ -218,6 +238,12 @@ function sendError(
   reply: FastifyReply,
   mapping: ErrorMapping,
 ): void {
+  reply.header(
+    'Cache-Control',
+    'private, no-cache, no-store, max-age=0, must-revalidate',
+  );
+  reply.header('Expires', '0');
+  reply.header('Pragma', 'no-cache');
   void reply.code(mapping.status).send({
     error: {
       code: mapping.code,

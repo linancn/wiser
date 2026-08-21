@@ -1,16 +1,31 @@
 import { createClient } from '@supabase/supabase-js';
-import { Pool, type QueryResultRow } from 'pg';
+import { Pool, type PoolClient, type QueryResultRow } from 'pg';
 import { z } from 'zod';
 
 import {
+  DATA_CAPABILITY_IDS,
+  DATA_CAPABILITY_REGISTRY,
+} from '@wiser/data-contracts';
+import {
+  DelegatedCredentialPrincipalResolver,
+  PlatformCredentialPrincipalResolver,
+  PostgresPlatformDelegationService,
   SupabaseJwtPrincipalResolver,
   createPostgresAuthorizationContextLoader,
+  createPostgresDelegatedCredentialRecordLoader,
   createSupabaseJwtClaimsVerifier,
+  parseDelegatedCredentialHmacKeyRing,
   type AuthorizationQuery,
   type AuthorizationRow,
+  type DelegatedCredentialAuthorizationQuery,
+  type DelegatedCredentialAuthorizationRow,
+  type DelegatedCredentialHmacKeyRing,
+  type PlatformDelegationTransactionClient,
+  type PlatformDelegationTransactionPool,
   type SupabaseClaimsClient,
 } from '@wiser/platform-auth';
 
+import { createPlatformDelegationModule } from './delegation-module.js';
 import { createPlatformIdentityModule } from './identity-module.js';
 import type { WiserApiModule } from './modules.js';
 
@@ -21,10 +36,13 @@ export type PlatformAuthRuntimeConfig =
       readonly supabaseUrl: string;
       readonly supabasePublishableKey: string;
       readonly databaseUrl: string;
+      readonly delegatedCredentialHmacKeyRing: DelegatedCredentialHmacKeyRing;
     };
 
 export interface AuthorizationDatabase {
   readonly query: AuthorizationQuery;
+  readonly delegatedCredentialQuery: DelegatedCredentialAuthorizationQuery;
+  readonly transactionPool: PlatformDelegationTransactionPool;
   close(): Promise<void>;
 }
 
@@ -48,6 +66,7 @@ const SupabaseRuntimeFields = z.strictObject({
     }),
   supabasePublishableKey: z.string().min(24),
   databaseUrl: z.string().regex(/^postgres(?:ql)?:\/\//),
+  delegatedCredentialHmacKeys: z.string().min(1).max(65_536),
 });
 
 function environmentField(path: PropertyKey | undefined): string {
@@ -58,6 +77,8 @@ function environmentField(path: PropertyKey | undefined): string {
       return 'SUPABASE_PUBLISHABLE_KEY';
     case 'databaseUrl':
       return 'DATABASE_URL';
+    case 'delegatedCredentialHmacKeys':
+      return 'WISER_DELEGATED_CREDENTIAL_HMAC_KEYS';
     default:
       return 'configuration';
   }
@@ -83,6 +104,8 @@ export function loadPlatformAuthRuntimeConfig(
     supabaseUrl: environment['SUPABASE_URL'],
     supabasePublishableKey: environment['SUPABASE_PUBLISHABLE_KEY'],
     databaseUrl: environment['DATABASE_URL'],
+    delegatedCredentialHmacKeys:
+      environment['WISER_DELEGATED_CREDENTIAL_HMAC_KEYS'],
   });
   if (!parsed.success) {
     const fields = parsed.error.issues
@@ -90,7 +113,43 @@ export function loadPlatformAuthRuntimeConfig(
       .join(', ');
     throw new Error(`Invalid platform Auth configuration: ${fields}.`);
   }
-  return { mode, ...parsed.data };
+  let delegatedCredentialHmacKeyRing: DelegatedCredentialHmacKeyRing;
+  try {
+    delegatedCredentialHmacKeyRing = parseDelegatedCredentialHmacKeyRing(
+      parsed.data.delegatedCredentialHmacKeys,
+    );
+  } catch {
+    throw new Error(
+      'Invalid platform Auth configuration: WISER_DELEGATED_CREDENTIAL_HMAC_KEYS.',
+    );
+  }
+  return {
+    mode,
+    supabaseUrl: parsed.data.supabaseUrl,
+    supabasePublishableKey: parsed.data.supabasePublishableKey,
+    databaseUrl: parsed.data.databaseUrl,
+    delegatedCredentialHmacKeyRing,
+  };
+}
+
+function delegationClient(
+  client: PoolClient,
+): PlatformDelegationTransactionClient {
+  return {
+    async query<Row = Record<string, unknown>>(
+      text: string,
+      values: readonly unknown[] = [],
+    ) {
+      const result = await client.query(text, [...values]);
+      return {
+        rows: result.rows as readonly Row[],
+        rowCount: result.rowCount,
+      };
+    },
+    release() {
+      client.release();
+    },
+  };
 }
 
 const defaultFactories: PlatformAuthRuntimeFactories = {
@@ -126,12 +185,36 @@ const defaultFactories: PlatformAuthRuntimeFactories = {
         );
         return { rows: result.rows };
       },
+      async delegatedCredentialQuery(text, values) {
+        const result = await pool.query<
+          DelegatedCredentialAuthorizationRow & QueryResultRow
+        >(text, [...values]);
+        return { rows: result.rows };
+      },
+      transactionPool: {
+        async connect() {
+          return delegationClient(await pool.connect());
+        },
+      },
       async close() {
         await pool.end();
       },
     };
   },
 };
+
+const KNOWN_PLATFORM_SCOPES = new Set<string>([
+  'platform.project.manage',
+  'platform.delegation.manage',
+  'excon.scenario.manage',
+  'excon.run.manage',
+  'excon.run.read',
+  'excon.run-agent.act',
+  'excon.telemetry.write',
+  ...DATA_CAPABILITY_IDS.flatMap(
+    (id) => DATA_CAPABILITY_REGISTRY[id].requiredScopes,
+  ),
+]);
 
 export function createPlatformAuthModuleFromEnvironment(
   environment: NodeJS.ProcessEnv,
@@ -142,15 +225,36 @@ export function createPlatformAuthModuleFromEnvironment(
 
   const claimsClient = factories.createClaimsClient(config);
   const database = factories.createAuthorizationDatabase(config);
-  const resolver = new SupabaseJwtPrincipalResolver({
+  const jwtResolver = new SupabaseJwtPrincipalResolver({
     verifyClaims: createSupabaseJwtClaimsVerifier(claimsClient),
     loadAuthorization: createPostgresAuthorizationContextLoader(database.query),
   });
+  const delegatedResolver = new DelegatedCredentialPrincipalResolver({
+    keyRing: config.delegatedCredentialHmacKeyRing,
+    knownScopes: KNOWN_PLATFORM_SCOPES,
+    loadRecord: createPostgresDelegatedCredentialRecordLoader(
+      database.delegatedCredentialQuery,
+    ),
+  });
+  const resolver = new PlatformCredentialPrincipalResolver({
+    jwt: jwtResolver,
+    delegated: delegatedResolver,
+  });
   const identityModule = createPlatformIdentityModule(resolver);
+  const delegationModule = createPlatformDelegationModule({
+    resolver,
+    service: new PostgresPlatformDelegationService({
+      pool: database.transactionPool,
+      keyRing: config.delegatedCredentialHmacKeyRing,
+      knownScopes: KNOWN_PLATFORM_SCOPES,
+    }),
+    knownScopes: KNOWN_PLATFORM_SCOPES,
+  });
   return {
-    ...identityModule,
+    id: 'platform.auth-runtime',
     async register(app) {
       await identityModule.register(app);
+      await delegationModule.register(app);
       app.addHook('onClose', async () => {
         await database.close();
       });

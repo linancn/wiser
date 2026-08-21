@@ -16,7 +16,7 @@ checkPaths:
   - packages/contracts/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 23ec3d9b25c6be7da22a69c122a6def4be6dfd04
+lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
 ---
 
 ## 默认协议与实现状态
@@ -42,7 +42,7 @@ Fastify 是 WISER 的共享 HTTP 组合宿主。每个系统以静态导入的 `
 | POST | `/api/platform/v1/delegations/:delegationId:revoke`             | 撤销 Delegation         |
 | POST | `/api/platform/v1/credentials/:credentialId:revoke`             | 撤销单个 Credential     |
 
-命令要求 UUID `Idempotency-Key`；所有路由都要求 Bearer、Tenant、Project、Purpose Header，以及具备 `platform.delegation.manage` 的 Supabase human。默认 runtime 尚未注册具体的事务 command service。
+命令要求 UUID `Idempotency-Key`；所有路由都要求 Bearer、Tenant、Project、Purpose Header，以及具备 `platform.delegation.manage` 的 Supabase human。Supabase runtime 模式会注册具体事务 command service 与 delegated Resolver；服务冲突使用稳定且 no-store 的 4xx 错误。
 
 ## Data Foundation 发现接口
 

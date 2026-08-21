@@ -16,7 +16,7 @@ checkPaths:
   - compose.yaml
   - docs/roadmap.md
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 0023c6b2317bff4fef36e063a8137a029101c837
+lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
 ---
 
 # WISER · 水地图

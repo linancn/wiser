@@ -383,7 +383,7 @@ describe('WISER platform delegation HTTP module', () => {
 
       expect(response.statusCode).toBe(expectedStatus);
       expect(response.headers['cache-control']).toContain('no-store');
-      expect(response.json()).toMatchObject({ code });
+      expect(response.json()).toMatchObject({ error: { code } });
       expect(response.body).not.toContain('wdc1.');
     }
   });
