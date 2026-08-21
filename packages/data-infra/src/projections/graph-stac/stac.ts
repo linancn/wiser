@@ -65,14 +65,29 @@ export class StacCatalogProjection {
     this.#http = options.http;
   }
 
-  async #put(request: GraphStacHttpRequest): Promise<void> {
+  async #request(request: GraphStacHttpRequest): Promise<number> {
     let response;
     try {
       response = await this.#http.request(request);
     } catch {
       throw new GraphStacProjectionError('PROJECTION_UNAVAILABLE');
     }
-    if (response.status < 200 || response.status >= 300) {
+    if (
+      (response.status < 200 || response.status >= 300) &&
+      response.status !== 409
+    ) {
+      throw new GraphStacProjectionError('PROJECTION_UNAVAILABLE');
+    }
+    return response.status;
+  }
+
+  async #upsert(
+    create: GraphStacHttpRequest,
+    update: GraphStacHttpRequest,
+  ): Promise<void> {
+    if ((await this.#request(create)) !== 409) return;
+    const status = await this.#request(update);
+    if (status < 200 || status >= 300) {
       throw new GraphStacProjectionError('PROJECTION_UNAVAILABLE');
     }
   }
@@ -147,18 +162,34 @@ export class StacCatalogProjection {
       },
     };
 
-    await this.#put({
-      method: 'PUT',
-      url: `${this.#baseUrl}/collections/${scopedCollectionId}`,
-      headers,
-      body: collection,
-    });
-    await this.#put({
-      method: 'PUT',
-      url: `${this.#baseUrl}/collections/${scopedCollectionId}/items/${itemId}`,
-      headers,
-      body: item,
-    });
+    await this.#upsert(
+      {
+        method: 'POST',
+        url: `${this.#baseUrl}/collections`,
+        headers,
+        body: collection,
+      },
+      {
+        method: 'PUT',
+        url: `${this.#baseUrl}/collections/${scopedCollectionId}`,
+        headers,
+        body: collection,
+      },
+    );
+    await this.#upsert(
+      {
+        method: 'POST',
+        url: `${this.#baseUrl}/collections/${scopedCollectionId}/items`,
+        headers,
+        body: item,
+      },
+      {
+        method: 'PUT',
+        url: `${this.#baseUrl}/collections/${scopedCollectionId}/items/${itemId}`,
+        headers,
+        body: item,
+      },
+    );
     return { collectionId: scopedCollectionId, itemId };
   }
 }

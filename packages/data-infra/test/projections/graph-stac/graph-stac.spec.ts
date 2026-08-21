@@ -188,8 +188,8 @@ describe('STAC 1.1 catalog projection', () => {
     expect(http.requests[0]).toEqual(http.requests[2]);
     expect(http.requests[1]).toEqual(http.requests[3]);
     expect(http.requests[0]).toMatchObject({
-      method: 'PUT',
-      url: `http://stac-api:8080/collections/${first.collectionId}`,
+      method: 'POST',
+      url: 'http://stac-api:8080/collections',
       headers: {
         Authorization: 'Bearer stac-projector-secret',
         'Content-Type': 'application/json',
@@ -209,8 +209,8 @@ describe('STAC 1.1 catalog projection', () => {
       'wiser:policy_version': stacInput.policyVersion,
     });
     expect(http.requests[1]).toMatchObject({
-      method: 'PUT',
-      url: `http://stac-api:8080/collections/${first.collectionId}/items/${first.itemId}`,
+      method: 'POST',
+      url: `http://stac-api:8080/collections/${first.collectionId}/items`,
     });
     expect(http.requests[1]?.body).toMatchObject({
       stac_version: '1.1.0',
@@ -238,6 +238,37 @@ describe('STAC 1.1 catalog projection', () => {
         },
       },
     });
+  });
+
+  it('uses fixed PUT replacement after STAC transaction conflicts', async () => {
+    const http = new FakeHttpClient();
+    http.responses.push(
+      { status: 409 },
+      { status: 200 },
+      { status: 409 },
+      { status: 200 },
+    );
+    const projection = new StacCatalogProjection({
+      baseUrl: 'http://stac-api:8080',
+      bearerToken: 'stac-projector-secret',
+      assetBaseUrl: 'http://api:3001',
+      http,
+    });
+
+    const result = await projection.put(stacInput);
+
+    expect(http.requests.map(({ method }) => method)).toEqual([
+      'POST',
+      'PUT',
+      'POST',
+      'PUT',
+    ]);
+    expect(http.requests[1]?.url).toBe(
+      `http://stac-api:8080/collections/${result.collectionId}`,
+    );
+    expect(http.requests[3]?.url).toBe(
+      `http://stac-api:8080/collections/${result.collectionId}/items/${result.itemId}`,
+    );
   });
 
   it.each([

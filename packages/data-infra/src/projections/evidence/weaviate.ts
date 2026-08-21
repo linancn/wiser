@@ -101,19 +101,37 @@ export class WeaviateEvidenceProjection {
     const input = validateEvidenceProjectionInput(value);
     const projectionId = deterministicEvidenceProjectionId(input);
     const tenant = encodeURIComponent(input.tenantId);
-    const response = await requestProjectionBackend(this.#http, {
-      method: 'PUT',
-      url: `${this.#baseUrl}/v1/objects/${WEAVIATE_EVIDENCE_COLLECTION}/${projectionId}?tenant=${tenant}`,
+    const tenantResponse = await requestProjectionBackend(this.#http, {
+      method: 'POST',
+      url: `${this.#baseUrl}/v1/schema/${WEAVIATE_EVIDENCE_COLLECTION}/tenants`,
       headers: this.#headers,
-      body: {
-        class: WEAVIATE_EVIDENCE_COLLECTION,
-        id: projectionId,
-        tenant: input.tenantId,
-        properties: evidenceProperties(input),
-        vector: input.vector,
-      },
+      body: [{ name: input.tenantId }],
     });
-    assertBackendAccepted(response, [200, 201, 204]);
+    assertBackendAccepted(tenantResponse, [200]);
+    const body = {
+      class: WEAVIATE_EVIDENCE_COLLECTION,
+      id: projectionId,
+      tenant: input.tenantId,
+      properties: evidenceProperties(input),
+      vector: input.vector,
+    };
+    const created = await requestProjectionBackend(this.#http, {
+      method: 'POST',
+      url: `${this.#baseUrl}/v1/objects?tenant=${tenant}`,
+      headers: this.#headers,
+      body,
+    });
+    if (created.status === 409 || created.status === 422) {
+      const updated = await requestProjectionBackend(this.#http, {
+        method: 'PUT',
+        url: `${this.#baseUrl}/v1/objects/${WEAVIATE_EVIDENCE_COLLECTION}/${projectionId}?tenant=${tenant}`,
+        headers: this.#headers,
+        body,
+      });
+      assertBackendAccepted(updated, [200, 204]);
+    } else {
+      assertBackendAccepted(created, [200, 201]);
+    }
     return Object.freeze({ projectionId });
   }
 }

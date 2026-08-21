@@ -35,7 +35,7 @@ export interface ProjectionHttpRequest {
   readonly method: 'GET' | 'POST' | 'PUT';
   readonly url: string;
   readonly headers: Readonly<Record<string, string>>;
-  readonly body?: Readonly<Record<string, unknown>>;
+  readonly body?: unknown;
 }
 
 export interface ProjectionHttpResponse {

@@ -146,17 +146,23 @@ describe('Weaviate evidence projection', () => {
     const replay = await projection.put(input);
 
     expect(replay).toEqual(first);
-    expect(http.requests).toHaveLength(2);
-    expect(http.requests[0]?.method).toBe('PUT');
-    expect(http.requests[0]?.url).toBe(http.requests[1]?.url);
-    expect(http.requests[0]?.url).toContain(
-      `/v1/objects/${WEAVIATE_EVIDENCE_COLLECTION}/${first.projectionId}?tenant=${input.tenantId}`,
+    expect(http.requests).toHaveLength(4);
+    expect(http.requests[0]).toMatchObject({
+      method: 'POST',
+      url: `http://weaviate:8080/v1/schema/${WEAVIATE_EVIDENCE_COLLECTION}/tenants`,
+      body: [{ name: input.tenantId }],
+    });
+    expect(http.requests[2]).toEqual(http.requests[0]);
+    expect(http.requests[1]?.method).toBe('POST');
+    expect(http.requests[1]?.url).toBe(http.requests[3]?.url);
+    expect(http.requests[1]?.url).toContain(
+      `/v1/objects?tenant=${input.tenantId}`,
     );
-    expect(http.requests[0]?.headers).toMatchObject({
+    expect(http.requests[1]?.headers).toMatchObject({
       Authorization: 'Bearer weaviate-secret',
       'Content-Type': 'application/json',
     });
-    expect(http.requests[0]?.body).toMatchObject({
+    expect(http.requests[1]?.body).toMatchObject({
       class: WEAVIATE_EVIDENCE_COLLECTION,
       id: first.projectionId,
       tenant: input.tenantId,
@@ -169,6 +175,27 @@ describe('Weaviate evidence projection', () => {
         content: input.content,
       },
     });
+  });
+
+  it('replaces the same deterministic object after an id conflict', async () => {
+    const http = new FakeHttpClient();
+    http.responses.push({ status: 200 }, { status: 422 }, { status: 200 });
+    const projection = new WeaviateEvidenceProjection({
+      baseUrl: 'http://weaviate:8080',
+      apiKey: 'weaviate-secret',
+      http,
+    });
+
+    const result = await projection.put(input);
+
+    expect(http.requests.map(({ method }) => method)).toEqual([
+      'POST',
+      'POST',
+      'PUT',
+    ]);
+    expect(http.requests[2]?.url).toBe(
+      `http://weaviate:8080/v1/objects/${WEAVIATE_EVIDENCE_COLLECTION}/${result.projectionId}?tenant=${input.tenantId}`,
+    );
   });
 
   it('rejects anonymous or unsafe endpoint configuration', () => {
