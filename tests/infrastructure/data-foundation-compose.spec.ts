@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(import.meta.dirname, '../..');
 const compose = readFileSync(resolve(root, 'compose.yaml'), 'utf8');
 const environment = readFileSync(resolve(root, '.env.example'), 'utf8');
+const workflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
 const rootPackage = JSON.parse(
   readFileSync(resolve(root, 'package.json'), 'utf8'),
 ) as { readonly scripts: Readonly<Record<string, string>> };
@@ -178,5 +179,41 @@ describe('Data Foundation operations contract', () => {
       '--profile data-foundation',
     );
     expect(rootPackage.scripts['data:reset']).toContain('--volumes');
+  });
+
+  it('runs the full Data Foundation profile in a recoverable CI job', () => {
+    expect(workflow).toMatch(/\n {2}data-foundation:\n/);
+    const job = workflow.slice(workflow.indexOf('\n  data-foundation:\n'));
+    expect(job).toContain('pnpm install --frozen-lockfile');
+    expect(job).toContain(
+      'docker compose --profile data-foundation up -d --build --wait',
+    );
+    expect(job).toContain('pnpm data:migrate');
+    expect(job).toContain('pnpm data:smoke');
+    expect(job).toContain('if: failure()');
+    expect(job).toContain(
+      'docker compose --profile data-foundation logs --no-color --tail=300',
+    );
+    for (const service of [
+      'data-postgres',
+      'data-worker',
+      'weaviate',
+      'opensearch',
+      'neo4j',
+      'geoserver',
+      'stac-api',
+      'titiler',
+      'martin',
+      'tika',
+      'clamav',
+      'api',
+      'mcp-http',
+    ]) {
+      expect(job, service).toContain(service);
+    }
+    expect(job).toContain('if: always()');
+    expect(job).toContain(
+      'docker compose --profile data-foundation down --volumes --remove-orphans',
+    );
   });
 });
