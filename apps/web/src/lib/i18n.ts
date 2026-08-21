@@ -194,6 +194,9 @@ const zhCN = {
     eyebrow: 'OTel 式协作观测',
     heading: '多智能体协作 Trace',
     lede: '按 Agent 展示并行工作，以父子 Span 表示单一调用链，以 Links 表示跨 Agent 汇聚与异步因果。领域事件仍是完整审计依据。',
+    workspaceHeading: 'Trace 探索',
+    workspaceLede:
+      '按 Agent、耗时与信任来源定位执行问题；权威结果请回到评测页核对。',
     replay: '事件回放',
     scenarios: '场景中心',
     collaborationGraph: '协作河网',
@@ -217,6 +220,7 @@ const zhCN = {
     logs: '关联 Logs',
     logsCopy:
       'LogRecord 通过 traceId / spanId 关联；原始 Prompt 与 Tool payload 默认不采集。',
+    noLogs: '当前 Span 没有可验证的关联 LogRecord。',
     inspector: 'Span Inspector',
     selectHint: '选择任一 Agent 或 Span 查看安全投影。',
     coverage: 'Telemetry 覆盖率',
@@ -516,6 +520,9 @@ const en: typeof zhCN = {
     eyebrow: 'OTel-style collaboration observability',
     heading: 'Multi-agent collaboration trace',
     lede: 'Parallel work is grouped by Agent. Parent-child spans describe one call chain; Links represent cross-agent convergence and asynchronous causality. Domain events remain the complete audit source.',
+    workspaceHeading: 'Trace explorer',
+    workspaceLede:
+      'Locate execution issues by Agent, duration, and trust source. Use Evaluation for authoritative outcomes.',
     replay: 'Event replay',
     scenarios: 'Scenario center',
     collaborationGraph: 'Collaboration river network',
@@ -540,6 +547,7 @@ const en: typeof zhCN = {
     logs: 'Correlated Logs',
     logsCopy:
       'LogRecords correlate by traceId / spanId. Raw prompts and tool payloads are not collected by default.',
+    noLogs: 'No verified correlated LogRecord exists for this Span.',
     inspector: 'Span Inspector',
     selectHint: 'Select an Agent or Span to inspect its safe projection.',
     coverage: 'Telemetry coverage',

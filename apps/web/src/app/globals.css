@@ -1215,6 +1215,33 @@ code {
   background-size: 48px 48px;
 }
 
+.trace-tool-header {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.7fr) minmax(360px, 1.3fr);
+  gap: 3rem;
+  align-items: end;
+  width: min(calc(100% - 3rem), 1480px);
+  margin: 0 auto;
+  padding: 2.3rem 0 1.5rem;
+  border-bottom: 1px solid var(--dark-line);
+}
+
+.trace-tool-header h2 {
+  margin: 0;
+  color: white;
+  font-family:
+    'DIN Alternate', 'Arial Narrow', 'PingFang SC', 'Microsoft YaHei',
+    sans-serif;
+  font-size: clamp(2rem, 3.5vw, 3.6rem);
+  letter-spacing: -0.035em;
+}
+
+.trace-tool-header > div > p:last-child {
+  margin: 8px 0 0;
+  color: var(--silt);
+  font-size: 0.86rem;
+}
+
 .run-context-header,
 .replay-header,
 .replay-workspace,
@@ -1331,7 +1358,7 @@ code {
 .collaboration-graph-section,
 .trace-workspace,
 .trace-summary-section {
-  padding: clamp(3.5rem, 7vw, 6rem) 0;
+  padding: clamp(2rem, 4vw, 3.5rem) 0;
 }
 
 .trace-page > .coverage-vector {
@@ -2039,6 +2066,30 @@ code {
 .replay-page {
   min-height: 80vh;
   padding-bottom: clamp(5rem, 9vw, 8rem);
+}
+
+.replay-tool-header {
+  width: min(calc(100% - 3rem), 1480px);
+  margin: 0 auto;
+  padding: 2rem 0 1.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.replay-tool-header h2 {
+  margin: 0;
+  color: var(--abyss);
+  font-family:
+    'DIN Alternate', 'Arial Narrow', 'PingFang SC', 'Microsoft YaHei',
+    sans-serif;
+  font-size: clamp(2rem, 3.5vw, 3.6rem);
+  letter-spacing: -0.035em;
+}
+
+.replay-tool-header > p:last-child {
+  max-width: 760px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
 }
 
 .replay-header {
@@ -3114,8 +3165,10 @@ code {
   .app-footer,
   .run-context-header,
   .replay-header,
+  .replay-tool-header,
   .replay-workspace,
   .collaboration-graph-section,
+  .trace-tool-header,
   .trace-workspace,
   .trace-summary-section,
   .diagnostics-board,
@@ -3188,6 +3241,12 @@ code {
   .coverage-vector-heading {
     grid-template-columns: 1fr;
     gap: 1.4rem;
+  }
+
+  .trace-tool-header {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+    padding-top: 1.5rem;
   }
 
   .diagnostics-heading,
@@ -3351,6 +3410,10 @@ code {
   .replay-control-bar {
     grid-template-columns: 1fr;
     padding: 1rem 0;
+  }
+
+  .receipt-inspector {
+    order: -1;
   }
 
   .replay-trust-boundary {

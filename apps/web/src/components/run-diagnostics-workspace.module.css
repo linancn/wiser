@@ -1,0 +1,16 @@
+.content {
+  margin-top: 24px;
+  padding: 42px 0 64px;
+  background: #071f2a;
+}
+
+.content :global(.diagnostics-board) {
+  margin-top: 0;
+}
+
+@media (max-width: 760px) {
+  .content {
+    margin-top: 14px;
+    padding: 26px 0 42px;
+  }
+}

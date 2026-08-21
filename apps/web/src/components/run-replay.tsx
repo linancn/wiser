@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
 import { getDictionary, type Locale } from '@/lib/i18n';
@@ -11,6 +10,8 @@ import type {
 } from '@/lib/platform';
 import type { ReadModelGap } from '@/lib/read-model-source';
 import { ReadModelGaps } from './read-model-state';
+import { RunWorkspaceHeader } from './run-workspace';
+import workspaceStyles from './run-workspace.module.css';
 
 type ReplayProgressStyle = CSSProperties & { '--replay-progress': string };
 
@@ -55,6 +56,10 @@ export function RunReplay({
 
   useEffect(() => {
     if (!playing || events.length < 2) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setPlaying(false);
+      return;
+    }
     const timer = window.setInterval(() => {
       setSelectedIndex((current) => {
         if (current >= events.length - 1) {
@@ -77,270 +82,267 @@ export function RunReplay({
     events.length <= 1 ? 0 : (selectedIndex / (events.length - 1)) * 100;
 
   return (
-    <main id="main-content" className="replay-page">
-      <header className="replay-header">
-        <div className="run-breadcrumbs">
-          <Link href={`/${locale}/scenarios`}>{dictionary.nav.scenarios}</Link>
-          <span aria-hidden="true">/</span>
-          <span>{scenario.shortName[locale]}</span>
-          <span aria-hidden="true">/</span>
-          <code>{run.id}</code>
-        </div>
-        <div className="replay-title-row">
-          <div>
-            <p className="eyebrow">{dictionary.replay.eyebrow}</p>
-            <h1>{dictionary.replay.heading}</h1>
-            <p>{dictionary.replay.lede}</p>
-          </div>
-          <Link
-            className="primary-action"
-            href={`/${locale}/runs/${run.id}/trace`}
-          >
-            ← {dictionary.replay.trace}
-          </Link>
-        </div>
-      </header>
+    <main id="main-content" className={workspaceStyles.workspace}>
+      <RunWorkspaceHeader
+        active="replay"
+        locale={locale}
+        run={run}
+        scenario={scenario}
+      />
+      <section className="replay-page">
+        <header className="replay-tool-header">
+          <p className="eyebrow">{dictionary.replay.eyebrow}</p>
+          <h2>{dictionary.replay.heading}</h2>
+          <p>{dictionary.replay.lede}</p>
+        </header>
 
-      <ReadModelGaps gaps={gaps} locale={locale} />
+        <ReadModelGaps gaps={gaps} locale={locale} />
 
-      <section
-        className="replay-workspace"
-        aria-labelledby="replay-stream-heading"
-      >
-        <div className="replay-control-bar">
-          <label>
-            <span>{dictionary.replay.perspectiveLabel}</span>
-            <select
-              aria-label={dictionary.replay.perspectiveLabel}
-              value={perspective}
-              onChange={(event) => {
-                setPlaying(false);
-                setSelectedIndex(0);
-                setPerspective(event.target.value);
-              }}
-            >
-              <option value="operator">
-                {dictionary.replay.operatorPerspective}
-              </option>
-              {run.participants
-                .filter(
-                  (participant) =>
-                    replayByPerspective[participant.id] !== undefined,
-                )
-                .map((participant) => (
-                  <option value={participant.id} key={participant.id}>
-                    {participant.displayName[locale]}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <div className="replay-perspective-summary" role="status">
-            <i aria-hidden="true" />
-            {perspectiveSummary}
-          </div>
-          <span className="readonly-badge light-readonly">
-            {dictionary.common.readonly}
-          </span>
-        </div>
-
-        <div className="replay-trust-boundary" role="note">
-          <section>
-            <span className="authority-mark" aria-hidden="true">
-              ◆
-            </span>
-            <div>
-              <strong>{dictionary.replay.authoritative}</strong>
-              <p>{dictionary.replay.authoritativeCopy}</p>
-            </div>
-          </section>
-          <section>
-            <span className="overlay-mark" aria-hidden="true">
-              ◌
-            </span>
-            <div>
-              <strong>{dictionary.replay.telemetryOverlay}</strong>
-              <p>{dictionary.replay.telemetryOverlayCopy}</p>
-            </div>
-          </section>
-        </div>
-
-        <div className="replay-player">
-          <div className="replay-buttons">
-            <button
-              type="button"
-              onClick={() => setPlaying((current) => !current)}
-              disabled={events.length < 2}
-            >
-              <span aria-hidden="true">{playing ? 'Ⅱ' : '▶'}</span>
-              {playing ? dictionary.replay.pause : dictionary.replay.play}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPlaying(false);
-                setSelectedIndex((current) => Math.max(0, current - 1));
-              }}
-              disabled={selectedIndex === 0}
-            >
-              ← {dictionary.replay.previous}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPlaying(false);
-                setSelectedIndex((current) =>
-                  Math.min(events.length - 1, current + 1),
-                );
-              }}
-              disabled={selectedIndex >= events.length - 1}
-            >
-              {dictionary.replay.next} →
-            </button>
-          </div>
-          <div className="replay-cursor-copy">
-            <span>{dictionary.replay.dualClock}</span>
-            <code>
-              {String(selectedIndex + 1).padStart(2, '0')} /{' '}
-              {String(events.length).padStart(2, '0')}
-            </code>
-          </div>
-          <div
-            className="replay-timeline"
-            style={
-              { '--replay-progress': `${progress}%` } as ReplayProgressStyle
-            }
-          >
-            <div className="replay-track" aria-hidden="true">
-              <i />
-            </div>
-            {events.map((event, index) => (
-              <button
-                key={event.id}
-                type="button"
-                className={index === selectedIndex ? 'is-current' : ''}
-                style={{
-                  left: `${events.length <= 1 ? 0 : (index / (events.length - 1)) * 100}%`,
+        <section
+          className="replay-workspace"
+          aria-labelledby="replay-stream-heading"
+        >
+          <div className="replay-control-bar">
+            <label>
+              <span>{dictionary.replay.perspectiveLabel}</span>
+              <select
+                aria-label={dictionary.replay.perspectiveLabel}
+                value={perspective}
+                onChange={(event) => {
+                  setPlaying(false);
+                  const nextPerspective = event.target.value;
+                  const nextEvents = replayByPerspective[nextPerspective] ?? [];
+                  const currentSequence = selectedEvent?.sequence;
+                  const matchingIndex = nextEvents.findIndex(
+                    ({ sequence }) => sequence === currentSequence,
+                  );
+                  setSelectedIndex(matchingIndex >= 0 ? matchingIndex : 0);
+                  setPerspective(nextPerspective);
                 }}
+              >
+                <option value="operator">
+                  {dictionary.replay.operatorPerspective}
+                </option>
+                {run.participants
+                  .filter(
+                    (participant) =>
+                      replayByPerspective[participant.id] !== undefined,
+                  )
+                  .map((participant) => (
+                    <option value={participant.id} key={participant.id}>
+                      {participant.displayName[locale]}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <div className="replay-perspective-summary" role="status">
+              <i aria-hidden="true" />
+              {perspectiveSummary}
+            </div>
+            <span className="readonly-badge light-readonly">
+              {dictionary.common.readonly}
+            </span>
+          </div>
+
+          <div className="replay-trust-boundary" role="note">
+            <section>
+              <span className="authority-mark" aria-hidden="true">
+                ◆
+              </span>
+              <div>
+                <strong>{dictionary.replay.authoritative}</strong>
+                <p>{dictionary.replay.authoritativeCopy}</p>
+              </div>
+            </section>
+            <section>
+              <span className="overlay-mark" aria-hidden="true">
+                ◌
+              </span>
+              <div>
+                <strong>{dictionary.replay.telemetryOverlay}</strong>
+                <p>{dictionary.replay.telemetryOverlayCopy}</p>
+              </div>
+            </section>
+          </div>
+
+          <div className="replay-player">
+            <div className="replay-buttons">
+              <button
+                type="button"
+                onClick={() => setPlaying((current) => !current)}
+                disabled={events.length < 2}
+              >
+                <span aria-hidden="true">{playing ? 'Ⅱ' : '▶'}</span>
+                {playing ? dictionary.replay.pause : dictionary.replay.play}
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   setPlaying(false);
-                  setSelectedIndex(index);
+                  setSelectedIndex((current) => Math.max(0, current - 1));
                 }}
-                aria-label={`${event.virtualTime} · ${event.title[locale]}`}
+                disabled={selectedIndex === 0}
               >
-                <i aria-hidden="true" />
-                <span>{event.virtualTime}</span>
+                ← {dictionary.replay.previous}
               </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="replay-content-grid">
-          <section
-            className="receipt-stream"
-            aria-labelledby="replay-stream-heading"
-          >
-            <div className="panel-heading">
-              <div>
-                <span>DOMAIN EVENT STORE</span>
-                <h2 id="replay-stream-heading">
-                  {dictionary.replay.eventStream}
-                </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setPlaying(false);
+                  setSelectedIndex((current) =>
+                    Math.min(events.length - 1, current + 1),
+                  );
+                }}
+                disabled={selectedIndex >= events.length - 1}
+              >
+                {dictionary.replay.next} →
+              </button>
+            </div>
+            <div className="replay-cursor-copy">
+              <span>{dictionary.replay.dualClock}</span>
+              <code>
+                {String(selectedIndex + 1).padStart(2, '0')} /{' '}
+                {String(events.length).padStart(2, '0')}
+              </code>
+            </div>
+            <div
+              className="replay-timeline"
+              style={
+                { '--replay-progress': `${progress}%` } as ReplayProgressStyle
+              }
+            >
+              <div className="replay-track" aria-hidden="true">
+                <i />
               </div>
-              <code>{events.length} RECEIPTS</code>
+              {events.map((event, index) => (
+                <button
+                  key={event.id}
+                  type="button"
+                  className={index === selectedIndex ? 'is-current' : ''}
+                  style={{
+                    left: `${events.length <= 1 ? 0 : (index / (events.length - 1)) * 100}%`,
+                  }}
+                  onClick={() => {
+                    setPlaying(false);
+                    setSelectedIndex(index);
+                  }}
+                  aria-label={`${event.virtualTime} · ${event.title[locale]}`}
+                >
+                  <i aria-hidden="true" />
+                  <span>{event.virtualTime}</span>
+                </button>
+              ))}
             </div>
-            {events.length === 0 ? (
-              <p className="empty-state">{dictionary.replay.noEvents}</p>
-            ) : (
-              <ol>
-                {events.map((event, index) => (
-                  <li
-                    data-testid="replay-event"
-                    className={index === selectedIndex ? 'is-current' : ''}
-                    key={event.id}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPlaying(false);
-                        setSelectedIndex(index);
-                      }}
-                    >
-                      <span className="receipt-sequence">
-                        #{event.sequence}
-                      </span>
-                      <span
-                        className={`receipt-category category-${event.category}`}
-                      >
-                        {categoryLabel(event.category, locale)}
-                      </span>
-                      <strong>{event.title[locale]}</strong>
-                      <span className="receipt-time">
-                        {event.virtualTime} · {event.wallTime}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </section>
+          </div>
 
-          <aside className="receipt-inspector">
-            <div className="inspector-heading">
-              <span>{dictionary.replay.receipt}</span>
-              <code>CAPTURED, NOT RECOMPUTED</code>
-            </div>
-            {selectedEvent === undefined ? null : (
-              <>
-                <div className="receipt-inspector-title">
-                  <span
-                    className={`receipt-category category-${selectedEvent.category}`}
-                  >
-                    {categoryLabel(selectedEvent.category, locale)}
-                  </span>
-                  <h2>{selectedEvent.title[locale]}</h2>
-                  <p>{selectedEvent.detail[locale]}</p>
+          <div className="replay-content-grid">
+            <section
+              className="receipt-stream"
+              aria-labelledby="replay-stream-heading"
+            >
+              <div className="panel-heading">
+                <div>
+                  <span>DOMAIN EVENT STORE</span>
+                  <h2 id="replay-stream-heading">
+                    {dictionary.replay.eventStream}
+                  </h2>
                 </div>
-                <dl className="receipt-facts">
-                  <div>
-                    <dt>{dictionary.replay.sequence}</dt>
-                    <dd>#{selectedEvent.sequence}</dd>
+                <code>{events.length} RECEIPTS</code>
+              </div>
+              {events.length === 0 ? (
+                <p className="empty-state">{dictionary.replay.noEvents}</p>
+              ) : (
+                <ol>
+                  {events.map((event, index) => (
+                    <li
+                      data-testid="replay-event"
+                      className={index === selectedIndex ? 'is-current' : ''}
+                      key={event.id}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPlaying(false);
+                          setSelectedIndex(index);
+                        }}
+                      >
+                        <span className="receipt-sequence">
+                          #{event.sequence}
+                        </span>
+                        <span
+                          className={`receipt-category category-${event.category}`}
+                        >
+                          {categoryLabel(event.category, locale)}
+                        </span>
+                        <strong>{event.title[locale]}</strong>
+                        <span className="receipt-time">
+                          {event.virtualTime} · {event.wallTime}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
+
+            <aside className="receipt-inspector" aria-live="polite">
+              <div className="inspector-heading">
+                <span>{dictionary.replay.receipt}</span>
+                <code>CAPTURED, NOT RECOMPUTED</code>
+              </div>
+              {selectedEvent === undefined ? null : (
+                <>
+                  <div className="receipt-inspector-title">
+                    <span
+                      className={`receipt-category category-${selectedEvent.category}`}
+                    >
+                      {categoryLabel(selectedEvent.category, locale)}
+                    </span>
+                    <h2>{selectedEvent.title[locale]}</h2>
+                    <p>{selectedEvent.detail[locale]}</p>
                   </div>
-                  <div>
-                    <dt>{dictionary.common.virtualTime}</dt>
-                    <dd>{selectedEvent.virtualTime}</dd>
+                  <dl className="receipt-facts">
+                    <div>
+                      <dt>{dictionary.replay.sequence}</dt>
+                      <dd>#{selectedEvent.sequence}</dd>
+                    </div>
+                    <div>
+                      <dt>{dictionary.common.virtualTime}</dt>
+                      <dd>{selectedEvent.virtualTime}</dd>
+                    </div>
+                    <div>
+                      <dt>{dictionary.common.wallTime}</dt>
+                      <dd>{selectedEvent.wallTime}</dd>
+                    </div>
+                    <div>
+                      <dt>{dictionary.replay.digest}</dt>
+                      <dd>{selectedEvent.digest}</dd>
+                    </div>
+                  </dl>
+                  <div className="receipt-visibility">
+                    <span>VISIBLE TO</span>
+                    <div>
+                      {selectedEvent.visibility === 'operator' ? (
+                        <code>operator</code>
+                      ) : (
+                        selectedEvent.visibleTo.map((agentId) => (
+                          <code key={agentId}>{agentId}</code>
+                        ))
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <dt>{dictionary.common.wallTime}</dt>
-                    <dd>{selectedEvent.wallTime}</dd>
-                  </div>
-                  <div>
-                    <dt>{dictionary.replay.digest}</dt>
-                    <dd>{selectedEvent.digest}</dd>
-                  </div>
-                </dl>
-                <div className="receipt-visibility">
-                  <span>VISIBLE TO</span>
-                  <div>
-                    {selectedEvent.visibility === 'operator' ? (
-                      <code>operator</code>
-                    ) : (
-                      selectedEvent.visibleTo.map((agentId) => (
-                        <code key={agentId}>{agentId}</code>
-                      ))
-                    )}
-                  </div>
-                </div>
-                {selectedEvent.traceId === undefined ? null : (
-                  <div className="id-stack">
-                    <span>Trace / Span</span>
-                    <code>{selectedEvent.traceId}</code>
-                    <code>{selectedEvent.spanId}</code>
-                  </div>
-                )}
-              </>
-            )}
-          </aside>
-        </div>
+                  {selectedEvent.traceId === undefined ? null : (
+                    <div className="id-stack">
+                      <span>Trace / Span</span>
+                      <code>{selectedEvent.traceId}</code>
+                      <code>{selectedEvent.spanId}</code>
+                    </div>
+                  )}
+                </>
+              )}
+            </aside>
+          </div>
+        </section>
       </section>
     </main>
   );

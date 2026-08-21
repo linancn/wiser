@@ -159,7 +159,7 @@
 .localNav {
   position: sticky;
   z-index: 14;
-  top: 0;
+  top: 70px;
   display: flex;
   gap: 4px;
   margin-top: 14px;
@@ -585,6 +585,7 @@
   }
 
   .localNav {
+    top: 104px;
     margin-right: -4px;
     margin-left: -4px;
   }
