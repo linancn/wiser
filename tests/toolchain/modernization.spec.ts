@@ -290,6 +290,11 @@ describe('Docpact documentation governance', () => {
         'packages/data-core/src/**',
         'packages/data-core/**',
       ],
+      [
+        'data-foundation-infra',
+        'packages/data-infra/src/**',
+        'packages/data-infra/**',
+      ],
     ]) {
       const rule = docpactRule(config, ruleId);
       expect(rule, ruleId).toContain(`- path: ${narrowPath}`);
@@ -325,6 +330,7 @@ describe('Docpact documentation governance', () => {
     for (const ruleId of [
       'data-foundation-contracts',
       'data-foundation-core',
+      'data-foundation-infra',
     ]) {
       const rule = docpactRule(config, ruleId);
       expect(rule).toContain(
@@ -380,5 +386,9 @@ describe('Docpact documentation governance', () => {
     expect(config).toContain('wiser-platform-contracts');
     expect(config).toContain('data-foundation-contracts');
     expect(config).toContain('data-foundation-core');
+    expect(config).toContain('data-foundation-infra');
+    expect(docpactRule(config, 'data-foundation-infra')).toContain(
+      '- path: infrastructure/data-foundation/**',
+    );
   });
 });
