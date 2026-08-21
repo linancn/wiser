@@ -1,6 +1,7 @@
 import {
   ApiErrorSchema,
   FeedbackActionGrantSchema,
+  RunInteractionListSchema,
   SyncDeliveryBatchSchema,
   type FeedbackActionGrantDto,
   type RunArtifactDto,
@@ -234,6 +235,194 @@ async function sync(
 }
 
 describe('Agent EXCON v2 exercisable collaboration commands', () => {
+  it('projects a receipted request-response thread and immutable artifact handoff per recipient', async () => {
+    const instance = app();
+    const { runId, runAgentIds } = await prepareRunningRun(instance);
+    const recipientInitial = await sync(instance, runId, 1, 90);
+
+    const postedRequest = await instance.inject({
+      method: 'POST',
+      url: `/api/v2/runs/${runId}/messages`,
+      headers: agentHeaders(0, 91),
+      payload: {
+        kind: 'request',
+        recipientRunAgentIds: [runAgentIds[1]],
+        subject: localized('请复核输水约束'),
+        body: localized('请依据当前工件回复约束结论。'),
+        artifactVersionRefs: [],
+      },
+    });
+    expect(postedRequest.statusCode).toBe(201);
+    const requestMessage = json(postedRequest).message;
+    expect(requestMessage).toMatchObject({
+      kind: 'request',
+      threadId: requestMessage.id,
+      artifactVersionRefs: [],
+    });
+
+    const pendingProjection = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/interactions`,
+      headers: operatorHeaders(),
+    });
+    expect(pendingProjection.statusCode).toBe(200);
+    expect(
+      RunInteractionListSchema.parse(json(pendingProjection)).items.find(
+        ({ id }) => id === requestMessage.id,
+      ),
+    ).toMatchObject({
+      status: 'open',
+      deliveries: [
+        {
+          recipientRunAgentId: runAgentIds[1],
+          state: 'pending_sync',
+        },
+      ],
+    });
+
+    const delivered = await sync(
+      instance,
+      runId,
+      1,
+      92,
+      recipientInitial.throughReceiptSeq,
+    );
+    const issuedProjection = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/interactions`,
+      headers: operatorHeaders(),
+    });
+    expect(
+      RunInteractionListSchema.parse(json(issuedProjection)).items.find(
+        ({ id }) => id === requestMessage.id,
+      ),
+    ).toMatchObject({
+      deliveries: [{ state: 'issued' }],
+    });
+
+    const unauthorizedReply = await instance.inject({
+      method: 'POST',
+      url: `/api/v2/runs/${runId}/messages`,
+      headers: agentHeaders(2, 93),
+      payload: {
+        kind: 'response',
+        replyToMessageId: requestMessage.id,
+        recipientRunAgentIds: [runAgentIds[0]],
+        subject: localized('越权回复'),
+        body: localized('未获得请求收据。'),
+        artifactVersionRefs: [],
+      },
+    });
+    expect(unauthorizedReply.statusCode).toBe(403);
+    expect(ApiErrorSchema.parse(json(unauthorizedReply))).toMatchObject({
+      error: { code: 'RESOURCE_NOT_ISSUED' },
+    });
+
+    const acknowledged = await instance.inject({
+      method: 'POST',
+      url: `/api/v2/runs/${runId}/sync`,
+      headers: agentHeaders(1, 94),
+      payload: {
+        afterReceiptSeq: delivered.throughReceiptSeq,
+        ack: {
+          throughReceiptSeq: delivered.throughReceiptSeq,
+          headHash: delivered.receiptHeadHash,
+        },
+        maxItems: 100,
+      },
+    });
+    expect(acknowledged.statusCode).toBe(200);
+    const acknowledgedProjection = await instance.inject({
+      method: 'GET',
+      url: `/api/v2/runs/${runId}/interactions`,
+      headers: operatorHeaders(),
+    });
+    expect(
+      RunInteractionListSchema.parse(json(acknowledgedProjection)).items.find(
+        ({ id }) => id === requestMessage.id,
+      ),
+    ).toMatchObject({
+      deliveries: [{ state: 'acknowledged' }],
+    });
+
+    const postedResponse = await instance.inject({
+      method: 'POST',
+      url: `/api/v2/runs/${runId}/messages`,
+      headers: agentHeaders(1, 95),
+      payload: {
+        kind: 'response',
+        replyToMessageId: requestMessage.id,
+        recipientRunAgentIds: [runAgentIds[0]],
+        subject: localized('输水约束已复核'),
+        body: localized('当前边界可以进入联合方案。'),
+        artifactVersionRefs: [],
+      },
+    });
+    expect(postedResponse.statusCode).toBe(201);
+    expect(json(postedResponse).message).toMatchObject({
+      kind: 'response',
+      threadId: requestMessage.threadId,
+      replyToMessageId: requestMessage.id,
+    });
+
+    const artifactResponse = await instance.inject({
+      method: 'POST',
+      url: `/api/v2/runs/${runId}/artifacts`,
+      headers: agentHeaders(0, 96),
+      payload: {
+        artifactKey: 'interaction-evidence-register',
+        artifactType: 'evidence-register',
+        title: localized('协作证据清单'),
+        content: { complete: true },
+        recipientRunAgentIds: [runAgentIds[0], runAgentIds[3]],
+      },
+    });
+    expect(artifactResponse.statusCode).toBe(201);
+    const artifact = json(artifactResponse).artifact;
+    const artifactVersionRef = {
+      artifactId: artifact.id,
+      artifactVersionId: artifact.versionId,
+      contentHash: artifact.contentHash,
+    };
+    const handoff = await instance.inject({
+      method: 'POST',
+      url: `/api/v2/runs/${runId}/messages`,
+      headers: agentHeaders(0, 97),
+      payload: {
+        kind: 'handoff',
+        recipientRunAgentIds: [runAgentIds[3]],
+        subject: localized('移交协作证据清单'),
+        body: localized('请协调角色使用固定版本。'),
+        artifactVersionRefs: [artifactVersionRef],
+      },
+    });
+    expect(handoff.statusCode).toBe(201);
+
+    const completedProjection = RunInteractionListSchema.parse(
+      json(
+        await instance.inject({
+          method: 'GET',
+          url: `/api/v2/runs/${runId}/interactions`,
+          headers: operatorHeaders(),
+        }),
+      ),
+    );
+    expect(
+      completedProjection.items.find(({ id }) => id === requestMessage.id),
+    ).toMatchObject({
+      status: 'responded',
+      responseMessageIds: [json(postedResponse).message.id],
+    });
+    expect(
+      completedProjection.items.find(
+        ({ id }) => id === json(handoff).message.id,
+      ),
+    ).toMatchObject({
+      kind: 'handoff',
+      artifactVersionRefs: [artifactVersionRef],
+    });
+  });
+
   it('fences a receipted Task lease, creates an immutable submission, and consumes a scoped endorsement grant', async () => {
     const instance = app();
     const { runId, runAgentIds } = await prepareRunningRun(instance);

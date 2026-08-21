@@ -21,6 +21,8 @@ import {
   RunSubmissionSchema,
   RunSyncRequestSchema,
   RunTaskSchema,
+  RunInteractionListSchema,
+  RunMessageSchema,
   SyncDeliveryBatchSchema,
   TaskClaimRequestSchema,
   TaskHeartbeatRequestSchema,
@@ -341,6 +343,105 @@ describe('Agent EXCON v2 contracts', () => {
         body: text,
       }).success,
     ).toBe(false);
+    const artifactVersionRef = {
+      artifactId: '00000000-0000-4000-8000-000000000040',
+      artifactVersionId: '00000000-0000-4000-8000-000000000041',
+      contentHash:
+        'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    };
+    expect(
+      CreateRunMessageRequestSchema.parse({
+        kind: 'request',
+        recipientRunAgentIds: ['00000000-0000-4000-8000-000000000004'],
+        subject: text,
+        body: text,
+        artifactVersionRefs: [artifactVersionRef],
+      }),
+    ).toMatchObject({
+      kind: 'request',
+      artifactVersionRefs: [artifactVersionRef],
+    });
+    expect(
+      CreateRunMessageRequestSchema.safeParse({
+        kind: 'response',
+        recipientRunAgentIds: ['00000000-0000-4000-8000-000000000004'],
+        subject: text,
+        body: text,
+      }).success,
+    ).toBe(false);
+    expect(
+      CreateRunMessageRequestSchema.safeParse({
+        kind: 'handoff',
+        recipientRunAgentIds: ['00000000-0000-4000-8000-000000000004'],
+        subject: text,
+        body: text,
+        artifactVersionRefs: [],
+      }).success,
+    ).toBe(false);
+    expect(
+      CreateRunMessageRequestSchema.parse({
+        kind: 'response',
+        replyToMessageId: '00000000-0000-4000-8000-000000000042',
+        recipientRunAgentIds: ['00000000-0000-4000-8000-000000000004'],
+        subject: text,
+        body: text,
+      }),
+    ).toMatchObject({
+      kind: 'response',
+      replyToMessageId: '00000000-0000-4000-8000-000000000042',
+    });
+    expect(
+      RunMessageSchema.parse({
+        id: '00000000-0000-4000-8000-000000000043',
+        runId: '00000000-0000-4000-8000-000000000003',
+        threadId: '00000000-0000-4000-8000-000000000042',
+        replyToMessageId: '00000000-0000-4000-8000-000000000042',
+        kind: 'response',
+        senderType: 'RUN_AGENT',
+        senderId: '00000000-0000-4000-8000-000000000004',
+        recipientRunAgentIds: ['00000000-0000-4000-8000-000000000005'],
+        subject: text,
+        body: text,
+        artifactVersionRefs: [],
+        createdRunSeq: 12,
+        createdVirtualAt: '2026-08-20T08:00:00.000Z',
+        createdAt: '2026-08-20T08:00:01.000Z',
+      }),
+    ).toMatchObject({
+      threadId: '00000000-0000-4000-8000-000000000042',
+      kind: 'response',
+    });
+    expect(
+      RunInteractionListSchema.parse({
+        items: [
+          {
+            id: '00000000-0000-4000-8000-000000000042',
+            runId: '00000000-0000-4000-8000-000000000003',
+            threadId: '00000000-0000-4000-8000-000000000042',
+            kind: 'request',
+            senderType: 'RUN_AGENT',
+            senderId: '00000000-0000-4000-8000-000000000005',
+            recipientRunAgentIds: ['00000000-0000-4000-8000-000000000004'],
+            subject: text,
+            artifactVersionRefs: [artifactVersionRef],
+            createdRunSeq: 10,
+            createdVirtualAt: '2026-08-20T08:00:00.000Z',
+            createdAt: '2026-08-20T08:00:01.000Z',
+            deliveries: [
+              {
+                recipientRunAgentId: '00000000-0000-4000-8000-000000000004',
+                state: 'acknowledged',
+                agentReceiptSeq: 4,
+                issuedRunSeq: 11,
+                acknowledgedRunSeq: 13,
+              },
+            ],
+            responseMessageIds: ['00000000-0000-4000-8000-000000000043'],
+            status: 'responded',
+          },
+        ],
+      }),
+    ).toMatchObject({ items: [{ status: 'responded' }] });
     expect(
       CreateRunArtifactRequestSchema.safeParse({
         artifactKey: 'water-evidence-register',
