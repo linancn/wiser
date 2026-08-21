@@ -67,6 +67,9 @@ importers:
       '@wiser/data-contracts':
         specifier: workspace:*
         version: link:../../packages/data-contracts
+      '@wiser/data-infra':
+        specifier: workspace:*
+        version: link:../../packages/data-infra
       '@wiser/platform-auth':
         specifier: workspace:*
         version: link:../../packages/platform-auth
