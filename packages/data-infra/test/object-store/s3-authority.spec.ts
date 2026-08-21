@@ -42,37 +42,40 @@ class MemoryS3Client implements S3AuthorityCommandClient {
   readonly commands: CommandLike[] = [];
   multipartUploadId = 'multipart-001';
 
-  async send(command: unknown): Promise<unknown> {
+  send(command: unknown): Promise<unknown> {
     const current = commandLike(command);
     this.commands.push(current);
-    const key = String(current.input['Key'] ?? '');
+    const keyValue = current.input['Key'];
+    const key = typeof keyValue === 'string' ? keyValue : '';
 
     if (current.constructor.name === 'HeadObjectCommand') {
       const object = this.objects.get(key);
-      if (object === undefined) throw notFound();
-      return {
+      if (object === undefined) return Promise.reject(notFound());
+      return Promise.resolve({
         ContentLength: object.size,
         ETag: object.etag,
         Metadata: { sha256: object.sha256 },
-      };
+      });
     }
     if (current.constructor.name === 'CopyObjectCommand') {
       const source = decodeURIComponent(String(current.input['CopySource']));
       const sourceKey = source.slice(source.indexOf('/') + 1);
       const object = this.objects.get(sourceKey);
-      if (object === undefined) throw notFound();
+      if (object === undefined) return Promise.reject(notFound());
       this.objects.set(key, object);
-      return { CopyObjectResult: { ETag: object.etag } };
+      return Promise.resolve({ CopyObjectResult: { ETag: object.etag } });
     }
     if (current.constructor.name === 'CreateMultipartUploadCommand') {
-      return { UploadId: this.multipartUploadId };
+      return Promise.resolve({ UploadId: this.multipartUploadId });
     }
     if (current.constructor.name === 'DeleteObjectCommand') {
       this.objects.delete(key);
-      return {};
+      return Promise.resolve({});
     }
-    if (current.constructor.name === 'AbortMultipartUploadCommand') return {};
-    return {};
+    if (current.constructor.name === 'AbortMultipartUploadCommand') {
+      return Promise.resolve({});
+    }
+    return Promise.resolve({});
   }
 }
 
@@ -215,6 +218,45 @@ describe('S3-compatible authority object store', () => {
           ([command]) => commandLike(command).input['PartNumber'],
         ),
     ).toEqual([1, 2, 3]);
+  });
+
+  it('completes multipart uploads with an ordered, duplicate-free part manifest', async () => {
+    const { client, store } = fixture();
+
+    await store.completeQuarantineMultipart({
+      ...objectInput,
+      multipartUploadId: 'multipart-001',
+      parts: [
+        { partNumber: 1, etag: 'etag-part-1' },
+        { partNumber: 2, etag: 'etag-part-2' },
+      ],
+    });
+
+    const completion = client.commands.find(
+      ({ constructor }) =>
+        constructor.name === 'CompleteMultipartUploadCommand',
+    );
+    expect(completion?.input).toMatchObject({
+      Bucket: 'wiser-authority',
+      UploadId: 'multipart-001',
+      MultipartUpload: {
+        Parts: [
+          { PartNumber: 1, ETag: 'etag-part-1' },
+          { PartNumber: 2, ETag: 'etag-part-2' },
+        ],
+      },
+    });
+
+    await expect(
+      store.completeQuarantineMultipart({
+        ...objectInput,
+        multipartUploadId: 'multipart-001',
+        parts: [
+          { partNumber: 1, etag: 'etag-part-1' },
+          { partNumber: 1, etag: 'etag-duplicate' },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_MULTIPART_PLAN' });
   });
 
   it('verifies HEAD size and SHA-256 metadata before authority commit', async () => {
