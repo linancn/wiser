@@ -311,6 +311,20 @@ rules:
       - path: apps/docs/src/content/docs/en/architecture/data-foundation.md
         mode: review_or_update
     reason: Deterministic ingestion, quality, security, publication, and Operation rules must stay aligned in both locales.
+  - id: data-foundation-infra
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: packages/data-infra/src/**
+        kind: code
+      - path: infrastructure/data-foundation/**
+        kind: database
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/architecture/data-foundation.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/data-foundation.md
+        mode: review_or_update
+    reason: Authoritative data-postgres, migration, object-store, projection, GIS, search, and AI adapters must stay aligned in both locales.
   - id: wiser-design-system
     scope: repo
     repo: wiser
