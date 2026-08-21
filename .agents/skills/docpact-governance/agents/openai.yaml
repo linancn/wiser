@@ -1,0 +1,4 @@
+interface:
+  display_name: "Docpact Governance"
+  short_description: "Use docpact in governance-maintainer workflows."
+  default_prompt: "Use $docpact-governance to route repository onboarding, rule design, coverage backfill, routing configuration, rule audit, documentation maintenance, or CI integration work to the correct internal workflow reference."

@@ -180,6 +180,33 @@ describe('Fumadocs documentation application', () => {
 });
 
 describe('Docpact documentation governance', () => {
+  it('vendors the pinned Docpact workflow skills for repository-local discovery', () => {
+    const source = readJson('.agents/skills/docpact-source.json');
+    const commit = 'd07ba8c500c6a10d90edfd7fb062018d2d3cbf96';
+
+    expect(source).toEqual({
+      repository: 'Biaoo/docpact',
+      version: '0.1.9',
+      commit,
+      license: 'MIT',
+    });
+    expect(
+      existsSync(resolve(repositoryRoot, '.agents/skills/DOCPACT-LICENSE')),
+    ).toBe(true);
+    expect(read('.github/workflows/ci.yml')).toContain(
+      `Biaoo/docpact@${commit}`,
+    );
+
+    for (const skillName of ['docpact', 'docpact-governance']) {
+      const skill = read(`.agents/skills/${skillName}/SKILL.md`);
+      expect(skill).toContain(`name: ${skillName}`);
+      expect(skill).toContain('description:');
+    }
+
+    expect(read('.prettierignore')).toContain('.agents/skills/');
+    expect(read('.docpact/config.yaml')).not.toContain('.agents/skills');
+  });
+
   it('keeps deterministic local and CI governance entry points', () => {
     expect(existsSync(resolve(repositoryRoot, '.docpact/config.yaml'))).toBe(
       true,

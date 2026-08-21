@@ -1,0 +1,23 @@
+version: 1
+layout: repo
+lastReviewedAt: 2026-04-22
+lastReviewedCommit: starter-repo-config
+coverage:
+  include:
+    - src/**
+    - docs/**
+repo:
+  id: your-repo
+rules:
+  - id: repo-bootstrap
+    scope: repo
+    repo: your-repo
+    triggers:
+      - path: src/**
+        kind: code
+    requiredDocs:
+      - path: README.md
+        mode: review_or_update
+      - path: .docpact/config.yaml
+        mode: review_or_update
+    reason: Core repository changes should refresh primary docs and governance config.

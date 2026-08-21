@@ -1,0 +1,61 @@
+# Use the smallest section that matches the repository's current config model.
+# Delete the sections you do not need before presenting or applying the draft.
+
+# --------------------------------------------------------------------
+# Repo layout: add or revise one top-level rule
+# --------------------------------------------------------------------
+- id: <rule-id>
+  scope: repo
+  repo: <repo-label>
+  triggers:
+    - path: <repo-relative-trigger-glob>
+      kind: <descriptive-kind>
+  requiredDocs:
+    - path: <repo-relative-doc-path>
+      mode: review_or_update
+  reason: <why this governance contract exists>
+
+# --------------------------------------------------------------------
+# Workspace root: add one shared profile rule
+# Place under workspace.profiles.<profile-name>.rules
+# --------------------------------------------------------------------
+- id: <shared-rule-id>
+  scope: repo
+  repo: <workspace-default-label>
+  triggers:
+    - path: <repo-relative-trigger-glob>
+      kind: <descriptive-kind>
+  requiredDocs:
+    - path: <repo-relative-doc-path>
+      mode: review_or_update
+  reason: <why child repos should inherit this default contract>
+
+# --------------------------------------------------------------------
+# Child repo with inheritance: add one local rule
+# Place under overrides.rules.add
+# --------------------------------------------------------------------
+- id: <child-local-rule-id>
+  scope: repo
+  repo: <child-repo-label>
+  triggers:
+    - path: <repo-relative-trigger-glob>
+      kind: <descriptive-kind>
+  requiredDocs:
+    - path: <repo-relative-doc-path>
+      mode: review_or_update
+  reason: <why this child repo needs an additional local contract>
+
+# --------------------------------------------------------------------
+# Child repo with inheritance: replace one inherited rule
+# Place under overrides.rules.replace
+# --------------------------------------------------------------------
+- id: <inherited-rule-id>
+  scope: repo
+  repo: <child-repo-label>
+  triggers:
+    - path: <repo-relative-trigger-glob>
+      kind: <descriptive-kind>
+  requiredDocs:
+    - path: <repo-relative-doc-path>
+      mode: review_or_update
+  reason: <why the inherited contract must change for this child repo>
