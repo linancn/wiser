@@ -104,6 +104,35 @@ describe('Data Foundation HTTP composition module', () => {
     expect(response.headers['cache-control']).toContain('no-store');
   });
 
+  it('serves one exact versioned Capability schema for the MCP resource boundary', async () => {
+    const app = appWith(() =>
+      Promise.resolve({ database: true, objectStore: true, worker: true }),
+    );
+    const exact = await app.inject({
+      method: 'GET',
+      url: '/api/data/v1/capabilities/data.catalog.search/1.0.0',
+    });
+    const wrongVersion = await app.inject({
+      method: 'GET',
+      url: '/api/data/v1/capabilities/data.catalog.search/9.9.9',
+    });
+
+    expect(exact.statusCode).toBe(200);
+    expect(exact.json()).toMatchObject({
+      id: 'data.catalog.search',
+      version: '1.0.0',
+      inputSchema: { type: 'object', additionalProperties: false },
+      outputSchema: { type: 'object', additionalProperties: false },
+    });
+    expect(exact.headers['cache-control']).toContain('no-store');
+    expect(wrongVersion.statusCode).toBe(404);
+    expect(wrongVersion.json()).toEqual({
+      code: 'CAPABILITY_SCHEMA_NOT_FOUND',
+      message:
+        '数据能力版本不存在。 / The Data Capability version does not exist.',
+    });
+  });
+
   it('keeps existing Agent EXCON routes mounted beside Data Foundation', async () => {
     const app = appWith(() =>
       Promise.resolve({ database: true, objectStore: true, worker: true }),
