@@ -53,6 +53,14 @@ const capabilities = Object.freeze(
     });
   }),
 );
+const capabilityById: ReadonlyMap<string, (typeof capabilities)[number]> =
+  new Map(
+    capabilities.map((capability) => [capability.id, capability] as const),
+  );
+const capabilityResourceParams = z.strictObject({
+  capabilityId: z.string().min(1).max(128),
+  version: z.string().regex(/^\d+\.\d+\.\d+$/),
+});
 
 function healthProjection(readiness: DataFoundationReadiness) {
   const ready = readiness.database && readiness.objectStore && readiness.worker;
@@ -99,6 +107,29 @@ export function createDataFoundationModule(
           capabilities,
         });
       });
+
+      app.get(
+        '/api/data/v1/capabilities/:capabilityId/:version',
+        (request, reply) => {
+          setNoStore(reply);
+          const parsed = capabilityResourceParams.safeParse(request.params);
+          const capability = parsed.success
+            ? capabilityById.get(parsed.data.capabilityId)
+            : undefined;
+          if (
+            capability === undefined ||
+            !parsed.success ||
+            capability.version !== parsed.data.version
+          ) {
+            return reply.status(404).send({
+              code: 'CAPABILITY_SCHEMA_NOT_FOUND',
+              message:
+                '数据能力版本不存在。 / The Data Capability version does not exist.',
+            });
+          }
+          return reply.send(capability);
+        },
+      );
     },
   };
 }
