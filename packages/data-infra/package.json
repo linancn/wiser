@@ -1,0 +1,33 @@
+{
+  "name": "@wiser/data-infra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./migrations": "./src/migrations/index.ts"
+  },
+  "bin": {
+    "wiser-data-migrate": "./src/migrations/cli.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "migrate": "tsx src/migrations/cli.ts",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/pg": "8.23.1",
+    "tsx": "4.23.12",
+    "typescript": "catalog:",
+    "vitest": "4.1.11"
+  },
+  "engines": {
+    "node": ">=24.18.0 <25"
+  }
+}
