@@ -43,6 +43,36 @@ test('separates scenario management from active multi-agent runs', async ({
   await expect(page.getByTestId('role-slot')).toHaveCount(4);
 });
 
+test('opens a human-first Run overview before technical drill-down', async ({
+  page,
+}) => {
+  await page.goto('/zh-CN/runs/run-yongding-spring-042');
+
+  await expect(page.getByRole('heading', { name: '导调总览' })).toBeVisible();
+  await expect(page.getByText('权威通过', { exact: true })).toBeVisible();
+  await expect(page.getByText('遥测有缺口', { exact: true })).toBeVisible();
+  await expect(page.getByText('下一步关注', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('run-decision-spine')).toBeVisible();
+  await expect(page.getByRole('link', { name: '总览' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+
+  const attention = await page
+    .getByTestId('attention-item')
+    .first()
+    .boundingBox();
+  expect(attention?.y).toBeLessThan(1000);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  const mobileAttention = await page
+    .getByTestId('attention-item')
+    .first()
+    .boundingBox();
+  expect(mobileAttention?.y).toBeLessThan(844);
+});
+
 test('observes parallel agents, cross-agent links, and perspective replay', async ({
   page,
 }) => {
