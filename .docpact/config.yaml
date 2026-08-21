@@ -260,6 +260,10 @@ rules:
         kind: code
       - path: apps/api/src/runtime-auth.ts
         kind: code
+      - path: supabase/schemas/02_platform_auth.sql
+        kind: database
+      - path: supabase/migrations/*platform_auth*.sql
+        kind: database
     requiredDocs:
       - path: apps/docs/src/content/docs/zh-CN/architecture/wiser-platform.md
         mode: review_or_update
