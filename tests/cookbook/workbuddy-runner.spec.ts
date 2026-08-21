@@ -9,6 +9,7 @@ import {
   collectOperatorEvents,
   runWorkBuddyCookbook,
 } from '../../cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs';
+import { hasCoordinatorFinalEvidence } from '../../cookbooks/workbuddy-yongding-tdd/scripts/scripted-participant.mjs';
 
 const temporaryDirectories: string[] = [];
 
@@ -21,6 +22,56 @@ afterEach(async () => {
 });
 
 describe('WorkBuddy Yongding cookbook runner', () => {
+  it('combines early review responses with later authoritative acceptance', () => {
+    const reviewResponseBatch = {
+      receipts: ['water', 'hydraulic', 'ecological'].map((senderId) => ({
+        resourceType: 'message',
+        contentSnapshot: {
+          kind: 'response',
+          replyToMessageId: 'review-request-1',
+          senderId,
+        },
+      })),
+    };
+    const acceptanceBatch = {
+      receipts: [
+        {
+          resourceType: 'task',
+          contentSnapshot: { state: 'ACCEPTED' },
+        },
+        {
+          resourceType: 'feedback',
+          contentSnapshot: { targetScope: 'team' },
+        },
+      ],
+    };
+
+    expect(
+      hasCoordinatorFinalEvidence(
+        [reviewResponseBatch, acceptanceBatch],
+        'review-request-1',
+      ),
+    ).toBe(true);
+    expect(
+      hasCoordinatorFinalEvidence(
+        [
+          {
+            receipts: Array.from({ length: 3 }, () => ({
+              resourceType: 'message',
+              contentSnapshot: {
+                kind: 'response',
+                replyToMessageId: 'review-request-1',
+                senderId: 'water',
+              },
+            })),
+          },
+          acceptanceBatch,
+        ],
+        'review-request-1',
+      ),
+    ).toBe(false);
+  });
+
   it('paginates the complete authoritative Event stream past 200 entries', async () => {
     const calls: number[] = [];
     const events = Array.from({ length: 229 }, (_, index) => ({
@@ -54,7 +105,17 @@ describe('WorkBuddy Yongding cookbook runner', () => {
       repositoryRoot: import.meta.dirname.replace(/\/tests\/cookbook$/, ''),
     });
 
-    expect(result.exitCode).toBe(0);
+    expect(
+      result.exitCode,
+      JSON.stringify(
+        {
+          diagnostic: result.report.diagnostic,
+          participantResults: result.report.participantResults,
+        },
+        null,
+        2,
+      ),
+    ).toBe(0);
     expect(result.report.status).toBe('passed');
     expect(result.report.authoritative.evaluations).toHaveLength(4);
     expect(
@@ -113,7 +174,17 @@ describe('WorkBuddy Yongding cookbook runner', () => {
       repositoryRoot: import.meta.dirname.replace(/\/tests\/cookbook$/, ''),
     });
 
-    expect(result.exitCode).toBe(0);
+    expect(
+      result.exitCode,
+      JSON.stringify(
+        {
+          diagnostic: result.report.diagnostic,
+          participantResults: result.report.participantResults,
+        },
+        null,
+        2,
+      ),
+    ).toBe(0);
     expect(result.report.tddCycle).toEqual({
       injectedFault: 'water-evidence-schema-once',
       reworkObserved: true,

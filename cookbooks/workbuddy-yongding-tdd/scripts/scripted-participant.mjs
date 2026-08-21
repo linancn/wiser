@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { isAbsolute, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { isAbsolute, join, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const scriptPath = fileURLToPath(import.meta.url);
 
 const specialistPayloads = {
   'water-evidence': {
@@ -164,6 +166,25 @@ function receiptSnapshots(batches, resourceType) {
     (batch.receipts ?? [])
       .filter((entry) => entry.resourceType === resourceType)
       .map((entry) => entry.contentSnapshot),
+  );
+}
+
+export function hasCoordinatorFinalEvidence(batches, reviewRequestId) {
+  const tasks = receiptSnapshots(batches, 'task');
+  const feedback = receiptSnapshots(batches, 'feedback');
+  const messages = receiptSnapshots(batches, 'message');
+  return (
+    tasks.some((entry) => entry.state === 'ACCEPTED') &&
+    feedback.some((entry) => entry.targetScope === 'team') &&
+    new Set(
+      messages
+        .filter(
+          (entry) =>
+            entry.kind === 'response' &&
+            entry.replyToMessageId === reviewRequestId,
+        )
+        .map((entry) => entry.senderId),
+    ).size >= 3
   );
 }
 
@@ -543,7 +564,8 @@ async function runCoordinator(client, context) {
       },
     ],
   });
-  cursor = await sync(client, identity, cursor);
+  const reviewResponseBatch = await sync(client, identity, cursor);
+  cursor = reviewResponseBatch;
   const submission = await tool(client, 'excon_submit_task_result', {
     taskId: task.id,
     runAgentId: identity.runAgentId,
@@ -578,20 +600,11 @@ async function runCoordinator(client, context) {
     client,
     identity,
     cursor,
-    async ({ batches }) => {
-      const tasks = receiptSnapshots(batches, 'task');
-      const feedback = receiptSnapshots(batches, 'feedback');
-      const messages = receiptSnapshots(batches, 'message');
-      return (
-        tasks.some((entry) => entry.state === 'ACCEPTED') &&
-        feedback.some((entry) => entry.targetScope === 'team') &&
-        messages.filter(
-          (entry) =>
-            entry.kind === 'response' &&
-            entry.replyToMessageId === reviewRequest.message.id,
-        ).length >= 3
-      );
-    },
+    async ({ batches }) =>
+      hasCoordinatorFinalEvidence(
+        [reviewResponseBatch, ...batches],
+        reviewRequest.message.id,
+      ),
   );
   return {
     lastReceiptSeq: final.cursor.throughReceiptSeq,
@@ -688,4 +701,6 @@ async function main() {
   );
 }
 
-void main();
+if (process.argv[1] !== undefined && resolve(process.argv[1]) === scriptPath) {
+  void main();
+}
