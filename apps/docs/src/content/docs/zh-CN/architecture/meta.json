@@ -2,6 +2,7 @@
   "title": "设计边界",
   "pages": [
     "wiser-platform",
+    "data-foundation",
     "design-system",
     "unified-auth",
     "overview",
