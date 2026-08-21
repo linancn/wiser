@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: b571be6e7e1abef540cbda607c4807f000714d33
+lastReviewedCommit: 44a40c2e1d2ed4d6c0e071fa391f16d277e7e08d
 ---
 
 ## 单一身份源
@@ -32,6 +32,8 @@ JWT 证明主体、认证强度与 Session；动态 Tenant、Project、Role 和 
 Fastify 已提供 `platform.identity` 模块和 `/api/platform/v1/me` 安全投影。`WISER_AUTH_MODE=supabase` 会在默认进程中创建最新稳定 `supabase-js` client、受限 PostgreSQL Pool 和 fail-closed Resolver；生产缺少任何必要配置时拒绝启动，进程关闭时释放 Pool。委托凭据签发仍是后续里程碑。
 
 Web 已使用最新稳定 `@supabase/ssr` 建立 Browser/Server Client 与 Next.js 16 `proxy.ts`。Proxy 在响应产生前调用 `getClaims()`，刷新后的 Cookie 同时写回 request/response，并设置 `private, no-store`；登录、回调、退出页面和当前用户 Token 转发仍在后续纵切实现。
+
+委托凭据的密码学边界现已可执行：严格解析 `wdc1.<key-id>.<secret>`，使用 Node 安全随机源分别生成 128-bit locator 与 256-bit secret，数据库只保存经过域隔离的 HMAC-SHA-256。JSON key ring 只接受至少 256-bit 的规范无填充 base64url key，指定一个 active key 负责新签发，同时保留旧 key 支持轮换期验证；任何配置错误都 fail closed，且不会回显秘密。数据库签发/轮换事务与 delegated principal Resolver 属于下一授权纵切。
 
 ## 控制面模型
 
@@ -87,6 +89,7 @@ Web 使用 Supabase SSR Cookie。Server Component 转发当前 Access Token，Fa
 - 委托链第一版最大深度为一。
 - 明文 credential 只返回一次；数据库保存带服务器 Pepper 的 HMAC。
 - 委托 Bearer Token 固定使用 `wdc1.<key-id>.<secret>` 封装；公开 key id 只定位私有记录，`hmac_key_id` 选择可轮换的服务端密钥且不会暴露密钥本身。
+- 验证时只用公开 key id 定位记录，在进程内重算 HMAC 并执行固定长度的 timing-safe 比较；未知 key、畸形 Token 与 HMAC 不匹配使用同一失败表面。
 - Delegation 带乐观版本；撤销和轮换保留旧 Credential 安全事实，删除 Tenant、Project 或 Delegation 不得级联擦除历史。
 - 撤销委托人 Membership、Project、Agent 或 credential 后，下一次请求失败。
 - MCP Tool 参数、Message、Artifact、日志与 Trace 不得包含凭据。

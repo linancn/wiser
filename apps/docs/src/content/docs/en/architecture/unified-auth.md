@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: b571be6e7e1abef540cbda607c4807f000714d33
+lastReviewedCommit: 44a40c2e1d2ed4d6c0e071fa391f16d277e7e08d
 ---
 
 ## One identity authority
@@ -32,6 +32,8 @@ Delivered now: the `platform` / `platform_private` schemas, automatic user provi
 Fastify exposes the `platform.identity` module and safe `/api/platform/v1/me` projection. `WISER_AUTH_MODE=supabase` creates the current stable `supabase-js` client, bounded PostgreSQL pool, and fail-closed Resolver in the default process. Production refuses any missing required configuration, and process shutdown closes the pool. Delegated-credential issuance remains a later milestone.
 
 Web now uses the current stable `@supabase/ssr` Browser/Server clients and Next.js 16 `proxy.ts`. Proxy calls `getClaims()` before a response is produced, writes refreshed cookies to both request and response, and sets `private, no-store`. Login, callback, sign-out pages, and current-user token forwarding remain the next vertical slice.
+
+The delegated-credential cryptographic boundary is now executable. It strictly parses `wdc1.<key-id>.<secret>`, generates independent 128-bit locators and 256-bit secrets with Node's secure random source, and stores only a domain-separated HMAC-SHA-256. The JSON key-ring configuration requires canonical unpadded base64url keys of at least 256 bits, names one active key for issuance, retains previous keys for verification during rotation, and fails closed without echoing secret configuration. Database issuance/rotation transactions and the delegated principal Resolver remain the next authorization slice.
 
 ## Control-plane model
 
@@ -87,6 +89,7 @@ A user or service calls an authorized API to issue a short-lived delegated crede
 - Delegation depth is one in the first release.
 - Plaintext credentials are returned once; storage uses a server-peppered HMAC.
 - Delegated bearer tokens use the strict `wdc1.<key-id>.<secret>` envelope. The public key id locates one private row; `hmac_key_id` selects a versioned server key without exposing it.
+- Verification locates by public key id, recomputes the HMAC in process, and uses a fixed-length timing-safe comparison; unknown key ids, malformed tokens, and mismatches return the same failure surface.
 - Delegations have an optimistic version. Revocation and rotation keep old Credential rows as security facts; Tenant, Project, or Delegation deletion cannot cascade through that history.
 - Revoking delegator membership, Project, Agent, delegation, or credential rejects the next request.
 - MCP tool arguments, Messages, Artifacts, logs, and traces never contain credentials.

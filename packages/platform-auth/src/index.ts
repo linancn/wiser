@@ -123,3 +123,14 @@ export {
   type SupabaseClaimsResult,
   type SupabaseClaimsVerifierOptions,
 } from './supabase-claims.js';
+export {
+  issueDelegatedCredential,
+  parseDelegatedCredentialHmacKeyRing,
+  parseDelegatedCredentialToken,
+  verifyDelegatedCredentialToken,
+  type DelegatedCredentialHmacKeyRing,
+  type DelegatedCredentialRandomBytes,
+  type DelegatedCredentialTokenParts,
+  type IssuedDelegatedCredential,
+  type StoredDelegatedCredentialHmac,
+} from './delegated-credential-token.js';

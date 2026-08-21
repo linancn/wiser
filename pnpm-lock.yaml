@@ -344,6 +344,9 @@ importers:
         specifier: workspace:*
         version: link:../platform-contracts
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

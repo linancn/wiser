@@ -21,9 +21,7 @@ function encodedKey(value: number) {
   return Buffer.from(keyBytes(value)).toString('base64url');
 }
 
-function keyRing(
-  activeKeyId = ACTIVE_KEY_ID,
-): DelegatedCredentialHmacKeyRing {
+function keyRing(activeKeyId = ACTIVE_KEY_ID): DelegatedCredentialHmacKeyRing {
   return {
     activeKeyId,
     keys: new Map([
@@ -110,10 +108,7 @@ describe('delegated credential HMAC key-ring configuration', () => {
 
 describe('delegated credential token envelope', () => {
   it('issues a strict locator plus 256-bit secret and a 256-bit HMAC', () => {
-    const issued = issueDelegatedCredential(
-      keyRing(),
-      deterministicRandom(1),
-    );
+    const issued = issueDelegatedCredential(keyRing(), deterministicRandom(1));
 
     expect(issued.token).toMatch(
       /^wdc1\.wdc_[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/,
