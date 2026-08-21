@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 45e2b9b8348b54bf826e88bdd89b98bbf9fdfa7e
+lastReviewedCommit: 89cde4733d5f1772db7495fbfa0bd1b6cf4a18bf
 ---
 
 ## Boundary and implementation status
@@ -57,6 +57,8 @@ data.operation.cancel            data.operation.events
 The REST mapping for `data.operation.events` explicitly uses SSE. Graph operations remain structured `graph.expand/findPath` inputs rather than arbitrary Cypher, and no query Capability accepts arbitrary SQL or OpenSearch DSL.
 
 The shared Fastify host now has an injectable `data.foundation` module. `/api/data/v1/capabilities` serializes the ordered Registry directly through Zod 4's draft-7 generator, so clients can inspect all four transport mappings without AST scanning. `/api/data/v1/health` reports data-postgres, object-store, and Worker readiness from injected probes and returns 503 whenever any authority dependency is missing. The default process does not yet register concrete probes and therefore cannot claim a ready Data Foundation runtime.
+
+The transport-neutral `DataCapabilityHandler` is complete: one static executor per Registry entry, Zod input/output gates, live Scope and security-ceiling checks, command idempotency, bounded execution signals, and hash-only audit facts. Concrete executors and routes remain the next integration boundary; its existence does not make the REST or GraphQL surface complete.
 
 A `DataItem` is the smallest governance unit, not a file, table, or layer. Quality grade, acceptance status, publication status, and security level are four independent dimensions; adapters must never collapse them into one “status.”
 
