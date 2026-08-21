@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 9574bdf87831a5022039be31ad7dfbd22443c51f
+lastReviewedCommit: b2b07c3d5840e6a27613128f0f1d34f05d071cbf
 ---
 
 ## Boundary and implementation status
@@ -101,7 +101,7 @@ The Worker loads canonical `DATA_*` environment names at startup and fails close
 
 The `data-foundation` Compose profile runs an independent PostgreSQL 18.6/PostGIS 3.6 authority database plus pyPgSTAC 0.9.12, SeaweedFS 4.43, Weaviate 1.39.0, OpenSearch/Dashboards 3.8.0, Neo4j 2026.07.1, GeoServer 3.0.1, STAC API 6.3.1, TiTiler 2.2.1, Martin 1.14.0, Tika 3.3.1.0, and ClamAV 1.5.4. Every image is a literal stable tag plus sha256 digest in Compose and is audited again in `infrastructure/data-foundation/versions.env`.
 
-The official OpenSearch image does not contain `analysis-icu`. A one-shot initializer downloads only the 3.8.0 official artifact, verifies SHA-512 before installation, and places it in a read-only named plugin volume. OpenSearch readiness verifies both cluster health and the loaded plugin. All services drop every Linux capability first; PostgreSQL, SeaweedFS, and the initializer add back only the volume/UID/GID capabilities their upstream entrypoints demonstrably require. Ports bind to loopback, credentials are non-default local values, logs rotate, resources are bounded, and no service uses the host network.
+The official OpenSearch image does not contain `analysis-icu`. A one-shot initializer downloads only the 3.8.0 official artifact, verifies SHA-512 before installation, and places it in a read-only named plugin volume. OpenSearch readiness verifies both cluster health and the loaded plugin. All services drop every Linux capability first; only upstream entrypoints that demonstrably initialize a named volume or drop UID/GID receive the required CHOWN/DAC/FOWNER/SETUID/SETGID subset. Ports bind to loopback, credentials are non-default local values, logs rotate, resources are bounded, and no service uses the host network.
 
 PostgreSQL 18/PostGIS and GeoServer are currently official amd64-only images, so Compose declares `linux/amd64` for deterministic Apple Silicon emulation. The migration suite has been executed against that PostgreSQL 18.6 container, and SeaweedFS anonymous S3 access is denied. This compatibility evidence does not eliminate the final full-stack smoke gate.
 

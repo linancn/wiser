@@ -381,7 +381,11 @@ services:
       opensearch:
         condition: service_healthy
     healthcheck:
-      test: [CMD-SHELL, 'curl -fsS http://127.0.0.1:5601/api/status >/dev/null']
+      test:
+        [
+          CMD-SHELL,
+          'curl -fsS -u "admin:$${OPENSEARCH_PASSWORD}" http://127.0.0.1:5601/api/status >/dev/null',
+        ]
       interval: 15s
       timeout: 10s
       retries: 30
@@ -394,6 +398,12 @@ services:
     <<: *data-service
     profiles: [data-foundation]
     image: neo4j:2026.07.1@sha256:6ea87e9f43d1cf6c6a00a709d05aab626c9a5128aded8673804d087c0232434e
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
     environment:
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-WiserLocalNeo4j-5d6f13b9}
       NEO4J_server_memory_heap_initial__size: 256m
@@ -424,6 +434,12 @@ services:
     profiles: [data-foundation]
     image: docker.osgeo.org/geoserver:3.0.1@sha256:7cb827ba3f6d9fc04a6647fc0cfa6c254fc642407f0d99281fdf026d2540b558
     platform: linux/amd64
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
     environment:
       GEOSERVER_ADMIN_USER: ${GEOSERVER_USERNAME:-wiser-admin}
       GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_PASSWORD:-WiserLocalGeoServer-53d7c91e}
@@ -465,7 +481,7 @@ services:
       PGPASSWORD: ${DATA_POSTGRES_PASSWORD:-wiser-local-data-4f8c71b0f3e947d4}
       DB_MIN_CONN_SIZE: '1'
       DB_MAX_CONN_SIZE: '5'
-      ENABLE_TRANSACTIONS_EXTENSIONS: 'false'
+      ENABLE_TRANSACTIONS_EXTENSIONS: 'true'
     ports:
       - 127.0.0.1:18082:8080
     depends_on:
@@ -560,6 +576,12 @@ services:
     <<: *data-service
     profiles: [data-foundation]
     image: clamav/clamav:1.5.4-debian13-slim@sha256:2bb8cd7dfe3e87f86e969a2c415f7698583175e46dc2234672be9210c982c144
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
     ports:
       - 127.0.0.1:13310:3310
     volumes:

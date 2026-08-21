@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 9574bdf87831a5022039be31ad7dfbd22443c51f
+lastReviewedCommit: b2b07c3d5840e6a27613128f0f1d34f05d071cbf
 ---
 
 ## 边界与当前实现
@@ -101,7 +101,7 @@ Worker 在启动时读取 canonical `DATA_*` 环境变量；数据库 URL、UUID
 
 `data-foundation` Compose profile 运行独立 PostgreSQL 18.6/PostGIS 3.6 权威库与 pyPgSTAC 0.9.12，以及 SeaweedFS 4.43、Weaviate 1.39.0、OpenSearch/Dashboards 3.8.0、Neo4j 2026.07.1、GeoServer 3.0.1、STAC API 6.3.1、TiTiler 2.2.1、Martin 1.14.0、Tika 3.3.1.0 和 ClamAV 1.5.4。Compose 中每个镜像都直接写稳定 tag 与 sha256 digest，并在 `infrastructure/data-foundation/versions.env` 再次审计登记。
 
-OpenSearch 官方镜像不含 `analysis-icu`。一次性 initializer 只下载官方 3.8.0 artifact，先验证 SHA-512，再写入只读 named plugin volume；OpenSearch readiness 同时验证 cluster health 与插件已加载。所有服务先 drop 全部 Linux capability；PostgreSQL、SeaweedFS 和 initializer 只加回上游入口经真实启动证明所需的卷与 UID/GID capability。所有端口绑定回环地址，使用非默认本机 credential，日志轮转、资源受限，且无 host network。
+OpenSearch 官方镜像不含 `analysis-icu`。一次性 initializer 只下载官方 3.8.0 artifact，先验证 SHA-512，再写入只读 named plugin volume；OpenSearch readiness 同时验证 cluster health 与插件已加载。所有服务先 drop 全部 Linux capability；只有经真实启动证明需要初始化 named volume 或降低 UID/GID 的上游入口，才加回 CHOWN/DAC/FOWNER/SETUID/SETGID 子集。所有端口绑定回环地址，使用非默认本机 credential，日志轮转、资源受限，且无 host network。
 
 PostgreSQL 18/PostGIS 与 GeoServer 当前官方镜像仅有 amd64，因此 Compose 显式声明 `linux/amd64`，在 Apple Silicon 确定性模拟。完整 WISER migration 已在该 PostgreSQL 18.6 容器上执行，SeaweedFS 的匿名 S3 访问也已确认拒绝；这些兼容性证据不能替代最终全栈 smoke 门禁。
 

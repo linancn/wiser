@@ -16,7 +16,7 @@ checkPaths:
   - compose.yaml
   - .env.example
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 9574bdf87831a5022039be31ad7dfbd22443c51f
+lastReviewedCommit: b2b07c3d5840e6a27613128f0f1d34f05d071cbf
 ---
 
 ## Know the current boundary first
