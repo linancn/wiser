@@ -25,6 +25,7 @@ import type {
   RunEventDto,
   RunEvaluationDto,
   RunFeedbackDto,
+  RunInteractionDto,
   RunMessageDto,
   RunSubmissionDto,
   SubmissionEndorsementDto,
@@ -199,6 +200,10 @@ export interface V2ExerciseService {
     idempotencyKey: string,
     input: CreateRunMessageRequest,
   ): Promise<{ readonly message: RunMessageDto }>;
+  listRunInteractions(
+    principal: ParticipantPrincipal,
+    runId: string,
+  ): Promise<readonly RunInteractionDto[]>;
   createArtifact(
     principal: ParticipantPrincipal,
     runAgentId: string,

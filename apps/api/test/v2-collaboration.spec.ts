@@ -313,7 +313,7 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
         artifactVersionRefs: [],
       },
     });
-    expect(unauthorizedReply.statusCode).toBe(403);
+    expect(unauthorizedReply.statusCode, unauthorizedReply.body).toBe(403);
     expect(ApiErrorSchema.parse(json(unauthorizedReply))).toMatchObject({
       error: { code: 'RESOURCE_NOT_ISSUED' },
     });

@@ -1,4 +1,5 @@
 export * from './agent-sync.js';
+export * from './agent-interaction.js';
 export * from './attribution.js';
 export * from './exercise-run.js';
 export * from './feedback.js';

@@ -368,18 +368,104 @@ export const RunBarrierSchema = z.strictObject({
 });
 export type RunBarrierDto = z.infer<typeof RunBarrierSchema>;
 
-export const RunMessageSchema = z.strictObject({
+export const ArtifactVersionReferenceSchema = z.strictObject({
+  artifactId: z.string().uuid(),
+  artifactVersionId: z.string().uuid(),
+  contentHash: Sha256DigestSchema,
+});
+export type ArtifactVersionReferenceDto = z.infer<
+  typeof ArtifactVersionReferenceSchema
+>;
+
+export const RunMessageKindSchema = z.enum([
+  'inform',
+  'request',
+  'response',
+  'handoff',
+]);
+export type RunMessageKind = z.infer<typeof RunMessageKindSchema>;
+
+function refineMessageRelation(
+  message: {
+    readonly kind: RunMessageKind;
+    readonly replyToMessageId?: string | undefined;
+    readonly artifactVersionRefs: readonly ArtifactVersionReferenceDto[];
+  },
+  context: z.RefinementCtx,
+): void {
+  if (
+    (message.kind === 'response') !==
+    (message.replyToMessageId !== undefined)
+  ) {
+    context.addIssue({
+      code: 'custom',
+      path: ['replyToMessageId'],
+      message: 'response messages require exactly one parent request',
+    });
+  }
+  if (message.kind === 'handoff' && message.artifactVersionRefs.length === 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['artifactVersionRefs'],
+      message:
+        'handoff messages require an immutable ArtifactVersion reference',
+    });
+  }
+}
+
+export const RunMessageSchema = z
+  .strictObject({
+    id: z.string().uuid(),
+    runId: z.string().uuid(),
+    threadId: z.string().uuid(),
+    kind: RunMessageKindSchema,
+    replyToMessageId: z.string().uuid().optional(),
+    senderType: z.enum(['EXCON', 'RUN_AGENT']),
+    senderId: z.string().min(1).max(128),
+    recipientRunAgentIds: z.array(z.string().uuid()).min(1),
+    subject: V2LocalizedTextSchema,
+    body: V2LocalizedTextSchema,
+    artifactVersionRefs: z.array(ArtifactVersionReferenceSchema).max(16),
+    createdRunSeq: z.number().int().positive(),
+    createdVirtualAt: V2TimestampSchema,
+    createdAt: V2TimestampSchema,
+  })
+  .superRefine(refineMessageRelation);
+export type RunMessageDto = z.infer<typeof RunMessageSchema>;
+
+export const RunInteractionDeliverySchema = z.strictObject({
+  recipientRunAgentId: z.string().uuid(),
+  state: z.enum(['pending_sync', 'issued', 'acknowledged']),
+  agentReceiptSeq: z.number().int().positive().optional(),
+  issuedRunSeq: z.number().int().positive().optional(),
+  acknowledgedRunSeq: z.number().int().positive().optional(),
+});
+export type RunInteractionDeliveryDto = z.infer<
+  typeof RunInteractionDeliverySchema
+>;
+
+export const RunInteractionSchema = z.strictObject({
   id: z.string().uuid(),
   runId: z.string().uuid(),
+  threadId: z.string().uuid(),
+  kind: RunMessageKindSchema,
+  replyToMessageId: z.string().uuid().optional(),
   senderType: z.enum(['EXCON', 'RUN_AGENT']),
   senderId: z.string().min(1).max(128),
   recipientRunAgentIds: z.array(z.string().uuid()).min(1),
   subject: V2LocalizedTextSchema,
-  body: V2LocalizedTextSchema,
+  artifactVersionRefs: z.array(ArtifactVersionReferenceSchema).max(16),
   createdRunSeq: z.number().int().positive(),
+  createdVirtualAt: V2TimestampSchema,
   createdAt: V2TimestampSchema,
+  deliveries: z.array(RunInteractionDeliverySchema).min(1),
+  responseMessageIds: z.array(z.string().uuid()),
+  status: z.enum(['open', 'responded', 'complete']),
 });
-export type RunMessageDto = z.infer<typeof RunMessageSchema>;
+export type RunInteractionDto = z.infer<typeof RunInteractionSchema>;
+export const RunInteractionListSchema = z.strictObject({
+  items: z.array(RunInteractionSchema),
+});
 
 export const RunArtifactSchema = z.strictObject({
   id: z.string().uuid(),
@@ -537,15 +623,6 @@ export const ReceiptReferenceSchema = z.strictObject({
 });
 export type ReceiptReferenceDto = z.infer<typeof ReceiptReferenceSchema>;
 
-export const ArtifactVersionReferenceSchema = z.strictObject({
-  artifactId: z.string().uuid(),
-  artifactVersionId: z.string().uuid(),
-  contentHash: Sha256DigestSchema,
-});
-export type ArtifactVersionReferenceDto = z.infer<
-  typeof ArtifactVersionReferenceSchema
->;
-
 const UniqueRunAgentRecipientsSchema = z
   .array(z.string().uuid())
   .min(1)
@@ -636,11 +713,19 @@ export const RunSubmissionSchema = z.strictObject({
 });
 export type RunSubmissionDto = z.infer<typeof RunSubmissionSchema>;
 
-export const CreateRunMessageRequestSchema = z.strictObject({
-  recipientRunAgentIds: UniqueRunAgentRecipientsSchema,
-  subject: V2LocalizedTextSchema,
-  body: V2LocalizedTextSchema,
-});
+export const CreateRunMessageRequestSchema = z
+  .strictObject({
+    kind: RunMessageKindSchema.default('inform'),
+    replyToMessageId: z.string().uuid().optional(),
+    recipientRunAgentIds: UniqueRunAgentRecipientsSchema,
+    subject: V2LocalizedTextSchema,
+    body: V2LocalizedTextSchema,
+    artifactVersionRefs: z
+      .array(ArtifactVersionReferenceSchema)
+      .max(16)
+      .default([]),
+  })
+  .superRefine(refineMessageRelation);
 export type CreateRunMessageRequest = z.infer<
   typeof CreateRunMessageRequestSchema
 >;

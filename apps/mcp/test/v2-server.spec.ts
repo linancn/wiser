@@ -355,9 +355,11 @@ describe('WISER Agent EXCON v2 MCP adapter', () => {
         path: `/runs/${RUN_ID}/messages`,
         headers: commandHeaders,
         body: {
+          kind: 'inform',
           recipientRunAgentIds: [RUN_AGENT_ID],
           subject: localized,
           body: localized,
+          artifactVersionRefs: [],
         },
       },
       {

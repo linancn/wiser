@@ -707,6 +707,27 @@ export function registerV2Routes(
         }
 
         protectedApi.get(
+          '/runs/:runId/interactions',
+          {
+            schema: {
+              ...protectedRouteSchema,
+              tags: ['agent-collaboration-v2'],
+              summary:
+                'List operator-safe agent interaction and delivery projections',
+            },
+          },
+          async (request) => {
+            const { runId } = V2RunIdParamsSchema.parse(request.params);
+            return {
+              items: await service.listRunInteractions(
+                principal(request),
+                runId,
+              ),
+            };
+          },
+        );
+
+        protectedApi.get(
           '/runs/:runId/evaluations',
           {
             schema: {

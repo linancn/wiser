@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  DomainError,
   createAgentInteraction,
   type AgentInteractionMessage,
+  type DomainError,
 } from '../src/index.js';
 
 const request: AgentInteractionMessage = {

@@ -1,6 +1,6 @@
 begin;
 
-select plan(73);
+select plan(79);
 
 select has_table('public', 'role_definitions', 'v2 role definitions exist');
 select has_table('public', 'agent_identities', 'v2 agent identities exist');
@@ -15,6 +15,10 @@ select has_table('public', 'delivery_batches', 'v2 delivery batches exist');
 select has_table('public', 'agent_view_receipts', 'v2 view receipts exist');
 select has_table('public', 'acknowledgements', 'v2 acknowledgements exist');
 select has_table('public', 'run_messages', 'v2 messages exist');
+select has_column('public', 'run_messages', 'kind', 'messages carry an interaction kind');
+select has_column('public', 'run_messages', 'thread_id', 'messages carry an immutable thread id');
+select has_column('public', 'run_messages', 'reply_to_message_id', 'responses reference a parent request');
+select has_column('public', 'run_messages', 'artifact_version_refs', 'handoffs pin artifact version references');
 select has_table('public', 'run_artifacts', 'v2 artifacts exist');
 select has_table('public', 'run_artifact_versions', 'v2 artifact versions exist');
 select has_table('public', 'run_submissions', 'v2 submissions exist');
@@ -39,6 +43,18 @@ select has_function(
   'append_run_event',
   array['uuid', 'text', 'text', 'uuid', 'text', 'uuid', 'text', 'uuid', 'text', 'timestamptz', 'jsonb', 'uuid', 'uuid', 'text', 'text'],
   'serialized run event append function exists'
+);
+select has_function(
+  'excon_private',
+  'guard_run_message_thread',
+  array[]::text[],
+  'message thread and Receipt guard exists'
+);
+select has_trigger(
+  'public',
+  'run_messages',
+  'run_messages_thread_guard',
+  'message thread guard is attached'
 );
 
 select is(

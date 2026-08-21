@@ -1431,21 +1431,24 @@ function createAgentExconV2McpServer(http: AgentExconHttpClient): McpServer {
       }),
       description: bilingual({
         'zh-CN':
-          '通过 POST /runs/{runId}/messages 向不可变收件人快照发布明确消息。Message 不是 Barrier 或 Run 时钟命令，收件人需通过自身 sync 获得它。',
-        en: 'Post an explicit message to an immutable recipient snapshot through POST /runs/{runId}/messages. A Message is not a Barrier or Run-clock command, and recipients receive it through their own sync.',
+          '通过 POST /runs/{runId}/messages 向不可变收件人快照发布 inform、request、response 或 ArtifactVersion handoff。response 必须引用已通过自身 Receipt 获得的 request；Message 不是 Barrier 或 Run 时钟命令。',
+        en: "Post an inform, request, response, or ArtifactVersion handoff to an immutable recipient snapshot through POST /runs/{runId}/messages. A response must reference a request already obtained through the caller's own Receipt chain. A Message is not a Barrier or Run-clock command.",
       }),
       inputSchema: V2MessageInputSchema,
       outputSchema: ToolOutputSchema,
       annotations: idempotentWriteAnnotations,
     },
-    async ({ runId, runAgentId, idempotencyKey, ...body }) =>
+    async ({ runId, runAgentId, idempotencyKey, replyToMessageId, ...body }) =>
       callHttp(
         http,
         {
           method: 'POST',
           path: `/runs/${pathId(runId)}/messages`,
           headers: participantHeaders(runAgentId, idempotencyKey),
-          body,
+          body: {
+            ...body,
+            ...(replyToMessageId === undefined ? {} : { replyToMessageId }),
+          },
         },
         v2SuccessCopy.message,
       ),

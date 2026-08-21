@@ -32,6 +32,7 @@ import type {
   RunEventDto,
   RunEvaluationDto,
   RunFeedbackDto,
+  RunInteractionDto,
   RunMessageDto,
   RunRoleAssignmentDto,
   RunSubmissionDto,
@@ -53,6 +54,7 @@ import {
   beginRunTask,
   claimRunTask,
   consumeFeedbackActionGrant,
+  createAgentInteraction,
   createFeedbackActionGrant,
   createRunBarrier,
   createRunTask,
@@ -1558,27 +1560,126 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
           this.assertRunning(stored);
           this.assertRecipientSnapshot(stored, input.recipientRunAgentIds);
           const messageId = this.#idFactory();
+          const parentMessage =
+            input.replyToMessageId === undefined
+              ? undefined
+              : stored.messages.get(input.replyToMessageId);
+          if (
+            input.replyToMessageId !== undefined &&
+            parentMessage === undefined
+          ) {
+            throw new ExerciseServiceError(
+              'MESSAGE_NOT_FOUND',
+              '回复引用的 Message 不存在于当前 Run。 / The replied-to Message does not exist in this Run.',
+            );
+          }
+          const interaction = createAgentInteraction({
+            id: messageId,
+            kind: input.kind,
+            senderRunAgentId: runAgentId,
+            recipientRunAgentIds: input.recipientRunAgentIds,
+            ...(input.replyToMessageId === undefined
+              ? {}
+              : { replyToMessageId: input.replyToMessageId }),
+            ...(parentMessage === undefined
+              ? {}
+              : {
+                  parentMessage: {
+                    id: parentMessage.id,
+                    threadId: parentMessage.threadId,
+                    kind: parentMessage.kind,
+                    senderRunAgentId: parentMessage.senderId,
+                    recipientRunAgentIds: parentMessage.recipientRunAgentIds,
+                  },
+                  parentIssuedToSender: this.hasIssuedResource(
+                    stored,
+                    runAgentId,
+                    'message',
+                    parentMessage.id,
+                  ),
+                }),
+          });
+          for (const reference of input.artifactVersionRefs) {
+            const artifact = stored.artifactVersions.get(
+              reference.artifactVersionId,
+            );
+            if (
+              artifact === undefined ||
+              artifact.id !== reference.artifactId ||
+              artifact.contentHash !== reference.contentHash
+            ) {
+              throw new ExerciseServiceError(
+                'RECEIPT_REFERENCE_CONFLICT',
+                'Message 引用的 ArtifactVersion 身份或哈希不匹配。 / A Message ArtifactVersion reference has an identity or hash mismatch.',
+              );
+            }
+            if (
+              artifact.authorId !== runAgentId &&
+              !this.hasIssuedResource(
+                stored,
+                runAgentId,
+                'artifact',
+                artifact.id,
+                artifact.versionId,
+              )
+            ) {
+              throw new ExerciseServiceError(
+                'RESOURCE_NOT_ISSUED',
+                '只能引用本人创作或已通过 Receipt 获得的 ArtifactVersion。 / A Message may cite only an authored or receipted ArtifactVersion.',
+              );
+            }
+          }
+          const parentEvent =
+            parentMessage === undefined
+              ? undefined
+              : stored.events.find(
+                  ({ streamType, streamId, eventType }) =>
+                    streamType === 'message' &&
+                    streamId === parentMessage.id &&
+                    eventType === 'message.created',
+                );
           const event = this.appendRunEvent(stored, {
             streamType: 'message',
             streamId: messageId,
             eventType: 'message.created',
             actorType: 'run_agent',
             actorId: runAgentId,
+            correlationId: interaction.threadId,
+            ...(parentEvent === undefined
+              ? {}
+              : { causationId: parentEvent.eventId }),
             assertionClass: 'participant_reported',
             payload: {
               runAgentId,
+              kind: interaction.kind,
+              threadId: interaction.threadId,
+              ...(interaction.replyToMessageId === undefined
+                ? {}
+                : { replyToMessageId: interaction.replyToMessageId }),
               recipientRunAgentIds: [...input.recipientRunAgentIds],
+              artifactVersionIds: input.artifactVersionRefs.map(
+                ({ artifactVersionId }) => artifactVersionId,
+              ),
             },
           });
           const message: RunMessageDto = {
             id: messageId,
             runId,
+            threadId: interaction.threadId,
+            kind: interaction.kind,
+            ...(interaction.replyToMessageId === undefined
+              ? {}
+              : { replyToMessageId: interaction.replyToMessageId }),
             senderType: 'RUN_AGENT',
             senderId: runAgentId,
             recipientRunAgentIds: [...input.recipientRunAgentIds],
             subject: input.subject,
             body: input.body,
+            artifactVersionRefs: input.artifactVersionRefs.map((reference) => ({
+              ...reference,
+            })),
             createdRunSeq: event.runSeq,
+            createdVirtualAt: event.virtualTime,
             createdAt: this.timestamp(),
           };
           stored.messages.set(message.id, message);
@@ -1588,6 +1689,88 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
           return { message };
         },
       ),
+    );
+  }
+
+  listRunInteractions(
+    principal: ParticipantPrincipal,
+    runId: string,
+  ): Promise<readonly RunInteractionDto[]> {
+    const stored = this.ownedRun(principal, runId);
+    const messages = [...stored.messages.values()].sort(
+      (left, right) => left.createdRunSeq - right.createdRunSeq,
+    );
+    return Promise.resolve(
+      messages.map((message) => {
+        const responseMessageIds = messages
+          .filter(({ replyToMessageId }) => replyToMessageId === message.id)
+          .map(({ id }) => id);
+        const deliveries = message.recipientRunAgentIds.map(
+          (recipientRunAgentId) => {
+            const receipt = (stored.receipts.get(recipientRunAgentId) ?? [])
+              .filter(
+                ({ resourceType, resourceId }) =>
+                  resourceType === 'message' && resourceId === message.id,
+              )
+              .at(-1);
+            if (receipt === undefined) {
+              return {
+                recipientRunAgentId,
+                state: 'pending_sync' as const,
+              };
+            }
+            const acknowledgement = (
+              stored.acknowledgements.get(recipientRunAgentId) ?? []
+            ).find(
+              ({ throughReceiptSeq }) =>
+                throughReceiptSeq >= receipt.agentReceiptSeq,
+            );
+            if (acknowledgement === undefined) {
+              return {
+                recipientRunAgentId,
+                state: 'issued' as const,
+                agentReceiptSeq: receipt.agentReceiptSeq,
+                issuedRunSeq: receipt.issuedRunSeq,
+              };
+            }
+            return {
+              recipientRunAgentId,
+              state: 'acknowledged' as const,
+              agentReceiptSeq: receipt.agentReceiptSeq,
+              issuedRunSeq: receipt.issuedRunSeq,
+              acknowledgedRunSeq: acknowledgement.acknowledgedRunSeq,
+            };
+          },
+        );
+        const status: RunInteractionDto['status'] =
+          message.kind === 'request' && responseMessageIds.length > 0
+            ? 'responded'
+            : deliveries.every(({ state }) => state === 'acknowledged')
+              ? 'complete'
+              : 'open';
+        return {
+          id: message.id,
+          runId: message.runId,
+          threadId: message.threadId,
+          kind: message.kind,
+          ...(message.replyToMessageId === undefined
+            ? {}
+            : { replyToMessageId: message.replyToMessageId }),
+          senderType: message.senderType,
+          senderId: message.senderId,
+          recipientRunAgentIds: [...message.recipientRunAgentIds],
+          subject: message.subject,
+          artifactVersionRefs: message.artifactVersionRefs.map((reference) => ({
+            ...reference,
+          })),
+          createdRunSeq: message.createdRunSeq,
+          createdVirtualAt: message.createdVirtualAt,
+          createdAt: message.createdAt,
+          deliveries,
+          responseMessageIds,
+          status,
+        };
+      }),
     );
   }
 
@@ -2913,12 +3096,20 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
       eventType: 'message.created',
       actorType: 'system',
       actorId: 'excon',
+      correlationId: messageId,
       assertionClass: 'platform_observed',
-      payload: { recipientRunAgentIds: [runAgentId] },
+      payload: {
+        kind: 'inform',
+        threadId: messageId,
+        recipientRunAgentIds: [runAgentId],
+        artifactVersionIds: [],
+      },
     });
     const message: RunMessageDto = {
       id: messageId,
       runId: stored.run.id,
+      threadId: messageId,
+      kind: 'inform',
       senderType: 'EXCON',
       senderId: 'excon',
       recipientRunAgentIds: [runAgentId],
@@ -2931,7 +3122,9 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
           '只有通过 Receipt 发放的内容和明确共享工件才能进入你的证据集。',
         en: 'Only receipted content and explicitly shared artifacts may enter your evidence set.',
       },
+      artifactVersionRefs: [],
       createdRunSeq: messageEvent.runSeq,
+      createdVirtualAt: messageEvent.virtualTime,
       createdAt,
     };
     stored.messages.set(message.id, message);
@@ -3098,6 +3291,8 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
       | 'eventType'
       | 'actorType'
       | 'actorId'
+      | 'correlationId'
+      | 'causationId'
       | 'assertionClass'
       | 'payload'
     >,
