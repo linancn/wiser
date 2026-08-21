@@ -2,25 +2,25 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { ReadModelUnavailable } from '@/components/read-model-state';
-import { RunOverview } from '@/components/run-overview';
+import { RunCollaboration } from '@/components/run-collaboration';
 import { getDictionary, isLocale } from '@/lib/i18n';
 import { getWebReadModelSource } from '@/lib/read-model-source.server';
 
-interface RunOverviewPageProps {
+interface CollaborationPageProps {
   params: Promise<{ locale: string; runId: string }>;
 }
 
 export async function generateMetadata({
   params,
-}: RunOverviewPageProps): Promise<Metadata> {
+}: CollaborationPageProps): Promise<Metadata> {
   const { locale } = await params;
   if (!isLocale(locale)) return {};
-  return { title: getDictionary(locale).runOverview.heading };
+  return { title: getDictionary(locale).collaboration.heading };
 }
 
-export default async function RunOverviewPage({
+export default async function CollaborationPage({
   params,
-}: RunOverviewPageProps) {
+}: CollaborationPageProps) {
   const { locale, runId } = await params;
   if (!isLocale(locale)) notFound();
   const source = await getWebReadModelSource();
@@ -29,8 +29,10 @@ export default async function RunOverviewPage({
     return <ReadModelUnavailable locale={locale} {...result} />;
   }
   return (
-    <RunOverview
+    <RunCollaboration
+      gaps={result.gaps}
       interactions={result.data.interactions}
+      liveMode={result.mode === 'live'}
       locale={locale}
       run={result.data.run}
       scenario={result.data.scenario}

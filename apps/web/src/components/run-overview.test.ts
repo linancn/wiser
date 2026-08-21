@@ -2,7 +2,11 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { getRunById, getScenarioById } from '../lib/platform';
+import {
+  getReferenceInteractions,
+  getRunById,
+  getScenarioById,
+} from '../lib/platform';
 import { RunOverview } from './run-overview';
 
 describe('Run overview', () => {
@@ -12,7 +16,12 @@ describe('Run overview', () => {
     if (run === undefined || scenario === undefined) throw new Error('fixture');
 
     const html = renderToStaticMarkup(
-      createElement(RunOverview, { locale: 'zh-CN', run, scenario }),
+      createElement(RunOverview, {
+        interactions: getReferenceInteractions(run.id),
+        locale: 'zh-CN',
+        run,
+        scenario,
+      }),
     );
 
     expect(html).toContain('导调总览');
@@ -27,5 +36,7 @@ describe('Run overview', () => {
     expect(html).toContain(`/zh-CN/runs/${run.id}/diagnostics`);
     expect(html).toContain(`/zh-CN/runs/${run.id}/trace`);
     expect(html).toContain(`/zh-CN/runs/${run.id}/replay`);
+    expect(html).toContain(`/zh-CN/runs/${run.id}/collaboration`);
+    expect(html).toContain('<strong>3</strong> 个专业工件已交接');
   });
 });

@@ -5,7 +5,7 @@ import type { ExerciseRun, PlatformScenario } from '../lib/platform';
 import styles from './run-workspace.module.css';
 
 export type RunWorkspaceSection =
-  'overview' | 'diagnostics' | 'trace' | 'replay';
+  'overview' | 'collaboration' | 'diagnostics' | 'trace' | 'replay';
 
 function authorityLabel(run: ExerciseRun, locale: Locale): string {
   const copy = getDictionary(locale).runWorkspace;
@@ -48,6 +48,11 @@ export function RunWorkspaceHeader({
       id: 'overview' as const,
       label: dictionary.runWorkspace.overview,
       path: '',
+    },
+    {
+      id: 'collaboration' as const,
+      label: dictionary.runWorkspace.collaboration,
+      path: '/collaboration',
     },
     {
       id: 'diagnostics' as const,

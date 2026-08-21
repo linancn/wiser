@@ -1,7 +1,12 @@
 import Link from 'next/link';
 
 import { getDictionary, type Locale } from '../lib/i18n';
-import type { ExerciseRun, PlatformScenario } from '../lib/platform';
+import type {
+  CollaborationExchange,
+  ExerciseRun,
+  PlatformScenario,
+} from '../lib/platform';
+import { collaborationSummary } from '../lib/run-collaboration';
 import type { DiagnosticFinding } from '../lib/run-diagnostics';
 import {
   authorityStateLabel,
@@ -44,16 +49,19 @@ function laneStatus(
 }
 
 export function RunOverview({
+  interactions,
   locale,
   run,
   scenario,
 }: {
+  readonly interactions: readonly CollaborationExchange[];
   readonly locale: Locale;
   readonly run: ExerciseRun;
   readonly scenario: PlatformScenario;
 }) {
   const dictionary = getDictionary(locale);
   const copy = dictionary.runOverview;
+  const collaboration = collaborationSummary(interactions);
   const coordinator = scenario.requiredRoles.find(({ id }) =>
     id.includes('coordination'),
   );
@@ -224,10 +232,30 @@ export function RunOverview({
               </div>
               <Link
                 className={styles.panelLink}
-                href={`/${locale}/runs/${run.id}/diagnostics`}
+                href={`/${locale}/runs/${run.id}/collaboration`}
               >
-                {copy.openDiagnostics} →
+                {copy.openCollaboration} →
               </Link>
+            </div>
+            <div
+              className={styles.collaborationSnapshot}
+              data-testid="overview-collaboration-summary"
+            >
+              <span>
+                <strong>{collaboration.handoffCount}</strong>{' '}
+                {copy.handoffClosedSuffix}
+              </span>
+              <span data-attention={collaboration.openRequestCount > 0}>
+                <strong>{collaboration.openRequestCount}</strong>{' '}
+                {copy.openRequestSuffix}
+              </span>
+              <span>
+                <strong>
+                  {collaboration.acknowledgedDeliveries}/
+                  {collaboration.totalDeliveries}
+                </strong>{' '}
+                {copy.deliveryClosedSuffix}
+              </span>
             </div>
             <ul className={styles.agentList}>
               {run.participants.map((agent) => (

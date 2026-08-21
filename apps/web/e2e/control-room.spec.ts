@@ -149,10 +149,18 @@ test('shows causal agent exchanges and per-recipient delivery without claiming t
 }) => {
   await page.goto('/zh-CN/runs/run-yongding-spring-042/collaboration');
 
-  await expect(page.getByRole('heading', { name: '协作汇流' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: '协作汇流', exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole('link', { name: '协作' })).toHaveAttribute(
     'aria-current',
     'page',
+  );
+  await expect(
+    page.getByRole('button', { name: '刷新协作状态' }),
+  ).toBeVisible();
+  await expect(page.getByTestId('collaboration-refresh-status')).toContainText(
+    '参考投影',
   );
   await expect(page.getByTestId('collaboration-exchange')).toHaveCount(7);
   await expect(page.getByTestId('collaboration-handoff')).toHaveCount(3);
@@ -167,7 +175,7 @@ test('shows causal agent exchanges and per-recipient delivery without claiming t
   await expect(page.getByTestId('collaboration-inspector')).toContainText(
     '接收批次已确认',
   );
-  await expect(page.getByText('已读')).toHaveCount(0);
+  await expect(page.getByText('已读', { exact: true })).toHaveCount(0);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
@@ -210,7 +218,7 @@ test('keeps visible Run workspace text at a human-readable size', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  for (const route of ['diagnostics', 'trace', 'replay']) {
+  for (const route of ['collaboration', 'diagnostics', 'trace', 'replay']) {
     await page.goto(`/zh-CN/runs/run-yongding-spring-042/${route}`);
     const smallest = await page.evaluate(() =>
       [...document.querySelectorAll('body *')]
