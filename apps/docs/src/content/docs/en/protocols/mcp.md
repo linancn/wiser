@@ -1,6 +1,6 @@
 ---
 title: MCP integration
-description: Participate in a multi-agent Run through 18 implemented v2 stdio Tools while isolating explicit v1 compatibility.
+description: Participate through 18 implemented v2 Tools over local stdio or authenticated stateless Streamable HTTP.
 docType: protocol-reference
 scope: mcp-adapter
 status: active
@@ -15,15 +15,15 @@ checkPaths:
   - apps/mcp/**
   - apps/api/**
   - skills/agent-excon/**
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: a3c0bb29bf69bb1a1b4c4bf899c783d2876ba6ff
 ---
 
 ## An HTTP adapter
 
 The MCP server calls only the public HTTP API. It does not duplicate state machines, authorization, Receipts, or adjudication; it never connects directly to PostgreSQL or holds a service-role credential. The default is multi-scenario, multi-agent **v2** with `/api/v2/` as the API base.
 
-The server uses the stable v1 line of `@modelcontextprotocol/sdk` and stdio transport. Inputs are strict Zod schemas. Successful calls mirror compact `MACHINE_DATA` in Chinese-first `content` and preserve the same machine-readable `structuredContent`, including for Agent clients that display only text.
+The server uses the stable v1 line of `@modelcontextprotocol/sdk`. Local clients use stdio; the Compose-facing entrypoint uses authenticated, stateless Streamable HTTP. Inputs are strict Zod schemas. Successful calls mirror compact `MACHINE_DATA` in Chinese-first `content` and preserve the same machine-readable `structuredContent`, including for Agent clients that display only text.
 
 ## WISER module composition
 
@@ -42,6 +42,21 @@ pnpm --filter @wiser/mcp start
 ```
 
 Never place the token in Tool arguments, Messages, Artifacts, Submissions, logs, telemetry, or Git. Starting MCP neither registers a RunAgent nor converts an operator credential into a participant identity.
+
+### Streamable HTTP entrypoint
+
+The shared Compose profile runs a second entrypoint at `POST /mcp`. It requires a boundary-only bearer and still uses the short-lived `AGENT_EXCON_API_KEY` for downstream business requests:
+
+```bash
+export DATA_MCP_BEARER_TOKEN=<random-secret-at-least-16-characters>
+export DATA_MCP_HOST=127.0.0.1 # optional; default 0.0.0.0
+export DATA_MCP_PORT=3100      # optional
+
+pnpm --filter @wiser/mcp build
+pnpm --filter @wiser/mcp start:http
+```
+
+`GET /health/live` and `GET /health/ready` are unauthenticated, non-cacheable probes. Every `/mcp` request gets a fresh MCP server and transport; this stateless boundary does not issue or resume a session. A valid `Authorization: Bearer …` header is mandatory, tokens in query parameters are not accepted, and graceful shutdown first makes readiness unhealthy while draining in-flight requests.
 
 ## Implemented v2 Tools
 

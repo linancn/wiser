@@ -14,15 +14,15 @@ checkPaths:
   - apps/mcp/**
   - apps/api/**
   - skills/agent-excon/**
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: a3c0bb29bf69bb1a1b4c4bf899c783d2876ba6ff
 ---
 
 # WISER MCP Gateway
 
-本包提供 WISER Agent EXCON 的本地 stdio MCP 适配器。它只调用公开 HTTP API，不读 PostgreSQL，不持有 service-role 凭据，也不通过 Web 参训。默认协议是多场景、多智能体 **v2**，默认 API 基路径是 `/api/v2/`。
+本包提供 WISER Agent EXCON 的本地 stdio MCP 适配器，以及面向 Compose/远程客户端的无状态 Streamable HTTP 入口。它只调用公开 HTTP API，不读 PostgreSQL，不持有 service-role 凭据，也不通过 Web 参训。默认协议是多场景、多智能体 **v2**，默认 API 基路径是 `/api/v2/`。
 
-This package is the local stdio MCP adapter for WISER Agent EXCON. It calls only the public HTTP API, never reads PostgreSQL, never holds service-role credentials, and does not exercise through the Web console. The default protocol is multi-scenario, multi-agent **v2**, with `/api/v2/` as the default API base path.
+This package provides both the local stdio MCP adapter for WISER Agent EXCON and a stateless Streamable HTTP entrypoint for Compose or remote clients. It calls only the public HTTP API, never reads PostgreSQL, never holds service-role credentials, and does not exercise through the Web console. The default protocol is multi-scenario, multi-agent **v2**, with `/api/v2/` as the default API base path.
 
 WISER systems extend the same server through explicit `WiserMcpModule` values. Module ids are statically registered, namespaced, and unique; duplicate ids fail before a transport connects. A module may register Tools and Resources, but every business operation still uses an HTTP client rather than importing application or database code.
 
@@ -40,6 +40,25 @@ pnpm --filter @wiser/mcp start
 `AGENT_EXCON_API_KEY` 必须是短期、可撤销、最小 scope，且服务端绑定具体 `run_agent_id` 的参训 token。不要把 token 写入 MCP 工具参数、Message、Artifact、Submission、日志或提交记录。
 
 `AGENT_EXCON_API_KEY` must be a short-lived, revocable, least-scope participant token bound server-side to one concrete `run_agent_id`. Never put the token in MCP tool arguments, Messages, Artifacts, Submissions, logs, or commits.
+
+### Streamable HTTP / Streamable HTTP transport
+
+Compose 使用独立 bearer 保护 `/mcp`。该 bearer 只负责网关入口认证，不能替代发送到 Agent EXCON API 的 `AGENT_EXCON_API_KEY`。健康端点无需 bearer；所有响应禁止缓存。每个 MCP 请求创建一个新的无状态 SDK server/transport，因此当前入口不发放或恢复 MCP session。
+
+Compose protects `/mcp` with a separate bearer. This bearer authenticates only the gateway boundary and does not replace the `AGENT_EXCON_API_KEY` sent to the Agent EXCON API. Health endpoints do not require a bearer and every boundary response is non-cacheable. Each MCP request gets a fresh stateless SDK server/transport, so this entrypoint does not issue or resume MCP sessions.
+
+```bash
+export DATA_MCP_BEARER_TOKEN=<random-secret-at-least-16-characters>
+export DATA_MCP_HOST=127.0.0.1 # optional; default 0.0.0.0
+export DATA_MCP_PORT=3100      # optional
+
+pnpm --filter @wiser/mcp build
+pnpm --filter @wiser/mcp start:http
+```
+
+- `POST http://127.0.0.1:3100/mcp` requires `Authorization: Bearer …`.
+- `GET /health/live` reports process liveness; `GET /health/ready` turns unhealthy while graceful shutdown drains in-flight requests.
+- Tokens in query parameters, MCP arguments, logs, telemetry, or committed environment files are forbidden. / 禁止把 token 放入 query、MCP 参数、日志、遥测或提交的环境文件。
 
 ### 显式 v1 兼容 / Explicit v1 compatibility
 

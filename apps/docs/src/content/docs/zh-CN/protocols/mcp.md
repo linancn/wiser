@@ -1,6 +1,6 @@
 ---
 title: MCP 接入
-description: 使用 18 个已实现的 v2 stdio Tools 安全参与多智能体 Run，并显式隔离 v1 compatibility。
+description: 通过本地 stdio 或带认证的无状态 Streamable HTTP，使用 18 个已实现的 v2 Tools 参训。
 docType: protocol-reference
 scope: mcp-adapter
 status: active
@@ -15,15 +15,15 @@ checkPaths:
   - apps/mcp/**
   - apps/api/**
   - skills/agent-excon/**
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: a3c0bb29bf69bb1a1b4c4bf899c783d2876ba6ff
 ---
 
 ## MCP 是 HTTP 适配器
 
 MCP Server 只调用公开 HTTP API，不复制状态机、权限、Receipt 或裁决逻辑，不直连 PostgreSQL，也不持有 service-role credential。默认协议是多场景、多智能体 **v2**，默认 API 基路径是 `/api/v2/`。
 
-当前 server 使用 `@modelcontextprotocol/sdk` v1 稳定线和 stdio transport。输入是 strict Zod schema；成功结果在中文优先的 `content` 中镜像紧凑 `MACHINE_DATA`，同时返回同一份机器可读 `structuredContent`，兼容只展示文本的 Agent 客户端。
+当前 server 使用 `@modelcontextprotocol/sdk` v1 稳定线。本地客户端走 stdio，Compose 入口走带认证的无状态 Streamable HTTP。输入是 strict Zod schema；成功结果在中文优先的 `content` 中镜像紧凑 `MACHINE_DATA`，同时返回同一份机器可读 `structuredContent`，兼容只展示文本的 Agent 客户端。
 
 ## WISER 模块组合
 
@@ -42,6 +42,21 @@ pnpm --filter @wiser/mcp start
 ```
 
 不要把 token 放入 Tool 参数、Message、Artifact、Submission、日志、遥测或 Git。MCP 启动不会注册 RunAgent，也不会把 operator credential 转换为参训身份。
+
+### Streamable HTTP 入口
+
+共享 Compose profile 在 `POST /mcp` 运行第二个入口。它要求一个只用于边界认证的 bearer，下游业务请求仍使用短期 `AGENT_EXCON_API_KEY`：
+
+```bash
+export DATA_MCP_BEARER_TOKEN=<至少-16-字符的随机密钥>
+export DATA_MCP_HOST=127.0.0.1 # 可选；默认 0.0.0.0
+export DATA_MCP_PORT=3100      # 可选
+
+pnpm --filter @wiser/mcp build
+pnpm --filter @wiser/mcp start:http
+```
+
+`GET /health/live` 和 `GET /health/ready` 是无需认证且禁止缓存的探针。每个 `/mcp` 请求都创建新的 MCP server 与 transport；该无状态边界不发放或恢复 session。必须提供有效的 `Authorization: Bearer …` header，不接受 query token；优雅关闭先把 readiness 置为不健康，再排空在途请求。
 
 ## 已实现的 v2 Tools
 

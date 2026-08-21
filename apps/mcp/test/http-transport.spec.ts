@@ -1,4 +1,5 @@
 import { once } from 'node:events';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -15,9 +16,7 @@ afterEach(async () => {
   await Promise.all(servers.splice(0).map(closeWiserMcpHttpServer));
 });
 
-async function listen(
-  handler: McpHttpRequestHandler,
-): Promise<{
+async function listen(handler: McpHttpRequestHandler): Promise<{
   readonly origin: string;
   readonly handler: McpHttpRequestHandler;
 }> {
@@ -47,11 +46,13 @@ describe('WISER MCP Streamable HTTP boundary', () => {
   });
 
   it('requires the configured bearer and delegates only /mcp requests', async () => {
-    const handler: McpHttpRequestHandler = vi.fn((_request, response) => {
-      response.writeHead(202, { 'Content-Type': 'application/json' });
-      response.end('{"accepted":true}');
-      return Promise.resolve();
-    });
+    const handler: McpHttpRequestHandler = vi.fn(
+      (_request: IncomingMessage, response: ServerResponse) => {
+        response.writeHead(202, { 'Content-Type': 'application/json' });
+        response.end('{"accepted":true}');
+        return Promise.resolve();
+      },
+    );
     const { origin } = await listen(handler);
 
     const missing = await fetch(`${origin}/mcp`, { method: 'POST' });
