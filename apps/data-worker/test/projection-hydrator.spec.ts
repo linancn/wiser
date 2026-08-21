@@ -201,4 +201,85 @@ describe('five-target projection hydrator', () => {
     ).rejects.toThrow('Projection hydration');
     expect(authority.load).not.toHaveBeenCalled();
   });
+
+  it('evicts transient authority and projection-initialization failures before retry', async () => {
+    const authority = new FakeAuthority();
+    authority.load.mockRejectedValueOnce(new Error('temporary database fault'));
+    const hydrator = new ProjectionInputHydrator({
+      authority,
+      embedding: new DeterministicFakeEmbedding({
+        dimensions: 8,
+        version: 'fixture-v1',
+      }),
+      maximumCachedEvents: 8,
+    });
+    await expect(hydrator.hydrate(event)).rejects.toThrow('temporary');
+    await expect(hydrator.hydrate(event)).resolves.toBeDefined();
+    expect(authority.load).toHaveBeenCalledTimes(2);
+
+    const ensureCollection = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error('temporary collection fault'))
+      .mockResolvedValue(undefined);
+    const target = createProjectionTargets({
+      hydrator,
+      postgis: { put() {} },
+      weaviate: { ensureCollection, put() {} },
+      opensearch: { ensureIndex: () => Promise.resolve(), put() {} },
+      neo4j: { put() {} },
+      stac: { put() {} },
+    }).find(({ kind }) => kind === 'WEAVIATE');
+    expect(target).toBeDefined();
+    if (target === undefined) throw new Error('missing Weaviate target');
+    await expect(target.project(event)).rejects.toThrow('temporary');
+    await expect(target.project(event)).resolves.toBeUndefined();
+    expect(ensureCollection).toHaveBeenCalledTimes(2);
+  });
+
+  it('projects non-spatial evidence while making PostGIS and STAC explicit no-ops', async () => {
+    const nonSpatialEvent: ProjectionEvent = {
+      ...event,
+      eventId: '41000000-0000-4000-8000-000000000042',
+      payload: { ...event.payload, spatialExtentIds: [] },
+    };
+    const authority: ProjectionHydrationAuthority = {
+      load: () => Promise.resolve({ ...snapshot, spatial: [] }),
+      close: () => Promise.resolve(),
+    };
+    const hydrator = new ProjectionInputHydrator({
+      authority,
+      embedding: new DeterministicFakeEmbedding({
+        dimensions: 8,
+        version: 'fixture-v1',
+      }),
+      maximumCachedEvents: 8,
+    });
+    const calls = {
+      postgis: vi.fn(),
+      weaviate: vi.fn(),
+      opensearch: vi.fn(),
+      neo4j: vi.fn(),
+      stac: vi.fn(),
+    };
+    const targets = createProjectionTargets({
+      hydrator,
+      postgis: { put: calls.postgis },
+      weaviate: {
+        ensureCollection: () => Promise.resolve(),
+        put: calls.weaviate,
+      },
+      opensearch: {
+        ensureIndex: () => Promise.resolve(),
+        put: calls.opensearch,
+      },
+      neo4j: { put: calls.neo4j },
+      stac: { put: calls.stac },
+    });
+    await Promise.all(targets.map(({ project }) => project(nonSpatialEvent)));
+    expect(calls.postgis).not.toHaveBeenCalled();
+    expect(calls.stac).not.toHaveBeenCalled();
+    expect(calls.weaviate).toHaveBeenCalledOnce();
+    expect(calls.opensearch).toHaveBeenCalledOnce();
+    expect(calls.neo4j).toHaveBeenCalledOnce();
+  });
 });

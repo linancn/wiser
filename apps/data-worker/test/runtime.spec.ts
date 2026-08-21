@@ -233,6 +233,34 @@ describe('default Data Worker runtime', () => {
     expect(consumer.close).toHaveBeenCalledOnce();
   });
 
+  it('attempts every shutdown resource even when one close rejects', async () => {
+    const laterClose = vi.fn(() => Promise.resolve());
+    const consumerClose = vi.fn(() => Promise.resolve());
+    const runtime = new DataWorkerRuntime({
+      scheduler: {
+        start: () => Promise.resolve(),
+        stop: () => Promise.resolve(),
+      },
+      projectionConsumer: {
+        processBatch: () => Promise.resolve({ readEvents: 0 }),
+        close: consumerClose,
+      },
+      projectionScope: scope,
+      projectionBatchLimit: 8,
+      projectionPollIntervalMs: 10,
+      close: [
+        () => Promise.reject(new Error('first close failed')),
+        laterClose,
+      ],
+    });
+
+    await expect(runtime.stop()).rejects.toThrow(
+      'Data Worker resources could not close cleanly',
+    );
+    expect(consumerClose).toHaveBeenCalledOnce();
+    expect(laterClose).toHaveBeenCalledOnce();
+  });
+
   it('keeps the ingestion job running until publication becomes authoritative', async () => {
     let checks = 0;
     let clock = 0;
