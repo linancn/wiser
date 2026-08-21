@@ -13,6 +13,7 @@ import type {
 import { buildApp } from '../src/app.js';
 import {
   createPlatformAuthModuleFromEnvironment,
+  createPlatformAuthRuntimeFromEnvironment,
   loadPlatformAuthRuntimeConfig,
   type PlatformAuthRuntimeFactories,
 } from '../src/platform/auth-runtime.js';
@@ -53,6 +54,89 @@ describe('WISER platform auth runtime', () => {
     expect(
       createPlatformAuthModuleFromEnvironment({ NODE_ENV: 'development' }),
     ).toBeNull();
+    expect(
+      createPlatformAuthRuntimeFromEnvironment({ NODE_ENV: 'development' }),
+    ).toEqual({ module: null, resolver: null });
+  });
+
+  it('exposes the same fail-closed resolver to sibling system transports', async () => {
+    const claimsClient: SupabaseClaimsClient = {
+      getClaims: vi.fn(() =>
+        Promise.resolve({
+          data: {
+            claims: {
+              sub: USER_ID,
+              session_id: SESSION_ID,
+              role: 'authenticated',
+              exp: 1_800_000_000,
+            },
+          },
+          error: null,
+        }),
+      ),
+    };
+    const query: AuthorizationQuery = vi.fn(() =>
+      Promise.resolve({
+        rows: [
+          {
+            tenant_id: TENANT_ID,
+            project_id: PROJECT_ID,
+            roles: ['data-reader'],
+            scopes: ['data.catalog.read'],
+            max_security_level: 'L1_INTERNAL',
+            authz_version: 2,
+          },
+        ],
+      }),
+    );
+    const factories: PlatformAuthRuntimeFactories = {
+      createClaimsClient: vi.fn(() => claimsClient),
+      createAuthorizationDatabase: vi.fn(() => ({
+        query,
+        delegatedCredentialQuery: vi.fn(() => Promise.resolve({ rows: [] })),
+        transactionPool: {
+          connect: vi.fn(() =>
+            Promise.reject(new Error('transaction pool was not expected')),
+          ),
+        },
+        close: vi.fn(() => Promise.resolve()),
+      })),
+    };
+
+    const runtime = createPlatformAuthRuntimeFromEnvironment(
+      {
+        NODE_ENV: 'test',
+        WISER_AUTH_MODE: 'supabase',
+        SUPABASE_URL: 'http://127.0.0.1:56321',
+        SUPABASE_PUBLISHABLE_KEY: 'publishable-test-key-long-enough',
+        DATABASE_URL: 'postgresql://test:test@127.0.0.1:56322/postgres',
+        WISER_DELEGATED_CREDENTIAL_HMAC_KEYS: JSON.stringify({
+          activeKeyId: 'primary-2026-08',
+          keys: {
+            'primary-2026-08': Buffer.alloc(32, 7).toString('base64url'),
+          },
+        }),
+      },
+      factories,
+    );
+
+    expect(runtime.module).not.toBeNull();
+    await expect(
+      runtime.resolver?.resolve({
+        token: 'verified-token',
+        tenantId: TENANT_ID,
+        projectId: PROJECT_ID,
+        purpose: 'operate',
+        traceId: 'trace-data-foundation',
+      }),
+    ).resolves.toMatchObject({
+      principal: { actorId: USER_ID },
+      authorization: {
+        tenantId: TENANT_ID,
+        projectId: PROJECT_ID,
+        scopes: ['data.catalog.read'],
+      },
+    });
   });
 
   it('wires verified claims membership lookup and pool shutdown', async () => {
