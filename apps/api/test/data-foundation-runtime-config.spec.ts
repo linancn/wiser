@@ -5,7 +5,8 @@ import { loadDataFoundationApiRuntimeConfig } from '../src/data-foundation/runti
 const complete = {
   NODE_ENV: 'test',
   DATA_FOUNDATION_MODE: 'enabled',
-  DATA_DATABASE_URL: 'postgresql://wiser_runtime:local@data-postgres:5432/wiser_data',
+  DATA_DATABASE_URL:
+    'postgresql://wiser_runtime:local@data-postgres:5432/wiser_data',
   DATA_S3_ENDPOINT: 'http://seaweedfs:8333',
   DATA_S3_REGION: 'us-east-1',
   DATA_S3_BUCKET: 'wiser-authority',
