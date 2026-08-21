@@ -107,27 +107,29 @@ test('opens a human-first Run overview before technical drill-down', async ({
 test('observes parallel agents, cross-agent links, and perspective replay', async ({
   page,
 }) => {
-  await page.goto('/zh-CN/runs/run-yongding-spring-042/trace');
+  await page.goto('/zh-CN/runs/run-yongding-spring-042/diagnostics');
 
-  await expect(
-    page.getByRole('heading', { name: '多智能体协作 Trace' }),
-  ).toBeVisible();
-  await expect(page.getByTestId('agent-lane')).toHaveCount(5);
   await expect(
     page.getByRole('heading', { name: '诊断与确定性评测' }),
   ).toBeVisible();
   await expect(page.locator('.authority-track')).toContainText('4 / 4');
-  await expect(page.locator('[data-source="telemetry"]')).toHaveCount(5);
-  await expect(page.getByText('OUTPUT_SCHEMA_ADDITIONAL_PROPERTY')).toHaveCount(
-    2,
+  await expect(page.getByRole('link', { name: '评测' })).toHaveAttribute(
+    'aria-current',
+    'page',
   );
+
+  await page.getByRole('link', { name: 'Trace' }).click();
+  await expect(page).toHaveURL(/\/trace$/);
+
+  await expect(page.getByRole('heading', { name: 'Trace 探索' })).toBeVisible();
+  await expect(page.getByTestId('agent-lane')).toHaveCount(5);
   await expect(
-    page.getByRole('heading', { name: 'Signal coverage matrix' }),
-  ).toBeVisible();
+    page.getByRole('heading', { name: '诊断与确定性评测' }),
+  ).toHaveCount(0);
   await page.getByRole('button', { name: /调度协调/ }).click();
   await expect(page.getByTestId('span-inspector')).toContainText('Agent');
 
-  await page.getByRole('link', { name: '事件回放' }).click();
+  await page.getByRole('link', { name: '回放' }).click();
   await expect(page).toHaveURL(/\/replay$/);
   await page.getByLabel('回放视角').selectOption('agent-ecology');
   await expect(page.getByText('生态目标智能体当时可见')).toBeVisible();
@@ -140,12 +142,7 @@ test('keeps the operator workspace usable on a narrow screen', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/zh-CN/runs/run-yongding-spring-042/trace');
 
-  await expect(
-    page.getByRole('heading', { name: '多智能体协作 Trace' }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: '诊断与确定性评测' }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Trace 探索' })).toBeVisible();
   const overflow = await page.evaluate(
     () =>
       document.documentElement.scrollWidth -
