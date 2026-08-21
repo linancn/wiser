@@ -27,7 +27,7 @@ lastReviewedCommit: 493d825a4aa45f9a89f79fd3df2a770f8d0e3c4e
 
 JWT 证明主体、认证强度与 Session；动态 Tenant、Project、Role 和 Scope 从 Supabase 控制面解析。`user_metadata` 可由用户修改，绝不参与授权；动态权限也不完整复制进 JWT，因为 claims 只有刷新 Token 后才变化。
 
-当前已交付 `platform` / `platform_private` Schema、用户自动建档、Tenant/Project/Membership、Role/Scope/Binding、Delegation、私有 Credential/Audit/Outbox、最小权限与 40 项 pgTAP 契约。框架无关的 `SupabaseJwtPrincipalResolver` 已能把“已验证 claims”与权威 Membership loader 组合并 fail closed；实际 `getClaims`/JWKS adapter、PostgreSQL loader、Web SSR Session 和委托凭据签发仍属于下一接线里程碑。
+当前已交付 `platform` / `platform_private` Schema、用户自动建档、Tenant/Project/Membership、Role/Scope/Binding、Delegation、私有 Credential/Audit/Outbox、最小权限与 40 项 pgTAP 契约。框架无关的 `SupabaseJwtPrincipalResolver`、`getClaims` 结果验证器和单查询 PostgreSQL Membership loader 已能组合并 fail closed；实际 Supabase client/连接池注入、Web SSR Session 和委托凭据签发仍属于下一接线里程碑。
 
 ## 控制面模型
 

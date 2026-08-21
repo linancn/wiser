@@ -111,3 +111,14 @@ export class SupabaseJwtPrincipalResolver {
     return requestContext.success ? requestContext.data : null;
   }
 }
+
+export {
+  createPostgresAuthorizationContextLoader,
+  type AuthorizationQuery,
+} from './postgres-authorization.js';
+export {
+  createSupabaseJwtClaimsVerifier,
+  type SupabaseClaimsClient,
+  type SupabaseClaimsResult,
+  type SupabaseClaimsVerifierOptions,
+} from './supabase-claims.js';

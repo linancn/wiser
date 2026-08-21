@@ -102,7 +102,9 @@ describe('Supabase Auth adapters', () => {
   });
 
   it('returns no context when the session or membership query has no row', async () => {
-    const query: AuthorizationQuery = vi.fn(() => Promise.resolve({ rows: [] }));
+    const query: AuthorizationQuery = vi.fn(() =>
+      Promise.resolve({ rows: [] }),
+    );
     const load = createPostgresAuthorizationContextLoader(query);
 
     await expect(
