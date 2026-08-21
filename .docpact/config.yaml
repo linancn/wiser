@@ -276,6 +276,12 @@ rules:
     triggers:
       - path: apps/web/src/app/globals.css
         kind: code
+      - path: apps/web/src/components/app-shell.tsx
+        kind: code
+      - path: apps/web/src/components/app-shell.module.css
+        kind: code
+      - path: apps/web/src/components/theme-toggle.tsx
+        kind: code
       - path: apps/web/src/components/platform/**
         kind: code
     requiredDocs:
