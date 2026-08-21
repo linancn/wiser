@@ -11,3 +11,7 @@ export function hasCoordinatorFinalEvidence(
   batches: readonly ScriptedSyncBatch[],
   reviewRequestId: string,
 ): boolean;
+
+export function hasCoordinatorReleaseEvidence(
+  batches: readonly ScriptedSyncBatch[],
+): boolean;
