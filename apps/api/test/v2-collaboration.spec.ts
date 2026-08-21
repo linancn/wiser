@@ -246,7 +246,7 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
       headers: agentHeaders(0, 91),
       payload: {
         kind: 'request',
-        recipientRunAgentIds: [runAgentIds[1]],
+        recipientRunAgentIds: [runAgentIds[1], runAgentIds[2]],
         subject: localized('请复核输水约束'),
         body: localized('请依据当前工件回复约束结论。'),
         artifactVersionRefs: [],
@@ -277,6 +277,10 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
           recipientRunAgentId: runAgentIds[1],
           state: 'pending_sync',
         },
+        {
+          recipientRunAgentId: runAgentIds[2],
+          state: 'pending_sync',
+        },
       ],
     });
 
@@ -297,7 +301,7 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
         ({ id }) => id === requestMessage.id,
       ),
     ).toMatchObject({
-      deliveries: [{ state: 'issued' }],
+      deliveries: [{ state: 'issued' }, { state: 'pending_sync' }],
     });
 
     const unauthorizedReply = await instance.inject({
@@ -342,7 +346,7 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
         ({ id }) => id === requestMessage.id,
       ),
     ).toMatchObject({
-      deliveries: [{ state: 'acknowledged' }],
+      deliveries: [{ state: 'acknowledged' }, { state: 'pending_sync' }],
     });
 
     const postedResponse = await instance.inject({
@@ -364,11 +368,42 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
       threadId: requestMessage.threadId,
       replyToMessageId: requestMessage.id,
     });
+    const partialProjection = RunInteractionListSchema.parse(
+      json(
+        await instance.inject({
+          method: 'GET',
+          url: `/api/v2/runs/${runId}/interactions`,
+          headers: operatorHeaders(),
+        }),
+      ),
+    );
+    expect(
+      partialProjection.items.find(({ id }) => id === requestMessage.id),
+    ).toMatchObject({
+      status: 'open',
+      responseMessageIds: [json(postedResponse).message.id],
+    });
+
+    await sync(instance, runId, 2, 96);
+    const secondResponse = await instance.inject({
+      method: 'POST',
+      url: `/api/v2/runs/${runId}/messages`,
+      headers: agentHeaders(2, 97),
+      payload: {
+        kind: 'response',
+        replyToMessageId: requestMessage.id,
+        recipientRunAgentIds: [runAgentIds[0]],
+        subject: localized('生态边界已复核'),
+        body: localized('第二位收件人完成明确回复。'),
+        artifactVersionRefs: [],
+      },
+    });
+    expect(secondResponse.statusCode).toBe(201);
 
     const artifactResponse = await instance.inject({
       method: 'POST',
       url: `/api/v2/runs/${runId}/artifacts`,
-      headers: agentHeaders(0, 96),
+      headers: agentHeaders(0, 98),
       payload: {
         artifactKey: 'interaction-evidence-register',
         artifactType: 'evidence-register',
@@ -387,7 +422,7 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
     const handoff = await instance.inject({
       method: 'POST',
       url: `/api/v2/runs/${runId}/messages`,
-      headers: agentHeaders(0, 97),
+      headers: agentHeaders(0, 99),
       payload: {
         kind: 'handoff',
         recipientRunAgentIds: [runAgentIds[3]],
@@ -397,6 +432,23 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
       },
     });
     expect(handoff.statusCode).toBe(201);
+
+    const leakedHandoff = await instance.inject({
+      method: 'POST',
+      url: `/api/v2/runs/${runId}/messages`,
+      headers: agentHeaders(0, 100),
+      payload: {
+        kind: 'handoff',
+        recipientRunAgentIds: [runAgentIds[2]],
+        subject: localized('越权工件交接'),
+        body: localized('收件人没有该 ArtifactVersion grant。'),
+        artifactVersionRefs: [artifactVersionRef],
+      },
+    });
+    expect(leakedHandoff.statusCode).toBe(409);
+    expect(ApiErrorSchema.parse(json(leakedHandoff))).toMatchObject({
+      error: { code: 'MESSAGE_RECIPIENT_CONFLICT' },
+    });
 
     const completedProjection = RunInteractionListSchema.parse(
       json(
@@ -411,7 +463,10 @@ describe('Agent EXCON v2 exercisable collaboration commands', () => {
       completedProjection.items.find(({ id }) => id === requestMessage.id),
     ).toMatchObject({
       status: 'responded',
-      responseMessageIds: [json(postedResponse).message.id],
+      responseMessageIds: [
+        json(postedResponse).message.id,
+        json(secondResponse).message.id,
+      ],
     });
     expect(
       completedProjection.items.find(

@@ -167,5 +167,21 @@ describe('scripted four-agent Yongding lab', () => {
     expect(new Set(responses.map(({ senderId }) => senderId))).toEqual(
       new Set(specialists.map(({ runAgentId }) => runAgentId)),
     );
+    expect(
+      responses.every(
+        ({ artifactVersionRefs }) =>
+          artifactVersionRefs.length ===
+            reviewRequest?.artifactVersionRefs.length &&
+          artifactVersionRefs.every(
+            (reference, index) =>
+              reference.artifactId ===
+                reviewRequest?.artifactVersionRefs[index]?.artifactId &&
+              reference.artifactVersionId ===
+                reviewRequest?.artifactVersionRefs[index]?.artifactVersionId &&
+              reference.contentHash ===
+                reviewRequest?.artifactVersionRefs[index]?.contentHash,
+          ),
+      ),
+    ).toBe(true);
   }, 40_000);
 });
