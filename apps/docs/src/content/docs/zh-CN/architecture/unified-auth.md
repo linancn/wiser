@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 18bbd16ed693066e1abb97809cc62aa8e9a35d2d
+lastReviewedCommit: 2a48b8b101083b7c84189db1e2eb64b2c6faf9af
 ---
 
 ## 单一身份源
@@ -33,7 +33,7 @@ Fastify 已提供 `platform.identity` 模块和 `/api/platform/v1/me` 安全投�
 
 Web 已使用最新稳定 `@supabase/ssr` 建立 Browser/Server Client 与 Next.js 16 `proxy.ts`。Proxy 在响应产生前调用 `getClaims()`，刷新后的 Cookie 同时写回 request/response，并设置 `private, no-store`。双语密码登录、PKCE callback、仅 POST 的本地退出，以及共享 Shell 的当前 Session 状态均已可执行。所有 continuation target 都被规范到当前语言；离开 WISER origin 或重新进入 Auth endpoint 的地址一律拒绝；所有 Auth 响应均不可缓存。
 
-委托凭据的密码学边界现已可执行：严格解析 `wdc1.<key-id>.<secret>`，使用 Node 安全随机源分别生成 128-bit locator 与 256-bit secret，数据库只保存经过域隔离的 HMAC-SHA-256。JSON key ring 只接受至少 256-bit 的规范无填充 base64url key，指定一个 active key 负责新签发，同时保留旧 key 支持轮换期验证；任何配置错误都 fail closed，且不会回显秘密。数据库签发/轮换事务与 delegated principal Resolver 属于下一授权纵切。
+委托凭据的密码学边界现已可执行：严格解析 `wdc1.<key-id>.<secret>`，使用 Node 安全随机源分别生成 128-bit locator 与 256-bit secret，数据库只保存经过域隔离的 HMAC-SHA-256。JSON key ring 只接受至少 256-bit 的规范无填充 base64url key，指定一个 active key 负责新签发，同时保留旧 key 支持轮换期验证；任何配置错误都 fail closed，且不会回显秘密。delegated principal Resolver 与 PostgreSQL 单查询 adapter 也已交付；数据库签发/轮换事务属于下一授权纵切。
 
 ## 控制面模型
 
@@ -98,6 +98,8 @@ Shell 的用户状态只来自刚完成验证的 authenticated claims，不把�
 - EXCON 私有表只保留通用 credential 与 `runAgentId/runId` 的绑定。
 
 Fastify `platform.delegation` 模块现已固定 create、metadata read、issue、rotate 与 revoke 的 HTTP 命令边界。只有通过验证且拥有 `platform.delegation.manage` 的 Supabase human 才能调用；命令必须使用 UUID 幂等键，TTL 最长一小时，委托 Scope 必须已知，ceiling 不得高于调用方实时上限。明文只出现在成功的 issue/rotate 响应中，所有响应均为 `private, no-store`。注入的 PostgreSQL command service 仍负责行锁、单 active credential、Audit 与 Control Outbox 原子性。
+
+Delegated Bearer 解析会在任何数据库查询前校验封装格式，再按公开 key id 加载一条私有记录，在 Node 内执行固定长度 timing-safe HMAC 比较，之后才信任控制事实。每个请求都实时复核双方 Actor、双方 Tenant/Project Membership、Tenant、Project、Delegation/Credential 生命周期、Purpose 与 expiry。有效 Scope 是委托 Scope、委托人实时 Scope 与注入的 known-scope registry 的有序交集；有效安全 ceiling 取 Delegation 与委托人当前 ceiling 中较低者。第一版不使用正向授权缓存。
 
 ## Data Foundation 跨库引用
 

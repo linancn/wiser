@@ -134,3 +134,15 @@ export {
   type IssuedDelegatedCredential,
   type StoredDelegatedCredentialHmac,
 } from './delegated-credential-token.js';
+export {
+  DelegatedCredentialPrincipalResolver,
+  type DelegatedCredentialAuthorizationRecord,
+  type DelegatedCredentialAuthorizationRecordLoader,
+  type DelegatedCredentialPrincipalResolverOptions,
+  type ResolveDelegatedCredentialInput,
+} from './delegated-credential-principal-resolver.js';
+export {
+  createPostgresDelegatedCredentialRecordLoader,
+  type DelegatedCredentialAuthorizationQuery,
+  type DelegatedCredentialAuthorizationRow,
+} from './postgres-delegated-credential.js';
