@@ -71,14 +71,14 @@ const FIXTURES = Object.freeze({
   geojson: {
     path: join(
       ROOT_DIRECTORY,
-      'scripts/data-foundation/fixtures/sample-stations.geojson',
+      'tests/fixtures/data-foundation/sample-stations.geojson',
     ),
     sha256: '35361986ce6b364c99dbcefc56ac266c07dac5dbdff2a95dfe392c3eac9bc975',
   },
   evidence: {
     path: join(
       ROOT_DIRECTORY,
-      'scripts/data-foundation/fixtures/sample-evidence.md',
+      'tests/fixtures/data-foundation/sample-evidence.md',
     ),
     sha256: '123afced4bc8e32ced1065c9d3d28d3118387f0a36b84e146cbbbbee861db930',
   },
