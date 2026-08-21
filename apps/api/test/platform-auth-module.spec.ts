@@ -26,6 +26,7 @@ const context: PlatformRequestContext = {
     roles: ['data-reader'],
     scopes: ['data.catalog.read'],
     purpose: 'operate',
+    maxSecurityLevel: 'L1_INTERNAL',
     authzVersion: 2,
   },
   traceId: 'e'.repeat(32),
@@ -67,6 +68,7 @@ describe('WISER platform identity HTTP module', () => {
       roles: ['data-reader'],
       scopes: ['data.catalog.read'],
       purpose: 'operate',
+      maxSecurityLevel: 'L1_INTERNAL',
       authzVersion: 2,
     });
     const resolveInput = resolve.mock.calls[0]?.[0];

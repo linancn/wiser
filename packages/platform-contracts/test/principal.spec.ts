@@ -4,6 +4,7 @@ import {
   AuthorizedContextSchema,
   PlatformPrincipalSchema,
   PlatformRequestContextSchema,
+  PlatformSecurityLevelSchema,
 } from '../src/index.js';
 
 const ACTOR_ID = '10000000-0000-4000-8000-000000000001';
@@ -28,6 +29,7 @@ describe('WISER platform principal contracts', () => {
       roles: ['project-operator'],
       scopes: ['data.catalog.read', 'excon.run.read'],
       purpose: 'operate',
+      maxSecurityLevel: 'L2_RESTRICTED',
       authzVersion: 3,
     });
 
@@ -41,6 +43,28 @@ describe('WISER platform principal contracts', () => {
       principal: { actorType: 'human', actorId: ACTOR_ID },
       authorization: { tenantId: TENANT_ID, projectId: PROJECT_ID },
     });
+  });
+
+  it('requires one known L0-L3 security ceiling in every authorization context', () => {
+    expect(PlatformSecurityLevelSchema.options).toEqual([
+      'L0_PUBLIC',
+      'L1_INTERNAL',
+      'L2_RESTRICTED',
+      'L3_CONFIDENTIAL',
+    ]);
+    expect(() =>
+      AuthorizedContextSchema.parse({
+        tenantId: TENANT_ID,
+        projectId: PROJECT_ID,
+        roles: ['project-operator'],
+        scopes: ['data.catalog.read'],
+        purpose: 'operate',
+        authzVersion: 3,
+      }),
+    ).toThrow();
+    expect(PlatformSecurityLevelSchema.safeParse('L4_SECRET').success).toBe(
+      false,
+    );
   });
 
   it('requires Supabase human principals to carry trusted user and session ids', () => {
@@ -71,6 +95,7 @@ describe('WISER platform principal contracts', () => {
         roles: [],
         scopes: ['read'],
         purpose: 'operate',
+        maxSecurityLevel: 'L1_INTERNAL',
         authzVersion: 0,
         bypassAuthorization: true,
       }),

@@ -20,6 +20,7 @@ const authorization: AuthorizedContext = {
   roles: ['data-reader'],
   scopes: ['data.catalog.read'],
   purpose: 'operate',
+  maxSecurityLevel: 'L1_INTERNAL',
   authzVersion: 4,
 };
 

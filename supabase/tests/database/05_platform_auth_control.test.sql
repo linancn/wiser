@@ -1,6 +1,6 @@
 begin;
 
-select plan(50);
+select plan(52);
 
 select has_schema('platform', 'platform control schema exists');
 select has_schema('platform_private', 'platform private schema exists');
@@ -29,6 +29,20 @@ select has_table(
   'platform_private',
   'control_outbox',
   'private control outbox exists'
+);
+
+select is(
+  (
+    select count(*)
+    from information_schema.columns
+    where table_schema = 'platform'
+      and table_name = 'roles'
+      and column_name = 'max_security_level'
+      and is_nullable = 'NO'
+      and column_default = '''L0_PUBLIC''::text'
+  ),
+  1::bigint,
+  'roles define a fail-closed security-level ceiling'
 );
 
 select is(
@@ -274,6 +288,21 @@ insert into platform.roles (
   'test-data-reader',
   'data',
   'active'
+);
+
+select throws_ok(
+  $$insert into platform.roles (
+      id, role_key, system_id, status, max_security_level
+    ) values (
+      'a4000000-0000-4000-8000-000000000002',
+      'test-invalid-security-role',
+      'data',
+      'active',
+      'L4_SECRET'
+    )$$,
+  '23514'::char(5),
+  null,
+  'role security ceilings are limited to the WISER L0-L3 scale'
 );
 
 select throws_ok(

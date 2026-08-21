@@ -72,6 +72,7 @@ describe('Supabase Auth adapters', () => {
             project_id: PROJECT_ID,
             roles: ['data-reader'],
             scopes: ['data.catalog.read', 'data.query'],
+            max_security_level: 'L1_INTERNAL',
             authz_version: 7,
           },
         ],
@@ -93,6 +94,7 @@ describe('Supabase Auth adapters', () => {
       roles: ['data-reader'],
       scopes: ['data.catalog.read', 'data.query'],
       purpose: 'operate',
+      maxSecurityLevel: 'L1_INTERNAL',
       authzVersion: 7,
     });
     expect(query).toHaveBeenCalledWith(
