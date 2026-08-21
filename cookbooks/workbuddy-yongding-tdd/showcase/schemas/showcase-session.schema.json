@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wiser.local/schemas/workbuddy-showcase-session.schema.json",
+  "title": "WISER WorkBuddy showcase session",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profile",
+    "state",
+    "runId",
+    "webUrl",
+    "createdAt",
+    "expiresAt",
+    "reportPath",
+    "cleanup"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "profile": { "enum": ["scripted", "rework", "workbuddy"] },
+    "state": {
+      "enum": [
+        "STARTING",
+        "RUNNING",
+        "COMPLETED",
+        "FAILED",
+        "STOPPING",
+        "STOPPED",
+        "EXPIRED"
+      ]
+    },
+    "runId": { "type": ["string", "null"], "format": "uuid" },
+    "webUrl": {
+      "type": ["string", "null"],
+      "pattern": "^http://127\\.0\\.0\\.1:[0-9]+/zh-CN/runs/[^/]+/collaboration$"
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "reportPath": { "type": ["string", "null"], "minLength": 1 },
+    "diagnosticCode": { "type": ["string", "null"], "minLength": 1 },
+    "cleanup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "childProcessesStopped",
+        "credentialsRemoved",
+        "mcpConfigsRemoved"
+      ],
+      "properties": {
+        "childProcessesStopped": { "type": "boolean" },
+        "credentialsRemoved": { "type": "boolean" },
+        "mcpConfigsRemoved": { "type": "boolean" }
+      }
+    }
+  }
+}

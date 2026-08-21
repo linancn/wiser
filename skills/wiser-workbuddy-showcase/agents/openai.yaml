@@ -1,0 +1,5 @@
+interface:
+  display_name: 'WISER WorkBuddy Showcase'
+  short_description: 'Direct a safe four-agent WISER showcase in WorkBuddy'
+  brand_color: '#007A8A'
+  default_prompt: 'Use $wiser-workbuddy-showcase to operate WorkBuddy and present the four-agent WISER Yongding exercise safely.'

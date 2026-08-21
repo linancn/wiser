@@ -11,21 +11,20 @@ async function read(path: string): Promise<string> {
 
 describe('WISER WorkBuddy showcase execution bundle', () => {
   it('routes Codex through a bounded GUI-led showcase without becoming a participant', async () => {
-    const [skill, openai, gui, safety, codexTask, leadTask] =
-      await Promise.all([
+    const [skill, openai, gui, safety, codexTask, leadTask] = await Promise.all(
+      [
         read('skills/wiser-workbuddy-showcase/SKILL.md'),
         read('skills/wiser-workbuddy-showcase/agents/openai.yaml'),
         read('skills/wiser-workbuddy-showcase/references/gui-runbook.md'),
-        read(
-          'skills/wiser-workbuddy-showcase/references/safety-boundaries.md',
-        ),
+        read('skills/wiser-workbuddy-showcase/references/safety-boundaries.md'),
         read(
           'cookbooks/workbuddy-yongding-tdd/showcase/CODEX_SHOWCASE_TASK.md',
         ),
         read(
           'cookbooks/workbuddy-yongding-tdd/showcase/WORKBUDDY_LEAD_SHOWCASE_TASK.md',
         ),
-      ]);
+      ],
+    );
     const combined = [skill, gui, safety, codexTask, leadTask].join('\n');
 
     expect(skill).toMatch(/^---\nname: wiser-workbuddy-showcase\n/m);
@@ -33,7 +32,7 @@ describe('WISER WorkBuddy showcase execution bundle', () => {
     expect(skill).toContain('references/gui-runbook.md');
     expect(skill).toContain('references/safety-boundaries.md');
     expect(openai).toContain('$wiser-workbuddy-showcase');
-    expect(openai).toContain('brand_color: "#007A8A"');
+    expect(openai).toMatch(/brand_color: ['"]#007A8A['"]/);
 
     expect(codexTask).toContain('Computer Use');
     expect(codexTask).toContain('/collaboration');
@@ -64,10 +63,7 @@ describe('WISER WorkBuddy showcase execution bundle', () => {
     const schema = JSON.parse(schemaSource) as {
       additionalProperties: boolean;
       required: string[];
-      properties: Record<
-        string,
-        { enum?: string[]; type?: string | string[] }
-      >;
+      properties: Record<string, { enum?: string[]; type?: string | string[] }>;
     };
     const combined = `${readme}\n${manifestSource}`;
 

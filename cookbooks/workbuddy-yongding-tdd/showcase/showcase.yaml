@@ -1,0 +1,46 @@
+schemaVersion: 1
+id: wiser-workbuddy-yongding-showcase
+defaultLocale: zh-CN
+scenarioVersionId: jjj-yongding-collaboration-2023-v2
+defaultProfile: scripted
+profiles:
+  - scripted
+  - rework
+  - workbuddy
+commands:
+  preflight: pnpm showcase:preflight
+  scripted: pnpm showcase:start --profile scripted
+  rework: pnpm showcase:start --profile rework
+  workbuddy: WORKBUDDY_LIVE=1 pnpm showcase:start --profile workbuddy
+  status: pnpm showcase:status
+  stop: pnpm showcase:stop
+lifecycle:
+  ttlSeconds: 900
+  autoCleanup: true
+  oneActiveSession: true
+  restartPolicy: abort-run
+authorization:
+  liveRequiresExplicitAuthorization: true
+  knownLiveDiagnostic: workbuddy-quota-429
+topology:
+  leadIsParticipant: false
+  minDistinctRequiredAgents: 4
+  processIsolation: one-role-one-top-level-process
+presentation:
+  routeTemplate: /zh-CN/runs/{runId}/collaboration
+  authority: event-receipt-evaluation-barrier
+  telemetry: best-effort-overlay
+security:
+  sessionFileMode: '0600'
+  credentialFileMode: '0600'
+  credentialDirectoryMode: '0700'
+  forbidden:
+    - --swarm
+    - -y
+    - bypassPermissions
+    - shared-token-environment
+    - workbuddy-business-mailbox
+outputs:
+  session: showcase-session.json
+  report: cookbook-report.json
+  schema: schemas/showcase-session.schema.json
