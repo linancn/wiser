@@ -16,6 +16,37 @@ test('opens the Chinese scenario center and preserves the route in English', asy
   ).toBeVisible();
 });
 
+test('uses a two-level global navigation and enters Runs through overview', async ({
+  page,
+}) => {
+  await page.goto('/zh-CN/runs');
+
+  const globalNav = page.getByRole('navigation', { name: '主导航' });
+  await expect(globalNav.getByRole('link')).toHaveCount(2);
+  await expect(globalNav.getByRole('link', { name: '场景库' })).toBeVisible();
+  await expect(
+    globalNav.getByRole('link', { name: '运行指挥' }),
+  ).toHaveAttribute('aria-current', 'page');
+  const runLink = page
+    .getByTestId('run-row')
+    .filter({ hasText: '永定河春季协同演练 #042' })
+    .getByRole('link', { name: '打开运行' });
+  await expect(runLink).toHaveAttribute(
+    'href',
+    '/zh-CN/runs/run-yongding-spring-042',
+  );
+
+  await page.goto('/zh-CN/scenarios');
+  const scenarioRunLink = page
+    .getByTestId('scenario-card')
+    .filter({ hasText: '永定河联合调度' })
+    .getByRole('link', { name: '打开运行' });
+  await expect(scenarioRunLink).toHaveAttribute(
+    'href',
+    '/zh-CN/runs/run-yongding-spring-042',
+  );
+});
+
 test('declares the route locale in server-rendered HTML without JavaScript', async ({
   request,
 }) => {
