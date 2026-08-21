@@ -233,6 +233,9 @@ describe('PostgreSQL projection authority', () => {
     expect(sql).toContain("state = 'PROJECTING'");
     expect(sql).toContain("state = 'PUBLISHED'");
     expect(sql).toContain("publication_status = 'PUBLISHED'");
+    expect(sql).toMatch(/update catalog\.data_item_version/i);
+    expect(sql).toMatch(/published_at = clock_timestamp\(\)/i);
+    expect(sql).toMatch(/version\.publication_status = 'PUBLISHED'/i);
     expect(sql).toContain('PROJECTION_COMPLETED');
     expect(sql).not.toMatch(/update service\.operation set status/);
 
