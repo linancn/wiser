@@ -17,23 +17,24 @@ Ecology ─────┘                              │
                                Individual / role / team feedback
 ```
 
-## Observatory layout
+## Control-room information architecture
 
-The application separates the scenario center from exercise Runs. The management area owns draft validation and publication. The Run observatory is read-only by default and filters by scenario, version, phase, role, and agent.
+Global navigation contains only **Scenario library** and **Run control**. The library owns drafts, validation, publication, versions, and team contracts. Run control is read-only by default, and every Run is split into **Overview / Evaluation / Trace / Replay** workspaces.
+
+- **Overview** answers authority status, highest risk, and next action first. It shows at most three attention items, team posture, recent events, and the basin decision spine.
+- **Evaluation** reconciles authoritative Events, Barriers, and evaluator verdicts. OpenTelemetry coverage gaps remain diagnostic signals and never replace the verdict.
+- **Trace** uses a wall-clock waterfall, agent lanes, and a Span Inspector for execution debugging; narrow screens switch to a scannable event stream.
+- **Replay** reconstructs receipts, events, and visible evidence by `run_seq` and historical perspective. Technical telemetry remains a best-effort overlay.
 
 ```text
-┌ Scenario / version / Run   virtual / boundary / reported mode ┐
-├──────────────┬────────────────────────┬─────────────────────┤
-│ Agent roster │ dual-clock waterfall   │ Span Inspector      │
-│ EXCON        │ Inject / Evaluation    │ Attributes          │
-│ Evidence     │ invoke_agent / tool    │ Events / Logs       │
-│ Hydraulic    │ invoke_agent / tool    │ Span Links          │
-│ Ecology      │ analyze / artifact     │ Domain Event        │
-│ Coordinator  │ synthesize / submit    │ Telemetry gap       │
-└──────────────┴────────────────────────┴─────────────────────┘
+Scenario library ──→ Scenario workspace ──→ related Runs
+                                             │
+Run control ───────→ Run overview ───────────┼─→ Evaluation
+                                             ├─→ Trace
+                                             └─→ Replay
 ```
 
-The visual signature is a collaboration watershed: agent lanes run like tributaries and converge at team submissions, evaluations, and feedback. Curves only encode real Span Links.
+The Run overview's visual signature is the **basin decision spine**: evidence, hydraulics, and ecology roles flow in parallel through an analysis Barrier, coordination, an endorsement Barrier, and finally the authoritative verdict. Every node and connection comes from real role, Barrier, and verdict data. Trace connections likewise encode only real Span Links.
 
 ## What WISER adopts from OTel
 

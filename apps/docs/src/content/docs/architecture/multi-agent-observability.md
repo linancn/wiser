@@ -17,23 +17,24 @@ Run 只管理阶段和虚拟时钟；评价与重做属于各自 Task。这样�
                               个人 / 角色 / 团队反馈
 ```
 
-## 导调台结构
+## 导调台信息架构
 
-主导航分为“场景中心”和“演练运行”。管理区负责草稿、校验和发布；Run 导调区默认只读，按场景、版本、阶段、角色和 Agent 观察。
+全局导航只保留“场景库”和“运行指挥”。场景库负责草稿、校验、发布、版本和团队契约；运行指挥默认只读，每个 Run 再分为“总览 / 评测 / Trace / 回放”四个工作区。
+
+- **总览**先回答权威结果、最高风险和下一步，只展示前三项关注、团队态势、最近事件与流域决策脊柱。
+- **评测**核对权威 Event、Barrier 与 evaluator verdict，并把 OpenTelemetry 覆盖缺口作为诊断信号，不让遥测替代裁决。
+- **Trace**使用 wall clock 瀑布、Agent 泳道和 Span Inspector 定位执行问题；窄屏转换为可扫读的事件流。
+- **回放**按 `run_seq` 和当时视角重建收据、事件与可见证据，技术遥测只作为 best-effort 叠加。
 
 ```text
-┌ 场景 / 版本 / Run    虚拟时钟 / 边界覆盖 / 参训自报模式 ┐
-├──────────────┬────────────────────────┬─────────────────┤
-│ Agent roster │ 双时钟 Trace waterfall │ Span Inspector  │
-│ EXCON        │ Inject / Evaluation    │ Attributes      │
-│ 水情 Agent   │ invoke_agent / tool    │ Events / Logs   │
-│ 水动力 Agent │ invoke_agent / tool    │ Span Links      │
-│ 生态 Agent   │ analyze / artifact     │ Domain Event    │
-│ 协调 Agent   │ synthesize / submit    │ Telemetry gap   │
-└──────────────┴────────────────────────┴─────────────────┘
+场景库 ──→ 场景编排 ──→ 关联 Run
+                         │
+运行指挥 ──→ Run 总览 ──┼─→ 评测
+                         ├─→ Trace
+                         └─→ 回放
 ```
 
-多条泳道采用“协作河网”视觉：Agent 像支流并行，在团队提交、评价和反馈处汇流/分流。曲线只表达真实 Span Links。
+Run 总览的视觉签名是“流域决策脊柱”：水情、水力和生态三个专业角色像支流并行，依次穿过分析 Barrier、调度协调与背书 Barrier，最后抵达权威裁决。这里的节点和连接全部来自真实角色、Barrier 与 verdict 数据；Trace 中的连接也只表达真实 Span Links。
 
 ## OTel 借鉴边界
 
