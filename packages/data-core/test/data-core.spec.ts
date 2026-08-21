@@ -4,6 +4,7 @@ import {
   InvalidIngestionTransitionError,
   InvalidOperationTransitionError,
   InvalidQualityGateInputError,
+  InvalidSecurityLevelSetError,
   SecurityLevelDowngradeError,
   assertSecurityLevelNotLowered,
   canTransitionIngestionState,
@@ -14,6 +15,7 @@ import {
   maximumSecurityLevel,
   transitionIngestionState,
   transitionOperationStatus,
+  type QualityGateInput,
 } from '../src/index.js';
 import type {
   AcceptanceStatus,
@@ -48,7 +50,6 @@ const LEGAL_INGESTION_TRANSITIONS = [
   ['RECEIVED', 'FAILED'],
   ['RECEIVED', 'CANCELLED'],
   ['QUARANTINED', 'SECURITY_SCANNED'],
-  ['QUARANTINED', 'REJECTED'],
   ['QUARANTINED', 'FAILED'],
   ['QUARANTINED', 'CANCELLED'],
   ['SECURITY_SCANNED', 'FINGERPRINTED'],
@@ -71,13 +72,11 @@ const LEGAL_INGESTION_TRANSITIONS = [
   ['SEMANTIC_MAPPED', 'FAILED'],
   ['SEMANTIC_MAPPED', 'CANCELLED'],
   ['VALIDATED', 'SPATIOTEMPORAL_ALIGNED'],
-  ['VALIDATED', 'REVIEW_REQUIRED'],
   ['VALIDATED', 'REJECTED'],
   ['VALIDATED', 'FAILED'],
   ['VALIDATED', 'CANCELLED'],
   ['SPATIOTEMPORAL_ALIGNED', 'REVIEW_REQUIRED'],
   ['SPATIOTEMPORAL_ALIGNED', 'APPROVED'],
-  ['SPATIOTEMPORAL_ALIGNED', 'REJECTED'],
   ['SPATIOTEMPORAL_ALIGNED', 'FAILED'],
   ['SPATIOTEMPORAL_ALIGNED', 'CANCELLED'],
   ['REVIEW_REQUIRED', 'APPROVED'],
@@ -129,18 +128,13 @@ function transitionKey(from: string, to: string): string {
 
 describe('ingestion state policy', () => {
   const legalTransitions = new Set(
-    LEGAL_INGESTION_TRANSITIONS.map(([from, to]) =>
-      transitionKey(from, to),
-    ),
+    LEGAL_INGESTION_TRANSITIONS.map(([from, to]) => transitionKey(from, to)),
   );
 
-  it.each(LEGAL_INGESTION_TRANSITIONS)(
-    'allows %s -> %s',
-    (from, to) => {
-      expect(canTransitionIngestionState(from, to)).toBe(true);
-      expect(transitionIngestionState(from, to)).toBe(to);
-    },
-  );
+  it.each(LEGAL_INGESTION_TRANSITIONS)('allows %s -> %s', (from, to) => {
+    expect(canTransitionIngestionState(from, to)).toBe(true);
+    expect(transitionIngestionState(from, to)).toBe(to);
+  });
 
   it('rejects every transition not present in the explicit policy', () => {
     for (const from of INGESTION_STATES) {
@@ -229,7 +223,52 @@ describe('deterministic quality gate', () => {
     });
   });
 
+  it('fails closed when a blocking rule is skipped', () => {
+    expect(
+      evaluateQualityGate({
+        minimumPassingScore: 0.8,
+        checks: [
+          { ruleId: 'complete', status: 'PASSED', weight: 1 },
+          {
+            ruleId: 'security-scan',
+            status: 'SKIPPED',
+            weight: 1,
+            blocking: true,
+          },
+        ],
+      }),
+    ).toEqual({
+      score: 1,
+      grade: 'A',
+      passed: false,
+      failedRuleIds: [],
+      blockingRuleIds: ['security-scan'],
+    });
+  });
+
+  it('can pass policy at grade C without turning grade into acceptance', () => {
+    expect(
+      evaluateQualityGate({
+        minimumPassingScore: 0.5,
+        checks: [
+          { ruleId: 'passed', status: 'PASSED', weight: 6 },
+          { ruleId: 'failed', status: 'FAILED', weight: 4 },
+        ],
+      }),
+    ).toEqual({
+      score: 0.6,
+      grade: 'C',
+      passed: true,
+      failedRuleIds: ['failed'],
+      blockingRuleIds: [],
+    });
+  });
+
   it.each([
+    {
+      minimumPassingScore: 0,
+      checks: [{ ruleId: 'valid', status: 'PASSED', weight: 1 }],
+    },
     {
       minimumPassingScore: 1.1,
       checks: [{ ruleId: 'valid', status: 'PASSED', weight: 1 }],
@@ -249,35 +288,58 @@ describe('deterministic quality gate', () => {
         { ruleId: 'duplicate', status: 'FAILED', weight: 1 },
       ],
     },
-  ])('rejects invalid or unauditable gate input %#', (input) => {
-    expect(() => evaluateQualityGate(input)).toThrow(
-      InvalidQualityGateInputError,
-    );
-  });
+  ] as const satisfies readonly QualityGateInput[])(
+    'rejects invalid or unauditable gate input %#',
+    (input) => {
+      expect(() => evaluateQualityGate(input)).toThrow(
+        InvalidQualityGateInputError,
+      );
+    },
+  );
 });
 
 describe('security inheritance', () => {
   it.each([
-    [['L0_PUBLIC'], 'L0_PUBLIC'],
-    [['L0_PUBLIC', 'L2_RESTRICTED'], 'L2_RESTRICTED'],
-    [['L3_CONFIDENTIAL', 'L1_INTERNAL'], 'L3_CONFIDENTIAL'],
+    ['L0_PUBLIC', 'L0_PUBLIC', 'L0_PUBLIC'],
+    ['L0_PUBLIC', 'L1_INTERNAL', 'L1_INTERNAL'],
+    ['L0_PUBLIC', 'L2_RESTRICTED', 'L2_RESTRICTED'],
+    ['L0_PUBLIC', 'L3_CONFIDENTIAL', 'L3_CONFIDENTIAL'],
+    ['L1_INTERNAL', 'L0_PUBLIC', 'L1_INTERNAL'],
+    ['L1_INTERNAL', 'L1_INTERNAL', 'L1_INTERNAL'],
+    ['L1_INTERNAL', 'L2_RESTRICTED', 'L2_RESTRICTED'],
+    ['L1_INTERNAL', 'L3_CONFIDENTIAL', 'L3_CONFIDENTIAL'],
+    ['L2_RESTRICTED', 'L0_PUBLIC', 'L2_RESTRICTED'],
+    ['L2_RESTRICTED', 'L1_INTERNAL', 'L2_RESTRICTED'],
+    ['L2_RESTRICTED', 'L2_RESTRICTED', 'L2_RESTRICTED'],
+    ['L2_RESTRICTED', 'L3_CONFIDENTIAL', 'L3_CONFIDENTIAL'],
+    ['L3_CONFIDENTIAL', 'L0_PUBLIC', 'L3_CONFIDENTIAL'],
+    ['L3_CONFIDENTIAL', 'L1_INTERNAL', 'L3_CONFIDENTIAL'],
+    ['L3_CONFIDENTIAL', 'L2_RESTRICTED', 'L3_CONFIDENTIAL'],
+    ['L3_CONFIDENTIAL', 'L3_CONFIDENTIAL', 'L3_CONFIDENTIAL'],
   ] as const satisfies readonly (readonly [
-    readonly SecurityLevel[],
     SecurityLevel,
-  ])[])('selects the most restrictive source level from %j', (levels, level) => {
-    expect(maximumSecurityLevel(levels)).toBe(level);
+    SecurityLevel,
+    SecurityLevel,
+  ])[])(
+    'selects %s + %s -> %s as the inherited level',
+    (left, right, level) => {
+      expect(maximumSecurityLevel([left, right])).toBe(level);
+    },
+  );
+
+  it('rejects inheritance without source provenance', () => {
+    expect(() => maximumSecurityLevel([])).toThrow(
+      InvalidSecurityLevelSetError,
+    );
   });
 
   it('never lets a transformation request lower inherited security', () => {
     expect(
-      inheritSecurityLevel(
-        ['L1_INTERNAL', 'L2_RESTRICTED'],
-        'L0_PUBLIC',
-      ),
+      inheritSecurityLevel(['L1_INTERNAL', 'L2_RESTRICTED'], 'L0_PUBLIC'),
     ).toBe('L2_RESTRICTED');
-    expect(
-      inheritSecurityLevel(['L1_INTERNAL'], 'L3_CONFIDENTIAL'),
-    ).toBe('L3_CONFIDENTIAL');
+    expect(inheritSecurityLevel(['L1_INTERNAL'], 'L3_CONFIDENTIAL')).toBe(
+      'L3_CONFIDENTIAL',
+    );
   });
 
   it('throws an explicit domain error when a proposed level is too low', () => {
@@ -345,6 +407,26 @@ describe('publication eligibility', () => {
     ).toEqual({ eligible: false, reasons: ['QUALITY_GATE_FAILED'] });
   });
 
+  it.each([
+    'PENDING',
+    'CORRECTION_REQUIRED',
+    'ARCHIVED_ONLY',
+    'REJECTED',
+  ] as const satisfies readonly AcceptanceStatus[])(
+    'blocks non-accepted status %s',
+    (acceptanceStatus) => {
+      expect(
+        evaluatePublicationEligibility({
+          ingestionState: 'PROJECTING',
+          authoritativeVersionCommitted: true,
+          qualityGatePassed: true,
+          acceptanceStatus,
+          projections: [{ projectionId: 'search', status: 'SUCCEEDED' }],
+        }),
+      ).toEqual({ eligible: false, reasons: ['ACCEPTANCE_NOT_ELIGIBLE'] });
+    },
+  );
+
   it('reports every unmet publication condition in stable policy order', () => {
     expect(
       evaluatePublicationEligibility({
@@ -385,9 +467,7 @@ describe('publication eligibility', () => {
 
 describe('operation state policy', () => {
   const legalTransitions = new Set(
-    LEGAL_OPERATION_TRANSITIONS.map(([from, to]) =>
-      transitionKey(from, to),
-    ),
+    LEGAL_OPERATION_TRANSITIONS.map(([from, to]) => transitionKey(from, to)),
   );
 
   it.each(LEGAL_OPERATION_TRANSITIONS)('allows %s -> %s', (from, to) => {

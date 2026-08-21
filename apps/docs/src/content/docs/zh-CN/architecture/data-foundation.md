@@ -20,14 +20,14 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 5eb5e10f3a0aafd3ac1098323b669e592b2cb41b
+lastReviewedCommit: dea8cf4b30c75e0d456ec368bd910d2321fadc08
 ---
 
 ## 边界与当前实现
 
 Data Foundation 是 WISER 内与 Agent EXCON 平级的业务系统。它拥有 DataItem、不可变版本、资产、入库会话、质量、血缘、知识、检索与 GIS 事实；不拥有用户 Session、Tenant、Project、Role 或 Token。Supabase 是统一身份与控制面；独立 data-postgres/PostGIS 与 S3 兼容对象存储构成数据权威面；搜索、图谱、STAC 与 GIS 服务均为可重建投影。
 
-当前已落地 `@wiser/data-contracts`；`@wiser/data-core` 已由可执行 Red 规格定义，并在当前里程碑完成纯净、同步、确定性的领域政策。数据库、对象存储、任务、Outbox、投影及 transport 仍须沿同一边界完成，当前阶段不等于最终交付。
+当前已落地 `@wiser/data-contracts` 与 `@wiser/data-core`：前者提供严格 Zod 4 DTO 和静态 Capability Registry；后者只包含纯净、同步、确定性的领域政策。数据库、对象存储、任务、Outbox、投影及 transport 仍须沿同一边界完成，当前阶段不等于最终交付。
 
 ## 唯一公开契约源
 

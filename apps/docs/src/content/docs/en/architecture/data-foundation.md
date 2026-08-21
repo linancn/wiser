@@ -20,14 +20,14 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 5eb5e10f3a0aafd3ac1098323b669e592b2cb41b
+lastReviewedCommit: dea8cf4b30c75e0d456ec368bd910d2321fadc08
 ---
 
 ## Boundary and implementation status
 
 Data Foundation is a WISER business system peer to Agent EXCON. It owns DataItems, immutable versions, assets, ingestion, quality, lineage, knowledge, search, and GIS facts. It does not own user sessions, Tenants, Projects, Roles, or tokens. Supabase is the unified identity and control plane; independent data-postgres/PostGIS and S3-compatible object storage form the data authority; search, graph, STAC, and GIS services are rebuildable projections.
 
-`@wiser/data-contracts` is delivered. `@wiser/data-core` is defined by executable Red specifications and is completing its pure, synchronous, deterministic domain policies in the current milestone. Database, object-store, job, Outbox, projection, and transport layers must still complete the same boundary, so this milestone is not the final delivery.
+`@wiser/data-contracts` and `@wiser/data-core` are now delivered. The former provides strict Zod 4 DTOs and a static Capability Registry; the latter contains only pure, synchronous, deterministic domain policies. Database, object-store, job, Outbox, projection, and transport layers must still complete the same boundary, so this milestone is not the final delivery.
 
 ## One public contract source
 
