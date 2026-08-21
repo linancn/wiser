@@ -18,6 +18,7 @@ import {
   createProjectionAwareIngestionHandler,
   type ProjectionPublicationGate,
 } from '../src/runtime.js';
+import { createDefaultIngestionPipelineOptions } from '../src/runtime/default-ports.js';
 
 const scope: ProjectionScope = {
   tenantId: '51000000-0000-4000-8000-000000000001',
@@ -85,6 +86,75 @@ describe('default Data Worker runtime', () => {
     const registry = createDefaultHandlerRegistry(handler);
     expect(registry.jobTypes).toEqual([DATA_INGESTION_PROCESS_JOB_TYPE]);
     expect(registry.resolve(DATA_INGESTION_PROCESS_JOB_TYPE)).toBe(handler);
+  });
+
+  it('normalizes the fixture FeatureCollection into one governed spatial fact', async () => {
+    const pipeline = createDefaultIngestionPipelineOptions({
+      authority: {} as never,
+      reader: {
+        readQuarantineObject: () => Promise.reject(new Error('unused')),
+        statQuarantineObject: () => Promise.reject(new Error('unused')),
+      },
+      config: {
+        scope,
+        ingestion: {
+          clamavHost: 'clamav',
+          clamavPort: 3310,
+          clamavTimeoutMs: 1_000,
+          clamavMaximumResponseBytes: 4_096,
+          tikaEndpoint: 'http://tika:9998',
+          tikaTimeoutMs: 1_000,
+          maximumObjectBytes: 1_048_576,
+          tikaMaximumResponseBytes: 1_048_576,
+          minimumQualityScore: 0.75,
+          minimumAiConfidence: 0.8,
+        },
+      } as never,
+    });
+    const assetId = '51000000-0000-4000-8000-000000000008';
+
+    await expect(
+      pipeline.aligner.align({
+        parsedAssets: [
+          {
+            assetId,
+            kind: 'geojson',
+            metadata: {
+              sourceCrs: 'EPSG:4326',
+              sourceGeoJson: {
+                type: 'FeatureCollection',
+                features: [
+                  {
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: [116.1, 39.7] },
+                    properties: { station: 'A' },
+                  },
+                  {
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: [116.5, 40.1] },
+                    properties: { station: 'B' },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      }),
+    ).resolves.toMatchObject({
+      spatialFacts: [
+        {
+          assetId,
+          sourceCrs: 'EPSG:4326',
+          sourceGeoJson: {
+            type: 'MultiPoint',
+            coordinates: [
+              [116.1, 39.7],
+              [116.5, 40.1],
+            ],
+          },
+        },
+      ],
+    });
   });
 
   it('publishes only after all five ledgers succeed and retries publication without replaying targets', async () => {
