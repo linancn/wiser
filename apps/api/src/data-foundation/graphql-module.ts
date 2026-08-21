@@ -9,6 +9,7 @@ import {
   OperationTypeNode,
   type ASTVisitor,
   type FieldNode,
+  type SelectionSetNode,
   type ValidationContext,
   type ValidationRule,
   type ValueNode,
@@ -277,10 +278,15 @@ function complexityRule(maximum: number): ValidationRule {
     return {
       Field(node: FieldNode) {
         const weight = [
+          'dataQuery',
           'dataSearch',
           'knowledgeSearch',
           'graphExpand',
+          'graphFindPath',
           'geoQuery',
+          'geoIntersect',
+          'dataItemVersions',
+          'dataOperationEvents',
         ].includes(node.name.value)
           ? 5
           : 1;
@@ -288,7 +294,11 @@ function complexityRule(maximum: number): ValidationRule {
           (argument) => argument.name.value === 'first',
         )?.value;
         const multiplier =
-          first?.kind === Kind.INT ? Math.min(Number(first.value), 100) : 1;
+          first?.kind === Kind.INT
+            ? Math.min(Number(first.value), 100)
+            : first?.kind === Kind.VARIABLE
+              ? 100
+              : 1;
         complexity += weight * multiplier;
         if (complexity > maximum && !reported) {
           reported = true;
@@ -301,12 +311,46 @@ function complexityRule(maximum: number): ValidationRule {
   };
 }
 
+function mutationFieldCount(
+  context: ValidationContext,
+  selectionSet: SelectionSetNode,
+  visitedFragments: Set<string>,
+): number {
+  let count = 0;
+  for (const selection of selectionSet.selections) {
+    if (selection.kind === Kind.FIELD) {
+      count += 1;
+      continue;
+    }
+    if (selection.kind === Kind.INLINE_FRAGMENT) {
+      count += mutationFieldCount(
+        context,
+        selection.selectionSet,
+        visitedFragments,
+      );
+      continue;
+    }
+    const name = selection.name.value;
+    if (visitedFragments.has(name)) continue;
+    visitedFragments.add(name);
+    const fragment = context.getFragment(name);
+    if (fragment !== undefined && fragment !== null) {
+      count += mutationFieldCount(
+        context,
+        fragment.selectionSet,
+        visitedFragments,
+      );
+    }
+  }
+  return count;
+}
+
 function singleMutationRule(context: ValidationContext): ASTVisitor {
   return {
     OperationDefinition(node) {
       if (
         node.operation === OperationTypeNode.MUTATION &&
-        node.selectionSet.selections.length > 1
+        mutationFieldCount(context, node.selectionSet, new Set()) > 1
       ) {
         context.reportError(
           new GraphQLError(
