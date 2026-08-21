@@ -127,8 +127,7 @@ describe('Data Foundation MCP module', () => {
       operation: {
         operationId: 'a1000000-0000-4000-8000-000000000007',
         status: 'PENDING',
-        resource:
-          'operation://a1000000-0000-4000-8000-000000000007',
+        resource: 'operation://a1000000-0000-4000-8000-000000000007',
       },
     };
     const submitted = await client.callTool({
@@ -169,8 +168,7 @@ describe('Data Foundation MCP module', () => {
       data: {
         operation: {
           status: 'PENDING',
-          resource:
-            'operation://a1000000-0000-4000-8000-000000000007',
+          resource: 'operation://a1000000-0000-4000-8000-000000000007',
         },
       },
     });
@@ -205,7 +203,10 @@ describe('Data Foundation MCP module', () => {
       method: 'GET',
       path: `/catalog/data-items/${DATA_ITEM_ID}/versions/${VERSION_ID}`,
     });
-    expect(resource.contents[0]?.text).toContain(VERSION_ID);
+    const content = resource.contents[0];
+    expect(
+      content !== undefined && 'text' in content ? content.text : '',
+    ).toContain(VERSION_ID);
   });
 
   it('returns a safe MCP error without forwarding backend secrets', async () => {
