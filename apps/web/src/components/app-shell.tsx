@@ -19,9 +19,11 @@ function RiverMark() {
 }
 
 export function AppShell({
+  authControl,
   children,
   locale,
 }: {
+  authControl?: ReactNode;
   children: ReactNode;
   locale: Locale;
 }) {
@@ -30,6 +32,8 @@ export function AppShell({
   const otherLocale: Locale = locale === 'zh-CN' ? 'en' : 'zh-CN';
   const languageHref = switchLocalePath(pathname, otherLocale);
   const dataFoundationActive = pathname.includes('/data-foundation');
+  const platformActive =
+    pathname.includes('/login') || pathname.includes('/auth/');
 
   return (
     <div className={styles.shell} lang={locale}>
@@ -69,6 +73,7 @@ export function AppShell({
           )}
         </nav>
         <div className={styles.actions}>
+          {authControl}
           <ThemeToggle locale={locale} />
           <Link
             className={styles.language}
@@ -87,7 +92,9 @@ export function AppShell({
         <strong>{dictionary.systems.label}</strong>
         <Link
           href={`/${locale}/scenarios`}
-          aria-current={dataFoundationActive ? undefined : 'page'}
+          aria-current={
+            dataFoundationActive || platformActive ? undefined : 'page'
+          }
         >
           {dictionary.systems.agentExcon}
         </Link>

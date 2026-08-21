@@ -77,5 +77,7 @@ describe('WISER Web Supabase SSR proxy', () => {
 
     expect(response.status).toBe(200);
     expect(createClient).not.toHaveBeenCalled();
+    expect(response.headers.get('cache-control')).toContain('no-store');
+    expect(response.headers.get('pragma')).toBe('no-cache');
   });
 });

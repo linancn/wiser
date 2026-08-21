@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 0ccec4db0435f04becdd27c377b977f1e3f238f4
+lastReviewedCommit: 107e637b8570748a09c29f7b28c70ac07198aba9
 ---
 
 ## One identity authority
@@ -31,7 +31,7 @@ Delivered now: the `platform` / `platform_private` schemas, automatic user provi
 
 Fastify exposes the `platform.identity` module and safe `/api/platform/v1/me` projection. `WISER_AUTH_MODE=supabase` creates the current stable `supabase-js` client, bounded PostgreSQL pool, and fail-closed Resolver in the default process. Production refuses any missing required configuration, and process shutdown closes the pool. Delegated-credential issuance remains a later milestone.
 
-Web now uses the current stable `@supabase/ssr` Browser/Server clients and Next.js 16 `proxy.ts`. Proxy calls `getClaims()` before a response is produced, writes refreshed cookies to both request and response, and sets `private, no-store`. Login, callback, sign-out pages, and current-user token forwarding remain the next vertical slice.
+Web now uses the current stable `@supabase/ssr` Browser/Server clients and Next.js 16 `proxy.ts`. Proxy calls `getClaims()` before a response is produced, writes refreshed cookies to both request and response, and sets `private, no-store`. Bilingual password login, PKCE callback, POST-only local sign-out, and the shared Shell's current-session state are executable. Every continuation target is normalized to the active locale and rejected if it leaves the WISER origin or re-enters an Auth endpoint; every Auth response is non-cacheable.
 
 The delegated-credential cryptographic boundary is now executable. It strictly parses `wdc1.<key-id>.<secret>`, generates independent 128-bit locators and 256-bit secrets with Node's secure random source, and stores only a domain-separated HMAC-SHA-256. The JSON key-ring configuration requires canonical unpadded base64url keys of at least 256 bits, names one active key for issuance, retains previous keys for verification during rotation, and fails closed without echoing secret configuration. Database issuance/rotation transactions and the delegated principal Resolver remain the next authorization slice.
 
@@ -79,6 +79,8 @@ A failed JWT never falls back to a local token, preventing token confusion. Loca
 ## Web sessions
 
 Web uses Supabase SSR cookies. Server Components forward the current access token, and Fastify verifies and authorizes it again. The browser receives only the Supabase URL and publishable key; service-role and secret keys, database URLs, object-store secrets, and internal projection credentials never enter the client.
+
+The Shell derives its user indicator only from a freshly verified authenticated claim set. It never renders user-editable metadata as a trusted role or administrator label. Invalid, expired, privileged, unavailable, or malformed claims produce the same anonymous/fail-closed state.
 
 `WISER_WEB_OPERATOR_TOKEN` no longer represents an interactive user. Platform-diagnostic service identities need explicit scopes and remain server-side.
 

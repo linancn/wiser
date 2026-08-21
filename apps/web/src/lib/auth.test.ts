@@ -47,10 +47,7 @@ function authClient(
   };
 }
 
-function formRequest(
-  path: string,
-  values: Readonly<Record<string, string>>,
-) {
+function formRequest(path: string, values: Readonly<Record<string, string>>) {
   const body = new FormData();
   for (const [name, value] of Object.entries(values)) body.set(name, value);
   return new Request(`http://wiser.test${path}`, {
@@ -62,10 +59,7 @@ function formRequest(
 describe('WISER Web auth boundary', () => {
   it('allows only normalized same-locale application redirects', () => {
     expect(
-      safeLocalizedRedirect(
-        '/zh-CN/runs/run-42?panel=trace#latest',
-        'zh-CN',
-      ),
+      safeLocalizedRedirect('/zh-CN/runs/run-42?panel=trace#latest', 'zh-CN'),
     ).toBe('/zh-CN/runs/run-42?panel=trace#latest');
     expect(safeLocalizedRedirect('/en/data-foundation', 'en')).toBe(
       '/en/data-foundation',
@@ -81,9 +75,7 @@ describe('WISER Web auth boundary', () => {
       '/zh-CN/login',
       '/zh-CN/%2e%2e/en/runs',
     ]) {
-      expect(safeLocalizedRedirect(unsafe, 'zh-CN')).toBe(
-        '/zh-CN/scenarios',
-      );
+      expect(safeLocalizedRedirect(unsafe, 'zh-CN')).toBe('/zh-CN/scenarios');
     }
   });
 
@@ -124,7 +116,11 @@ describe('WISER Web auth boundary', () => {
 
 describe('WISER auth HTTP workflows', () => {
   it('signs in with validated credentials, verifies claims, and never caches the redirect', async () => {
-    const client = authClient();
+    const signInWithPassword = vi.fn(() =>
+      Promise.resolve({ data: {}, error: null }),
+    );
+    const getClaims = vi.fn(() => Promise.resolve(verifiedClaims()));
+    const client = authClient({ signInWithPassword, getClaims });
     const service = createAuthRouteService({
       createClient: () => Promise.resolve(client),
       now: NOW,
@@ -138,11 +134,11 @@ describe('WISER auth HTTP workflows', () => {
       'zh-CN',
     );
 
-    expect(client.auth.signInWithPassword).toHaveBeenCalledWith({
+    expect(signInWithPassword).toHaveBeenCalledWith({
       email: 'operator@wiser.test',
       password: 'correct horse battery staple',
     });
-    expect(client.auth.getClaims).toHaveBeenCalledOnce();
+    expect(getClaims).toHaveBeenCalledOnce();
     expect(response.status).toBe(303);
     expect(response.headers.get('location')).toBe(
       'http://wiser.test/zh-CN/data-foundation?view=catalog',
@@ -181,7 +177,11 @@ describe('WISER auth HTTP workflows', () => {
   });
 
   it('exchanges a callback code and rejects external continuation targets', async () => {
-    const client = authClient();
+    const exchangeCodeForSession = vi.fn(() =>
+      Promise.resolve({ data: {}, error: null }),
+    );
+    const getClaims = vi.fn(() => Promise.resolve(verifiedClaims()));
+    const client = authClient({ exchangeCodeForSession, getClaims });
     const service = createAuthRouteService({
       createClient: () => Promise.resolve(client),
       now: NOW,
@@ -193,10 +193,8 @@ describe('WISER auth HTTP workflows', () => {
       'en',
     );
 
-    expect(client.auth.exchangeCodeForSession).toHaveBeenCalledWith(
-      'pkce-code',
-    );
-    expect(client.auth.getClaims).toHaveBeenCalledOnce();
+    expect(exchangeCodeForSession).toHaveBeenCalledWith('pkce-code');
+    expect(getClaims).toHaveBeenCalledOnce();
     expect(response.status).toBe(303);
     expect(response.headers.get('location')).toBe(
       'http://wiser.test/en/scenarios',
@@ -220,7 +218,8 @@ describe('WISER auth HTTP workflows', () => {
       'http://wiser.test/en/login?reason=configuration',
     );
 
-    const client = authClient();
+    const signOut = vi.fn(() => Promise.resolve({ error: null }));
+    const client = authClient({ signOut });
     const enabled = createAuthRouteService({
       createClient: () => Promise.resolve(client),
       now: NOW,
@@ -229,7 +228,7 @@ describe('WISER auth HTTP workflows', () => {
       formRequest('/en/auth/sign-out', { next: '/en/login?signedOut=1' }),
       'en',
     );
-    expect(client.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(signOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(signedOut.status).toBe(303);
     expect(signedOut.headers.get('location')).toBe(
       'http://wiser.test/en/login?signedOut=1',

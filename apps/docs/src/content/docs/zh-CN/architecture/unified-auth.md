@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 0ccec4db0435f04becdd27c377b977f1e3f238f4
+lastReviewedCommit: 107e637b8570748a09c29f7b28c70ac07198aba9
 ---
 
 ## 单一身份源
@@ -31,7 +31,7 @@ JWT 证明主体、认证强度与 Session；动态 Tenant、Project、Role 和 
 
 Fastify 已提供 `platform.identity` 模块和 `/api/platform/v1/me` 安全投影。`WISER_AUTH_MODE=supabase` 会在默认进程中创建最新稳定 `supabase-js` client、受限 PostgreSQL Pool 和 fail-closed Resolver；生产缺少任何必要配置时拒绝启动，进程关闭时释放 Pool。委托凭据签发仍是后续里程碑。
 
-Web 已使用最新稳定 `@supabase/ssr` 建立 Browser/Server Client 与 Next.js 16 `proxy.ts`。Proxy 在响应产生前调用 `getClaims()`，刷新后的 Cookie 同时写回 request/response，并设置 `private, no-store`；登录、回调、退出页面和当前用户 Token 转发仍在后续纵切实现。
+Web 已使用最新稳定 `@supabase/ssr` 建立 Browser/Server Client 与 Next.js 16 `proxy.ts`。Proxy 在响应产生前调用 `getClaims()`，刷新后的 Cookie 同时写回 request/response，并设置 `private, no-store`。双语密码登录、PKCE callback、仅 POST 的本地退出，以及共享 Shell 的当前 Session 状态均已可执行。所有 continuation target 都被规范到当前语言；离开 WISER origin 或重新进入 Auth endpoint 的地址一律拒绝；所有 Auth 响应均不可缓存。
 
 委托凭据的密码学边界现已可执行：严格解析 `wdc1.<key-id>.<secret>`，使用 Node 安全随机源分别生成 128-bit locator 与 256-bit secret，数据库只保存经过域隔离的 HMAC-SHA-256。JSON key ring 只接受至少 256-bit 的规范无填充 base64url key，指定一个 active key 负责新签发，同时保留旧 key 支持轮换期验证；任何配置错误都 fail closed，且不会回显秘密。数据库签发/轮换事务与 delegated principal Resolver 属于下一授权纵切。
 
@@ -79,6 +79,8 @@ JWT 失败后不得回退到 Local Token，防止 token confusion。Local Token 
 ## Web Session
 
 Web 使用 Supabase SSR Cookie。Server Component 转发当前 Access Token，Fastify 再次验证并授权。浏览器只获得 Supabase URL 与 publishable key；service role、secret key、数据库连接、对象存储密钥和内部投影凭据均不得进入客户端。
+
+Shell 的用户状态只来自刚完成验证的 authenticated claims，不把用户可编辑 metadata 渲染成可信 Role 或管理员标签。Claims 无效、过期、带特权角色、服务不可用或格式畸形时，一律进入匿名/fail-closed 状态。
 
 `WISER_WEB_OPERATOR_TOKEN` 不再代表交互式用户。需要平台诊断的服务账户必须拥有明确 Scope，且只能在服务端使用。
 

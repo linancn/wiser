@@ -79,7 +79,16 @@ export async function updateSupabaseSession(
     readonly createClient?: SupabaseServerClientFactory;
   },
 ): Promise<NextResponse> {
-  if (options.config === null) return NextResponse.next({ request });
+  if (options.config === null) {
+    const localResponse = NextResponse.next({ request });
+    localResponse.headers.set(
+      'Cache-Control',
+      'private, no-cache, no-store, max-age=0, must-revalidate',
+    );
+    localResponse.headers.set('Expires', '0');
+    localResponse.headers.set('Pragma', 'no-cache');
+    return localResponse;
+  }
 
   let response = NextResponse.next({ request });
   const createClient = options.createClient ?? defaultCreateClient;
@@ -105,8 +114,14 @@ export async function updateSupabaseSession(
     },
   );
   await supabase.auth.getClaims();
-  if (!response.headers.has('Cache-Control')) {
-    response.headers.set('Cache-Control', 'private, no-store');
+  if (!response.headers.get('Cache-Control')?.includes('no-store')) {
+    response.headers.set(
+      'Cache-Control',
+      'private, no-cache, no-store, max-age=0, must-revalidate',
+    );
   }
+  if (!response.headers.has('Expires')) response.headers.set('Expires', '0');
+  if (!response.headers.has('Pragma'))
+    response.headers.set('Pragma', 'no-cache');
   return response;
 }

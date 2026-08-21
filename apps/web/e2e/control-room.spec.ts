@@ -83,7 +83,7 @@ test('switches WISER systems without losing locale or color theme', async ({
 
 test('offers the same unified identity surface in Chinese and English', async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto('/zh-CN/login?next=/zh-CN/data-foundation');
   await expect(page.getByRole('heading', { name: '登录 WISER' })).toBeVisible();
   await expect(page.getByLabel('邮箱')).toBeVisible();
@@ -97,6 +97,10 @@ test('offers the same unified identity surface in Chinese and English', async ({
   await expect(page.locator('input[name="next"]')).toHaveValue(
     '/zh-CN/data-foundation',
   );
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath('desktop-light-login.png'),
+  });
 
   await page.getByRole('link', { name: 'English' }).click();
   await expect(page).toHaveURL(/\/en\/login$/);
@@ -111,7 +115,7 @@ test('offers the same unified identity surface in Chinese and English', async ({
 
 test('keeps the identity gate accessible in both themes on a narrow screen', async ({
   page,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 320, height: 700 });
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/zh-CN/login');
@@ -126,6 +130,10 @@ test('keeps the identity gate accessible in both themes on a narrow screen', asy
       document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(1);
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath('mobile-dark-login.png'),
+  });
 });
 
 test('uses a two-level global navigation and enters Runs through overview', async ({

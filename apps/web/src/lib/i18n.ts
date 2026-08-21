@@ -90,6 +90,57 @@ const zhCN = {
     participantBoundary: '智能体接入：Skill · HTTP · MCP',
     observerBoundary: '网页端：场景管理、只读导调与回放',
   },
+  auth: {
+    metaTitle: '登录',
+    signIn: '登录',
+    signOut: '退出',
+    signedIn: '已登录',
+    anonymous: '未登录',
+    disabled: '身份服务未启用',
+    loading: '正在核验身份',
+    eyebrow: 'WISER 统一身份',
+    title: '登录 WISER',
+    lede: '用同一个组织身份进入 Agent EXCON、数据基座，以及未来加入 WISER 的系统。',
+    gateTitle: '一条可验证的身份河道',
+    gateLede:
+      '登录只建立会话；租户、项目和角色权限仍由服务端控制面在每次敏感操作前重新核验。',
+    gateSteps: [
+      {
+        label: '身份源',
+        value: 'Supabase Auth',
+        copy: '签名令牌与可撤销会话',
+      },
+      {
+        label: '隔离边界',
+        value: '租户',
+        copy: '组织成员关系不自动扩大到项目',
+      },
+      {
+        label: '工作范围',
+        value: '项目',
+        copy: '角色、权限与用途按请求解析',
+      },
+    ],
+    formEyebrow: '会话入口',
+    formTitle: '使用组织账户',
+    email: '邮箱',
+    emailPlaceholder: 'name@organization.example',
+    password: '密码',
+    passwordPlaceholder: '输入账户密码',
+    passwordHint: '密码只发送给统一身份服务，不会写入 WISER 业务数据。',
+    submit: '登录',
+    accountNote: '账户与成员关系由组织管理员统一管理。',
+    securityNote:
+      '浏览器仅使用 Supabase URL 与 publishable key；服务器密钥不会进入页面。',
+    signedOutNotice: '已安全退出当前浏览器会话。',
+    errors: {
+      fields: '请填写有效邮箱和密码。',
+      credentials: '邮箱或密码未通过验证，请重新输入。',
+      callback: '登录回调无效或已过期，请重新开始登录。',
+      session: '会话无法通过安全核验，已清除本地登录状态。',
+      configuration: '当前环境尚未启用统一身份服务，请联系管理员。',
+    },
+  },
   common: {
     simulationOnly: '仅合成演练',
     published: '已发布',
@@ -541,6 +592,60 @@ const en: typeof zhCN = {
     participantBoundary: 'Agent access: Skill · HTTP · MCP',
     observerBoundary:
       'Web workspace: scenario management, read-only exercise control, and replay',
+  },
+  auth: {
+    metaTitle: 'Sign in',
+    signIn: 'Sign in',
+    signOut: 'Sign out',
+    signedIn: 'Signed in',
+    anonymous: 'Signed out',
+    disabled: 'Identity service unavailable',
+    loading: 'Verifying identity',
+    eyebrow: 'WISER UNIFIED IDENTITY',
+    title: 'Sign in to WISER',
+    lede: 'Use one organization identity for Agent EXCON, Data Foundation, and every future WISER system.',
+    gateTitle: 'One verifiable identity channel',
+    gateLede:
+      'Sign-in establishes a session only. The server control plane rechecks tenant, project, and role authorization before every sensitive operation.',
+    gateSteps: [
+      {
+        label: 'Identity authority',
+        value: 'Supabase Auth',
+        copy: 'Signed tokens and revocable sessions',
+      },
+      {
+        label: 'Isolation boundary',
+        value: 'Tenant',
+        copy: 'Organization membership never grants every project',
+      },
+      {
+        label: 'Working scope',
+        value: 'Project',
+        copy: 'Roles, scopes, and purpose resolve per request',
+      },
+    ],
+    formEyebrow: 'SESSION ENTRY',
+    formTitle: 'Use your organization account',
+    email: 'Email',
+    emailPlaceholder: 'name@organization.example',
+    password: 'Password',
+    passwordPlaceholder: 'Enter your account password',
+    passwordHint:
+      'Your password goes only to the unified identity service and is never stored in WISER business data.',
+    submit: 'Sign in',
+    accountNote: 'Accounts and memberships are managed by your organization.',
+    securityNote:
+      'The browser receives only the Supabase URL and publishable key. Server secrets never enter this page.',
+    signedOutNotice: 'This browser session has been signed out securely.',
+    errors: {
+      fields: 'Enter a valid email address and password.',
+      credentials: 'The email or password could not be verified. Try again.',
+      callback: 'The sign-in callback is invalid or expired. Start again.',
+      session:
+        'The session failed security verification and the local sign-in state was cleared.',
+      configuration:
+        'Unified identity is not enabled in this environment. Contact an administrator.',
+    },
   },
   common: {
     simulationOnly: 'Synthetic exercise only',

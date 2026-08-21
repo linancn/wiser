@@ -1,8 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import { notFound } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 
 import { AppShell } from '@/components/app-shell';
+import {
+  CurrentUserControl,
+  CurrentUserFallback,
+} from '@/components/current-user-control';
 import { getDictionary, isLocale, LOCALES } from '@/lib/i18n';
 
 import '../globals.css';
@@ -76,7 +80,16 @@ export default async function LocaleLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitializer }} />
       </head>
       <body>
-        <AppShell locale={locale}>{children}</AppShell>
+        <AppShell
+          locale={locale}
+          authControl={
+            <Suspense fallback={<CurrentUserFallback locale={locale} />}>
+              <CurrentUserControl locale={locale} />
+            </Suspense>
+          }
+        >
+          {children}
+        </AppShell>
       </body>
     </html>
   );
