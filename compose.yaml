@@ -177,6 +177,8 @@ services:
       # Compatibility for the current migration binary; removed after callers
       # have moved to DATA_DATABASE_MIGRATION_URL.
       DATA_POSTGRES_URL: postgresql://wiser_data:${DATA_POSTGRES_PASSWORD:-wiser-local-data-4f8c71b0f3e947d4}@data-postgres:5432/wiser_data
+    volumes:
+      - ./infrastructure/data-foundation/postgres/migrations:/workspace/infrastructure/data-foundation/postgres/migrations:ro
     depends_on:
       data-postgres:
         condition: service_healthy
