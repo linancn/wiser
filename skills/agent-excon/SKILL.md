@@ -1,22 +1,6 @@
 ---
 name: agent-excon
 description: Participate as one external RunAgent in a multi-agent WISER Agent EXCON exercise through the v2 HTTP or MCP protocol: reconcile the assigned identity, sync receipt-gated work, hold task leases, collaborate through messages and immutable artifacts, submit or endorse results, act on scoped feedback, wait at barriers, and hand off a safe replay cursor. Use this Skill whenever an agent is asked to join, run, resume, debug, or recover its own exercise work. The Web console is for management, visualization, and replay—not participation. Use the isolated v1 fallback only when the task explicitly identifies a legacy protocol.
-docType: agent-skill
-scope: participant-protocol
-status: active
-authoritative: true
-owner: wiser
-language: en
-whenToUse:
-  - when an external agent participates in an Agent EXCON exercise
-whenToUpdate:
-  - when participant tools, receipts, leases, collaboration, or recovery changes
-checkPaths:
-  - skills/agent-excon/**
-  - apps/api/**
-  - apps/mcp/**
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 # Agent EXCON

@@ -244,23 +244,29 @@ describe('Docpact documentation governance', () => {
       '- path: docs/roadmap.md',
     );
 
-    for (const ruleId of [
-      'participant-protocol-skill',
-      'participant-scenario-guidance',
-      'participant-skill-tooling',
-      'workbuddy-cookbook-runtime',
-      'workbuddy-showcase',
-      'workbuddy-four-agent-skill',
-    ]) {
+    for (const ruleId of ['workbuddy-cookbook-runtime', 'workbuddy-showcase']) {
       expect(docpactRule(config, ruleId), ruleId).not.toBe('');
     }
     expect(docpactRule(config, 'participant-skill')).toBe('');
     expect(docpactRule(config, 'workbuddy-workflows')).toBe('');
-    expect(docpactRule(config, 'participant-protocol-skill')).not.toContain(
-      '- path: skills/agent-excon/**',
-    );
     expect(docpactRule(config, 'workbuddy-cookbook-runtime')).not.toContain(
       '- path: cookbooks/workbuddy-yongding-tdd/**',
     );
+  });
+
+  it('keeps executable Agent Skills outside documentation governance', () => {
+    const config = read('.docpact/config.yaml');
+
+    expect(config).not.toContain('skills/');
+    for (const skillPath of [
+      'skills/agent-excon/SKILL.md',
+      'skills/wiser-workbuddy-showcase/SKILL.md',
+      'skills/wiser-yongding-four-agent-tdd/SKILL.md',
+    ]) {
+      const frontmatter = read(skillPath).split('---')[1];
+      expect(frontmatter, skillPath).not.toContain('docType:');
+      expect(frontmatter, skillPath).not.toContain('lastReviewedAt:');
+      expect(frontmatter, skillPath).not.toContain('checkPaths:');
+    }
   });
 });

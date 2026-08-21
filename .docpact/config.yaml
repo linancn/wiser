@@ -51,7 +51,6 @@ ownership:
         include:
           - cookbooks/**
           - scenarios/**
-          - skills/**
       ownerRepo: wiser
 coverage:
   include:
@@ -89,7 +88,6 @@ coverage:
     - scenarios/**/manifest.json
     - scenarios/**/provenance/**
     - scenarios/**/v2/**
-    - skills/**
     - cookbooks/workbuddy-yongding-tdd/cookbook.yaml
     - cookbooks/workbuddy-yongding-tdd/failure-injection.md
     - cookbooks/workbuddy-yongding-tdd/roles/**
@@ -119,7 +117,6 @@ routing:
       paths:
         - apps/api/**
         - apps/mcp/**
-        - skills/agent-excon/**
         - apps/docs/src/content/docs/*/protocols/**
     persistence-security:
       paths:
@@ -135,7 +132,6 @@ routing:
       paths:
         - scenarios/**
         - cookbooks/**
-        - skills/wiser-*/**
         - apps/docs/src/content/docs/*/scenarios/**
 docInventory:
   include:
@@ -160,9 +156,6 @@ docInventory:
     - cookbooks/workbuddy-yongding-tdd/architecture.md
     - cookbooks/workbuddy-yongding-tdd/showcase/README.md
     - scenarios/jjj-yongding-replenishment-2023/PROVENANCE.md
-    - skills/agent-excon/SKILL.md
-    - skills/wiser-workbuddy-showcase/SKILL.md
-    - skills/wiser-yongding-four-agent-tdd/SKILL.md
 repo:
   id: wiser
   owner: wiser
@@ -261,9 +254,7 @@ rules:
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/protocols/mcp.md
         mode: review_or_update
-      - path: skills/agent-excon/SKILL.md
-        mode: review_or_update
-    reason: MCP changes must remain aligned with HTTP-only delegation and the participant Skill.
+    reason: MCP changes must keep the public adapter contract accurate in both locales.
   - id: evaluation-runtime
     scope: repo
     repo: wiser
@@ -396,62 +387,6 @@ rules:
       - path: apps/docs/src/content/docs/en/scenarios/yongding-river-dispatch.md
         mode: review_or_update
     reason: Scenario facts, fixtures, and provenance must stay synchronized with the public scenario guide.
-  - id: participant-protocol-skill
-    scope: repo
-    repo: wiser
-    triggers:
-      - path: skills/agent-excon/SKILL.md
-        kind: agent-workflow
-      - path: skills/agent-excon/references/evidence-rules.md
-        kind: agent-workflow
-      - path: skills/agent-excon/references/feedback-and-errors.md
-        kind: agent-workflow
-      - path: skills/agent-excon/references/interaction-protocol.md
-        kind: agent-workflow
-      - path: skills/agent-excon/references/v1-compatibility.md
-        kind: agent-workflow
-    requiredDocs:
-      - path: skills/agent-excon/SKILL.md
-        mode: review_or_update
-      - path: apps/docs/src/content/docs/zh-CN/protocols/http.md
-        mode: review_or_update
-      - path: apps/docs/src/content/docs/en/protocols/http.md
-        mode: review_or_update
-      - path: apps/docs/src/content/docs/zh-CN/protocols/mcp.md
-        mode: review_or_update
-      - path: apps/docs/src/content/docs/en/protocols/mcp.md
-        mode: review_or_update
-    reason: Participant protocol instructions must remain aligned with both HTTP and MCP contracts.
-  - id: participant-scenario-guidance
-    scope: repo
-    repo: wiser
-    triggers:
-      - path: skills/agent-excon/references/yongding-allocation.md
-        kind: agent-workflow
-      - path: skills/agent-excon/scripts/validate-allocation-plan.mjs
-        kind: agent-workflow
-    requiredDocs:
-      - path: skills/agent-excon/SKILL.md
-        mode: review_or_update
-      - path: apps/docs/src/content/docs/zh-CN/scenarios/yongding-river-dispatch.md
-        mode: review_or_update
-      - path: apps/docs/src/content/docs/en/scenarios/yongding-river-dispatch.md
-        mode: review_or_update
-    reason: Yongding-specific participant guidance must stay aligned with the public scenario contract.
-  - id: participant-skill-tooling
-    scope: repo
-    repo: wiser
-    triggers:
-      - path: skills/agent-excon/agents/**
-        kind: agent-workflow
-      - path: skills/agent-excon/evals/**
-        kind: agent-workflow
-      - path: skills/agent-excon/scripts/lint-skill.mjs
-        kind: agent-workflow
-    requiredDocs:
-      - path: skills/agent-excon/SKILL.md
-        mode: review_or_update
-    reason: Skill metadata, evals, and lint tooling must remain aligned with the published Skill entrypoint.
   - id: workbuddy-cookbook-runtime
     scope: repo
     repo: wiser
@@ -482,23 +417,7 @@ rules:
         kind: agent-workflow
       - path: cookbooks/workbuddy-yongding-tdd/showcase/showcase.yaml
         kind: agent-workflow
-      - path: skills/wiser-workbuddy-showcase/**
-        kind: agent-workflow
     requiredDocs:
       - path: cookbooks/workbuddy-yongding-tdd/showcase/README.md
         mode: review_or_update
-      - path: skills/wiser-workbuddy-showcase/SKILL.md
-        mode: review_or_update
-    reason: Showcase automation and its host-controller Skill must describe the same GUI workflow.
-  - id: workbuddy-four-agent-skill
-    scope: repo
-    repo: wiser
-    triggers:
-      - path: skills/wiser-yongding-four-agent-tdd/**
-        kind: agent-workflow
-    requiredDocs:
-      - path: skills/wiser-yongding-four-agent-tdd/SKILL.md
-        mode: review_or_update
-      - path: cookbooks/workbuddy-yongding-tdd/README.md
-        mode: review_or_update
-    reason: The four-agent controller Skill must remain aligned with the Cookbook entrypoint it operates.
+    reason: Showcase automation must keep the operator-facing GUI workflow current.
