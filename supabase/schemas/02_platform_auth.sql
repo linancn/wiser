@@ -172,7 +172,7 @@ create table platform.delegations (
   delegate_actor_id uuid not null
     references platform.actors(id) on delete restrict,
   tenant_id uuid not null
-    references platform.tenants(id) on delete cascade,
+    references platform.tenants(id) on delete restrict,
   project_id uuid not null,
   scopes text[] not null,
   purpose text not null
@@ -188,11 +188,12 @@ create table platform.delegations (
     ),
   status text not null default 'active'
     check (status in ('active', 'expired', 'revoked')),
+  version bigint not null default 1 check (version > 0),
   expires_at timestamptz not null,
   revoked_at timestamptz,
   created_at timestamptz not null default now(),
   foreign key (project_id, tenant_id)
-    references platform.projects(id, tenant_id) on delete cascade,
+    references platform.projects(id, tenant_id) on delete restrict,
   constraint delegations_distinct_actor_check check (
     delegated_by_actor_id <> delegate_actor_id
   ),
@@ -203,15 +204,23 @@ create table platform.delegations (
     array_to_string(scopes, ',')
       ~ '^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+(,[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+)*$'
   ),
-  constraint delegations_expiry_check check (expires_at > created_at)
+  constraint delegations_expiry_check check (expires_at > created_at),
+  constraint delegations_revocation_state_check check (
+    (status = 'revoked') = (revoked_at is not null)
+  ),
+  constraint delegations_revocation_time_check check (
+    revoked_at is null or revoked_at >= created_at
+  )
 );
 
 create table platform_private.delegated_credentials (
   id uuid primary key default gen_random_uuid(),
   delegation_id uuid not null
-    references platform.delegations(id) on delete cascade,
+    references platform.delegations(id) on delete restrict,
   key_id text not null unique
-    check (key_id ~ '^wdc_[A-Za-z0-9_-]{8,96}$'),
+    check (key_id ~ '^wdc_[A-Za-z0-9_-]{22}$'),
+  hmac_key_id text not null
+    check (hmac_key_id ~ '^[a-z][a-z0-9_-]{0,95}$'),
   token_hmac bytea not null unique
     check (octet_length(token_hmac) = 32),
   expires_at timestamptz not null,
@@ -221,6 +230,16 @@ create table platform_private.delegated_credentials (
   created_at timestamptz not null default now(),
   constraint delegated_credentials_expiry_check check (
     expires_at > created_at
+  ),
+  constraint delegated_credentials_revocation_time_check check (
+    revoked_at is null or revoked_at >= created_at
+  ),
+  constraint delegated_credentials_rotation_target_check check (
+    rotated_to_credential_id is null
+      or rotated_to_credential_id <> id
+  ),
+  constraint delegated_credentials_rotation_state_check check (
+    rotated_to_credential_id is null or revoked_at is not null
   )
 );
 

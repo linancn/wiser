@@ -15,8 +15,8 @@ checkPaths:
   - supabase/**
   - apps/api/**
   - apps/telemetry-ingress/**
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: b571be6e7e1abef540cbda607c4807f000714d33
 ---
 
 ## 四类数据必须分开

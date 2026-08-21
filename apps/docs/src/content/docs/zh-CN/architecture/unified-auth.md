@@ -17,8 +17,8 @@ checkPaths:
   - apps/web/**
   - apps/mcp/**
   - apps/telemetry-ingress/**
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: 493d825a4aa45f9a89f79fd3df2a770f8d0e3c4e
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: b571be6e7e1abef540cbda607c4807f000714d33
 ---
 
 ## 单一身份源
@@ -27,9 +27,9 @@ lastReviewedCommit: 493d825a4aa45f9a89f79fd3df2a770f8d0e3c4e
 
 JWT 证明主体、认证强度与 Session；动态 Tenant、Project、Role 和 Scope 从 Supabase 控制面解析。`user_metadata` 可由用户修改，绝不参与授权；动态权限也不完整复制进 JWT，因为 claims 只有刷新 Token 后才变化。
 
-当前已交付 `platform` / `platform_private` Schema、用户自动建档、Tenant/Project/Membership、Role/Scope/Binding、Delegation、私有 Credential/Audit/Outbox、最小权限与 40 项 pgTAP 契约。框架无关的 `SupabaseJwtPrincipalResolver`、`getClaims` 结果验证器和单查询 PostgreSQL Membership loader 已能组合并 fail closed；实际 Supabase client/连接池注入、Web SSR Session 和委托凭据签发仍属于下一接线里程碑。
+当前已交付 `platform` / `platform_private` Schema、用户自动建档、Tenant/Project/Membership、Role/Scope/Binding、Delegation、私有 Credential/Audit/Outbox、最小权限与 50 项 pgTAP 控制面契约。框架无关的 `SupabaseJwtPrincipalResolver`、`getClaims` 结果验证器和单查询 PostgreSQL Membership loader 已能组合并 fail closed；委托凭据签发仍属于下一授权接线里程碑。
 
-Fastify 已提供 `platform.identity` 模块和 `/api/platform/v1/me` 安全投影。`WISER_AUTH_MODE=supabase` 会在默认进程中创建最新稳定 `supabase-js` client、受限 PostgreSQL Pool 和 fail-closed Resolver；生产缺少任何必要配置时拒绝启动，进程关闭时释放 Pool。Web SSR Session 与委托凭据签发仍是后续里程碑。
+Fastify 已提供 `platform.identity` 模块和 `/api/platform/v1/me` 安全投影。`WISER_AUTH_MODE=supabase` 会在默认进程中创建最新稳定 `supabase-js` client、受限 PostgreSQL Pool 和 fail-closed Resolver；生产缺少任何必要配置时拒绝启动，进程关闭时释放 Pool。委托凭据签发仍是后续里程碑。
 
 Web 已使用最新稳定 `@supabase/ssr` 建立 Browser/Server Client 与 Next.js 16 `proxy.ts`。Proxy 在响应产生前调用 `getClaims()`，刷新后的 Cookie 同时写回 request/response，并设置 `private, no-store`；登录、回调、退出页面和当前用户 Token 转发仍在后续纵切实现。
 
@@ -86,6 +86,8 @@ Web 使用 Supabase SSR Cookie。Server Component 转发当前 Access Token，Fa
 
 - 委托链第一版最大深度为一。
 - 明文 credential 只返回一次；数据库保存带服务器 Pepper 的 HMAC。
+- 委托 Bearer Token 固定使用 `wdc1.<key-id>.<secret>` 封装；公开 key id 只定位私有记录，`hmac_key_id` 选择可轮换的服务端密钥且不会暴露密钥本身。
+- Delegation 带乐观版本；撤销和轮换保留旧 Credential 安全事实，删除 Tenant、Project 或 Delegation 不得级联擦除历史。
 - 撤销委托人 Membership、Project、Agent 或 credential 后，下一次请求失败。
 - MCP Tool 参数、Message、Artifact、日志与 Trace 不得包含凭据。
 - EXCON 私有表只保留通用 credential 与 `runAgentId/runId` 的绑定。

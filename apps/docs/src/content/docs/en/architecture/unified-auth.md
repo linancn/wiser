@@ -17,8 +17,8 @@ checkPaths:
   - apps/web/**
   - apps/mcp/**
   - apps/telemetry-ingress/**
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: 493d825a4aa45f9a89f79fd3df2a770f8d0e3c4e
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: b571be6e7e1abef540cbda607c4807f000714d33
 ---
 
 ## One identity authority
@@ -27,9 +27,9 @@ All WISER systems use the existing Supabase Auth service, JWT signing keys/JWKS,
 
 A JWT proves the subject, authentication assurance, and session. Dynamic Tenant, Project, Role, and Scope facts are resolved from the Supabase control plane. User-editable `user_metadata` never participates in authorization, and dynamic grants are not fully copied into JWTs because claims change only after token refresh.
 
-Delivered now: the `platform` / `platform_private` schemas, automatic user provisioning, Tenant/Project/Membership, Role/Scope/Binding, Delegation, private Credential/Audit/Outbox storage, least-privilege grants, and 40 pgTAP contract checks. The framework-independent `SupabaseJwtPrincipalResolver`, `getClaims` result verifier, and single-query PostgreSQL Membership loader compose and fail closed. Injecting the real Supabase client/database pool, Web SSR sessions, and delegated-credential issuance remains the next wiring milestone.
+Delivered now: the `platform` / `platform_private` schemas, automatic user provisioning, Tenant/Project/Membership, Role/Scope/Binding, Delegation, private Credential/Audit/Outbox storage, least-privilege grants, and 50 pgTAP control-plane contract checks. The framework-independent `SupabaseJwtPrincipalResolver`, `getClaims` result verifier, and single-query PostgreSQL Membership loader compose and fail closed. Delegated-credential issuance remains the next authorization wiring milestone.
 
-Fastify exposes the `platform.identity` module and safe `/api/platform/v1/me` projection. `WISER_AUTH_MODE=supabase` creates the current stable `supabase-js` client, bounded PostgreSQL pool, and fail-closed Resolver in the default process. Production refuses any missing required configuration, and process shutdown closes the pool. Web SSR sessions and delegated-credential issuance remain later milestones.
+Fastify exposes the `platform.identity` module and safe `/api/platform/v1/me` projection. `WISER_AUTH_MODE=supabase` creates the current stable `supabase-js` client, bounded PostgreSQL pool, and fail-closed Resolver in the default process. Production refuses any missing required configuration, and process shutdown closes the pool. Delegated-credential issuance remains a later milestone.
 
 Web now uses the current stable `@supabase/ssr` Browser/Server clients and Next.js 16 `proxy.ts`. Proxy calls `getClaims()` before a response is produced, writes refreshed cookies to both request and response, and sets `private, no-store`. Login, callback, sign-out pages, and current-user token forwarding remain the next vertical slice.
 
@@ -86,6 +86,8 @@ A user or service calls an authorized API to issue a short-lived delegated crede
 
 - Delegation depth is one in the first release.
 - Plaintext credentials are returned once; storage uses a server-peppered HMAC.
+- Delegated bearer tokens use the strict `wdc1.<key-id>.<secret>` envelope. The public key id locates one private row; `hmac_key_id` selects a versioned server key without exposing it.
+- Delegations have an optimistic version. Revocation and rotation keep old Credential rows as security facts; Tenant, Project, or Delegation deletion cannot cascade through that history.
 - Revoking delegator membership, Project, Agent, delegation, or credential rejects the next request.
 - MCP tool arguments, Messages, Artifacts, logs, and traces never contain credentials.
 - EXCON private data retains only the binding between the general credential and `runAgentId/runId`.
