@@ -75,6 +75,17 @@ describe('WorkBuddy Yongding cookbook runner', () => {
     expect(
       result.report.authoritative.interactions.acknowledgedDeliveryCount,
     ).toBeGreaterThanOrEqual(7);
+    expect(result.report.observability).toEqual({
+      bestEffort: true,
+      gap: true,
+      boundaryCoverage: 1,
+      participantTelemetryMode: 'none',
+      platformObservedSpanCount: 0,
+      participantReportedSpanCount: 0,
+      droppedSpanCount: 0,
+      lateSpanCount: 0,
+      traceCount: 0,
+    });
     expect((await stat(result.reportPath)).mode & 0o777).toBe(0o600);
     const serialized = await readFile(result.reportPath, 'utf8');
     expect(serialized).not.toMatch(/wbl_[A-Za-z0-9_-]+/);
