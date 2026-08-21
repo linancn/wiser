@@ -1,3 +1,26 @@
+---
+title: WISER repository agent guide
+docType: contract
+scope: repository
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - before making any repository change
+  - when selecting verification and documentation workflows
+whenToUpdate:
+  - when repository boundaries or delivery rules change
+  - when required verification or governance commands change
+checkPaths:
+  - AGENTS.md
+  - .docpact/config.yaml
+  - .github/workflows/**
+  - package.json
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+---
+
 # Agent EXCON repository instructions
 
 ## Delivery discipline
@@ -17,5 +40,9 @@
 - Never commit secrets or mount `~/.codex/auth.json` into containers.
 
 ## Verification
+
+- Before coding, run `pnpm docpact:route --paths 'packages/core/src/**'` with the intended path or glob and read the returned documents.
+- After coding, run `pnpm docpact:check`; update required documents or record an explicit Docpact review before committing.
+- Validate governance changes with `pnpm docpact:validate`. Do not use baselines or waivers as routine suppressions.
 
 Run `pnpm verify` before each green milestone. Database and browser changes require their focused integration and Playwright checks as well.

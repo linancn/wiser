@@ -1,3 +1,21 @@
+---
+title: Yongding scenario provenance and data boundary
+docType: provenance
+scope: jjj-yongding-replenishment-2023
+status: active
+authoritative: true
+owner: wiser
+language: bilingual
+whenToUse:
+  - when using or changing factual anchors and synthetic scenario data
+whenToUpdate:
+  - when sources, licensing, facts, or generated fixtures change
+checkPaths:
+  - scenarios/jjj-yongding-replenishment-2023/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+---
+
 # Provenance and data boundary / 来源与数据边界
 
 本案例是“事实锚定的合成演练”，不是现实调度模型，也不得用于给出现实补水或供水指令。

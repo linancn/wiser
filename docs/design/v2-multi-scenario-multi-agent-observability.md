@@ -1,3 +1,25 @@
+---
+title: WISER Agent EXCON v2 architecture
+docType: architecture
+scope: agent-excon-v2
+status: accepted
+authoritative: true
+owner: wiser
+language: zh-CN
+whenToUse:
+  - when changing v2 domain, protocol, persistence, replay, or observability boundaries
+whenToUpdate:
+  - when an accepted v2 architectural decision changes
+checkPaths:
+  - packages/contracts/**
+  - packages/core/**
+  - apps/api/**
+  - supabase/**
+  - infrastructure/observability/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+---
+
 # WISER Agent EXCON v2：多场景、多智能体与可观测导调总体设计
 
 > 状态：Accepted for incremental delivery<br />

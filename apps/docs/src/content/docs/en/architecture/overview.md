@@ -1,6 +1,22 @@
 ---
 title: Architecture
 description: Current WISER Agent EXCON v2 implementation, target boundaries, multi-agent collaboration, authoritative replay, and OpenTelemetry.
+docType: architecture
+scope: agent-excon-v2
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - when changing v2 system boundaries or understanding component relationships
+whenToUpdate:
+  - when core, protocol, persistence, or observability architecture changes
+checkPaths:
+  - packages/contracts/**
+  - packages/core/**
+  - apps/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## Product context

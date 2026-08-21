@@ -1,6 +1,22 @@
 ---
 title: 安全与数据边界
 description: 防止事实泄露、越权观察、凭据扩散和不可审计修改。
+docType: security-guide
+scope: agent-excon-v2
+status: active
+authoritative: true
+owner: wiser
+language: zh-CN
+whenToUse:
+  - 修改身份、RLS、秘密数据或审计边界时
+whenToUpdate:
+  - 授权、数据库安全或凭据策略变化时
+checkPaths:
+  - supabase/**
+  - apps/api/**
+  - apps/telemetry-ingress/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## 四类数据必须分开

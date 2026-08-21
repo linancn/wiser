@@ -1,6 +1,22 @@
 ---
 title: v1 迁移与 v2 TDD
 description: 从单 Agent Episode 安全切换到多 Agent Run 的在线顺序和首批失败测试。
+docType: migration-guide
+scope: agent-excon-v2
+status: active
+authoritative: true
+owner: wiser
+language: zh-CN
+whenToUse:
+  - 修改 v1 兼容、v2 迁移或确定性评价流程时
+whenToUpdate:
+  - 迁移顺序、TDD 关口或持久化状态变化时
+checkPaths:
+  - apps/worker/**
+  - packages/infra/**
+  - supabase/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## 迁移原则

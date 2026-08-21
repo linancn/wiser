@@ -1,3 +1,23 @@
+---
+title: Agent EXCON MCP adapter guide
+docType: component-guide
+scope: apps/mcp
+status: active
+authoritative: true
+owner: wiser
+language: bilingual
+whenToUse:
+  - when changing, running, or integrating the MCP adapter
+whenToUpdate:
+  - when MCP tools, HTTP mappings, credentials, or protocol selection changes
+checkPaths:
+  - apps/mcp/**
+  - apps/api/**
+  - skills/agent-excon/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+---
+
 # Agent EXCON MCP Server
 
 本包提供 WISER Agent EXCON 的本地 stdio MCP 适配器。它只调用公开 HTTP API，不读 PostgreSQL，不持有 service-role 凭据，也不通过 Web 参训。默认协议是多场景、多智能体 **v2**，默认 API 基路径是 `/api/v2/`。

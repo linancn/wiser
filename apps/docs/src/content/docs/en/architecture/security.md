@@ -1,6 +1,22 @@
 ---
 title: Security and data boundaries
 description: Prevent fact leakage, unauthorized observations, credential spread, and unaudited changes.
+docType: security-guide
+scope: agent-excon-v2
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - when changing identity, RLS, hidden data, or audit boundaries
+whenToUpdate:
+  - when authorization, database security, or credential policy changes
+checkPaths:
+  - supabase/**
+  - apps/api/**
+  - apps/telemetry-ingress/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## Separate four data classes

@@ -1,6 +1,21 @@
 ---
 title: Beijing–Tianjin–Hebei Yongding River ecological replenishment and multi-source dispatch
 description: A reproducible, fact-anchored exercise with entirely synthetic operating data.
+docType: scenario-guide
+scope: jjj-yongding-replenishment-2023
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - when using or changing the Yongding multi-source dispatch scenario
+whenToUpdate:
+  - when scenario facts, synthetic fixtures, evaluation rules, or sources change
+checkPaths:
+  - scenarios/jjj-yongding-replenishment-2023/**
+  - skills/agent-excon/references/yongding-allocation.md
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## Scenario status

@@ -1,6 +1,22 @@
 ---
 title: 快速开始
 description: 在本机验证 Agent EXCON v2 多智能体协议纵切、MCP 与观测链路。
+docType: workflow
+scope: repository
+status: active
+authoritative: true
+owner: wiser
+language: zh-CN
+whenToUse:
+  - 首次安装、验证或启动本机开发栈时
+whenToUpdate:
+  - 工具链、命令、端口或本机服务入口变化时
+checkPaths:
+  - package.json
+  - compose.yaml
+  - .env.example
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## 先认识当前边界
@@ -33,6 +49,18 @@ corepack enable
 pnpm install
 pnpm verify
 ```
+
+## 文档治理
+
+仓库使用 Docpact 0.1.9 把实现路径映射到必须阅读、更新或显式审查的文档。先安装 CLI；编码前查询路由，编码后检查未暂存的工作区变更：
+
+```bash
+cargo install docpact --version 0.1.9
+pnpm docpact:route --paths 'packages/core/src/**'
+pnpm docpact:check
+```
+
+修改 `.docpact/config.yaml` 或 CI 后运行 `pnpm docpact:validate`。PR 检查会阻断未满足的文档义务和未被规则覆盖的实现变更。
 
 只验证当前 v2 多智能体协议纵切：
 

@@ -1,3 +1,24 @@
+---
+title: WISER Agent EXCON roadmap
+docType: roadmap
+scope: agent-excon
+status: active
+authoritative: true
+owner: wiser
+language: bilingual
+whenToUse:
+  - when planning work or checking delivered and unfinished boundaries
+whenToUpdate:
+  - when milestone status, acceptance gates, or scope changes
+checkPaths:
+  - apps/**
+  - packages/**
+  - supabase/**
+  - docs/design/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+---
+
 # WISER Agent EXCON roadmap / 路线图
 
 ## Product context / 产品上下文

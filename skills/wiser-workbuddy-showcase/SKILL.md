@@ -1,6 +1,21 @@
 ---
 name: wiser-workbuddy-showcase
 description: Operate the local WorkBuddy GUI as the host controller and present a four-agent WISER Yongding exercise in the collaboration console. Use for a scripted, Red-to-Green rework, or explicitly authorized live WorkBuddy showcase; do not use this skill to participate as a fifth RunAgent.
+docType: agent-skill
+scope: workbuddy-showcase
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - when hosting the local four-agent WorkBuddy showcase
+whenToUpdate:
+  - when showcase profiles, GUI flow, safety boundaries, or cleanup changes
+checkPaths:
+  - skills/wiser-workbuddy-showcase/**
+  - cookbooks/workbuddy-yongding-tdd/showcase/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 # WISER WorkBuddy showcase

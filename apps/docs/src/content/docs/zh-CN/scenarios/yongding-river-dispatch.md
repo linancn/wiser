@@ -1,6 +1,21 @@
 ---
 title: 京津冀永定河生态补水与多水源联合调度
 description: 以真实水系统和水源关系为锚点、使用合成运行数据的首个可复现演练。
+docType: scenario-guide
+scope: jjj-yongding-replenishment-2023
+status: active
+authoritative: true
+owner: wiser
+language: zh-CN
+whenToUse:
+  - 使用或修改永定河多水源联合调度场景时
+whenToUpdate:
+  - 场景事实、合成 fixture、评价规则或来源变化时
+checkPaths:
+  - scenarios/jjj-yongding-replenishment-2023/**
+  - skills/agent-excon/references/yongding-allocation.md
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## 案例性质

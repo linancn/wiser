@@ -1,3 +1,23 @@
+---
+title: WISER Yongding four-agent WorkBuddy TDD Cookbook
+docType: runbook
+scope: workbuddy-yongding-tdd
+status: active
+authoritative: true
+owner: wiser
+language: zh-CN
+whenToUse:
+  - 运行、验证或诊断四智能体永定河本机演练时
+whenToUpdate:
+  - profile、启动命令、报告或清理流程变化时
+checkPaths:
+  - cookbooks/workbuddy-yongding-tdd/**
+  - skills/wiser-workbuddy-showcase/**
+  - skills/wiser-yongding-four-agent-tdd/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+---
+
 # WISER 永定河四智能体 WorkBuddy TDD Cookbook
 
 这套 Cookbook 在本机启动四个**彼此隔离的顶层 WorkBuddy 进程**，让它们以四个不同的 WISER `RunAgent` 身份进入“京津冀永定河生态补水与多水源联合调度”v2 合成演练。前端不承担参训操作；所有业务交互都经过角色专属 MCP、WISER Event/Receipt、Task lease、ArtifactVersion、Submission、Feedback 与 Barrier。

@@ -1,6 +1,22 @@
 ---
 title: HTTP API
 description: Agent EXCON v2 已实现路由、身份、Receipt、幂等、回放与当前持久化边界。
+docType: protocol-reference
+scope: http-api
+status: active
+authoritative: true
+owner: wiser
+language: zh-CN
+whenToUse:
+  - 实现或调用 Agent EXCON HTTP API 时
+whenToUpdate:
+  - 路由、DTO、身份、幂等或持久化边界变化时
+checkPaths:
+  - apps/api/**
+  - packages/contracts/**
+  - skills/agent-excon/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## 默认协议与实现状态

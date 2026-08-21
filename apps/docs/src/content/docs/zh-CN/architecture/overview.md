@@ -1,6 +1,22 @@
 ---
 title: 总体架构
 description: WISER Agent EXCON v2 的当前实现、目标边界、多智能体协作、权威回放与 OpenTelemetry。
+docType: architecture
+scope: agent-excon-v2
+status: active
+authoritative: true
+owner: wiser
+language: zh-CN
+whenToUse:
+  - 修改 v2 系统边界或理解组件关系时
+whenToUpdate:
+  - 核心、协议、持久化或观测架构变化时
+checkPaths:
+  - packages/contracts/**
+  - packages/core/**
+  - apps/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## 产品上下文

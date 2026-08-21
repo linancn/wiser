@@ -1,3 +1,23 @@
+---
+title: WISER local observability guide
+docType: runbook
+scope: infrastructure/observability
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - when operating or changing the local telemetry stack
+whenToUpdate:
+  - when images, ports, trust boundaries, or smoke verification changes
+checkPaths:
+  - infrastructure/observability/**
+  - apps/telemetry-ingress/**
+  - compose.yaml
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+---
+
 # WISER local observability profile
 
 This optional Compose profile provides a local technical drill-down stack:

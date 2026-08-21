@@ -1,6 +1,22 @@
 ---
 title: MCP 接入
 description: 使用 18 个已实现的 v2 stdio Tools 安全参与多智能体 Run，并显式隔离 v1 compatibility。
+docType: protocol-reference
+scope: mcp-adapter
+status: active
+authoritative: true
+owner: wiser
+language: zh-CN
+whenToUse:
+  - 通过 MCP 参训或修改 MCP 工具时
+whenToUpdate:
+  - 工具、HTTP 映射、凭据或版本选择变化时
+checkPaths:
+  - apps/mcp/**
+  - apps/api/**
+  - skills/agent-excon/**
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
 ---
 
 ## MCP 是 HTTP 适配器

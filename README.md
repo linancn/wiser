@@ -1,3 +1,24 @@
+---
+title: WISER 项目概览
+docType: overview
+scope: repository
+status: active
+authoritative: true
+owner: wiser
+language: zh-CN
+whenToUse:
+  - 了解项目边界、当前状态与本机入口时
+whenToUpdate:
+  - 产品边界、交付状态或开发入口变化时
+checkPaths:
+  - apps/**
+  - packages/**
+  - compose.yaml
+  - docs/roadmap.md
+lastReviewedAt: 2026-08-21
+lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+---
+
 # WISER · 水地图
 
 [English](./README.en.md) · 中文（默认）
@@ -61,6 +82,16 @@ corepack enable
 pnpm install
 pnpm verify
 ```
+
+仓库使用 Docpact 0.1.9 确定性地关联代码变更与文档义务。安装后，可在编码前查询阅读路径，并在编码后检查工作区变更：
+
+```bash
+cargo install docpact --version 0.1.9
+pnpm docpact:route --paths 'packages/core/src/**'
+pnpm docpact:check
+```
+
+规则位于 [`.docpact/config.yaml`](./.docpact/config.yaml)，PR 会在 CI 中执行阻断检查。
 
 启动完整开发栈：
 
