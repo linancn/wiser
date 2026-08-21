@@ -17,6 +17,7 @@ const rootPackage = JSON.parse(
 const requiredProfileServices = [
   'data-postgres',
   'data-migrate',
+  'data-object-store-init',
   'seaweedfs',
   'weaviate',
   'opensearch',
@@ -122,6 +123,38 @@ describe('Data Foundation Compose profile', () => {
     expect(compose).not.toMatch(
       /(?:PASSWORD|SECRET):\s*(?:postgres|password|neo4j)?\s*$/m,
     );
+  });
+
+  it('wires the production Worker, trusted OpenSearch CA, and authority bucket bootstrap', () => {
+    const worker = serviceBlock('data-worker');
+    for (const name of [
+      'DATA_WORKER_ACTOR_ID',
+      'DATA_S3_ENDPOINT',
+      'DATA_S3_BUCKET',
+      'DATA_CLAMAV_HOST',
+      'DATA_TIKA_ENDPOINT',
+      'DATA_WEAVIATE_URL',
+      'DATA_OPENSEARCH_URL',
+      'DATA_NEO4J_URL',
+      'DATA_STAC_API_URL',
+      'DATA_STAC_ASSET_BASE_URL',
+      'DATA_PROJECTION_CONSUMER_NAME',
+      'DATA_FAKE_EMBEDDING_VERSION',
+    ]) {
+      expect(worker, name).toContain(`${name}:`);
+    }
+    for (const service of ['api', 'data-worker']) {
+      const block = serviceBlock(service);
+      expect(block, service).toContain(
+        'NODE_EXTRA_CA_CERTS: /etc/wiser/opensearch/root-ca.pem',
+      );
+      expect(block, service).toContain('source: opensearch-ca');
+    }
+    const init = serviceBlock('data-object-store-init');
+    expect(init).toContain('condition: service_healthy');
+    expect(init).toContain('init-object-store');
+    expect(worker).toContain('condition: service_completed_successfully');
+    expect(compose).toMatch(/\n {2}opensearch-ca:\n/);
   });
 });
 
