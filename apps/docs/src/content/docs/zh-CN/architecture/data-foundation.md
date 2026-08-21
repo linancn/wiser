@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 494eb337076f2a0ff670168c2dc55ef894862056
+lastReviewedCommit: 964a6d046f977e6b84da512b23c69d40c36fb919
 ---
 
 ## 边界与当前实现
@@ -86,6 +86,8 @@ REJECTED、PUBLISHED、FAILED、CANCELLED 为终态。
 质量门禁只读取确定性检查，按正权重计算稳定分数；blocking rule 失败时即使分数达到阈值也不能通过。A/B/C 表示质量等级，不等于验收结论。只有 `PASSED` 或 `CONDITIONALLY_PASSED` 才具有发布资格。
 
 派生数据的安全等级取全部来源的最高等级。调用方可以显式提高，但不能降低继承等级。发布还必须同时满足：权威版本已提交、质量门禁通过、验收可发布、入库处于 `PROJECTING`，且每个唯一投影均为 `SUCCEEDED`。
+
+测试、CI 与本机 smoke 使用 `DeterministicFakeEmbedding`：以精确文本和声明的 fake model version 做 domain-separated SHA-256 扩展，再归一化到配置的 8–4096 维。它不依赖网络、时钟、随机数或模型；相同文本/版本必得相同有限数值，且显式 model identity 会进入投影 metadata。
 
 ## 权威提交与投影
 

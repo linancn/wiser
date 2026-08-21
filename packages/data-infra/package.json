@@ -6,6 +6,7 @@
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts",
+    "./embedding": "./src/embedding/index.ts",
     "./migrations": "./src/migrations/index.ts",
     "./object-store": "./src/object-store/index.ts",
     "./projections/evidence": "./src/projections/evidence/index.ts",

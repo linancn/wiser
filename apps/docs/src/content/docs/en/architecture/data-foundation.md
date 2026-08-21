@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 494eb337076f2a0ff670168c2dc55ef894862056
+lastReviewedCommit: 964a6d046f977e6b84da512b23c69d40c36fb919
 ---
 
 ## Boundary and implementation status
@@ -86,6 +86,8 @@ Deterministic transformation occurs between `SEMANTIC_MAPPED` and `VALIDATED`; i
 The quality gate reads deterministic checks only and calculates a stable positive-weight score. A failed blocking rule prevents passage even when the score meets the threshold. A/B/C is a quality grade, not acceptance. Only `PASSED` and `CONDITIONALLY_PASSED` are publication-eligible.
 
 Derived data inherits the highest security level of every source. A caller may explicitly raise but never lower that inherited level. Publication additionally requires a committed authoritative version, a passing quality gate, eligible acceptance, ingestion at `PROJECTING`, and one unique successful result for every projection.
+
+Tests, CI, and the local smoke use `DeterministicFakeEmbedding`: a domain-separated SHA-256 expansion keyed by the exact text and declared fake-model version, normalized to a configured 8–4096 dimensions. It has no network, clock, random, or model dependency; identical text/version returns identical finite values, while its explicit model identity remains part of projection metadata.
 
 ## Authoritative commit and projections
 
