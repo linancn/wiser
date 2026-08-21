@@ -62,7 +62,16 @@ class MemoryS3Client implements S3AuthorityCommandClient {
       const sourceKey = source.slice(source.indexOf('/') + 1);
       const object = this.objects.get(sourceKey);
       if (object === undefined) return Promise.reject(notFound());
-      this.objects.set(key, object);
+      const metadata = current.input['Metadata'];
+      const replacementHash: unknown =
+        metadata !== null && typeof metadata === 'object'
+          ? Reflect.get(metadata, 'sha256')
+          : undefined;
+      this.objects.set(key, {
+        ...object,
+        sha256:
+          typeof replacementHash === 'string' ? replacementHash : object.sha256,
+      });
       return Promise.resolve({ CopyObjectResult: { ETag: object.etag } });
     }
     if (current.constructor.name === 'CreateMultipartUploadCommand') {
@@ -105,7 +114,7 @@ const objectInput = {
 } as const;
 
 describe('S3-compatible authority object store', () => {
-  it('creates a tenant/project-scoped content-addressed quarantine PUT', async () => {
+  it('creates a tenant/project-scoped upload-id quarantine PUT', async () => {
     const { client, presign, store } = fixture();
 
     const plan = await store.planQuarantinePut({
@@ -116,7 +125,7 @@ describe('S3-compatible authority object store', () => {
     expect(plan).toEqual({
       kind: 'single',
       bucket: 'wiser-authority',
-      key: `tenants/${TENANT_ID}/projects/${PROJECT_ID}/quarantine/${UPLOAD_ID}/sha256/${HASH}`,
+      key: `tenants/${TENANT_ID}/projects/${PROJECT_ID}/quarantine/${UPLOAD_ID}/object`,
       url: 'http://seaweedfs:8333/signed/PutObjectCommand?ttl=300',
       expiresAt: '2026-08-22T00:05:00.000Z',
       requiredHeaders: {
@@ -135,6 +144,30 @@ describe('S3-compatible authority object store', () => {
       ContentType: 'application/json',
       Metadata: { sha256: HASH },
     });
+  });
+
+  it('accepts a pre-hash upload and leaves hashing to the trusted worker', async () => {
+    const { presign, store } = fixture();
+
+    const plan = await store.planQuarantinePut({
+      tenantId: TENANT_ID,
+      projectId: PROJECT_ID,
+      uploadId: UPLOAD_ID,
+      sizeBytes: SIZE,
+      contentType: 'application/json',
+      ttlSeconds: 300,
+    });
+
+    expect(plan.key).toBe(
+      `tenants/${TENANT_ID}/projects/${PROJECT_ID}/quarantine/${UPLOAD_ID}/object`,
+    );
+    expect(plan.requiredHeaders).toEqual({
+      'content-length': String(SIZE),
+      'content-type': 'application/json',
+    });
+    expect(
+      commandLike(vi.mocked(presign).mock.calls[0]?.[0]).input['Metadata'],
+    ).toBeUndefined();
   });
 
   it.each([
@@ -180,6 +213,26 @@ describe('S3-compatible authority object store', () => {
     expect(presign).toHaveBeenCalledOnce();
   });
 
+  it('limits single PUT to 5 GiB and all authority objects to 5 TiB', async () => {
+    const { store } = fixture();
+
+    await expect(
+      store.planQuarantinePut({
+        ...objectInput,
+        sizeBytes: 5 * 1024 * 1024 * 1024 + 1,
+        ttlSeconds: 300,
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_OBJECT_REFERENCE' });
+    await expect(
+      store.planQuarantineMultipart({
+        ...objectInput,
+        sizeBytes: 5 * 1024 * 1024 * 1024 * 1024 + 1,
+        partSizeBytes: 1024 * 1024 * 1024,
+        ttlSeconds: 300,
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_OBJECT_REFERENCE' });
+  });
+
   it('builds a bounded multipart plan with exact part ranges', async () => {
     const { client, presign, store } = fixture();
     const partSizeBytes = 5 * 1024 * 1024;
@@ -218,6 +271,62 @@ describe('S3-compatible authority object store', () => {
           ([command]) => commandLike(command).input['PartNumber'],
         ),
     ).toEqual([1, 2, 3]);
+  });
+
+  it('re-signs a persisted multipart upload without creating another upload', async () => {
+    const { client, presign, store } = fixture();
+    const partSizeBytes = 5 * 1024 * 1024;
+    const sizeBytes = partSizeBytes * 2 + 17;
+
+    const initial = await store.planQuarantineMultipart({
+      ...objectInput,
+      sizeBytes,
+      partSizeBytes,
+      ttlSeconds: 600,
+    });
+    const createCount = client.commands.filter(
+      ({ constructor }) => constructor.name === 'CreateMultipartUploadCommand',
+    ).length;
+    vi.mocked(presign).mockClear();
+
+    const replay = await store.resignQuarantineMultipart({
+      ...objectInput,
+      sizeBytes,
+      partSizeBytes,
+      multipartUploadId: initial.uploadId,
+      ttlSeconds: 300,
+    });
+
+    expect(replay.uploadId).toBe(initial.uploadId);
+    expect(replay.parts.map(({ partNumber }) => partNumber)).toEqual([1, 2, 3]);
+    expect(
+      client.commands.filter(
+        ({ constructor }) =>
+          constructor.name === 'CreateMultipartUploadCommand',
+      ),
+    ).toHaveLength(createCount);
+    expect(presign).toHaveBeenCalledTimes(3);
+  });
+
+  it('aborts a newly-created multipart upload when part signing fails', async () => {
+    const { client, presign, store } = fixture();
+    vi.mocked(presign).mockRejectedValueOnce(
+      new Error('private presigner detail'),
+    );
+
+    await expect(
+      store.planQuarantineMultipart({
+        ...objectInput,
+        sizeBytes: 6 * 1024 * 1024,
+        partSizeBytes: 5 * 1024 * 1024,
+        ttlSeconds: 300,
+      }),
+    ).rejects.toMatchObject({ code: 'OBJECT_STORE_UNAVAILABLE' });
+    expect(
+      client.commands.filter(
+        ({ constructor }) => constructor.name === 'AbortMultipartUploadCommand',
+      ),
+    ).toHaveLength(1);
   });
 
   it('completes multipart uploads with an ordered, duplicate-free part manifest', async () => {
@@ -282,6 +391,17 @@ describe('S3-compatible authority object store', () => {
     await expect(
       store.verifyQuarantineObject(objectInput),
     ).rejects.toMatchObject({ code: 'OBJECT_INTEGRITY_MISMATCH' });
+    client.objects.set(plan.key, {
+      size: SIZE,
+      sha256: HASH,
+      etag: 'etag-quarantine',
+    });
+    await expect(
+      store.verifyQuarantineObject({
+        ...objectInput,
+        expectedEtag: 'different-etag',
+      }),
+    ).rejects.toMatchObject({ code: 'OBJECT_INTEGRITY_MISMATCH' });
   });
 
   it('copies quarantine into immutable raw/version namespaces idempotently', async () => {
@@ -318,6 +438,54 @@ describe('S3-compatible authority object store', () => {
         ({ constructor }) => constructor.name === 'CopyObjectCommand',
       ),
     ).toHaveLength(2);
+  });
+
+  it('promotes a pre-hash quarantine object with the worker-computed hash metadata', async () => {
+    const { client, store } = fixture();
+    const plan = await store.planQuarantinePut({
+      tenantId: TENANT_ID,
+      projectId: PROJECT_ID,
+      uploadId: UPLOAD_ID,
+      sizeBytes: SIZE,
+      contentType: 'application/json',
+      ttlSeconds: 300,
+    });
+    client.objects.set(plan.key, {
+      size: SIZE,
+      sha256: '',
+      etag: 'etag-pre-hash',
+    });
+    // HEAD without metadata is represented by removing the synthetic value.
+    const originalSend = client.send.bind(client);
+    client.send = (command) => {
+      const current = commandLike(command);
+      if (
+        current.constructor.name === 'HeadObjectCommand' &&
+        current.input['Key'] === plan.key
+      ) {
+        return Promise.resolve({ ContentLength: SIZE, ETag: 'etag-pre-hash' });
+      }
+      return originalSend(command);
+    };
+
+    const committed = await store.commitQuarantineObject({
+      ...objectInput,
+      versionId: VERSION_ID,
+    });
+
+    expect(client.objects.get(committed.raw.key)?.sha256).toBe(HASH);
+    expect(client.objects.get(committed.version.key)?.sha256).toBe(HASH);
+    expect(
+      client.commands.filter(
+        ({ constructor }) => constructor.name === 'CopyObjectCommand',
+      ),
+    ).toSatisfy((commands: CommandLike[]) =>
+      commands.every(
+        ({ input }) =>
+          input['MetadataDirective'] === 'REPLACE' &&
+          Reflect.get(input['Metadata'] as object, 'sha256') === HASH,
+      ),
+    );
   });
 
   it('never overwrites a destination whose stored hash differs', async () => {
