@@ -70,4 +70,32 @@ describe('bounded internal projection HTTP client', () => {
     expect(String(error)).not.toContain('password');
     expect(cancelled).toBe(true);
   });
+
+  it('aborts in-flight projection calls during graceful shutdown', async () => {
+    let requestSignal: AbortSignal | undefined;
+    const client = new BoundedProjectionHttpClient({
+      allowedOrigins: ['http://weaviate:8080'],
+      timeoutMs: 30_000,
+      maximumResponseBytes: 1_024,
+      fetch: (_url, init) => {
+        requestSignal = init?.signal as AbortSignal;
+        return new Promise<Response>((_resolve, reject) => {
+          requestSignal.addEventListener(
+            'abort',
+            () => reject(new Error('aborted backend request')),
+            { once: true },
+          );
+        });
+      },
+    });
+    const pending = client.request({
+      method: 'GET',
+      url: 'http://weaviate:8080/v1/.well-known/ready',
+      headers: {},
+    });
+    client.close();
+
+    await expect(pending).rejects.toThrow('failed safely');
+    expect(requestSignal?.aborted).toBe(true);
+  });
 });
