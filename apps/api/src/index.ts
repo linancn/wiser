@@ -3,6 +3,10 @@ export {
   registerWiserApiModules,
   type WiserApiModule,
 } from './platform/modules.js';
+export {
+  createPlatformIdentityModule,
+  type PlatformPrincipalResolver,
+} from './platform/identity-module.js';
 export { StaticParticipantAuthenticator } from './auth.js';
 export {
   InMemoryExerciseService,

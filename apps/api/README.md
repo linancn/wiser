@@ -32,6 +32,8 @@ The default `InMemoryExerciseService` (v1) and `InMemoryV2ExerciseService` are d
 
 `buildApp()` is the WISER Fastify composition root. Additional product systems register explicit, statically imported `WiserApiModule` values through `BuildAppOptions.modules`; module ids are namespaced and unique, and duplicate ids fail during readiness. Agent EXCON routes remain available while Data Foundation and future systems join the same process without copying the HTTP host.
 
+`createPlatformIdentityModule()` adds the protected `GET /api/platform/v1/me` vertical slice when a `PlatformPrincipalResolver` is injected. It requires Bearer, Tenant, Project, and Purpose context and returns only the safe actor, role, scope, and authorization-version projection; credentials and Session ids never enter the response.
+
 Participant requests use `Authorization: Bearer <token>`. Every POST uses a UUID `Idempotency-Key`; observe, submit, and advance also include `episodeVersion`.
 
 Key routes:

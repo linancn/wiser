@@ -20,6 +20,8 @@
   "dependencies": {
     "@agent-excon/contracts": "workspace:*",
     "@agent-excon/core": "workspace:*",
+    "@wiser/platform-auth": "workspace:*",
+    "@wiser/platform-contracts": "workspace:*",
     "@fastify/cors": "11.3.0",
     "@fastify/swagger": "9.8.1",
     "fastify": "5.12.1",

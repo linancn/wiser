@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 
 import type { PlatformRequestContext } from '@wiser/platform-contracts';
+import type { ResolveSupabasePrincipalInput } from '@wiser/platform-auth';
 
 import { buildApp } from '../src/app.js';
 import { createPlatformIdentityModule } from '../src/platform/identity-module.js';
@@ -38,7 +39,9 @@ afterEach(async () => {
 
 describe('WISER platform identity HTTP module', () => {
   it('returns the safe unified principal resolved from bearer and project context', async () => {
-    const resolve = vi.fn(() => Promise.resolve(context));
+    const resolve = vi.fn((_input: ResolveSupabasePrincipalInput) =>
+      Promise.resolve(context),
+    );
     const app = buildApp({
       modules: [createPlatformIdentityModule({ resolve })],
     });
@@ -66,15 +69,14 @@ describe('WISER platform identity HTTP module', () => {
       purpose: 'operate',
       authzVersion: 2,
     });
-    expect(resolve).toHaveBeenCalledWith(
-      expect.objectContaining({
-        token: 'verified-token',
-        tenantId: TENANT_ID,
-        projectId: PROJECT_ID,
-        purpose: 'operate',
-        traceId: expect.stringMatching(/^[a-f0-9]{32}$/),
-      }),
-    );
+    const resolveInput = resolve.mock.calls[0]?.[0];
+    expect(resolveInput).toMatchObject({
+      token: 'verified-token',
+      tenantId: TENANT_ID,
+      projectId: PROJECT_ID,
+      purpose: 'operate',
+    });
+    expect(resolveInput?.traceId).toMatch(/^[a-f0-9]{32}$/);
   });
 
   it('fails closed when credentials or authorization context are absent', async () => {

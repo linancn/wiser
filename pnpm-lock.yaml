@@ -61,6 +61,12 @@ importers:
       '@fastify/swagger':
         specifier: 9.8.1
         version: 9.8.1(supports-color@7.2.0)
+      '@wiser/platform-auth':
+        specifier: workspace:*
+        version: link:../../packages/platform-auth
+      '@wiser/platform-contracts':
+        specifier: workspace:*
+        version: link:../../packages/platform-contracts
       fastify:
         specifier: 5.12.1
         version: 5.12.1

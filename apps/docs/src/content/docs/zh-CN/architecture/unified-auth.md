@@ -29,6 +29,8 @@ JWT 证明主体、认证强度与 Session；动态 Tenant、Project、Role 和 
 
 当前已交付 `platform` / `platform_private` Schema、用户自动建档、Tenant/Project/Membership、Role/Scope/Binding、Delegation、私有 Credential/Audit/Outbox、最小权限与 40 项 pgTAP 契约。框架无关的 `SupabaseJwtPrincipalResolver`、`getClaims` 结果验证器和单查询 PostgreSQL Membership loader 已能组合并 fail closed；实际 Supabase client/连接池注入、Web SSR Session 和委托凭据签发仍属于下一接线里程碑。
 
+Fastify 已提供可注入的 `platform.identity` 模块和 `/api/platform/v1/me` 安全投影，但默认进程尚未创建真实 Supabase client/连接池，因此该模块只在显式注入 Resolver 的测试与组合配置中注册。
+
 ## 控制面模型
 
 ```text
