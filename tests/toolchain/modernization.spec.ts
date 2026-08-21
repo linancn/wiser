@@ -135,9 +135,31 @@ describe('Fumadocs documentation application', () => {
   it('runs the independent docs service through Next.js', () => {
     const compose = read('compose.yaml');
     expect(compose).toContain(
-      'pnpm --filter @agent-excon/docs exec next dev --hostname 0.0.0.0 --port 4321',
+      'pnpm --filter @wiser/docs exec next dev --hostname 0.0.0.0 --port 4321',
     );
-    expect(compose).not.toContain('@agent-excon/docs exec astro');
+    expect(compose).not.toContain('@wiser/docs exec astro');
+  });
+
+  it('uses the WISER namespace for shared hosts and keeps EXCON domain packages', () => {
+    for (const [manifestPath, packageName] of [
+      ['apps/api/package.json', '@wiser/api'],
+      ['apps/docs/package.json', '@wiser/docs'],
+      ['apps/mcp/package.json', '@wiser/mcp'],
+      ['apps/telemetry-ingress/package.json', '@wiser/telemetry-ingress'],
+      ['apps/web/package.json', '@wiser/web'],
+    ]) {
+      expect(readJson(manifestPath).name, manifestPath).toBe(packageName);
+    }
+
+    expect(readJson('apps/worker/package.json').name).toBe(
+      '@agent-excon/worker',
+    );
+    expect(readJson('packages/contracts/package.json').name).toBe(
+      '@agent-excon/contracts',
+    );
+    expect(readJson('packages/core/package.json').name).toBe(
+      '@agent-excon/core',
+    );
   });
 
   it('keeps host-generated Fumadocs artifacts out of Docker images', () => {
@@ -169,7 +191,7 @@ describe('Fumadocs documentation application', () => {
     const docsScripts = docsManifest.scripts as Record<string, string>;
 
     expect(rootScripts.prelint).toBe(
-      'pnpm --filter @agent-excon/docs generate',
+      'pnpm --filter @wiser/docs generate',
     );
     expect(docsScripts.generate).toBe('fumadocs-mdx');
 
