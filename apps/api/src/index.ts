@@ -7,6 +7,13 @@ export {
   createPlatformIdentityModule,
   type PlatformPrincipalResolver,
 } from './platform/identity-module.js';
+export {
+  createPlatformAuthModuleFromEnvironment,
+  loadPlatformAuthRuntimeConfig,
+  type AuthorizationDatabase,
+  type PlatformAuthRuntimeConfig,
+  type PlatformAuthRuntimeFactories,
+} from './platform/auth-runtime.js';
 export { StaticParticipantAuthenticator } from './auth.js';
 export {
   InMemoryExerciseService,

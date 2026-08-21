@@ -74,6 +74,19 @@ node skills/agent-excon/scripts/lint-skill.mjs
 
 These tests cover distinct-role quorum, Task/Barrier state, Receipt chains, `/sync`, Task leases, Messages/Artifacts, Submissions/endorsements, Receipt-gated safe Submission recovery, deterministic evaluator → rework → resubmit, participant-safe replay, and MCP-to-HTTP mappings. The complete loop is delivered in the local in-memory profile; the durable PostgreSQL adapter is not connected yet.
 
+## Unified Auth mode
+
+Non-production defaults to `WISER_AUTH_MODE=off`, preserving the current EXCON local-token compatibility entry. To enable the unified Supabase identity slice, configure:
+
+```dotenv
+WISER_AUTH_MODE=supabase
+SUPABASE_URL=http://127.0.0.1:56321
+SUPABASE_PUBLISHABLE_KEY=<local-publishable-key>
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:56322/postgres
+```
+
+Production defaults to mandatory `supabase` mode and fails closed when any value is missing. Browsers use only `NEXT_PUBLIC_SUPABASE_*`; server variables and database connections never receive the `NEXT_PUBLIC_` prefix.
+
 ## Start local services
 
 ```bash

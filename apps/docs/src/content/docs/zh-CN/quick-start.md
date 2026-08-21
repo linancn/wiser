@@ -74,6 +74,19 @@ node skills/agent-excon/scripts/lint-skill.mjs
 
 这些测试覆盖多角色 quorum、Task/Barrier 状态、Receipt chain、`/sync`、Task lease、Message/Artifact、Submission/endorsement、Receipt-gated Submission 安全恢复、确定性 evaluator → rework → resubmit、参训者安全回放和 MCP→HTTP 映射。完整闭环已在本机内存 profile 交付；PostgreSQL 持久化 adapter 尚未接入。
 
+## 统一 Auth 模式
+
+非生产默认 `WISER_AUTH_MODE=off`，保留现有 EXCON 本机 token 兼容入口。要启用统一 Supabase 身份纵切，配置：
+
+```dotenv
+WISER_AUTH_MODE=supabase
+SUPABASE_URL=http://127.0.0.1:56321
+SUPABASE_PUBLISHABLE_KEY=<local-publishable-key>
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:56322/postgres
+```
+
+生产环境默认强制 `supabase`，缺少任一变量会失败关闭。浏览器只使用 `NEXT_PUBLIC_SUPABASE_*`；服务器变量和数据库连接不得加 `NEXT_PUBLIC_`。
+
 ## 启动本地服务
 
 ```bash

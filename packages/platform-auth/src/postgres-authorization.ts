@@ -5,7 +5,7 @@ import type {
   AuthorizationContextLoadInput,
 } from './index.js';
 
-interface AuthorizationRow {
+export interface AuthorizationRow {
   readonly tenant_id: string;
   readonly project_id: string;
   readonly roles: readonly string[] | null;

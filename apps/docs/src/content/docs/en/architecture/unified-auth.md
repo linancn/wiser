@@ -29,7 +29,7 @@ A JWT proves the subject, authentication assurance, and session. Dynamic Tenant,
 
 Delivered now: the `platform` / `platform_private` schemas, automatic user provisioning, Tenant/Project/Membership, Role/Scope/Binding, Delegation, private Credential/Audit/Outbox storage, least-privilege grants, and 40 pgTAP contract checks. The framework-independent `SupabaseJwtPrincipalResolver`, `getClaims` result verifier, and single-query PostgreSQL Membership loader compose and fail closed. Injecting the real Supabase client/database pool, Web SSR sessions, and delegated-credential issuance remains the next wiring milestone.
 
-Fastify now exposes an injectable `platform.identity` module and safe `/api/platform/v1/me` projection, but the default process does not yet create a real Supabase client/database pool. The module is registered only in tests or composition configurations that explicitly inject a Resolver.
+Fastify exposes the `platform.identity` module and safe `/api/platform/v1/me` projection. `WISER_AUTH_MODE=supabase` creates the current stable `supabase-js` client, bounded PostgreSQL pool, and fail-closed Resolver in the default process. Production refuses any missing required configuration, and process shutdown closes the pool. Web SSR sessions and delegated-credential issuance remain later milestones.
 
 ## Control-plane model
 

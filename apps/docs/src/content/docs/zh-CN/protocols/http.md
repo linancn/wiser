@@ -29,7 +29,7 @@ HTTP 是唯一业务协议底座。Web、Skill、MCP 和未来 SDK 都调用 HTT
 
 Fastify 是 WISER 的共享 HTTP 组合宿主。每个系统以静态导入的 `WiserApiModule` 注册路由；模块 ID 必须使用命名空间且全局唯一，重复 ID 会使 readiness 失败。静态注册不扫描 TypeScript AST，也不允许模块绕过 application/authorization 边界。现有 Agent EXCON 路由保持兼容，Data Foundation 和未来系统复用同一宿主。
 
-注入 `PlatformPrincipalResolver` 并注册平台身份模块后，`GET /api/platform/v1/me` 要求 Bearer、Tenant、Project 与 Purpose，上送统一身份上下文并只返回安全的 Actor、Role、Scope 与授权版本。未配置该模块时不能把端点描述为运行中能力。
+`WISER_AUTH_MODE=supabase` 时，默认 API 进程会创建 Supabase `getClaims` client、PostgreSQL Membership loader 并注册平台身份模块。`GET /api/platform/v1/me` 要求 Bearer、Tenant、Project 与 Purpose，只返回安全的 Actor、Role、Scope 与授权版本。生产默认使用该模式且缺少 URL、publishable key 或数据库连接时拒绝启动；非生产 `off` 模式保留旧本机兼容入口。
 
 ## 公共场景目录
 

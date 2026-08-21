@@ -34,6 +34,8 @@ The default `InMemoryExerciseService` (v1) and `InMemoryV2ExerciseService` are d
 
 `createPlatformIdentityModule()` adds the protected `GET /api/platform/v1/me` vertical slice when a `PlatformPrincipalResolver` is injected. It requires Bearer, Tenant, Project, and Purpose context and returns only the safe actor, role, scope, and authorization-version projection; credentials and Session ids never enter the response.
 
+`main.ts` creates the concrete Supabase `getClaims` client and PostgreSQL Membership loader when `WISER_AUTH_MODE=supabase`. Production defaults to that mode and refuses missing `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, or `DATABASE_URL`; non-production defaults to `off` for the legacy local-token compatibility profile. The authorization pool is closed through the Fastify lifecycle.
+
 Participant requests use `Authorization: Bearer <token>`. Every POST uses a UUID `Idempotency-Key`; observe, submit, and advance also include `episodeVersion`.
 
 Key routes:

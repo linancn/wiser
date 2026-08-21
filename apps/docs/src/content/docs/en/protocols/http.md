@@ -29,7 +29,7 @@ The `/api/v2` routes and contracts are executable and tested, but Fastify curren
 
 Fastify is the shared WISER HTTP composition host. Each system registers routes through a statically imported `WiserApiModule`; module ids are namespaced and globally unique, and a duplicate id fails readiness. Static registration does not scan the TypeScript AST and never lets a module bypass application or authorization boundaries. Existing Agent EXCON routes remain compatible while Data Foundation and future systems reuse the same host.
 
-After injecting a `PlatformPrincipalResolver` and registering the platform identity module, `GET /api/platform/v1/me` requires Bearer, Tenant, Project, and Purpose context and returns only the safe Actor, Role, Scope, and authorization-version projection. Until the module is configured, the endpoint must not be described as a running capability.
+With `WISER_AUTH_MODE=supabase`, the default API process creates the Supabase `getClaims` client, PostgreSQL Membership loader, and platform identity module. `GET /api/platform/v1/me` requires Bearer, Tenant, Project, and Purpose context and returns only the safe Actor, Role, Scope, and authorization-version projection. Production defaults to this mode and refuses to start without the URL, publishable key, or database connection; the non-production `off` mode preserves the legacy local compatibility entry.
 
 ## Public scenario catalog
 

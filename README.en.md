@@ -15,8 +15,8 @@ checkPaths:
   - packages/**
   - compose.yaml
   - docs/roadmap.md
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: 0023c6b2317bff4fef36e063a8137a029101c837
 ---
 
 # WISER · Water Intelligence System & Engine for Reconfiguration

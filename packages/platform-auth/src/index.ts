@@ -114,6 +114,7 @@ export class SupabaseJwtPrincipalResolver {
 
 export {
   createPostgresAuthorizationContextLoader,
+  type AuthorizationRow,
   type AuthorizationQuery,
 } from './postgres-authorization.js';
 export {

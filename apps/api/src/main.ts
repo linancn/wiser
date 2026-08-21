@@ -1,6 +1,7 @@
 import { buildApp } from './app.js';
 import { StaticParticipantAuthenticator } from './auth.js';
 import { InMemoryExerciseService } from './in-memory-service.js';
+import { createPlatformAuthModuleFromEnvironment } from './platform/auth-runtime.js';
 import { runtimePrincipalMap } from './runtime-auth.js';
 import { ExerciseServiceError } from './types.js';
 
@@ -20,12 +21,16 @@ async function main(): Promise<void> {
     ?.split(',')
     .map((value) => value.trim())
     .filter((value) => value.length > 0);
+  const platformAuthModule = createPlatformAuthModuleFromEnvironment(
+    process.env,
+  );
   const app = buildApp({
     // Demo-only walking slice. Replace this adapter with PostgreSQL in durable deployments.
     service: new InMemoryExerciseService(),
     authenticator: new StaticParticipantAuthenticator(
       runtimePrincipalMap(process.env),
     ),
+    modules: platformAuthModule === null ? [] : [platformAuthModule],
     ...(origins === undefined || origins.length === 0
       ? {}
       : { corsOrigin: origins }),
