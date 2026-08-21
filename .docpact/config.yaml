@@ -343,6 +343,22 @@ rules:
       - path: apps/docs/src/content/docs/en/architecture/data-foundation.md
         mode: review_or_update
     reason: Durable scheduling, job handling, health, and worker lifecycle changes must stay aligned in both locales.
+  - id: data-foundation-api
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: apps/api/src/data-foundation/**
+        kind: code
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/architecture/data-foundation.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/data-foundation.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/protocols/http.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/protocols/http.md
+        mode: review_or_update
+    reason: Data Foundation HTTP composition and Capability transport changes must stay aligned in both locales.
   - id: wiser-design-system
     scope: repo
     repo: wiser
