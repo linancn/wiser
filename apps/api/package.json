@@ -21,6 +21,7 @@
     "@agent-excon/contracts": "workspace:*",
     "@agent-excon/core": "workspace:*",
     "@supabase/supabase-js": "2.112.3",
+    "@wiser/data-contracts": "workspace:*",
     "@wiser/platform-auth": "workspace:*",
     "@wiser/platform-contracts": "workspace:*",
     "@fastify/cors": "11.3.0",

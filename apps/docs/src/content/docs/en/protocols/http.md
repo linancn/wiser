@@ -16,7 +16,7 @@ checkPaths:
   - packages/contracts/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 18bbd16ed693066e1abb97809cc62aa8e9a35d2d
+lastReviewedCommit: 23ec3d9b25c6be7da22a69c122a6def4be6dfd04
 ---
 
 ## Default protocol and implementation status
@@ -43,6 +43,10 @@ The injectable `platform.delegation` module defines these control-plane routes:
 | POST   | `/api/platform/v1/credentials/:credentialId:revoke`             | Revoke one Credential               |
 
 Commands require a UUID `Idempotency-Key`; all routes require Bearer, Tenant, Project, and Purpose headers plus a Supabase human with `platform.delegation.manage`. The concrete transactional command service is not yet registered by the default runtime.
+
+## Data Foundation discovery
+
+`GET /api/data/v1/health` is a non-cacheable aggregate of data-postgres, object-store, and Data Worker readiness; it returns 503 when any required authority dependency is unavailable. `GET /api/data/v1/capabilities` returns the complete ordered Registry with draft-7 input/output JSON Schemas and exact REST, GraphQL, MCP, and Skill mappings. These discovery endpoints are implemented by the injectable `data.foundation` module; the remaining data routes will dispatch to the same Capability Handlers.
 
 ## Public scenario catalog
 

@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 17eb575ce1a914f3689be77ef319e367c165ce02
+lastReviewedCommit: 23ec3d9b25c6be7da22a69c122a6def4be6dfd04
 ---
 
 ## Boundary and implementation status
@@ -55,6 +55,8 @@ data.operation.cancel            data.operation.events
 ```
 
 The REST mapping for `data.operation.events` explicitly uses SSE. Graph operations remain structured `graph.expand/findPath` inputs rather than arbitrary Cypher, and no query Capability accepts arbitrary SQL or OpenSearch DSL.
+
+The shared Fastify host now has an injectable `data.foundation` module. `/api/data/v1/capabilities` serializes the ordered Registry directly through Zod 4's draft-7 generator, so clients can inspect all four transport mappings without AST scanning. `/api/data/v1/health` reports data-postgres, object-store, and Worker readiness from injected probes and returns 503 whenever any authority dependency is missing. The default process does not yet register concrete probes and therefore cannot claim a ready Data Foundation runtime.
 
 A `DataItem` is the smallest governance unit, not a file, table, or layer. Quality grade, acceptance status, publication status, and security level are four independent dimensions; adapters must never collapse them into one “status.”
 

@@ -64,6 +64,9 @@ importers:
       '@supabase/supabase-js':
         specifier: 2.112.3
         version: 2.112.3
+      '@wiser/data-contracts':
+        specifier: workspace:*
+        version: link:../../packages/data-contracts
       '@wiser/platform-auth':
         specifier: workspace:*
         version: link:../../packages/platform-auth

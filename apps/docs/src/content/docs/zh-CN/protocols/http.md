@@ -16,7 +16,7 @@ checkPaths:
   - packages/contracts/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 18bbd16ed693066e1abb97809cc62aa8e9a35d2d
+lastReviewedCommit: 23ec3d9b25c6be7da22a69c122a6def4be6dfd04
 ---
 
 ## 默认协议与实现状态
@@ -43,6 +43,10 @@ Fastify 是 WISER 的共享 HTTP 组合宿主。每个系统以静态导入的 `
 | POST | `/api/platform/v1/credentials/:credentialId:revoke`             | 撤销单个 Credential     |
 
 命令要求 UUID `Idempotency-Key`；所有路由都要求 Bearer、Tenant、Project、Purpose Header，以及具备 `platform.delegation.manage` 的 Supabase human。默认 runtime 尚未注册具体的事务 command service。
+
+## Data Foundation 发现接口
+
+`GET /api/data/v1/health` 是不可缓存的 data-postgres、对象存储与 Data Worker readiness 聚合；任何必需权威依赖不可用时返回 503。`GET /api/data/v1/capabilities` 返回完整有序 Registry，包括 draft-7 输入/输出 JSON Schema 与精确 REST、GraphQL、MCP、Skill mapping。这两个发现接口由可注入的 `data.foundation` 模块实现；其余数据路由后续必须分派到同一 Capability Handler。
 
 ## 公共场景目录
 
