@@ -1,6 +1,6 @@
 begin;
 
-select plan(40);
+select plan(50);
 
 select has_schema('platform', 'platform control schema exists');
 select has_schema('platform_private', 'platform private schema exists');
@@ -29,6 +29,32 @@ select has_table(
   'platform_private',
   'control_outbox',
   'private control outbox exists'
+);
+
+select is(
+  (
+    select count(*)
+    from information_schema.columns
+    where table_schema = 'platform'
+      and table_name = 'delegations'
+      and column_name = 'version'
+      and is_nullable = 'NO'
+      and column_default = '1'
+  ),
+  1::bigint,
+  'delegations expose an optimistic concurrency version'
+);
+select is(
+  (
+    select count(*)
+    from information_schema.columns
+    where table_schema = 'platform_private'
+      and table_name = 'delegated_credentials'
+      and column_name = 'hmac_key_id'
+      and is_nullable = 'NO'
+  ),
+  1::bigint,
+  'delegated credentials identify the server HMAC key'
 );
 
 select has_function(
@@ -288,6 +314,51 @@ select throws_ok(
   'actors cannot delegate to themselves'
 );
 
+select throws_ok(
+  $$insert into platform.delegations (
+      id, delegated_by_actor_id, delegate_actor_id,
+      tenant_id, project_id, scopes, purpose,
+      max_security_level, status, expires_at, revoked_at
+    ) values (
+      'a6000000-0000-4000-8000-000000000003',
+      '10000000-0000-4000-8000-000000000001',
+      'a5000000-0000-4000-8000-000000000001',
+      'a2000000-0000-4000-8000-000000000001',
+      'a3000000-0000-4000-8000-000000000001',
+      array['data.catalog.read'],
+      'operate',
+      'L1_INTERNAL',
+      'active',
+      now() + interval '1 hour',
+      now()
+    )$$,
+  '23514'::char(5),
+  null,
+  'an active delegation cannot carry a revocation timestamp'
+);
+
+select throws_ok(
+  $$insert into platform.delegations (
+      id, delegated_by_actor_id, delegate_actor_id,
+      tenant_id, project_id, scopes, purpose,
+      max_security_level, status, expires_at
+    ) values (
+      'a6000000-0000-4000-8000-000000000004',
+      '10000000-0000-4000-8000-000000000001',
+      'a5000000-0000-4000-8000-000000000001',
+      'a2000000-0000-4000-8000-000000000001',
+      'a3000000-0000-4000-8000-000000000001',
+      array['data.catalog.read'],
+      'operate',
+      'L1_INTERNAL',
+      'revoked',
+      now() + interval '1 hour'
+    )$$,
+  '23514'::char(5),
+  null,
+  'a revoked delegation requires a revocation timestamp'
+);
+
 insert into platform.delegations (
   id, delegated_by_actor_id, delegate_actor_id,
   tenant_id, project_id, scopes, purpose,
@@ -307,17 +378,87 @@ insert into platform.delegations (
 
 select throws_ok(
   $$insert into platform_private.delegated_credentials (
-      id, delegation_id, key_id, token_hmac, expires_at
+      id, delegation_id, key_id, hmac_key_id, token_hmac, expires_at
     ) values (
       'a7000000-0000-4000-8000-000000000001',
       'a6000000-0000-4000-8000-000000000002',
       'wdc_test_invalid',
+      'primary-2026-08',
       decode('aa', 'hex'),
       now() + interval '1 hour'
     )$$,
   '23514'::char(5),
   null,
   'delegated credentials require a 256-bit HMAC'
+);
+
+select throws_ok(
+  $$insert into platform_private.delegated_credentials (
+      id, delegation_id, key_id, hmac_key_id, token_hmac, expires_at
+    ) values (
+      'a7000000-0000-4000-8000-000000000002',
+      'a6000000-0000-4000-8000-000000000002',
+      'wdc_0123456789ABCDEFGHIJKL',
+      'Invalid Key Id',
+      decode(repeat('ab', 32), 'hex'),
+      now() + interval '30 minutes'
+    )$$,
+  '23514'::char(5),
+  null,
+  'delegated credential HMAC key ids use a strict operational identifier'
+);
+
+select lives_ok(
+  $$insert into platform_private.delegated_credentials (
+      id, delegation_id, key_id, hmac_key_id, token_hmac, expires_at
+    ) values (
+      'a7000000-0000-4000-8000-000000000003',
+      'a6000000-0000-4000-8000-000000000002',
+      'wdc_0123456789abcdefghijKL',
+      'primary-2026-08',
+      decode(repeat('cd', 32), 'hex'),
+      now() + interval '30 minutes'
+    )$$,
+  'a valid delegated credential records its HMAC key id'
+);
+
+select throws_ok(
+  $$update platform_private.delegated_credentials
+    set rotated_to_credential_id = id
+    where id = 'a7000000-0000-4000-8000-000000000003'$$,
+  '23514'::char(5),
+  null,
+  'a delegated credential cannot rotate to itself'
+);
+
+select throws_ok(
+  $$update platform_private.delegated_credentials
+    set rotated_to_credential_id = 'a7000000-0000-4000-8000-000000000001'
+    where id = 'a7000000-0000-4000-8000-000000000003'$$,
+  '23514'::char(5),
+  null,
+  'a rotated delegated credential must already be revoked'
+);
+
+select throws_ok(
+  $$update platform_private.delegated_credentials
+    set revoked_at = created_at - interval '1 second'
+    where id = 'a7000000-0000-4000-8000-000000000003'$$,
+  '23514'::char(5),
+  null,
+  'credential revocation cannot predate credential creation'
+);
+
+select is(
+  (
+    select c.confdeltype
+    from pg_constraint as c
+    where c.conrelid = 'platform_private.delegated_credentials'::regclass
+      and c.confrelid = 'platform.delegations'::regclass
+      and c.contype = 'f'
+  ),
+  'r'::"char",
+  'delegation deletion cannot erase credential security facts'
 );
 
 select has_index(
