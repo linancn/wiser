@@ -57,7 +57,7 @@ describe('Run collaboration projection', () => {
       handoffCount: 2,
       openRequestCount: 1,
     });
-    expect(interactionNeedsAttention(partial[0]!)).toBe(true);
+    expect(interactionNeedsAttention(partial[0])).toBe(true);
     expect(
       interactionNeedsAttention(
         partial.find(({ kind }) => kind === 'request')!,

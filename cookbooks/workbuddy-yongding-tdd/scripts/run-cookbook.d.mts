@@ -29,6 +29,7 @@ export interface RunWorkBuddyCookbookOptions {
       readonly releasedBarriers: readonly string[];
     };
     readonly interactions: WorkBuddyCookbookReport['authoritative']['interactions'];
+    readonly observability: WorkBuddyCookbookReport['observability'];
     readonly participantResults: WorkBuddyLaunchReport['results'];
     readonly runId: string;
   }) => void | Promise<void>;
@@ -62,11 +63,26 @@ export interface WorkBuddyCookbookReport {
     readonly interactions: {
       readonly interactionCount: number;
       readonly handoffCount: number;
+      readonly closedHandoffCount: number;
+      readonly distinctHandoffSenderCount: number;
       readonly requestCount: number;
+      readonly respondedRequestCount: number;
       readonly responseCount: number;
+      readonly distinctResponseSenderCount: number;
       readonly openRequestCount: number;
       readonly acknowledgedDeliveryCount: number;
     };
+  };
+  readonly observability: {
+    readonly bestEffort: true;
+    readonly gap: boolean;
+    readonly boundaryCoverage: number;
+    readonly participantTelemetryMode: 'none' | 'partial' | 'instrumented';
+    readonly platformObservedSpanCount: number;
+    readonly participantReportedSpanCount: number;
+    readonly droppedSpanCount: number;
+    readonly lateSpanCount: number;
+    readonly traceCount: number;
   };
   readonly tddCycle: {
     readonly injectedFault: 'water-evidence-schema-once' | null;

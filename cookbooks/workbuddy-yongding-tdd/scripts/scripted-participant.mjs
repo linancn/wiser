@@ -415,13 +415,7 @@ async function runSpecialist(client, context) {
       'zh-CN': '已按本角色证据边界复核固定团队方案，继续等待权威背书 grant。',
       en: 'The pinned team plan was reviewed within this role evidence boundary; awaiting the authoritative endorsement grant.',
     },
-    artifactVersionRefs: [
-      {
-        artifactId: published.artifact.id,
-        artifactVersionId: published.artifact.versionId,
-        contentHash: published.artifact.contentHash,
-      },
-    ],
+    artifactVersionRefs: reviewRequest.artifactVersionRefs,
   });
 
   const review = await waitForSync(

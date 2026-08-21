@@ -14,6 +14,7 @@
     "scenarioVersionId",
     "participantResults",
     "authoritative",
+    "observability",
     "tddCycle",
     "artifacts",
     "diagnostic"
@@ -52,16 +53,30 @@
           "required": [
             "interactionCount",
             "handoffCount",
+            "closedHandoffCount",
+            "distinctHandoffSenderCount",
             "requestCount",
+            "respondedRequestCount",
             "responseCount",
+            "distinctResponseSenderCount",
             "openRequestCount",
             "acknowledgedDeliveryCount"
           ],
           "properties": {
             "interactionCount": { "type": "integer", "minimum": 0 },
             "handoffCount": { "type": "integer", "minimum": 0 },
+            "closedHandoffCount": { "type": "integer", "minimum": 0 },
+            "distinctHandoffSenderCount": {
+              "type": "integer",
+              "minimum": 0
+            },
             "requestCount": { "type": "integer", "minimum": 0 },
+            "respondedRequestCount": { "type": "integer", "minimum": 0 },
             "responseCount": { "type": "integer", "minimum": 0 },
+            "distinctResponseSenderCount": {
+              "type": "integer",
+              "minimum": 0
+            },
             "openRequestCount": { "type": "integer", "minimum": 0 },
             "acknowledgedDeliveryCount": {
               "type": "integer",
@@ -69,6 +84,34 @@
             }
           }
         }
+      }
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bestEffort",
+        "gap",
+        "boundaryCoverage",
+        "participantTelemetryMode",
+        "platformObservedSpanCount",
+        "participantReportedSpanCount",
+        "droppedSpanCount",
+        "lateSpanCount",
+        "traceCount"
+      ],
+      "properties": {
+        "bestEffort": { "const": true },
+        "gap": { "type": "boolean" },
+        "boundaryCoverage": { "type": "number", "minimum": 0, "maximum": 1 },
+        "participantTelemetryMode": {
+          "enum": ["none", "partial", "instrumented"]
+        },
+        "platformObservedSpanCount": { "type": "integer", "minimum": 0 },
+        "participantReportedSpanCount": { "type": "integer", "minimum": 0 },
+        "droppedSpanCount": { "type": "integer", "minimum": 0 },
+        "lateSpanCount": { "type": "integer", "minimum": 0 },
+        "traceCount": { "type": "integer", "minimum": 0 }
       }
     },
     "tddCycle": {

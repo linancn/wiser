@@ -6,7 +6,10 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { startV2LocalLabServer } from '../../../apps/api/src/index.ts';
-import { RunInteractionListSchema } from '../../../packages/contracts/src/index.ts';
+import {
+  BestEffortTelemetryOverlaySchema,
+  RunInteractionListSchema,
+} from '../../../packages/contracts/src/index.ts';
 
 import { launchWorkBuddyRoles } from './launch-four-agents.mjs';
 import { renderWorkBuddyRuntime } from './render-workbuddy-config.mjs';
@@ -150,15 +153,27 @@ function eventSummary(value) {
 
 function interactionSummary(value) {
   const interactions = RunInteractionListSchema.parse(value).items;
+  const handoffs = interactions.filter(({ kind }) => kind === 'handoff');
+  const requests = interactions.filter(({ kind }) => kind === 'request');
+  const responses = interactions.filter(({ kind }) => kind === 'response');
   return {
     interactionCount: interactions.length,
-    handoffCount: interactions.filter(({ kind }) => kind === 'handoff').length,
-    requestCount: interactions.filter(({ kind }) => kind === 'request').length,
-    responseCount: interactions.filter(({ kind }) => kind === 'response')
-      .length,
-    openRequestCount: interactions.filter(
-      ({ kind, status }) => kind === 'request' && status === 'open',
+    handoffCount: handoffs.length,
+    closedHandoffCount: handoffs.filter(({ deliveries }) =>
+      deliveries.every(({ state }) => state === 'acknowledged'),
     ).length,
+    distinctHandoffSenderCount: new Set(
+      handoffs.map(({ senderId }) => senderId),
+    ).size,
+    requestCount: requests.length,
+    respondedRequestCount: requests.filter(
+      ({ status }) => status === 'responded',
+    ).length,
+    responseCount: responses.length,
+    distinctResponseSenderCount: new Set(
+      responses.map(({ senderId }) => senderId),
+    ).size,
+    openRequestCount: requests.filter(({ status }) => status === 'open').length,
     acknowledgedDeliveryCount: interactions.reduce(
       (count, { deliveries }) =>
         count +
@@ -168,10 +183,26 @@ function interactionSummary(value) {
   };
 }
 
+function observabilitySummary(value) {
+  const overlay = BestEffortTelemetryOverlaySchema.parse(value);
+  return {
+    bestEffort: true,
+    gap: overlay.gap,
+    boundaryCoverage: overlay.coverage.boundaryCoverage,
+    participantTelemetryMode: overlay.coverage.participantTelemetryMode,
+    platformObservedSpanCount: overlay.trust.platformObservedSpanCount,
+    participantReportedSpanCount: overlay.trust.participantReportedSpanCount,
+    droppedSpanCount: overlay.coverage.droppedSpanCount,
+    lateSpanCount: overlay.coverage.lateSpanCount,
+    traceCount: overlay.traces.length,
+  };
+}
+
 function authoritativePass(
   launch,
   evaluations,
   releasedBarriers,
+  interactions,
   faultInjection,
 ) {
   const expected = new Map([
@@ -200,7 +231,13 @@ function authoritativePass(
       )) &&
     ['analysis-ready', 'endorsement-ready'].every((barrier) =>
       releasedBarriers.includes(barrier),
-    )
+    ) &&
+    interactions.closedHandoffCount >= 3 &&
+    interactions.distinctHandoffSenderCount >= 3 &&
+    interactions.requestCount >= 1 &&
+    interactions.respondedRequestCount >= 1 &&
+    interactions.openRequestCount === 0 &&
+    interactions.distinctResponseSenderCount >= 3
   );
 }
 
@@ -244,10 +281,25 @@ export async function runWorkBuddyCookbook(options) {
   let interactions = {
     interactionCount: 0,
     handoffCount: 0,
+    closedHandoffCount: 0,
+    distinctHandoffSenderCount: 0,
     requestCount: 0,
+    respondedRequestCount: 0,
     responseCount: 0,
+    distinctResponseSenderCount: 0,
     openRequestCount: 0,
     acknowledgedDeliveryCount: 0,
+  };
+  let observability = {
+    bestEffort: true,
+    gap: true,
+    boundaryCoverage: 0,
+    participantTelemetryMode: 'none',
+    platformObservedSpanCount: 0,
+    participantReportedSpanCount: 0,
+    droppedSpanCount: 0,
+    lateSpanCount: 0,
+    traceCount: 0,
   };
   let failure = null;
   try {
@@ -295,24 +347,31 @@ export async function runWorkBuddyCookbook(options) {
     if (operator.WISER_RUN_ID !== server.lab.manifest.runId) {
       throw new Error('Operator credential Run identity mismatch.');
     }
-    const [evaluationResponse, eventResponse, interactionResponse] =
-      await Promise.all([
-        operatorGet(operator, `runs/${operator.WISER_RUN_ID}/evaluations`),
-        collectOperatorEvents((after, limit) =>
-          operatorGet(
-            operator,
-            `runs/${operator.WISER_RUN_ID}/events?after=${after}&limit=${limit}`,
-          ),
+    const [
+      evaluationResponse,
+      eventResponse,
+      interactionResponse,
+      telemetryResponse,
+    ] = await Promise.all([
+      operatorGet(operator, `runs/${operator.WISER_RUN_ID}/evaluations`),
+      collectOperatorEvents((after, limit) =>
+        operatorGet(
+          operator,
+          `runs/${operator.WISER_RUN_ID}/events?after=${after}&limit=${limit}`,
         ),
-        operatorGet(operator, `runs/${operator.WISER_RUN_ID}/interactions`),
-      ]);
+      ),
+      operatorGet(operator, `runs/${operator.WISER_RUN_ID}/interactions`),
+      operatorGet(operator, `runs/${operator.WISER_RUN_ID}/traces`),
+    ]);
     evaluations = publicEvaluations(evaluationResponse);
     events = eventSummary(eventResponse);
     interactions = interactionSummary(interactionResponse);
+    observability = observabilitySummary(telemetryResponse);
     await options.onObservationReady?.({
       evaluations,
       events,
       interactions,
+      observability,
       participantResults: launch.report.results,
       runId: server.lab.manifest.runId,
     });
@@ -338,6 +397,7 @@ export async function runWorkBuddyCookbook(options) {
       launch,
       evaluations,
       events.releasedBarriers,
+      interactions,
       faultInjection,
     );
   const waterEvaluations = evaluations.filter(
@@ -359,6 +419,7 @@ export async function runWorkBuddyCookbook(options) {
       lastRunSeq: events.lastRunSeq,
       interactions,
     },
+    observability,
     tddCycle: {
       injectedFault: faultInjection,
       reworkObserved: waterEvaluations.some(

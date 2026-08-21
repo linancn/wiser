@@ -1628,6 +1628,17 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
                 '只能引用本人创作或已通过 Receipt 获得的 ArtifactVersion。 / A Message may cite only an authored or receipted ArtifactVersion.',
               );
             }
+            if (
+              input.recipientRunAgentIds.some(
+                (recipientRunAgentId) =>
+                  !artifact.recipientRunAgentIds?.includes(recipientRunAgentId),
+              )
+            ) {
+              throw new ExerciseServiceError(
+                'MESSAGE_RECIPIENT_CONFLICT',
+                'Message 收件人必须同时位于所引用 ArtifactVersion 的授权快照。 / Every Message recipient must also belong to the referenced ArtifactVersion grant snapshot.',
+              );
+            }
           }
           const parentEvent =
             parentMessage === undefined
@@ -1702,9 +1713,11 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
     );
     return Promise.resolve(
       messages.map((message) => {
-        const responseMessageIds = messages
-          .filter(({ replyToMessageId }) => replyToMessageId === message.id)
-          .map(({ id }) => id);
+        const responses = messages.filter(
+          ({ kind, replyToMessageId }) =>
+            kind === 'response' && replyToMessageId === message.id,
+        );
+        const responseMessageIds = responses.map(({ id }) => id);
         const deliveries = message.recipientRunAgentIds.map(
           (recipientRunAgentId) => {
             const receipt = (stored.receipts.get(recipientRunAgentId) ?? [])
@@ -1742,9 +1755,16 @@ export class InMemoryV2ExerciseService implements V2ExerciseService {
             };
           },
         );
+        const respondingRunAgentIds = new Set(
+          responses.map(({ senderId }) => senderId),
+        );
         const status: RunInteractionDto['status'] =
-          message.kind === 'request' && responseMessageIds.length > 0
-            ? 'responded'
+          message.kind === 'request'
+            ? message.recipientRunAgentIds.every((recipientRunAgentId) =>
+                respondingRunAgentIds.has(recipientRunAgentId),
+              )
+              ? 'responded'
+              : 'open'
             : deliveries.every(({ state }) => state === 'acknowledged')
               ? 'complete'
               : 'open';

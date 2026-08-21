@@ -1,6 +1,6 @@
 begin;
 
-select plan(79);
+select plan(81);
 
 select has_table('public', 'role_definitions', 'v2 role definitions exist');
 select has_table('public', 'agent_identities', 'v2 agent identities exist');
@@ -55,6 +55,18 @@ select has_trigger(
   'run_messages',
   'run_messages_thread_guard',
   'message thread guard is attached'
+);
+select has_function(
+  'excon_private',
+  'guard_run_message_recipient',
+  array[]::text[],
+  'message recipient and ArtifactVersion grant guard exists'
+);
+select has_trigger(
+  'public',
+  'run_message_recipients',
+  'run_message_recipients_interaction_guard',
+  'deferred message recipient guard is attached'
 );
 
 select is(

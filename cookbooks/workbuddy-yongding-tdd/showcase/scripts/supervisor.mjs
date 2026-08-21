@@ -630,11 +630,12 @@ export async function requestShowcaseStop(options, dependencies = {}) {
     }
     await wait();
   }
-  return {
-    ...stopping,
+  const timedOut = await writeSession(stateDirectory, {
+    ...session,
+    state: 'FAILED',
     diagnosticCode: 'SHOWCASE_STOP_TIMEOUT',
-    signalled: true,
-  };
+  });
+  return { ...timedOut, signalled: true };
 }
 
 export async function startShowcaseSupervisor(options, dependencies = {}) {
