@@ -15,6 +15,7 @@
     "dev": "pnpm --parallel --filter @agent-excon/api --filter @agent-excon/web --filter @agent-excon/docs dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "prelint": "pnpm --filter @agent-excon/docs generate",
     "lint": "oxlint --type-aware",
     "test": "vitest run && pnpm --recursive --if-present --filter './apps/*' test",
     "test:watch": "vitest",

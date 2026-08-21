@@ -2,10 +2,14 @@
 node_modules/
 dist/
 .next/
+.source/
+out/
 .astro/
 coverage/
 playwright-report/
 test-results/
+*.tsbuildinfo
+next-env.d.ts
 skills/*-workspace/
 .wiser/
 

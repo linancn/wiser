@@ -6,6 +6,7 @@
   "description": "Bilingual Fumadocs documentation for WISER Agent EXCON",
   "license": "MIT",
   "scripts": {
+    "generate": "fumadocs-mdx",
     "dev": "next dev",
     "build": "next build",
     "typecheck": "next typegen && tsc --noEmit",

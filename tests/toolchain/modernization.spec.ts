@@ -137,4 +137,30 @@ describe('Fumadocs documentation application', () => {
   it('does not require Git history inside the slim docs container', () => {
     expect(read('apps/docs/source.config.ts')).toContain('lastModified: false');
   });
+
+  it('generates ignored Fumadocs bindings before type-aware lint', () => {
+    const rootManifest = readJson('package.json');
+    const rootScripts = rootManifest.scripts as Record<string, string>;
+    const docsManifest = readJson('apps/docs/package.json');
+    const docsScripts = docsManifest.scripts as Record<string, string>;
+
+    expect(rootScripts.prelint).toBe(
+      'pnpm --filter @agent-excon/docs generate',
+    );
+    expect(docsScripts.generate).toBe('fumadocs-mdx');
+
+    const rootIgnore = new Set(
+      read('.gitignore')
+        .split('\n')
+        .map((line) => line.trim()),
+    );
+    for (const generated of [
+      '.source/',
+      'out/',
+      '*.tsbuildinfo',
+      'next-env.d.ts',
+    ]) {
+      expect(rootIgnore).toContain(generated);
+    }
+  });
 });
