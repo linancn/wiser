@@ -26,7 +26,10 @@ import {
 } from '@wiser/platform-auth';
 
 import { createPlatformDelegationModule } from './delegation-module.js';
-import { createPlatformIdentityModule } from './identity-module.js';
+import {
+  createPlatformIdentityModule,
+  type PlatformPrincipalResolver,
+} from './identity-module.js';
 import type { WiserApiModule } from './modules.js';
 
 export type PlatformAuthRuntimeConfig =
@@ -54,6 +57,11 @@ export interface PlatformAuthRuntimeFactories {
   createAuthorizationDatabase(config: {
     readonly databaseUrl: string;
   }): AuthorizationDatabase;
+}
+
+export interface PlatformAuthRuntime {
+  readonly module: WiserApiModule | null;
+  readonly resolver: PlatformPrincipalResolver | null;
 }
 
 const SupabaseRuntimeFields = z.strictObject({
@@ -216,12 +224,12 @@ const KNOWN_PLATFORM_SCOPES = new Set<string>([
   ),
 ]);
 
-export function createPlatformAuthModuleFromEnvironment(
+export function createPlatformAuthRuntimeFromEnvironment(
   environment: NodeJS.ProcessEnv,
   factories: PlatformAuthRuntimeFactories = defaultFactories,
-): WiserApiModule | null {
+): PlatformAuthRuntime {
   const config = loadPlatformAuthRuntimeConfig(environment);
-  if (config.mode === 'off') return null;
+  if (config.mode === 'off') return { module: null, resolver: null };
 
   const claimsClient = factories.createClaimsClient(config);
   const database = factories.createAuthorizationDatabase(config);
@@ -250,7 +258,7 @@ export function createPlatformAuthModuleFromEnvironment(
     }),
     knownScopes: KNOWN_PLATFORM_SCOPES,
   });
-  return {
+  const module: WiserApiModule = {
     id: 'platform.auth-runtime',
     async register(app) {
       await identityModule.register(app);
@@ -260,4 +268,13 @@ export function createPlatformAuthModuleFromEnvironment(
       });
     },
   };
+  return { module, resolver };
+}
+
+export function createPlatformAuthModuleFromEnvironment(
+  environment: NodeJS.ProcessEnv,
+  factories: PlatformAuthRuntimeFactories = defaultFactories,
+): WiserApiModule | null {
+  return createPlatformAuthRuntimeFromEnvironment(environment, factories)
+    .module;
 }

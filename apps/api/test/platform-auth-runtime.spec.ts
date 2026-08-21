@@ -127,7 +127,7 @@ describe('WISER platform auth runtime', () => {
         tenantId: TENANT_ID,
         projectId: PROJECT_ID,
         purpose: 'operate',
-        traceId: 'trace-data-foundation',
+        traceId: 'f1000000000040008000000000000005',
       }),
     ).resolves.toMatchObject({
       principal: { actorId: USER_ID },
