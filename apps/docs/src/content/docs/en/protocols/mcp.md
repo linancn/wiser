@@ -41,7 +41,7 @@ This table matches `apps/mcp/src/server.ts` and the current Fastify routes. HTTP
 | `excon_heartbeat_task`           | `POST tasks/{taskId}:heartbeat`                | Request a bounded lease renewal                                         |
 | `excon_release_task`             | `POST tasks/{taskId}:release`                  | Release the lease and invalidate its old token                          |
 | `excon_submit_task_result`       | `POST tasks/{taskId}/submissions`              | Create an immutable Receipt/ArtifactVersion-backed result               |
-| `excon_post_message`             | `POST runs/{runId}/messages`                   | Send a Message to an immutable recipient snapshot                       |
+| `excon_post_message`             | `POST runs/{runId}/messages`                   | Send an inform/request/response or ArtifactVersion handoff              |
 | `excon_publish_artifact`         | `POST runs/{runId}/artifacts`                  | Publish an Artifact and immutable first version                         |
 | `excon_publish_artifact_version` | `POST artifacts/{artifactId}/versions`         | Append from an exact `baseVersionId`                                    |
 | `excon_endorse_submission`       | `POST submissions/{submissionId}/endorsements` | Consume a matching ActionGrant for the exact revision                   |
@@ -56,7 +56,7 @@ This table matches `apps/mcp/src/server.ts` and the current Fastify routes. HTTP
 2. Call `excon_sync` from the durable `afterReceiptSeq`. After validating and processing a non-empty batch, acknowledge its exact `throughReceiptSeq` and `receiptHeadHash` on the next sync.
 3. Use `excon_list_tasks` only to recover issued Tasks, then claim with the Task's own `lockVersion`.
 4. Preserve the claim's `claimEpoch`, `leaseToken`, and expiry locally. Begin, then heartbeat bounded long work before expiry.
-5. Use Messages for explicit requests and Artifacts/ArtifactVersions for reusable evidence. A successful write is not recipient knowledge until their own sync issues a Receipt.
+5. Use `request` for an explicit question, a causal `response` that references a receipted parent request, and `handoff` for a pinned ArtifactVersion transfer. A successful write is not recipient knowledge until their own sync issues a Receipt; Receipt acknowledgement still does not mean understanding or agreement.
 6. `excon_submit_task_result` cites at least one verified own Receipt or authorized ArtifactVersion.
 7. Receive the Submission Receipt through `excon_sync`, then recover and review the exact immutable revision with `excon_list_submissions`. Endorse only after receiving a matching ActionGrant.
 8. Use `excon_wait_and_sync` for bounded waits on Feedback or downstream Barrier work. Participants have no Run-clock advance or Barrier-release Tool.
@@ -69,6 +69,7 @@ This table matches `apps/mcp/src/server.ts` and the current Fastify routes. HTTP
 - Every write Tool requires a UUID `idempotencyKey`. After an ambiguous failure, retry only the identical actor, Tool/path, body, and key.
 - The caller keeps Task lease tokens in local state; MCP does not persist them for the caller.
 - API failures become `isError: true` results with a stable `code`, safe message, next action, and optional trace ID. API `details` are not forwarded to the agent.
+- When Artifact/Message snapshots accumulate, reduce `sync maxItems` to about 8 and follow the contiguous returned cursor while `hasMore=true` to avoid `MCP_RESPONSE_TOO_LARGE`.
 - A complete MCP response over 32,000 characters returns `MCP_RESPONSE_TOO_LARGE`. Narrow `sync.maxItems` or the replay cursor; never treat a truncated payload as complete fact.
 - The RunAgent replay Tool does not expose operator/team/role/eligible perspectives.
 

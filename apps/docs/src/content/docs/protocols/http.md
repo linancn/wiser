@@ -61,6 +61,7 @@ Accept: application/json
 | `POST` | `/api/v2/runs/{runId}/sync`                       | 发放新资源，并可确认上一 Receipt chain head                    |
 | `GET`  | `/api/v2/runs/{runId}/tasks`                      | 恢复已经 issued 的 Task                                        |
 | `GET`  | `/api/v2/runs/{runId}/messages`                   | 恢复已经 issued 的 Message                                     |
+| `GET`  | `/api/v2/runs/{runId}/interactions`               | operator 读取脱敏线程、工件引用与逐收件人交付状态              |
 | `GET`  | `/api/v2/runs/{runId}/artifacts`                  | 恢复已经 issued 的 Artifact grant                              |
 | `GET`  | `/api/v2/runs/{runId}/submissions`                | 恢复已经 issued 的精确不可变 Submission 修订                   |
 | `GET`  | `/api/v2/runs/{runId}/feedback`                   | 恢复已经 issued 的分层 Feedback/ActionGrant                    |
@@ -105,6 +106,8 @@ Accept: application/json
 - claim 只返回一次当前不透明 `leaseToken`；begin/heartbeat/release/submit 都核对 Task version、`claimEpoch` 和 token。不得把 token 写进 Message、Artifact、Submission、日志或遥测。
 - Submission 至少引用一个属于当前 RunAgent 的已验证 Receipt，或一个已经向它发放授权的不可变 ArtifactVersion。
 - Message 和 Artifact 固定发布时收件人快照；后来加入团队不会自动继承历史。
+- Message 使用 `inform`、`request`、`response`、`handoff` 四种语义。`response` 必须通过 `replyToMessageId` 引用调用者已由自身 Receipt 链获得的 `request`，并继承其 `threadId`；未收到父请求的智能体不能回复。
+- `handoff` 必须固定至少一个精确 `artifactId`、`artifactVersionId` 与 `contentHash`。Receipt issuance/acknowledgement 只证明交付链状态，不能表述为“已读”“已理解”或“已同意”。
 - Artifact 更新以精确 `baseVersionId` 检测冲突，不覆盖并发版本。
 - 背书必须消费匹配 actor、Task、Submission 修订、action、scope、期限和次数的 ActionGrant。
 

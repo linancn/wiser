@@ -6,6 +6,11 @@
 WorkBuddy CLI、展示端口和遗留会话状态；preflight 不得以一次付费模型
 请求探测额度。
 
+`scripted` 与 `rework` 只代表四个参训进程不调用模型。通过 WorkBuddy
+GUI 新建 Lead 任务仍可能消耗当前 WorkBuddy 订阅。若用户禁止一切模型
+调用，不要打开 WorkBuddy；直接运行确定性 supervisor 或交付人工命令，
+并明确说明没有执行 GUI 展示。
+
 真实 WorkBuddy 运行还需要用户确认 WorkBuddy 已登录且额度可用。如果
 WorkBuddy 显示登录、订阅或 macOS 自动化权限界面，暂停并交还用户处理。
 

@@ -13,8 +13,13 @@
 
 ## 真实模型授权
 
-scripted 和 rework 不调用模型。workbuddy profile 会产生真实 WorkBuddy
-用量，必须在当前任务中得到用户明确授权后，才可执行：
+scripted 和 rework 的四个参训进程不调用模型；但 WorkBuddy Lead 仍可能
+使用已登录订阅。只有用户明确要求 Codex 操作 WorkBuddy，或另外授权 Lead
+用量时，才可创建 GUI Lead 任务。若用户要求全程零模型调用，必须绕过
+WorkBuddy GUI，直接运行确定性 supervisor，并说明没有操作 WorkBuddy。
+
+workbuddy profile 还会让四个参训者产生真实 WorkBuddy 用量，必须在当前
+任务中得到用户明确授权后，才可执行：
 
 ```bash
 WORKBUDDY_LIVE=1 pnpm showcase:start --profile workbuddy

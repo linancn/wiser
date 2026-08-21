@@ -7,11 +7,15 @@ ArtifactVersion、Receipt、回复、评价、背书与 Barrier。Codex 和 Lead
 
 ## Profile
 
-| Profile     | 用途                                      | 模型用量 |
-| ----------- | ----------------------------------------- | -------- |
-| `scripted`  | 确定性完整协作链，默认展示                | 无       |
-| `rework`    | 水情 schema Red → scoped revision 2 Green | 无       |
-| `workbuddy` | 四个真实本机 WorkBuddy 参训进程           | 有       |
+| Profile     | 用途                                      | 四参训者模型用量 |
+| ----------- | ----------------------------------------- | ---------------- |
+| `scripted`  | 确定性完整协作链，默认展示                | 无               |
+| `rework`    | 水情 schema Red → scoped revision 2 Green | 无               |
+| `workbuddy` | 四个真实本机 WorkBuddy 参训进程           | 有               |
+
+表中只描述四个参训者。若由 Codex 在 WorkBuddy GUI 中新建 Lead 任务，Lead
+本身仍可能消耗 WorkBuddy 订阅。用户要求完全零模型调用时，不得打开
+WorkBuddy；应直接运行确定性 supervisor，并明确说明未进行 GUI 操作。
 
 真实 profile 必须得到当前用户明确授权，并使用
 `WORKBUDDY_LIVE=1`。历史保留的最近一次 live 运行因四路 429 额度耗尽而

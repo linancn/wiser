@@ -19,9 +19,10 @@ Run 只管理阶段和虚拟时钟；评价与重做属于各自 Task。这样�
 
 ## 导调台信息架构
 
-全局导航只保留“场景库”和“运行指挥”。场景库负责草稿、校验、发布、版本和团队契约；运行指挥默认只读，每个 Run 再分为“总览 / 评测 / Trace / 回放”四个工作区。
+全局导航只保留“场景库”和“运行指挥”。场景库负责草稿、校验、发布、版本和团队契约；运行指挥默认只读，每个 Run 再分为“总览 / 协作 / 评测 / Trace / 回放”五个工作区。
 
 - **总览**先回答权威结果、最高风险和下一步，只展示前三项关注、团队态势、最近事件与流域决策脊柱。
+- **协作**以汇流账本呈现 request/response、ArtifactVersion handoff 和逐收件人 Receipt 状态；不把 acknowledgement 描述成已读或同意。
 - **评测**核对权威 Event、Barrier 与 evaluator verdict，并把 OpenTelemetry 覆盖缺口作为诊断信号，不让遥测替代裁决。
 - **Trace**使用 wall clock 瀑布、Agent 泳道和 Span Inspector 定位执行问题；窄屏转换为可扫读的事件流。
 - **回放**按 `run_seq` 和当时视角重建收据、事件与可见证据，技术遥测只作为 best-effort 叠加。
@@ -30,11 +31,12 @@ Run 只管理阶段和虚拟时钟；评价与重做属于各自 Task。这样�
 场景库 ──→ 场景编排 ──→ 关联 Run
                          │
 运行指挥 ──→ Run 总览 ──┼─→ 评测
+                         ├─→ 协作
                          ├─→ Trace
                          └─→ 回放
 ```
 
-Run 总览的视觉签名是“流域决策脊柱”：水情、水力和生态三个专业角色像支流并行，依次穿过分析 Barrier、调度协调与背书 Barrier，最后抵达权威裁决。这里的节点和连接全部来自真实角色、Barrier 与 verdict 数据；Trace 中的连接也只表达真实 Span Links。
+Run 总览的视觉签名是“流域决策脊柱”：水情、水力和生态三个专业角色像支流并行，依次穿过分析 Barrier、调度协调与背书 Barrier，最后抵达权威裁决。这里的节点和连接全部来自真实角色、Barrier 与 verdict 数据；协作页只使用 Message、ArtifactVersion 和 Receipt 事实，Trace 中的连接也只表达真实 Span Links。
 
 ## OTel 借鉴边界
 

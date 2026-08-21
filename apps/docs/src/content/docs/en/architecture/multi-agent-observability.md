@@ -19,9 +19,10 @@ Ecology ─────┘                              │
 
 ## Control-room information architecture
 
-Global navigation contains only **Scenario library** and **Run control**. The library owns drafts, validation, publication, versions, and team contracts. Run control is read-only by default, and every Run is split into **Overview / Evaluation / Trace / Replay** workspaces.
+Global navigation contains only **Scenario library** and **Run control**. The library owns drafts, validation, publication, versions, and team contracts. Run control is read-only by default, and every Run is split into **Overview / Collaboration / Evaluation / Trace / Replay** workspaces.
 
 - **Overview** answers authority status, highest risk, and next action first. It shows at most three attention items, team posture, recent events, and the basin decision spine.
+- **Collaboration** renders requests/responses, ArtifactVersion handoffs, and per-recipient Receipt state as a confluence ledger. It never labels acknowledgement as read or agreement.
 - **Evaluation** reconciles authoritative Events, Barriers, and evaluator verdicts. OpenTelemetry coverage gaps remain diagnostic signals and never replace the verdict.
 - **Trace** uses a wall-clock waterfall, agent lanes, and a Span Inspector for execution debugging; narrow screens switch to a scannable event stream.
 - **Replay** reconstructs receipts, events, and visible evidence by `run_seq` and historical perspective. Technical telemetry remains a best-effort overlay.
@@ -30,11 +31,12 @@ Global navigation contains only **Scenario library** and **Run control**. The li
 Scenario library ──→ Scenario workspace ──→ related Runs
                                              │
 Run control ───────→ Run overview ───────────┼─→ Evaluation
+                                             ├─→ Collaboration
                                              ├─→ Trace
                                              └─→ Replay
 ```
 
-The Run overview's visual signature is the **basin decision spine**: evidence, hydraulics, and ecology roles flow in parallel through an analysis Barrier, coordination, an endorsement Barrier, and finally the authoritative verdict. Every node and connection comes from real role, Barrier, and verdict data. Trace connections likewise encode only real Span Links.
+The Run overview's visual signature is the **basin decision spine**: evidence, hydraulics, and ecology roles flow in parallel through an analysis Barrier, coordination, an endorsement Barrier, and finally the authoritative verdict. Every node and connection comes from real role, Barrier, and verdict data. Collaboration uses only Message, ArtifactVersion, and Receipt facts; Trace connections likewise encode only real Span Links.
 
 ## What WISER adopts from OTel
 

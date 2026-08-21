@@ -20,6 +20,8 @@ lifecycle:
   oneActiveSession: true
   restartPolicy: abort-run
 authorization:
+  workBuddyLeadMayUseSubscription: true
+  zeroModelPath: direct-supervisor-without-workbuddy-gui
   liveRequiresExplicitAuthorization: true
   knownLiveDiagnostic: workbuddy-quota-429
 topology:

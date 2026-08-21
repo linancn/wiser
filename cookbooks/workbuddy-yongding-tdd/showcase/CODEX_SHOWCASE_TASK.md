@@ -7,6 +7,9 @@ RunAgent。
 
 1. 阅读 showcase README、Skill 的 `safety-boundaries.md` 与
    `gui-runbook.md`，运行 `pnpm showcase:preflight`。失败即停止。
+   `scripted/rework` 只保证四个参训者不调用模型；WorkBuddy Lead 仍可能
+   消耗订阅。如果用户禁止所有模型调用，不要打开 WorkBuddy，改走直接
+   supervisor，并说明没有执行 GUI 操作。
 2. 默认先展示 `scripted`，清理后再展示 `rework`。使用 Computer Use
    打开 WorkBuddy，在该仓库新建一个顶层 Lead 任务，把
    `WORKBUDDY_LEAD_SHOWCASE_TASK.md` 和所选 profile 发给它。

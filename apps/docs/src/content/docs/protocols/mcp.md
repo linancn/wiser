@@ -27,26 +27,26 @@ pnpm --filter agent-excon-mcp-server start
 
 下表与 `apps/mcp/src/server.ts` 及当前 Fastify 路由一一对应。HTTP 操作相对于 `/api/v2/`。
 
-| MCP Tool                         | HTTP 操作                                      | 真实效果                                            |
-| -------------------------------- | ---------------------------------------------- | --------------------------------------------------- |
-| `excon_get_assignment`           | `GET runs/{runId}/me`                          | 核对 credential 绑定的 RunAgent、角色和 sync cursor |
-| `excon_sync`                     | `POST runs/{runId}/sync`                       | 发放新资源并可确认上一 Receipt head                 |
-| `excon_wait_and_sync`            | `POST runs/{runId}/sync`                       | 墙钟有界等待后执行一次普通 sync，不推进虚拟时钟     |
-| `excon_list_tasks`               | `GET runs/{runId}/tasks`                       | 恢复已 issued Task                                  |
-| `excon_list_messages`            | `GET runs/{runId}/messages`                    | 恢复已 issued Message                               |
-| `excon_list_artifacts`           | `GET runs/{runId}/artifacts`                   | 恢复已 issued Artifact grant                        |
-| `excon_list_submissions`         | `GET runs/{runId}/submissions`                 | 恢复已 issued 的精确不可变 Submission 修订          |
-| `excon_claim_task`               | `POST tasks/{taskId}:claim`                    | 领取 fenced Task lease；仅此工具返回不透明 token    |
-| `excon_begin_task`               | `POST tasks/{taskId}:begin`                    | 以当前 lease 开始 Task                              |
-| `excon_heartbeat_task`           | `POST tasks/{taskId}:heartbeat`                | 请求有界 lease 续期                                 |
-| `excon_release_task`             | `POST tasks/{taskId}:release`                  | 释放 lease 并使旧 token 失效                        |
-| `excon_submit_task_result`       | `POST tasks/{taskId}/submissions`              | 创建带 Receipt/ArtifactVersion 证据的不可变结果     |
-| `excon_post_message`             | `POST runs/{runId}/messages`                   | 向不可变收件人快照发送 Message                      |
-| `excon_publish_artifact`         | `POST runs/{runId}/artifacts`                  | 发布 Artifact 与不可变首版                          |
-| `excon_publish_artifact_version` | `POST artifacts/{artifactId}/versions`         | 从精确 `baseVersionId` 追加版本                     |
-| `excon_endorse_submission`       | `POST submissions/{submissionId}/endorsements` | 消费匹配 ActionGrant 背书精确修订                   |
-| `excon_get_feedback`             | `GET runs/{runId}/feedback`                    | 恢复已 issued 的分层 Feedback/ActionGrant           |
-| `excon_get_replay_cursor`        | `GET runs/{runId}/replay`                      | 只读取自身 `issued`/`acknowledged` agent 视角       |
+| MCP Tool                         | HTTP 操作                                      | 真实效果                                                |
+| -------------------------------- | ---------------------------------------------- | ------------------------------------------------------- |
+| `excon_get_assignment`           | `GET runs/{runId}/me`                          | 核对 credential 绑定的 RunAgent、角色和 sync cursor     |
+| `excon_sync`                     | `POST runs/{runId}/sync`                       | 发放新资源并可确认上一 Receipt head                     |
+| `excon_wait_and_sync`            | `POST runs/{runId}/sync`                       | 墙钟有界等待后执行一次普通 sync，不推进虚拟时钟         |
+| `excon_list_tasks`               | `GET runs/{runId}/tasks`                       | 恢复已 issued Task                                      |
+| `excon_list_messages`            | `GET runs/{runId}/messages`                    | 恢复已 issued Message                                   |
+| `excon_list_artifacts`           | `GET runs/{runId}/artifacts`                   | 恢复已 issued Artifact grant                            |
+| `excon_list_submissions`         | `GET runs/{runId}/submissions`                 | 恢复已 issued 的精确不可变 Submission 修订              |
+| `excon_claim_task`               | `POST tasks/{taskId}:claim`                    | 领取 fenced Task lease；仅此工具返回不透明 token        |
+| `excon_begin_task`               | `POST tasks/{taskId}:begin`                    | 以当前 lease 开始 Task                                  |
+| `excon_heartbeat_task`           | `POST tasks/{taskId}:heartbeat`                | 请求有界 lease 续期                                     |
+| `excon_release_task`             | `POST tasks/{taskId}:release`                  | 释放 lease 并使旧 token 失效                            |
+| `excon_submit_task_result`       | `POST tasks/{taskId}/submissions`              | 创建带 Receipt/ArtifactVersion 证据的不可变结果         |
+| `excon_post_message`             | `POST runs/{runId}/messages`                   | 发送 inform/request/response 或 ArtifactVersion handoff |
+| `excon_publish_artifact`         | `POST runs/{runId}/artifacts`                  | 发布 Artifact 与不可变首版                              |
+| `excon_publish_artifact_version` | `POST artifacts/{artifactId}/versions`         | 从精确 `baseVersionId` 追加版本                         |
+| `excon_endorse_submission`       | `POST submissions/{submissionId}/endorsements` | 消费匹配 ActionGrant 背书精确修订                       |
+| `excon_get_feedback`             | `GET runs/{runId}/feedback`                    | 恢复已 issued 的分层 Feedback/ActionGrant               |
+| `excon_get_replay_cursor`        | `GET runs/{runId}/replay`                      | 只读取自身 `issued`/`acknowledged` agent 视角           |
 
 `excon_list_submissions` 只恢复当前 RunAgent 已通过 `excon_sync` 获得 Receipt 的精确不可变修订。它不会泄露未发放或其他智能体的 Submission；背书前必须用本工具恢复并审阅目标修订。
 
@@ -56,7 +56,7 @@ pnpm --filter agent-excon-mcp-server start
 2. `excon_sync`：从持久化的 `afterReceiptSeq` 拉取；处理并验证非空批次后，在下一次 sync 确认精确 `throughReceiptSeq` 和 `receiptHeadHash`。
 3. `excon_list_tasks`：只恢复已发放 Task；用 Task 自身 `lockVersion` claim。
 4. 保存 claim 返回的 `claimEpoch`、`leaseToken` 和期限；begin，长任务在到期前有限 heartbeat。
-5. 用 Message 传递明确请求，用 Artifact/ArtifactVersion 共享可复用证据。成功写入不代表收件人已知，收件人仍需自己的 sync Receipt。
+5. 用 `request` 发起明确请求，用引用已收取父请求的 `response` 形成因果回复，用 `handoff` 固定 ArtifactVersion 交接。成功写入不代表收件人已知，收件人仍需自己的 sync Receipt；Receipt ack 也不等于理解或同意。
 6. `excon_submit_task_result` 至少引用一个已验证的自身 Receipt 或已授权 ArtifactVersion。
 7. 通过 `excon_sync` 获取 Submission Receipt，再用 `excon_list_submissions` 恢复并审阅精确不可变修订；只有收到匹配 ActionGrant 后才能 endorse。
 8. 使用 `excon_wait_and_sync` 有界等待 Feedback/Barrier 下游 Task；参训者没有 Run 时钟推进或 Barrier release Tool。
@@ -69,6 +69,7 @@ pnpm --filter agent-excon-mcp-server start
 - 所有写 Tool 都要求 UUID `idempotencyKey`。模糊失败时只能以完全相同的 actor、Tool/path、body 和 key 重试。
 - Task lease token 只保留在调用方本地状态；MCP Tool 不替调用方持久化它。
 - API 错误映射为 `isError: true`，保留稳定 `code`、安全 message、下一步 action 和可选 trace ID；API `details` 不转发给智能体。
+- Artifact/Message 较多时将 `sync maxItems` 收窄到约 8，并在 `hasMore=true` 时使用返回的连续 cursor 分页，避免 `MCP_RESPONSE_TOO_LARGE`。
 - 单次完整 MCP 响应超过 32,000 字符时返回 `MCP_RESPONSE_TOO_LARGE`；缩小 `sync.maxItems` 或回放 cursor，不能截断后继续当作完整事实。
 - RunAgent replay Tool 不提供 operator/team/role/eligible 视角。
 

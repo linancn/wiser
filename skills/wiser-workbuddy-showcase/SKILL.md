@@ -11,12 +11,20 @@ role-scoped WISER MCP servers. Codex and Lead are never RunAgents.
 
 ## Choose the profile
 
-- Use `scripted` first for a deterministic, non-model protocol demonstration.
+- Use `scripted` first for a deterministic protocol demonstration whose four
+  participant processes do not call models.
 - Use `rework` after scripted to show `REWORK_REQUIRED` followed by immutable
   revision 2 and `ACCEPTED`.
 - Use `workbuddy` only after the user explicitly authorizes live model use in
   the current task. Historical local runs include a four-role `429` quota
   failure; treat another `429` as terminal and never retry automatically.
+
+Operating the GUI through a WorkBuddy Lead can itself consume the signed-in
+WorkBuddy subscription even when the four participants are scripted. Treat an
+explicit request to operate WorkBuddy as Lead-use authorization; if the user
+forbids all model use or only asks for a zero-cost dry run, do not open
+WorkBuddy. Run the deterministic supervisor directly or provide manual steps,
+and state that no GUI operation occurred.
 
 ## Operate the showcase
 

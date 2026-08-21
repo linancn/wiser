@@ -55,25 +55,26 @@ Accept: application/json
 
 Every `POST` also carries `Content-Type: application/json` and a UUID `Idempotency-Key`. An operator token, another RunAgent token, or a changed header cannot assume this identity.
 
-| Method | Path                                              | Purpose                                                                   |
-| ------ | ------------------------------------------------- | ------------------------------------------------------------------------- |
-| `GET`  | `/api/v2/runs/{runId}/me`                         | Reconcile the credential-bound RunAgent, role card, and sync cursor       |
-| `POST` | `/api/v2/runs/{runId}/sync`                       | Issue new resources and optionally acknowledge the prior Receipt head     |
-| `GET`  | `/api/v2/runs/{runId}/tasks`                      | Recover issued Tasks                                                      |
-| `GET`  | `/api/v2/runs/{runId}/messages`                   | Recover issued Messages                                                   |
-| `GET`  | `/api/v2/runs/{runId}/artifacts`                  | Recover issued Artifact grants                                            |
-| `GET`  | `/api/v2/runs/{runId}/submissions`                | Recover exact issued immutable Submission revisions                       |
-| `GET`  | `/api/v2/runs/{runId}/feedback`                   | Recover issued layered Feedback/ActionGrants                              |
-| `POST` | `/api/v2/tasks/{taskId}:claim`                    | Claim a bounded fenced lease with the Task `lockVersion`                  |
-| `POST` | `/api/v2/tasks/{taskId}:begin`                    | Begin with the `claimEpoch` and opaque `leaseToken`                       |
-| `POST` | `/api/v2/tasks/{taskId}:heartbeat`                | Request a bounded renewal before maximum expiry                           |
-| `POST` | `/api/v2/tasks/{taskId}:release`                  | Release the current lease and invalidate its token                        |
-| `POST` | `/api/v2/tasks/{taskId}/submissions`              | Create immutable Receipt/ArtifactVersion-backed output under a live lease |
-| `POST` | `/api/v2/runs/{runId}/messages`                   | Send a Message to an immutable recipient snapshot                         |
-| `POST` | `/api/v2/runs/{runId}/artifacts`                  | Publish an Artifact and immutable first version                           |
-| `POST` | `/api/v2/artifacts/{artifactId}/versions`         | Append from an exact `baseVersionId`                                      |
-| `POST` | `/api/v2/submissions/{submissionId}/endorsements` | Consume a matching ActionGrant for the exact revision                     |
-| `GET`  | `/api/v2/runs/{runId}/replay`                     | Read only this agent's `issued` or `acknowledged` perspective             |
+| Method | Path                                              | Purpose                                                                           |
+| ------ | ------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `GET`  | `/api/v2/runs/{runId}/me`                         | Reconcile the credential-bound RunAgent, role card, and sync cursor               |
+| `POST` | `/api/v2/runs/{runId}/sync`                       | Issue new resources and optionally acknowledge the prior Receipt head             |
+| `GET`  | `/api/v2/runs/{runId}/tasks`                      | Recover issued Tasks                                                              |
+| `GET`  | `/api/v2/runs/{runId}/messages`                   | Recover issued Messages                                                           |
+| `GET`  | `/api/v2/runs/{runId}/interactions`               | Let operators read redacted threads, artifact refs, and recipient delivery states |
+| `GET`  | `/api/v2/runs/{runId}/artifacts`                  | Recover issued Artifact grants                                                    |
+| `GET`  | `/api/v2/runs/{runId}/submissions`                | Recover exact issued immutable Submission revisions                               |
+| `GET`  | `/api/v2/runs/{runId}/feedback`                   | Recover issued layered Feedback/ActionGrants                                      |
+| `POST` | `/api/v2/tasks/{taskId}:claim`                    | Claim a bounded fenced lease with the Task `lockVersion`                          |
+| `POST` | `/api/v2/tasks/{taskId}:begin`                    | Begin with the `claimEpoch` and opaque `leaseToken`                               |
+| `POST` | `/api/v2/tasks/{taskId}:heartbeat`                | Request a bounded renewal before maximum expiry                                   |
+| `POST` | `/api/v2/tasks/{taskId}:release`                  | Release the current lease and invalidate its token                                |
+| `POST` | `/api/v2/tasks/{taskId}/submissions`              | Create immutable Receipt/ArtifactVersion-backed output under a live lease         |
+| `POST` | `/api/v2/runs/{runId}/messages`                   | Send a Message to an immutable recipient snapshot                                 |
+| `POST` | `/api/v2/runs/{runId}/artifacts`                  | Publish an Artifact and immutable first version                                   |
+| `POST` | `/api/v2/artifacts/{artifactId}/versions`         | Append from an exact `baseVersionId`                                              |
+| `POST` | `/api/v2/submissions/{submissionId}/endorsements` | Consume a matching ActionGrant for the exact revision                             |
+| `GET`  | `/api/v2/runs/{runId}/replay`                     | Read only this agent's `issued` or `acknowledged` perspective                     |
 
 ## `/sync` and the knowledge boundary
 
@@ -105,6 +106,8 @@ Non-empty sequences are contiguous, each `previousReceiptHash` joins the trusted
 - Claim returns the current opaque `leaseToken` once. Begin, heartbeat, release, and submit verify Task version, `claimEpoch`, and token. Never place the token in a Message, Artifact, Submission, log, or telemetry.
 - A Submission cites at least one verified Receipt belonging to this RunAgent or one immutable ArtifactVersion explicitly granted to it.
 - Message and Artifact recipient snapshots freeze at publication. Later team membership does not grant history.
+- Messages use `inform`, `request`, `response`, or `handoff`. A `response` cites a `request` already obtained through the caller's own Receipt chain with `replyToMessageId` and inherits its `threadId`; an agent that has not received the parent cannot respond.
+- A `handoff` pins at least one exact `artifactId`, `artifactVersionId`, and `contentHash`. Receipt issuance or acknowledgement proves delivery-chain state only; it never means “read”, “understood”, or “agreed”.
 - Artifact updates compare the exact `baseVersionId` and never overwrite a concurrent version.
 - Endorsement consumes an ActionGrant matching actor, Task, Submission revision, action, scope, expiry, and use count.
 
