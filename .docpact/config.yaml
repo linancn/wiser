@@ -331,6 +331,18 @@ rules:
       - path: apps/docs/src/content/docs/en/architecture/data-foundation.md
         mode: review_or_update
     reason: Authoritative data-postgres, migration, object-store, projection, GIS, search, and AI adapters must stay aligned in both locales.
+  - id: data-foundation-worker
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: apps/data-worker/src/**
+        kind: code
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/architecture/data-foundation.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/data-foundation.md
+        mode: review_or_update
+    reason: Durable scheduling, job handling, health, and worker lifecycle changes must stay aligned in both locales.
   - id: wiser-design-system
     scope: repo
     repo: wiser
