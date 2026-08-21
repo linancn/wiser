@@ -306,4 +306,23 @@ describe('Docpact documentation governance', () => {
       expect(frontmatter, skillPath).not.toContain('checkPaths:');
     }
   });
+
+  it('governs WISER platform and Data Foundation as first-class systems', () => {
+    const agents = read('AGENTS.md');
+    const contributing = read('CONTRIBUTING.md');
+    const config = read('.docpact/config.yaml');
+
+    expect(agents).toContain('# WISER repository instructions');
+    expect(agents).toContain('Supabase-managed database');
+    expect(agents).toContain('Data Foundation database');
+    expect(agents).toContain('latest compatible stable version');
+    expect(agents).toContain('WISER Design System');
+    expect(contributing).toContain('Red commits are recoverable checkpoints');
+
+    expect(config).toContain('- id: platform-foundations');
+    expect(config).toContain('- id: data-foundation');
+    expect(config).toContain('packages/platform-*/**');
+    expect(config).toContain('packages/data-*/**');
+    expect(config).toContain('wiser-platform-contracts');
+  });
 });
