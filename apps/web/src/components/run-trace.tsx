@@ -106,6 +106,13 @@ export function RunTrace({
     ],
     [dictionary.trace.excon, locale, run.participants],
   );
+  const orderedSpans = useMemo(
+    () =>
+      [...run.spans].sort(
+        (left, right) => left.startPercent - right.startPercent,
+      ),
+    [run.spans],
+  );
 
   function selectAgent(agentId: string) {
     const preferred = [...run.spans]
@@ -222,6 +229,39 @@ export function RunTrace({
                 </span>
               </div>
             </div>
+
+            <ol
+              className="mobile-trace-stream"
+              aria-label={dictionary.trace.agentLanes}
+            >
+              {orderedSpans.map((span) => {
+                const agent = run.participants.find(
+                  ({ id }) => id === span.agentSessionId,
+                );
+                return (
+                  <li key={span.id}>
+                    <button
+                      type="button"
+                      data-testid="mobile-trace-event"
+                      data-operation={span.operation}
+                      aria-pressed={selectedSpanId === span.id}
+                      onClick={() => setSelectedSpanId(span.id)}
+                    >
+                      <time>{span.startWallTime}</time>
+                      <span>{operationLabel(span.operation, locale)}</span>
+                      <strong>{span.name[locale]}</strong>
+                      <small>
+                        {agent?.displayName[locale] ?? dictionary.trace.excon} ·{' '}
+                        {span.durationMs.toLocaleString(locale)} ms ·{' '}
+                        {span.telemetryTrust === 'platform_observed'
+                          ? dictionary.trace.platformObserved
+                          : dictionary.trace.participantReported}
+                      </small>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
 
             <div className="trace-layout">
               <div className="waterfall-panel">

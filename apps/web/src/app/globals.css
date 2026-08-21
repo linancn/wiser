@@ -1630,6 +1630,10 @@ code {
   min-width: 0;
 }
 
+.mobile-trace-stream {
+  display: none;
+}
+
 .waterfall-panel,
 .span-inspector {
   min-width: 0;
@@ -3247,6 +3251,63 @@ code {
     grid-template-columns: 1fr;
     gap: 0.8rem;
     padding-top: 1.5rem;
+  }
+
+  .trace-layout .waterfall-panel {
+    display: none;
+  }
+
+  .mobile-trace-stream {
+    display: grid;
+    gap: 8px;
+    margin: 1rem 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .mobile-trace-stream button {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 3px 12px;
+    width: 100%;
+    min-height: 72px;
+    padding: 11px 12px;
+    border: 1px solid var(--dark-line);
+    border-radius: 10px;
+    color: var(--mist);
+    background: rgba(18, 56, 78, 0.62);
+    text-align: left;
+  }
+
+  .mobile-trace-stream button[aria-pressed='true'] {
+    border-color: var(--ripple);
+    box-shadow: inset 4px 0 var(--ripple);
+    background: rgba(18, 75, 92, 0.9);
+  }
+
+  .mobile-trace-stream time,
+  .mobile-trace-stream button > span {
+    color: var(--ripple);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .mobile-trace-stream button > span {
+    text-align: right;
+  }
+
+  .mobile-trace-stream strong,
+  .mobile-trace-stream small {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-trace-stream strong {
+    font-size: 14px;
+  }
+
+  .mobile-trace-stream small {
+    color: var(--silt);
+    font-size: 12px;
   }
 
   .diagnostics-heading,
