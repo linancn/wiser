@@ -260,6 +260,10 @@ rules:
         kind: code
       - path: apps/api/src/runtime-auth.ts
         kind: code
+      - path: apps/web/src/lib/supabase/**
+        kind: code
+      - path: apps/web/src/proxy.ts
+        kind: code
       - path: supabase/schemas/02_platform_auth.sql
         kind: database
       - path: supabase/migrations/*platform_auth*.sql

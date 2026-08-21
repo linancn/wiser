@@ -18,7 +18,7 @@ checkPaths:
   - .github/workflows/**
   - package.json
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 9e3f350a7bbcc34fc4bb8708f4e743f84dc87ef6
+lastReviewedCommit: 110fba5497c19e628b44f66179f3a783749a5e9e
 ---
 
 # WISER repository instructions
