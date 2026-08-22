@@ -12,10 +12,10 @@ whenToUse:
 whenToUpdate:
   - 场景事实、合成 fixture、评价规则或来源变化时
 checkPaths:
-  - scenarios/jjj-yongding-replenishment-2023/**
+  - packages/excon-scenarios/scenarios/jjj-yongding-replenishment-2023/**
   - skills/agent-excon/references/yongding-allocation.md
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 ---
 
 ## 案例性质

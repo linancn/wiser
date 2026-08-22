@@ -14,9 +14,10 @@ checkPaths:
   - apps/api/**
   - packages/contracts/**
   - packages/core/**
+  - packages/excon-scenarios/**
   - packages/data-*/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 8169cc9c274ec3622b9c0ddd8d544eb8afe06f27
+lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 ---
 
 # WISER API host
@@ -80,6 +81,8 @@ This is durable restart recovery, but it is intentionally a single-writer journa
 - public v2 scenario catalog under `/api/v2/scenarios`
 - operator Scenario/Agent/Run lifecycle and replay under `/api/v2`
 - RunAgent `/sync`, Task leases, Messages, Artifacts, Submissions, endorsements, Feedback, and agent-safe replay under `/api/v2`
+
+The bundled Yongding case pack enters the runtime only through the validated public exports of the private workspace package `@agent-excon/scenarios`; API code never reads or constructs package-internal asset paths.
 
 The participant authenticator uses the same Platform Resolver when unified Auth is active. The injected EXCON Tenant, Project, and Purpose are fixed server context; a Supabase human or delegated Agent must have the right live EXCON roles/scopes and RunAgent binding. Static participant/operator tokens exist only when Auth is explicitly off outside production.
 

@@ -16,8 +16,10 @@ checkPaths:
   - compose.yaml
   - .env.example
   - scripts/data-foundation/**
+  - packages/excon-scenarios/**
+  - examples/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 574446ae6c540c2e1d365473f6b0d81469ec9367
+lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 ---
 
 ## Current runtime boundary
@@ -25,6 +27,7 @@ lastReviewedCommit: 574446ae6c540c2e1d365473f6b0d81469ec9367
 The complete local stack shares one Supabase Auth, Fastify API, Next.js Web, MCP server, and Fumadocs application:
 
 - Agent EXCON v2 writes all 19 mutations to an append-only command journal in Supabase PostgreSQL and verifies deterministic replay with generation tapes and result hashes at startup. Only one non-superuser writer is allowed. v1 Episodes remain an explicit in-memory compatibility protocol.
+- The bundled Yongding scenario comes from the validated runtime public exports of `@agent-excon/scenarios`. Executable four-agent Cookbooks and Showcases live under `examples/agent-excon/`; they are not API asset lookup paths.
 - Data Foundation's 22 Capabilities are wired to independent data-postgres, SeaweedFS, concrete ingestion Worker, five projections, REST, GraphQL, MCP, Skill, and the unified Web query workspace.
 - Data Web requires a real Supabase session. Its server-only DAL forwards the access token to the API; the browser never receives database, S3, or projection credentials.
 - Chinese (`zh-CN`) is the default, English routes are isomorphic, and both systems share light/dark themes, semantic tokens, keyboard behavior, and responsive layout.

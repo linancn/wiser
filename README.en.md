@@ -13,10 +13,11 @@ whenToUpdate:
 checkPaths:
   - apps/**
   - packages/**
+  - examples/**
   - compose.yaml
   - docs/roadmap.md
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 574446ae6c540c2e1d365473f6b0d81469ec9367
+lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 ---
 
 # WISER · Water Intelligence System & Engine for Reconfiguration
@@ -39,11 +40,11 @@ WISER has evolved from a single agent exercise control application into an exten
 
 ```text
 apps/           Shared API, Web, MCP, docs, and system-specific workers
-packages/       Platform contracts/auth and system contracts/core/infra
+packages/       Platform/system code and versioned runtime domain assets in @agent-excon/scenarios
+examples/       Executable tutorials, labs, and showcases for Agent EXCON and future systems
 infrastructure/ Exact images, Data Foundation, Docker, and observability config
 skills/         Independently loadable Agent EXCON and Data Foundation Skills
 supabase/       Unified Auth/control plane, EXCON schema, migrations, seeds, pgTAP
-scenarios/      Versioned exercise scenarios and provenance
 tests/          Cross-boundary fixtures and acceptance tests
 ```
 
