@@ -48,6 +48,12 @@ const ToolOutputSchema = z
   .strictObject({
     ok: z.boolean(),
     data: z.json().optional(),
+    resource: z
+      .string()
+      .regex(
+        /^operation:\/\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      )
+      .optional(),
     error: z
       .strictObject({
         code: z.string(),
@@ -94,16 +100,48 @@ export interface DataFoundationMcpModuleOptions {
   readonly purpose: string;
 }
 
-function safeError(): CallToolResult {
+function ownProperty(value: unknown, property: string): unknown {
+  if (value === null || typeof value !== 'object') return undefined;
+  return Object.getOwnPropertyDescriptor(value, property)?.value;
+}
+
+function safeFailure(error: unknown) {
+  const status = ownProperty(error, 'status');
+  const code = ownProperty(error, 'code');
+  const name = ownProperty(error, 'name');
+  if (code === 'REQUEST_FAILED' && name === 'DataFoundationApiError') {
+    if (status === 401) {
+      return {
+        code: 'NOT_AUTHENTICATED',
+        message:
+          '需要有效的统一 WISER 身份。 / A valid unified WISER identity is required.',
+        action:
+          '刷新或重新配置 Data API credential 后重试。 / Refresh or reconfigure the Data API credential before retrying.',
+      } as const;
+    }
+    if (status === 403) {
+      return {
+        code: 'NOT_AUTHORIZED',
+        message:
+          '当前身份无权执行该数据操作。 / The current identity is not authorized for this data operation.',
+        action:
+          '核对 Tenant、Project、Purpose、Scope 与安全等级。 / Reconcile Tenant, Project, Purpose, scopes, and security level.',
+      } as const;
+    }
+  }
+  return {
+    code: 'DATA_API_ERROR',
+    message:
+      '数据基座 API 暂时无法完成请求。 / The Data Foundation API could not complete the request.',
+    action:
+      '核对身份、范围与 Operation 状态后安全重试。 / Reconcile identity, scope, and Operation status before a safe retry.',
+  } as const;
+}
+
+function safeError(error?: unknown): CallToolResult {
   const structuredContent = {
     ok: false,
-    error: {
-      code: 'DATA_API_ERROR',
-      message:
-        '数据基座 API 暂时无法完成请求。 / The Data Foundation API could not complete the request.',
-      action:
-        '核对身份、范围与 Operation 状态后安全重试。 / Reconcile identity, scope, and Operation status before a safe retry.',
-    },
+    error: safeFailure(error),
   } as const;
   return {
     isError: true,
@@ -117,8 +155,30 @@ function safeError(): CallToolResult {
   };
 }
 
+function operationResource(data: JsonObject): string | undefined {
+  const nested = data['operation'];
+  const nestedOperation =
+    nested !== null && typeof nested === 'object' && !Array.isArray(nested)
+      ? (nested as JsonObject)
+      : undefined;
+  const operationId =
+    typeof data['operationId'] === 'string'
+      ? data['operationId']
+      : nestedOperation !== undefined
+        ? nestedOperation['operationId']
+        : undefined;
+  return typeof operationId === 'string' && UUID_PATTERN.test(operationId)
+    ? `operation://${operationId}`
+    : undefined;
+}
+
 function success(data: JsonObject): CallToolResult {
-  const structuredContent = { ok: true, data } as const;
+  const resource = operationResource(data);
+  const structuredContent = {
+    ok: true,
+    data,
+    ...(resource === undefined ? {} : { resource }),
+  } as const;
   const machineData = JSON.stringify(structuredContent);
   if (machineData.length > RESPONSE_CHARACTER_LIMIT) {
     const result = safeError();
@@ -288,8 +348,8 @@ function registerTools(
         try {
           const request = transportRequest(id, input, options);
           return success(await options.http.request(request));
-        } catch {
-          return safeError();
+        } catch (error) {
+          return safeError(error);
         }
       },
     );
