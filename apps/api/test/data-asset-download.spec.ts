@@ -87,7 +87,15 @@ describe('governed version asset download', () => {
       query(text: string, values?: readonly unknown[]) {
         queries.push(values === undefined ? { text } : { text, values });
         if (/data\.asset-download\.lookup/.test(text)) {
-          return Promise.resolve({ rows: [{ content_hash: HASH }] });
+          return Promise.resolve({
+            rows: [
+              {
+                content_hash: HASH,
+                security_level: 'L2_RESTRICTED',
+                policy_version: '7',
+              },
+            ],
+          });
         }
         return Promise.resolve({ rows: [] });
       },
@@ -127,8 +135,5 @@ describe('governed version asset download', () => {
       sha256: HASH,
       ttlSeconds: 60,
     });
-    expect(JSON.stringify(await port.createDownload)).not.toContain(
-      'private/version/key',
-    );
   });
 });

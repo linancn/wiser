@@ -36,7 +36,14 @@ import {
   PostgresStructuredDataQueryPort,
   type QueryAdapterHttpClient,
 } from './query-adapters.js';
-import { createDataFoundationRestModule } from './rest-module.js';
+import {
+  createDataFoundationRestModule,
+  type DataFoundationAssetDownloadPort,
+} from './rest-module.js';
+import {
+  PostgresDataAssetDownloadPort,
+  type AssetDownloadObjectStore,
+} from './postgres-asset-download.js';
 import {
   loadDataFoundationApiRuntimeConfig,
   type DataFoundationApiRuntimeConfig,
@@ -79,6 +86,10 @@ export interface DataFoundationRuntimeFactories {
     config: Extract<DataFoundationApiRuntimeConfig, { mode: 'enabled' }>,
     pool: DataFoundationSharedPool,
   ): readonly DataCapabilityExecutor[];
+  createAssetDownloadPort(
+    pool: DataFoundationSharedPool,
+    objectStore: unknown,
+  ): DataFoundationAssetDownloadPort;
   probeDatabase(pool: DataFoundationSharedPool): Promise<boolean>;
   probeWorker(workerUrl: string): Promise<boolean>;
 }
@@ -211,6 +222,13 @@ const defaultFactories: DataFoundationRuntimeFactories = {
       geo: new PostgisGeoQueryPort({ pool: pg }),
     });
   },
+  createAssetDownloadPort(pool, objectStore) {
+    return new PostgresDataAssetDownloadPort({
+      pool: (pool as DefaultPool).pg,
+      objectStore: objectStore as AssetDownloadObjectStore,
+      ttlSeconds: 60,
+    });
+  },
   async probeDatabase(pool) {
     try {
       await (pool as DefaultPool).pg.query('select 1');
@@ -275,6 +293,10 @@ export function createDataFoundationRuntimeFromEnvironment(
     const read = factories.createReadRuntime(pool);
     const command = factories.createCommandRuntime(pool, objectStore.store);
     const special = factories.createSpecialExecutors(config, pool);
+    const assetDownload = factories.createAssetDownloadPort(
+      pool,
+      objectStore.store,
+    );
     const executors = exactExecutors([
       read.executors,
       command.executors,
@@ -305,6 +327,7 @@ export function createDataFoundationRuntimeFromEnvironment(
       createDataFoundationRestModule({
         resolver: platformAuth.resolver,
         handler,
+        assetDownload,
       }),
       createDataFoundationGraphqlModule({
         resolver: platformAuth.resolver,

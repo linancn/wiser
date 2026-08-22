@@ -103,6 +103,13 @@ function factories(overrides: Partial<DataFoundationRuntimeFactories> = {}) {
       executors: commandIds.map(executor),
     })),
     createSpecialExecutors: vi.fn(() => specialIds.map(executor)),
+    createAssetDownloadPort: vi.fn(() => ({
+      createDownload: () =>
+        Promise.resolve({
+          url: 'http://127.0.0.1:18333/signed',
+          expiresAt: '2026-08-22T08:01:00.000Z',
+        }),
+    })),
     probeDatabase: vi.fn(() => Promise.resolve(true)),
     probeWorker: vi.fn(() => Promise.resolve(true)),
     ...overrides,

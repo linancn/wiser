@@ -40,6 +40,12 @@ export {
   type DataFoundationRuntimeFactories,
 } from './data-foundation/runtime.js';
 export {
+  PostgresDataAssetDownloadError,
+  PostgresDataAssetDownloadPort,
+  type AssetDownloadObjectStore,
+  type AssetDownloadPool,
+} from './data-foundation/postgres-asset-download.js';
+export {
   PostgresDataReadCursorError,
   PostgresDataReadError,
   PostgresDataReadNotFoundError,

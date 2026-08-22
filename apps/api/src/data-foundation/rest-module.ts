@@ -53,9 +53,17 @@ export interface DataFoundationRestCapabilityHandler {
   readonly execute: (input: ExecuteDataCapabilityInput) => Promise<unknown>;
 }
 
+export interface DataFoundationAssetDownloadPort {
+  createDownload(input: {
+    readonly context: PlatformRequestContext;
+    readonly versionId: string;
+  }): Promise<{ readonly url: string; readonly expiresAt: string }>;
+}
+
 export interface DataFoundationRestModuleOptions {
   readonly resolver: DataFoundationRequestContextResolver;
   readonly handler: DataFoundationRestCapabilityHandler;
+  readonly assetDownload?: DataFoundationAssetDownloadPort;
 }
 
 interface ErrorMapping {
@@ -206,6 +214,7 @@ function mapError(error: unknown): ErrorMapping {
   if (code === 'FORBIDDEN' || code === 'NOT_AUTHORIZED') {
     return errors.forbidden;
   }
+  if (code === 'UNAVAILABLE') return errors.unavailable;
   if (code === 'VALIDATION_FAILED') return errors.validation;
   return errors.internal;
 }
@@ -476,6 +485,60 @@ export function createDataFoundationRestModule(
               .send(output);
           },
         });
+      }
+      if (options.assetDownload !== undefined) {
+        app.get(
+          '/api/data/v1/tenants/:tenantId/projects/:projectId/versions/:versionId/assets/source',
+          async (request, reply) => {
+            setNoStore(reply);
+            const params = record(request.params);
+            const tenantId = params?.['tenantId'];
+            const projectId = params?.['projectId'];
+            const versionId = params?.['versionId'];
+            if (
+              typeof tenantId !== 'string' ||
+              !UUID_PATTERN.test(tenantId) ||
+              typeof projectId !== 'string' ||
+              !UUID_PATTERN.test(projectId) ||
+              typeof versionId !== 'string' ||
+              !UUID_PATTERN.test(versionId)
+            ) {
+              return sendError(request, reply, errors.validation);
+            }
+            const resolved = await resolveContext(request, options.resolver);
+            if ('error' in resolved) {
+              return sendError(request, reply, resolved.error);
+            }
+            if (
+              !resolved.context.authorization.scopes.includes(
+                'data.catalog.read',
+              )
+            ) {
+              return sendError(request, reply, errors.forbidden);
+            }
+            let download: { readonly url: string; readonly expiresAt: string };
+            try {
+              download = await options.assetDownload!.createDownload({
+                context: resolved.context,
+                versionId,
+              });
+              const url = new URL(download.url);
+              if (
+                !['http:', 'https:'].includes(url.protocol) ||
+                url.username.length > 0 ||
+                url.password.length > 0 ||
+                !Number.isFinite(Date.parse(download.expiresAt))
+              ) {
+                throw new Error('invalid download contract');
+              }
+            } catch (error) {
+              return sendError(request, reply, mapError(error));
+            }
+            reply.header('Location', download.url);
+            reply.header('X-Signed-Url-Expires-At', download.expiresAt);
+            return reply.status(303).send();
+          },
+        );
       }
     },
   };
