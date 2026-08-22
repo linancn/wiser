@@ -138,16 +138,21 @@ const defaultFactories: DataFoundationRuntimeFactories = {
   },
   createObjectStore(config) {
     const client = createSeaweedFsS3Client(config.objectStore);
+    const signingClient = createSeaweedFsS3Client({
+      ...config.objectStore,
+      endpoint: config.objectStorePublicEndpoint,
+    });
     const store = createS3AuthorityObjectStore({
       bucket: config.objectStore.bucket,
       client,
-      presign: createS3AuthorityPresigner(client),
+      presign: createS3AuthorityPresigner(signingClient),
     });
     return {
       store,
       probe: () => safeFetchProbe(`${config.objectStore.endpoint}/status`),
       close: () => {
         client.destroy();
+        signingClient.destroy();
         return Promise.resolve();
       },
     };

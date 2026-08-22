@@ -22,6 +22,7 @@ const enabledEnvironment = {
   DATA_FOUNDATION_MODE: 'enabled',
   DATA_DATABASE_URL: 'postgresql://data:secret@data-postgres:5432/wiser',
   DATA_S3_ENDPOINT: 'http://seaweedfs:8333',
+  DATA_S3_PUBLIC_ENDPOINT: 'http://127.0.0.1:18333',
   DATA_S3_REGION: 'us-east-1',
   DATA_S3_BUCKET: 'wiser-authority',
   DATA_S3_ACCESS_KEY_ID: 'local-access',

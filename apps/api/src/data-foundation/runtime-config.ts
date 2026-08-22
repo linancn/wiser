@@ -9,6 +9,7 @@ export type DataFoundationApiRuntimeConfig =
       readonly mode: 'enabled';
       readonly databaseUrl: string;
       readonly objectStore: SeaweedFsS3AuthorityConfig;
+      readonly objectStorePublicEndpoint: string;
       readonly workerUrl: string;
       readonly weaviate: {
         readonly url: string;
@@ -36,6 +37,7 @@ export type DataFoundationApiRuntimeConfig =
 const RUNTIME_FIELDS = [
   'DATA_DATABASE_URL',
   'DATA_S3_ENDPOINT',
+  'DATA_S3_PUBLIC_ENDPOINT',
   'DATA_S3_REGION',
   'DATA_S3_BUCKET',
   'DATA_S3_ACCESS_KEY_ID',
@@ -177,6 +179,10 @@ export function loadDataFoundationApiRuntimeConfig(
     mode: 'enabled' as const,
     databaseUrl: databaseUrl(required(environment, 'DATA_DATABASE_URL')),
     objectStore: objectStore(environment),
+    objectStorePublicEndpoint: endpoint(
+      required(environment, 'DATA_S3_PUBLIC_ENDPOINT'),
+      'DATA_S3_PUBLIC_ENDPOINT',
+    ),
     workerUrl: endpoint(
       required(environment, 'DATA_WORKER_URL'),
       'DATA_WORKER_URL',
