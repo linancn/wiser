@@ -7,7 +7,9 @@ describe('SeaweedFS authority bucket bootstrap', () => {
   it('creates a missing bucket once and treats an existing bucket as ready', async () => {
     const send = vi
       .fn<(command: unknown) => Promise<unknown>>()
-      .mockRejectedValueOnce(Object.assign(new Error('missing'), { name: 'NotFound' }))
+      .mockRejectedValueOnce(
+        Object.assign(new Error('missing'), { name: 'NotFound' }),
+      )
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({});
 

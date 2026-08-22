@@ -21,6 +21,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "init-object-store": "tsx src/object-store/bucket-init-cli.ts",
     "migrate": "tsx src/migrations/cli.ts",
     "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"

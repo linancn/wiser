@@ -1,3 +1,4 @@
+export * from './bucket-init.js';
 export * from './config.js';
 export * from './errors.js';
 export * from './s3-authority.js';
