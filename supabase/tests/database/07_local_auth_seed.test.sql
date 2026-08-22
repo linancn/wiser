@@ -12,6 +12,10 @@ select ok(
       and aud = 'authenticated'
       and email_confirmed_at is not null
       and encrypted_password is not null
+      and confirmation_token = ''
+      and recovery_token = ''
+      and email_change_token_new = ''
+      and reauthentication_token = ''
   ),
   'the local operator is a confirmed password-auth user'
 );

@@ -410,6 +410,58 @@ values
   )
 on conflict (id) do nothing;
 
+-- Public local-development fixture credential. This is intentionally not a
+-- production secret and exists only so the unified Auth/Web/Data smoke can
+-- exercise the real password grant against the local Supabase stack.
+update auth.users
+set instance_id = '00000000-0000-0000-0000-000000000000',
+    aud = 'authenticated',
+    role = 'authenticated',
+    encrypted_password = extensions.crypt(
+      'WiserLocalOperator-2026!',
+      extensions.gen_salt('bf')
+    ),
+    confirmation_token = '',
+    recovery_token = '',
+    email_change_token_new = '',
+    email_change = '',
+    phone_change = '',
+    phone_change_token = '',
+    email_change_token_current = '',
+    reauthentication_token = '',
+    email_change_confirm_status = 0,
+    is_sso_user = false,
+    is_anonymous = false,
+    email_confirmed_at = coalesce(email_confirmed_at, clock_timestamp()),
+    created_at = coalesce(created_at, clock_timestamp()),
+    updated_at = clock_timestamp()
+where id = '10000000-0000-4000-8000-000000000005';
+
+insert into auth.identities (
+  id,
+  provider_id,
+  user_id,
+  identity_data,
+  provider,
+  created_at,
+  updated_at
+)
+values (
+  '10000000-0000-4000-8000-000000000105',
+  '10000000-0000-4000-8000-000000000005',
+  '10000000-0000-4000-8000-000000000005',
+  jsonb_build_object(
+    'sub', '10000000-0000-4000-8000-000000000005',
+    'email', 'operator@agent-excon.test',
+    'email_verified', true,
+    'phone_verified', false
+  ),
+  'email',
+  clock_timestamp(),
+  clock_timestamp()
+)
+on conflict (provider_id, provider) do nothing;
+
 insert into public.scenario_versions (
   id,
   scenario_id,
