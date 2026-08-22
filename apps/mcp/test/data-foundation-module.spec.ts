@@ -20,6 +20,9 @@ const DATA_ITEM_ID = 'a1000000-0000-4000-8000-000000000003';
 const VERSION_ID = 'a1000000-0000-4000-8000-000000000004';
 const INGESTION_ID = 'a1000000-0000-4000-8000-000000000005';
 const IDEMPOTENCY_KEY = 'a1000000-0000-4000-8000-000000000006';
+const EVIDENCE_ID = 'a1000000-0000-4000-8000-000000000008';
+const STAC_COLLECTION_ID = `wiser-${'a'.repeat(32)}`;
+const STAC_ITEM_ID = `wiser-${'b'.repeat(48)}`;
 
 const EXPECTED_DATA_TOOLS = [
   'data_catalog_search',
@@ -207,6 +210,36 @@ describe('Data Foundation MCP module', () => {
     expect(
       content !== undefined && 'text' in content ? content.text : '',
     ).toContain(VERSION_ID);
+
+    await client.readResource({
+      uri: `evidence://fragments/${EVIDENCE_ID}`,
+    });
+    expect(http.requests.at(-1)).toMatchObject({
+      method: 'GET',
+      path: `/evidence/fragments/${EVIDENCE_ID}`,
+    });
+
+    await client.readResource({
+      uri: `stac://collections/${STAC_COLLECTION_ID}/items/${STAC_ITEM_ID}`,
+    });
+    expect(http.requests.at(-1)).toMatchObject({
+      method: 'GET',
+      path: `/stac/collections/${STAC_COLLECTION_ID}/items/${STAC_ITEM_ID}`,
+    });
+  });
+
+  it('bounds Resource payloads independently from Tool responses', async () => {
+    const http = new RecordingDataHttpClient();
+    http.next = { content: 'x'.repeat(40_000) };
+    const client = await connect(http);
+
+    const resource = await client.readResource({
+      uri: `evidence://fragments/${EVIDENCE_ID}`,
+    });
+    const content = resource.contents[0];
+    const text = content !== undefined && 'text' in content ? content.text : '';
+    expect(text).toContain('MCP_RESOURCE_TOO_LARGE');
+    expect(text).not.toContain('xxxxx');
   });
 
   it('returns a safe MCP error without forwarding backend secrets', async () => {
