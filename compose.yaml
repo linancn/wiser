@@ -2,9 +2,6 @@ name: wiser
 
 x-app: &app
   image: agent-excon-dev:local
-  build:
-    context: .
-    dockerfile: infrastructure/docker/Dockerfile.dev
   init: true
   restart: unless-stopped
   security_opt:
@@ -43,6 +40,9 @@ x-data-logging: &data-logging
 services:
   api:
     <<: *app
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.dev
     command: pnpm --filter @wiser/api dev
     environment:
       API_HOST: 0.0.0.0
@@ -398,7 +398,9 @@ services:
     command:
       - |
         readonly checksum=3615266c495175f38dfabebe30d2fa9f5aa1ecdbd5800737ffa787bb3c2a1e78828ce48eb4ef1e713c5273ae1f8738dc4bf8d9b51c6840103bdc1dba08b61b8e
-        /usr/share/opensearch/plugins/opensearch-security/tools/install_demo_configuration.sh -y >/dev/null
+        if ! test -s /usr/share/opensearch/config/root-ca.pem; then
+          /usr/share/opensearch/plugins/opensearch-security/tools/install_demo_configuration.sh -y >/dev/null || test -s /usr/share/opensearch/config/root-ca.pem
+        fi
         install -m 0444 /usr/share/opensearch/config/root-ca.pem /ca-out/root-ca.pem
         if test -f /plugin-out/.wiser-sha512; then
           grep -qx "$${checksum}" /plugin-out/.wiser-sha512
