@@ -8,7 +8,6 @@ import {
   PostgresDataFoundationGeoAuthorityPort,
 } from '../src/data-foundation/geo-proxy-ports.js';
 import {
-  DataFoundationGeoProxyError,
   createDataFoundationGeoProxyModule,
   type DataFoundationGeoAuditRecord,
   type DataFoundationGeoProxyRequest,
@@ -68,7 +67,13 @@ describe('fixed-origin GIS upstream port', () => {
       },
       stacBearerToken: 'internal-stac-token-value',
       fetch: vi.fn((url: string | URL | Request, init?: RequestInit) => {
-        requested.push({ url: String(url), init: init ?? {} });
+        const requestedUrl =
+          typeof url === 'string'
+            ? url
+            : url instanceof URL
+              ? url.href
+              : url.url;
+        requested.push({ url: requestedUrl, init: init ?? {} });
         return Promise.resolve(
           new Response('{"conformsTo":[]}', {
             status: 200,
@@ -79,7 +84,7 @@ describe('fixed-origin GIS upstream port', () => {
             },
           }),
         );
-      }) as typeof fetch,
+      }),
     });
 
     const response = await port.request(
@@ -116,7 +121,7 @@ describe('fixed-origin GIS upstream port', () => {
             headers: { 'content-type': 'application/json' },
           }),
         ),
-      ) as typeof fetch,
+      ),
     });
 
     await expect(

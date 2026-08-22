@@ -56,11 +56,16 @@ function rootOrigin(value: string): string {
   return url.origin;
 }
 
+function hasControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 31 || code === 127;
+  });
+}
+
 function validSecret(value: string): boolean {
   return (
-    value.length >= 16 &&
-    value.length <= 2_048 &&
-    !/[\u0000-\u001f\u007f]/.test(value)
+    value.length >= 16 && value.length <= 2_048 && !hasControlCharacter(value)
   );
 }
 
@@ -68,7 +73,7 @@ function safeHeader(value: string | null, maximum = 1_024) {
   return value !== null &&
     value.length > 0 &&
     value.length <= maximum &&
-    !/[\u0000-\u001f\u007f]/.test(value)
+    !hasControlCharacter(value)
     ? value
     : undefined;
 }
@@ -83,7 +88,7 @@ function exactQuery(
       !/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(key) ||
       Object.hasOwn(result, key) ||
       value.length > 2_048 ||
-      /[\u0000-\u001f\u007f]/.test(value)
+      hasControlCharacter(value)
     ) {
       return null;
     }

@@ -38,6 +38,13 @@ const MAX_ACCESS_TOKEN_BYTES = 16_384;
 const DEFAULT_TIMEOUT_MS = 8_000;
 const DEFAULT_RESPONSE_LIMIT_BYTES = 4_194_304;
 
+function hasControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 31 || code === 127;
+  });
+}
+
 export interface DataFoundationWebConfig {
   readonly apiOrigin: string;
   readonly tenantId: string;
@@ -611,7 +618,7 @@ function governedGeoPath(path: readonly string[]): string | null {
         segment === '..' ||
         segment.includes('/') ||
         segment.includes('\\') ||
-        /[\u0000-\u001f\u007f]/.test(segment),
+        hasControlCharacter(segment),
     )
   ) {
     return null;
@@ -686,7 +693,7 @@ export async function proxyDataFoundationGeoRequest(
       seen.has(key) ||
       ['url', 'source', 'href', 'sld', 'sld_body'].includes(key) ||
       value.length > 2_048 ||
-      /[\u0000-\u001f\u007f]/.test(value)
+      hasControlCharacter(value)
     ) {
       throw new DataFoundationApiError('invalid-request', 422);
     }
@@ -722,7 +729,7 @@ export async function proxyDataFoundationGeoRequest(
     throw new DataFoundationApiError('unavailable', 503);
   }
   const contentType = response.headers.get('content-type') ?? '';
-  const mediaType = contentType.split(';', 1)[0]!.trim().toLowerCase();
+  const mediaType = (contentType.split(';', 1)[0] ?? '').trim().toLowerCase();
   if (!GEO_PROXY_CONTENT_TYPES.has(mediaType)) {
     throw new DataFoundationApiError('contract', 502);
   }
@@ -732,11 +739,7 @@ export async function proxyDataFoundationGeoRequest(
     'content-type': contentType,
   });
   const etag = response.headers.get('etag');
-  if (
-    etag !== null &&
-    etag.length <= 1_024 &&
-    !/[\u0000-\u001f\u007f]/.test(etag)
-  ) {
+  if (etag !== null && etag.length <= 1_024 && !hasControlCharacter(etag)) {
     headers.set('etag', etag);
   }
   const responseBody = new ArrayBuffer(body.byteLength);

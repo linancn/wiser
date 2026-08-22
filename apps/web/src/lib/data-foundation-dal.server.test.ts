@@ -211,7 +211,9 @@ describe('Data Foundation server-only HTTP DAL', () => {
 
   it('keeps browser tile requests same-origin while forwarding Supabase credentials only server-side', async () => {
     const fetch = vi.fn((url: string | URL | Request, init?: RequestInit) => {
-      expect(String(url)).toBe(
+      const requestedUrl =
+        typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
+      expect(requestedUrl).toBe(
         'http://api:3001/api/data/v1/geo/tiles/vector/versions/' +
           '55555555-5555-4555-8555-555555555555/3/4/2.pbf',
       );

@@ -474,6 +474,13 @@ function requestSearch(request: FastifyRequest): URLSearchParams | null {
   }
 }
 
+function hasControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 31 || code === 127;
+  });
+}
+
 function strictQuery(
   request: FastifyRequest,
   allowed: ReadonlySet<string>,
@@ -488,7 +495,7 @@ function strictQuery(
       !allowed.has(key) ||
       seen.has(key) ||
       value.length > 2_048 ||
-      /[\u0000-\u001f\u007f]/.test(value)
+      hasControlCharacter(value)
     ) {
       return null;
     }
@@ -658,7 +665,7 @@ function ogcRequest(
   const operation = values['request']?.toLowerCase();
   if (
     operation === undefined ||
-    !definition.requests.has(operation as never) ||
+    ![...definition.requests].some((candidate) => candidate === operation) ||
     (values['service'] !== undefined &&
       values['service'].toUpperCase() !== definition.name)
   ) {
@@ -735,7 +742,7 @@ function stacRequest(
     decoded.endsWith('/') ||
     decoded.includes('..') ||
     decoded.includes('\\') ||
-    /[\u0000-\u001f\u007f]/.test(decoded)
+    hasControlCharacter(decoded)
   ) {
     return null;
   }

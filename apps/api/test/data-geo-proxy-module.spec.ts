@@ -330,10 +330,9 @@ describe('Data Foundation governed GIS proxy', () => {
       target: 'TITILER',
       path: '/cog/tiles/WebMercatorQuad/3/4/2.png',
     });
-    expect(Object.fromEntries(fixture.requests[1]!.query)).toMatchObject({
-      resampling: 'nearest',
-      url: expect.stringMatching(/^s3:\/\/wiser-authority\/tenants\//),
-    });
+    const rasterQuery = Object.fromEntries(fixture.requests[1]!.query);
+    expect(rasterQuery).toMatchObject({ resampling: 'nearest' });
+    expect(rasterQuery['url']).toMatch(/^s3:\/\/wiser-authority\/tenants\//);
   });
 
   it('bounds content types, response sizes, errors, and credential disclosure', async () => {
