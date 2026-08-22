@@ -471,6 +471,8 @@ describe('Data Foundation REST module', () => {
     const { app } = appWith();
     const response = await app.inject({ method: 'GET', url: '/openapi.json' });
     const document = response.json<{
+      info: { title: string };
+      tags?: readonly { name: string }[];
       paths: Record<
         string,
         Record<
@@ -486,6 +488,13 @@ describe('Data Foundation REST module', () => {
     }>();
 
     expect(response.statusCode).toBe(200);
+    expect(document.info.title).toBe('WISER Platform API');
+    expect(document.tags).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'data-foundation' }),
+        expect.objectContaining({ name: 'exercise' }),
+      ]),
+    );
     const query = document.paths['/api/data/v1/query']?.['post'];
     expect(query?.requestBody).toBeDefined();
     expect(query?.responses?.['200']).toHaveProperty(
