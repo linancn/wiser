@@ -48,3 +48,24 @@ test('keeps provisioning one-shot and gates authority runtimes on it', async () 
   );
   assert.equal(typeof ROOT_DIRECTORY, 'string');
 });
+
+test('serializes authority and pgSTAC migrations on a fresh database', async () => {
+  const compose = await readFile(
+    new URL('../../compose.yaml', import.meta.url),
+    'utf8',
+  );
+  const start = compose.indexOf('\n  pgstac-migrate:');
+  const end = compose.indexOf('\n  seaweedfs:', start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const pgstacMigration = compose.slice(start, end);
+
+  assert.match(
+    pgstacMigration,
+    /depends_on:[\s\S]*?data-migrate:[\s\S]*?condition:\s*service_completed_successfully/,
+  );
+  assert.doesNotMatch(
+    pgstacMigration,
+    /depends_on:[\s\S]*?data-postgres:[\s\S]*?condition:\s*service_healthy/,
+  );
+});
