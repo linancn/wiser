@@ -256,7 +256,7 @@ insert into security.audit_event (
   tenant_id, project_id, actor_id, action, resource_type, resource_id,
   decision, context, security_level, policy_version, row_version
 ) values ($1::uuid, $2::uuid, $3::uuid, 'data.version.publish',
-  'data-item-version', $4, 'SUCCEEDED',
+  'data-item-version', $4::uuid::text, 'SUCCEEDED',
   jsonb_build_object('dataItemId', $5::uuid, 'versionId', $4::uuid),
   $6, $7::bigint, 1)
 `;
