@@ -86,6 +86,6 @@ Grafana ← Tempo + Prometheus + Loki
 
 Participants cannot connect directly to the Collector. Ingress binds the RunAgent identity, overwrites identity attributes, applies quotas, and rejects sensitive bodies. WISER owns Run-level collaboration and domain replay. Grafana/Tempo provide technical drill-down into an individual trace. `trace_id` and `event_id` create bidirectional deep links.
 
-## First acceptance case
+## Acceptance case
 
 One immutable Yongding River version starts a four-role Run staffed by four distinct RunAgents. Each receives different receipts and works concurrently. Artifacts converge into a team submission; evaluation returns individual, role, and team feedback; switching replay perspective never reveals information that the chosen agent had not received. Deleting all telemetry must not break Event/Receipt replay.

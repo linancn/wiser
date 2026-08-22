@@ -147,3 +147,5 @@ WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
 ```
 
 `data:reset` continues only with the exact confirmation value and removes only resolved and validated WISER Data Foundation named volumes. That data is still unrecoverable. Confirm that no local uploads, versions, objects, or projections need to be retained. After a reset, use `pnpm stack:full:up` to rebuild, migrate, seed, and smoke the stack.
+
+The repository does not currently provide a standard command that creates a temporary Data database while retaining existing named volumes. Prove “replay from empty” in CI or disposable local state with confirmation-gated `data:reset → stack:full:up`. If local data must be retained, stop rather than treating a destructive reset as an ordinary test step.

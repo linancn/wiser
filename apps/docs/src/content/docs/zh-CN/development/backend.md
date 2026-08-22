@@ -1,6 +1,6 @@
 ---
 title: 后端开发
-description: 共享 Fastify API、Agent EXCON Worker、Data Worker、MCP 与 Telemetry Ingress 的源码入口和聚焦工作流。
+description: 共享 Fastify API、EXCON v1 compatibility Worker、Data Worker、MCP 与 Telemetry Ingress 的源码入口和聚焦工作流。
 docType: runbook
 scope: wiser-backend
 status: active
@@ -49,14 +49,14 @@ Telemetry Ingress ────────► internal OTel Collector
 
 ## 进程与源码入口
 
-| 进程                  | 入口                                 | 聚焦启动                                          | 本机入口与健康检查                                                     |
-| --------------------- | ------------------------------------ | ------------------------------------------------- | ---------------------------------------------------------------------- |
-| 共享 API `@wiser/api` | `apps/api/src/main.ts`、`app.ts`     | `pnpm --filter @wiser/api dev`                    | 默认 `3001`；`/health/live`、`/health/ready`、`/openapi.json`          |
-| Agent EXCON Worker    | `apps/worker/src/main.ts`            | `pnpm --filter @agent-excon/worker dev`           | 进程默认 health `8081`；Compose 映射 `3002`                            |
-| Data Worker           | `apps/data-worker/src/main.ts`       | `pnpm --filter @wiser/data-worker dev`            | `/health/live`、`/health/ready`、`/metrics`；完整栈映射 `13003`        |
-| MCP stdio             | `apps/mcp/src/index.ts`              | 先 build，再运行 `pnpm --filter @wiser/mcp start` | stdio，无 HTTP 端口                                                    |
-| MCP HTTP              | `apps/mcp/src/http-main.ts`          | `pnpm --filter @wiser/mcp dev:http`               | `/mcp`、`/health/live`、`/health/ready`；完整栈映射 `13004`            |
-| Telemetry Ingress     | `apps/telemetry-ingress/src/main.ts` | `pnpm --filter @wiser/telemetry-ingress dev`      | `/v1/traces`、`/v1/metrics`、`/v1/logs`；可观测性 profile 映射 `14318` |
+| 进程                          | 入口                                 | 聚焦启动                                          | 本机入口与健康检查                                                     |
+| ----------------------------- | ------------------------------------ | ------------------------------------------------- | ---------------------------------------------------------------------- |
+| 共享 API `@wiser/api`         | `apps/api/src/main.ts`、`app.ts`     | `pnpm --filter @wiser/api dev`                    | 默认 `3001`；`/health/live`、`/health/ready`、`/openapi.json`          |
+| EXCON v1 compatibility Worker | `apps/worker/src/main.ts`            | `pnpm --filter @agent-excon/worker dev`           | 默认 health `8081`、Compose `3002`；默认 API 不 enqueue                |
+| Data Worker                   | `apps/data-worker/src/main.ts`       | `pnpm --filter @wiser/data-worker dev`            | `/health/live`、`/health/ready`、`/metrics`；完整栈映射 `13003`        |
+| MCP stdio                     | `apps/mcp/src/index.ts`              | 先 build，再运行 `pnpm --filter @wiser/mcp start` | stdio，无 HTTP 端口                                                    |
+| MCP HTTP                      | `apps/mcp/src/http-main.ts`          | `pnpm --filter @wiser/mcp dev:http`               | `/mcp`、`/health/live`、`/health/ready`；完整栈映射 `13004`            |
+| Telemetry Ingress             | `apps/telemetry-ingress/src/main.ts` | `pnpm --filter @wiser/telemetry-ingress dev`      | `/v1/traces`、`/v1/metrics`、`/v1/logs`；可观测性 profile 映射 `14318` |
 
 端口表中的完整栈地址来自 Compose 映射，独立进程默认值可能不同。需要与完整平台相同的身份、数据库和依赖时，不要手工拼环境变量，使用 `pnpm stack:full:up`；所有端口和停止方式见[本机开发环境](/development/local-environment/)。
 
@@ -98,9 +98,9 @@ Telemetry Ingress ────────► internal OTel Collector
 
 ## Workers
 
-### Agent EXCON Worker
+### Agent EXCON v1 compatibility Worker
 
-`apps/worker` 从 Supabase/PostgreSQL 领取待评估工作，执行确定性评价并写回结果。`DATABASE_URL` 是必需项；领取数量、lease、轮询和 health 可以通过 `WORKER_*` 调整。健康端点反映 Worker 循环状态，不提供业务 API。
+`apps/worker` 消费 `excon_private.evaluation_jobs`，读取 v1 `episodes/submissions` 并执行确定性评价。默认 API 的 v1 是进程内 memory service，v2 在 API service/journal replay 内评价，两者都不向此 Worker enqueue；因此它只用于 PostgreSQL-backed v1 compatibility/testing。`DATABASE_URL` 是必需项；领取数量、lease、轮询和 health 可通过 `WORKER_*` 调整。
 
 修改评价输入时，同时检查：
 
@@ -111,7 +111,7 @@ Telemetry Ingress ────────► internal OTel Collector
 
 ### Data Worker
 
-`apps/data-worker` 组合两类工作：受控入库 handler，以及权威 Outbox 到搜索、图谱、STAC/PostGIS 等可重建投影的消费。它只用受限的 Data runtime role 访问独立 Data PostgreSQL，并通过对象存储和内部服务 adapter 工作。
+`apps/data-worker` 组合两类工作：受控入库 handler，以及权威 Outbox 的 completion targets。`POSTGIS` 在 data-postgres 内建立受治理 spatial readiness；Weaviate、OpenSearch、Neo4j 与 STAC 是可重建外部投影。Worker 只用受限 Data runtime role 访问独立 Data PostgreSQL，并通过对象存储和内部服务 adapter 工作。
 
 配置由 `apps/data-worker/src/config.ts` 严格校验。优先使用规范的 `DATA_*` 名称；兼容 alias 只用于迁移，会在启动时告警。Worker 的 `/metrics` 是 Prometheus 文本，不是业务事实源。
 
@@ -153,12 +153,15 @@ pnpm --filter @wiser/api typecheck
 pnpm --filter @wiser/api build
 ```
 
-涉及真实数据库、RLS 或完整协议链时继续运行：
+按拥有事实的边界追加门禁，不要无条件运行两套数据库验证：
 
 ```bash
-pnpm supabase:verify
-pnpm data:verify
-pnpm verify
+pnpm supabase:verify  # 仅 Supabase Auth/控制面/EXCON schema、RLS、seed；会 reset 本机 Supabase
+pnpm data:verify      # 仅 Data contracts/core/infra/Worker/Compose 静态与 workspace 验证
+pnpm data:smoke       # Data 真实数据库/对象/投影/API/MCP/Web 纵切，要求完整依赖已运行
+pnpm verify           # 所需聚焦与集成门禁之后的全仓收敛
 ```
+
+纯 EXCON 协议改动通常不需要 Data gate；纯 Data 改动也不应仅为“保险”清空 Supabase。只有跨系统身份或完整栈行为变化时才组合相应门禁。
 
 新增业务系统和模块注册的完整清单见[新增 WISER 系统](/development/adding-a-system/)。

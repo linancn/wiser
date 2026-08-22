@@ -32,13 +32,20 @@ lastReviewedCommit: ccd874eda8e16f8fd9169ec2f2769ff17f287c48
 
 `data:up` is not a platform-independent data stack. It reads running local Supabase status, signs in the seeded operator, and converges default application services together with the Compose profile. Prefer `stack:full:up` on a clean machine.
 
+## Host readiness
+
+- The complete Data profile runs databases, ClamAV, search, graph, and GIS together. `compose.yaml` is authoritative for resource bounds; confirm adequate Docker capacity and disk instead of relying on an unverified “minimum machine” number.
+- Some images use explicit `linux/amd64` emulation on Apple Silicon, so the first pull, initialization, and health checks take longer.
+- Installation and the first build need access to npm and container registries.
+- Confirm the ports below are free from another process or old Compose project. When a port conflicts, identify the owner rather than changing one side and leaving callback, CORS, or smoke configuration inconsistent.
+
 ## Primary ports
 
 | Service                                      | Local entrypoint                                     |
 | -------------------------------------------- | ---------------------------------------------------- |
 | Web                                          | `http://127.0.0.1:3000`                              |
 | API / OpenAPI                                | `http://127.0.0.1:3001` / `/openapi.json`            |
-| Agent EXCON worker health                    | `http://127.0.0.1:3002/health/ready`                 |
+| EXCON v1 compatibility worker health         | `http://127.0.0.1:3002/health/ready`                 |
 | Docs                                         | `http://127.0.0.1:4321`                              |
 | Data worker health                           | `http://127.0.0.1:13003/health/ready`                |
 | MCP HTTP                                     | `http://127.0.0.1:13004/mcp`                         |
@@ -70,7 +77,16 @@ Use `pnpm dev` to run all three in parallel: Web is fixed to `3000`, API default
 
 Data Foundation Web uses the Supabase SSR session, and the complete stack injects a local operator JWT for Data smoke and Data MCP. Agent EXCON live Web still reads its operator credential from server-side `WISER_WEB_OPERATOR_TOKEN`; EXCON MCP still needs `AGENT_EXCON_API_KEY` bound to one concrete RunAgent. A healthy process therefore does not prove these two EXCON clients have valid identity. Preserve explicit unavailable/authentication errors.
 
-The shared MCP process always initializes its EXCON HTTP client. Even Data-only MCP work currently requires a valid `AGENT_EXCON_API_KEY` in addition to the complete `DATA_*` configuration. Never treat a Compose placeholder token as a unified-Auth credential.
+The shared MCP process always initializes its EXCON HTTP client. Even Data-only MCP work configures a non-empty `AGENT_EXCON_API_KEY` plus complete `DATA_*`. Data Tools never send that EXCON key, so a local placeholder can satisfy Data-only process configuration; it is not unified identity and cannot call `excon_*`.
+
+### Obtaining local identity
+
+- A human developer signs in at `/en/login` with the seeded operator from Quick start. Web uses the Supabase session for Platform and Data pages.
+- A Supabase human with `platform.delegation.manage` creates, issues, rotates, and revokes Agent/service delegated credentials through `/api/platform/v1/delegations`; plaintext is returned once.
+- EXCON MCP `AGENT_EXCON_API_KEY` comes from a trusted Run staffing/bootstrap flow and is bound to one concrete RunAgent. No CLI turns the seeded password into a general EXCON token. Use the versioned Cookbook/Showcase for a bounded local collaboration session.
+- `stack:full:up` does not automatically issue the EXCON live Web operator credential either. Its source depends on the selected operator workflow; preserve the unavailable state when no real credential exists.
+
+See [Platform Auth](/en/architecture/unified-auth/), [Agent EXCON HTTP](/en/protocols/http/), and [MCP](/en/protocols/mcp/) for headers, scopes, and invocation order.
 
 ## Environment variables and secrets
 
@@ -81,10 +97,24 @@ The browser receives only `NEXT_PUBLIC_SUPABASE_URL` and a publishable key. Data
 ## Logs, stop, and reset
 
 ```bash
+docker compose ps
+docker compose logs --tail=200 api web worker docs data-worker mcp-http telemetry-ingress
 pnpm data:logs
-pnpm observability:smoke
+pnpm exec supabase status
 pnpm data:down
+pnpm observability:down
 pnpm stack:down
 ```
 
-When the complete stack fails, check Docker resources, port conflicts, and failed-service logs before rerunning the convergent `pnpm stack:full:up`. `pnpm supabase:verify` resets the local Supabase database. Use the confirmation-gated `data:reset` from Quick start only when discarding local Data Foundation state is intentional.
+Narrow `docker compose logs` to only the failed services; use `docker compose ps -a` when a container did not stay running. Supabase is CLI-managed and is not part of the root Compose project. `supabase status` confirms services and ports; inspect the named containers through the local Docker runtime for their logs.
+
+| Operation                                 | Removes                                                      | Retains                                                    |
+| ----------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------- |
+| `pnpm stack:down`                         | Stops/removes containers only                                | Compose named volumes, local Supabase data, `.wiser/local` |
+| `pnpm supabase:reset` / `supabase:verify` | Rebuilds Supabase control, Auth/EXCON schemas, and seed data | Data Foundation volumes, `.wiser/local`                    |
+| confirmation-gated `pnpm data:reset`      | Allowlisted Data PostgreSQL/S3/projection named volumes      | Supabase, observability volumes, `.wiser/local`            |
+| `pnpm observability:down`                 | Stops observability services                                 | Tempo/Loki/Prometheus/Grafana named volumes                |
+
+There is no “delete every local state” command. `.wiser/local/runtime-secrets.json` retains historical HMAC keys required to replay the EXCON journal. Never remove it or generate only a new key while that journal exists. Handle the file through the team's key-rotation process only after every service is stopped, the Supabase/EXCON journal is intentionally reset, and old records no longer need recovery. Data reset alone does not require its removal.
+
+When the complete stack fails, check Docker resources, port conflicts, and failed-service logs before rerunning the convergent `pnpm stack:full:up`.

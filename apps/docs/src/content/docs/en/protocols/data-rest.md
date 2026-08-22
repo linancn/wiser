@@ -131,12 +131,12 @@ SearchOrchestrator pushes authorization and publication filters into backends, a
 
 GeoServer, STAC API, TiTiler, and Martin publish no host ports. Browsers, Agents, and external clients use only these Fastify GET/HEAD surfaces:
 
-| Surface      | Governed route                                                                               |
-| ------------ | -------------------------------------------------------------------------------------------- |
-| OGC          | `/api/data/v1/geo/ogc/{wms                                                                   | wfs | wcs    | wmts}` |
-| STAC         | `/api/data/v1/geo/stac`, `/conformance`, `/search`, `/collections/current[/items[/wiser-…]]` |
-| Vector tiles | `/api/data/v1/geo/tiles/vector/versions/{versionId}/{z}/{x}/{y}.pbf`                         |
-| Raster tiles | `/api/data/v1/geo/tiles/raster/versions/{versionId}/WebMercatorQuad/{z}/{x}/{y}.{png         | jpg | webp}` |
+| Surface      | Governed route                                                                                  |
+| ------------ | ----------------------------------------------------------------------------------------------- |
+| OGC          | `/api/data/v1/geo/ogc/{wms,wfs,wcs,wmts}`                                                       |
+| STAC         | `/api/data/v1/geo/stac`, `/conformance`, `/search`, `/collections/current[/items[/wiser-…]]`    |
+| Vector tiles | `/api/data/v1/geo/tiles/vector/versions/{versionId}/{z}/{x}/{y}.pbf`                            |
+| Raster tiles | `/api/data/v1/geo/tiles/raster/versions/{versionId}/WebMercatorQuad/{z}/{x}/{y}.{png,jpg,webp}` |
 
 Every call requires the unified Bearer, Tenant, Project, Purpose, and `data.geo.read`; every other HTTP method returns `405`. OGC accepts only each service's read request/query allowlist. Except for GetCapabilities, callers supply an authorized `versionId`, while API fixes layer/type and Tenant/Project/Version filters. STAC `current` becomes the current Tenant/Project's deterministic collection; a cross-scope collection returns safe `404`.
 
@@ -156,7 +156,7 @@ Recommended sequence:
 4. `POST /ingestions` referencing completed asset IDs;
 5. `POST /ingestions/:id/submit` to start the durable Worker job;
 6. read Operation/SSE; at `WAITING_REVIEW`, a steward with `data.publish` approves or rejects;
-7. publication follows five successful projections.
+7. publication follows five successful completion-target ledgers.
 
 URLs live for 60–900 seconds and callers cannot alter keys. API HEAD-verifies object integrity before completion. Formal raw/version objects are content addressed and never overwritten.
 
@@ -166,7 +166,7 @@ URLs live for 60–900 seconds and callers cannot alter keys. API HEAD-verifies 
 
 Reconnect with the last confirmed cursor. Never synthesize events from wall time or progress percentages, and do not treat a repeated event as a new transition.
 
-Publication consumer respects terminal Operations. Even after all five projections are `SUCCEEDED`, an already `FAILED`/`CANCELLED` Operation is neither rewritten to success nor allowed to publish the version. Consumer records `PUBLICATION_OPERATION_TERMINAL` on its checkpoint and advances past the poison event; a later successful event clears the summary. Original Operation events, Job, and projection evidence are never overwritten.
+Publication consumer respects terminal Operations. Even after all five completion targets are `SUCCEEDED`, an already `FAILED`/`CANCELLED` Operation is neither rewritten to success nor allowed to publish the version. Consumer records `PUBLICATION_OPERATION_TERMINAL` on its checkpoint and advances past the poison event; a later successful event clears the summary. Original Operation events, Job, and target evidence are never overwritten.
 
 ## Evidence and STAC Resource reads
 
@@ -220,7 +220,7 @@ Data REST uses a flat safe envelope:
 ```json
 {
   "code": "CONFLICT",
-  "message": "The resource state or version changed.",
+  "message": "资源状态或版本已发生变化。 / The resource state or version has changed.",
   "traceId": "<32-hex>"
 }
 ```

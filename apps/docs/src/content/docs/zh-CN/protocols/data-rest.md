@@ -131,12 +131,12 @@ SearchOrchestrator 在后端下推权限与发布过滤，固定 `RRF k=60`，�
 
 GeoServer、STAC API、TiTiler 与 Martin 没有宿主 published port；浏览器、Agent 和外部客户端唯一允许的 GIS 入口是下列 Fastify GET/HEAD：
 
-| 表面     | 受控路由                                                                                     |
-| -------- | -------------------------------------------------------------------------------------------- |
-| OGC      | `/api/data/v1/geo/ogc/{wms                                                                   | wfs | wcs    | wmts}` |
-| STAC     | `/api/data/v1/geo/stac`、`/conformance`、`/search`、`/collections/current[/items[/wiser-…]]` |
-| 矢量瓦片 | `/api/data/v1/geo/tiles/vector/versions/{versionId}/{z}/{x}/{y}.pbf`                         |
-| 栅格瓦片 | `/api/data/v1/geo/tiles/raster/versions/{versionId}/WebMercatorQuad/{z}/{x}/{y}.{png         | jpg | webp}` |
+| 表面     | 受控路由                                                                                        |
+| -------- | ----------------------------------------------------------------------------------------------- |
+| OGC      | `/api/data/v1/geo/ogc/{wms,wfs,wcs,wmts}`                                                       |
+| STAC     | `/api/data/v1/geo/stac`、`/conformance`、`/search`、`/collections/current[/items[/wiser-…]]`    |
+| 矢量瓦片 | `/api/data/v1/geo/tiles/vector/versions/{versionId}/{z}/{x}/{y}.pbf`                            |
+| 栅格瓦片 | `/api/data/v1/geo/tiles/raster/versions/{versionId}/WebMercatorQuad/{z}/{x}/{y}.{png,jpg,webp}` |
 
 每次调用都要求统一 Bearer、Tenant、Project、Purpose 与 `data.geo.read`；其他 HTTP 方法返回 `405`。OGC 只接受每个 service 的只读 request/query allowlist；除 GetCapabilities 外，调用方必须给出授权的 `versionId`，API 固定 layer/type 与 Tenant/Project/Version filter。STAC 的 `current` 自动替换为当前 Tenant/Project 的确定性 collection，跨 scope collection 返回安全 `404`。
 
@@ -156,7 +156,7 @@ MapLibre 不把 API Bearer 放进 tile URL。登录后的浏览器只请求同�
 4. `POST /ingestions`，引用完成后的 asset IDs；
 5. `POST /ingestions/:id/submit`，Worker 开始持久任务；
 6. 查询 Operation/SSE，状态到 `WAITING_REVIEW` 时由具备 `data.publish` 的 steward approve 或 reject；
-7. 五个投影成功后状态进入 `PUBLISHED`。
+7. 五个 completion target ledger 成功后状态进入 `PUBLISHED`。
 
 URL 的 TTL 是 60–900 秒；调用方不能改 key。API 在完成前通过 HEAD 验证对象完整性，正式 raw/version 对象以内容 hash 寻址且不可覆盖。
 
@@ -166,7 +166,7 @@ URL 的 TTL 是 60–900 秒；调用方不能改 key。API 在完成前通过 H
 
 断线后使用最后确认的 cursor 重新请求。不要用 wall-clock 或进度百分比合成事件，也不要把重复 event 当作新的状态转换。
 
-Publication consumer 尊重 Operation 终态：即使五类投影已经 `SUCCEEDED`，若 Operation 已是 `FAILED`/`CANCELLED`，也不会改回成功或发布版本；它记录 `PUBLICATION_OPERATION_TERMINAL` 到 consumer checkpoint 并推进 poison event，后续成功 event 再清除摘要。原 Operation event、Job 与 projection 证据不被覆盖。
+Publication consumer 尊重 Operation 终态：即使五个 completion target 已经 `SUCCEEDED`，若 Operation 已是 `FAILED`/`CANCELLED`，也不会改回成功或发布版本；它记录 `PUBLICATION_OPERATION_TERMINAL` 到 consumer checkpoint 并推进 poison event，后续成功 event 再清除摘要。原 Operation event、Job 与 target 证据不被覆盖。
 
 ## Evidence 与 STAC Resource 读取
 

@@ -21,15 +21,20 @@ lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 
 ## An HTTP adapter
 
-The MCP server calls only the public HTTP API. It does not duplicate state machines, authorization, Receipts, or adjudication; it never connects directly to PostgreSQL or holds a service-role credential. The default is multi-scenario, multi-agent **v2** with `/api/v2/` as the API base.
+MCP business Tools and dynamic Resources call only the public HTTP API. They do not duplicate state machines, authorization, Receipts, or adjudication and never connect directly to PostgreSQL or hold a service-role credential. The sole exception is the static bilingual scenario guide compiled from `apps/mcp/src/scenario-resource.ts`; it reads no runtime asset, Run, or database, while `@agent-excon/scenarios` and the [scenario guide](/en/scenarios/yongding-river-dispatch/) remain authoritative. The default is multi-scenario, multi-agent **v2** with `/api/v2/` as the API base.
 
 Local clients use stdio; the Compose-facing entrypoint uses authenticated, stateless Streamable HTTP. Inputs are strict Zod schemas. Successful calls mirror compact `MACHINE_DATA` in Chinese-first `content` and preserve the same machine-readable `structuredContent`, including for Agent clients that display only text. `apps/mcp/package.json` and the root lockfile define the exact SDK version.
 
-## WISER module composition
+## Position in the shared Gateway
 
-Agent EXCON, Data Foundation, and future systems reuse one MCP Server. Each system statically registers Tools and Resources through a `WiserMcpModule`; module ids are namespaced and globally unique, and duplicates fail before a transport connects. Registration composes only the protocol surface, while every business call continues through the HTTP API.
+One Gateway process can statically register several namespaced modules, while each module retains its own downstream identity and protocol. The rest of this page defines Agent EXCON only:
 
-The Data Foundation module registers 22 Tools and five governed Resources when all five Data API/scope environment values are present. Partial configuration fails closed; no Data configuration runs EXCON alone. Data Tools safely preserve downstream `401 → NOT_AUTHENTICATED` and `403 → NOT_AUTHORIZED`; successful Operation results expose exact `operation://<uuid>` at top-level `structuredContent.resource`, and Evidence/STAC Resources use real HTTP, RLS, and audit reads. See [Data MCP](/en/protocols/data-mcp/) for the two bearer layers, upload/Operation flow, and response bounds.
+| Module          | Tool namespace | Downstream identity                                 | Authoritative reference             |
+| --------------- | -------------- | --------------------------------------------------- | ----------------------------------- |
+| Agent EXCON     | `excon_*`      | `AGENT_EXCON_API_KEY` bound to one RunAgent         | This page                           |
+| Data Foundation | `data_*`       | `DATA_API_BEARER_TOKEN` plus Tenant/Project/Purpose | [Data MCP](/en/protocols/data-mcp/) |
+
+Streamable HTTP `DATA_MCP_BEARER_TOKEN` authenticates only the `/mcp` transport and replaces no business identity. The current process always initializes the EXCON client, so Data-only Tool use still needs non-empty EXCON configuration. A placeholder is never sent by Data Tools and cannot call `excon_*`. That composition constraint does not merge the two principals or permission sets.
 
 ## Configuration
 

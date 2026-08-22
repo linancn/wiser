@@ -14,7 +14,7 @@ checkPaths:
   - examples/agent-excon/workbuddy-yongding-tdd/showcase/**
   - skills/wiser-workbuddy-showcase/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
+lastReviewedCommit: ed36c7913b5dd2b2542adf1aa1ce1e5d9a70029f
 ---
 
 # WISER WorkBuddy 四智能体演练展示包
@@ -37,9 +37,8 @@ ArtifactVersion、Receipt、回复、评价、背书与 Barrier。Codex 和 Lead
 WorkBuddy；应直接运行确定性 supervisor，并明确说明未进行 GUI 操作。
 
 真实 profile 必须得到当前用户明确授权，并使用
-`WORKBUDDY_LIVE=1`。历史保留的最近一次 live 运行因四路 429 额度耗尽而
-失败，因此演示前由用户确认登录和额度；不得用付费请求做自动探测，也不得
-自动重试 429。
+`WORKBUDDY_LIVE=1`。演示前由用户确认登录和额度；不得用付费请求做自动
+探测，也不得自动重试 429。
 
 ## 生命周期
 

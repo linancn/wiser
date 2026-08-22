@@ -26,36 +26,18 @@ HTTP 是唯一业务协议底座。Web、Skill、MCP 和未来 SDK 都调用 HTT
 
 `/api/v2` 有两种明确 runtime。非生产协议测试可显式使用 `EXCON_V2_MODE=memory`；完整栈和生产使用 `postgres`：mutation intent/outcome 以非超级用户写入 Supabase PostgreSQL append-only journal，启动时用 UUID/时间/lease 生成值 tape 与结果哈希做确定性重放。journal 只允许一个 advisory-lock writer，损坏、重放漂移、未知 HMAC key 或不完整 outcome 都失败关闭。它提供跨重启持久性，但不是把每个 v2 聚合直接映射到规范化 repository。以下表只列实际注册路由。
 
-## WISER 模块组合
+## 共享 Host 中的位置
 
-Fastify 是 WISER 的共享 HTTP 组合宿主。每个系统以静态导入的 `WiserApiModule` 注册路由；模块 ID 必须使用命名空间且全局唯一，重复 ID 会使 readiness 失败。静态注册不扫描 TypeScript AST，也不允许模块绕过 application/authorization 边界。现有 Agent EXCON 路由保持兼容，Data Foundation 和未来系统复用同一宿主。
+Fastify 是 WISER 的共享 HTTP 组合宿主；本页只定义 Agent EXCON 的 `/api/v1` 与 `/api/v2`。其他系统入口在同一进程中静态注册，但拥有独立协议与授权文档：
 
-`WISER_AUTH_MODE=supabase` 时，默认 API 进程会创建 Supabase `getClaims` client、PostgreSQL Membership loader 并注册平台身份模块。`GET /api/platform/v1/me` 要求 Bearer、Tenant、Project 与 Purpose，只返回安全的 Actor、Role、Scope、最高安全等级与授权版本。生产默认使用该模式且缺少 URL、publishable key 或数据库连接时拒绝启动；非生产 `off` 模式保留旧本机兼容入口。
+| 前缀                 | 所有者                             | 权威参考                                 |
+| -------------------- | ---------------------------------- | ---------------------------------------- |
+| `/api/platform/v1`   | WISER Platform identity/delegation | [统一 Auth](/architecture/unified-auth/) |
+| `/api/v1`、`/api/v2` | Agent EXCON                        | 本页                                     |
+| `/api/data/v1`       | Data Foundation REST/GIS           | [Data REST](/protocols/data-rest/)       |
+| `/graphql`           | Data Foundation GraphQL            | [Data GraphQL](/protocols/data-graphql/) |
 
-可注入的 `platform.delegation` 模块定义以下控制面路由：
-
-| 方法 | 路径                                                            | 结果                    |
-| ---- | --------------------------------------------------------------- | ----------------------- |
-| POST | `/api/platform/v1/delegations`                                  | 创建有边界的 Delegation |
-| GET  | `/api/platform/v1/delegations/:delegationId`                    | 读取安全 metadata       |
-| POST | `/api/platform/v1/delegations/:delegationId/credentials`        | 一次性返回新明文        |
-| POST | `/api/platform/v1/delegations/:delegationId/credentials:rotate` | 轮换并一次性返回新明文  |
-| POST | `/api/platform/v1/delegations/:delegationId:revoke`             | 撤销 Delegation         |
-| POST | `/api/platform/v1/credentials/:credentialId:revoke`             | 撤销单个 Credential     |
-
-命令要求 UUID `Idempotency-Key`；所有路由都要求 Bearer、Tenant、Project、Purpose Header，以及具备 `platform.delegation.manage` 的 Supabase human。Supabase runtime 模式会注册具体事务 command service 与 delegated Resolver；服务冲突使用稳定且 no-store 的 4xx 错误。
-
-## Data Foundation 发现接口
-
-`GET /api/data/v1/health` 是不可缓存的 data-postgres、对象存储与 Data Worker readiness 聚合；任一权威依赖不可用返回 503。`GET /api/data/v1/capabilities` 返回有序 22 项 Registry、draft-7 输入/输出 JSON Schema 与精确 REST/GraphQL/MCP/Skill mapping。默认 Data runtime 已组合全部 22 个 read/command/specialized-query executor，并注册 REST 与 schema-first GraphQL；启动时 executor 缺失、重复或多余都会失败。共享 `/openapi.json` 标题为 **WISER Platform API**，22 个 Data REST operation 直接从同一 Zod 4 Registry 投影 path/query/body/Header、响应与 bearer security，不维护第二份协议 Schema。
-
-REST 解析统一 WISER principal，无碰撞组合 path/query/body，强制 command UUID 幂等键与版本化 command 的强 `If-Match: "vN"`，输出 ETag/no-store，并把 Operation event page 映射为有界 SSE snapshot。`GET /api/data/v1/evidence/fragments/:evidenceId` 与 `GET /api/data/v1/stac/collections/:collectionId/items/:itemId` 分别要求 `data.knowledge.read`/`data.geo.read`，经 RLS、权威复核、256 KiB 上限和 hash-only audit 支撑 MCP Resource；STAC source href 只能指向受控版本资产路由，后者重新授权后返回短期 `303` signed redirect。完整 Data 协议见 [Data REST](/protocols/data-rest/) 与 [Data GraphQL](/protocols/data-graphql/)。
-
-GeoServer、STAC API、TiTiler 与 Martin 不发布 host port。外部 GIS 只经 `/api/data/v1/geo/ogc/{wms|wfs|wcs|wmts}`、受控 `/geo/stac`，以及按不可变 `versionId` 固定的 `/geo/tiles/vector|raster` GET/HEAD。API 强制 `data.geo.read`、固定 origin、严格 query/content/size/timeout、RLS 版本授权与 `data.geo.read` audit；调用方不能提交 upstream URL、layer、Tenant/Project filter 或数据库上下文。
-
-这四类 GIS GET 通过显式 Fastify route Schema 进入同一 OpenAPI，公开身份 Header、safe path/query、binary/content type 和稳定错误；隐藏的 mutation guard 只返回 `405`，不宣称存在 GIS 写能力。
-
-Web MapLibre 的 tile/STAC 请求只指向同源 `/api/data-foundation/geo/...`；Next server 用刚验证的 Supabase Session 转发到上述 Fastify API，不把 Bearer 或内部 origin 发送到浏览器。
+共享 `/openapi.json` 汇总已注册模块。模块不能绕过各自 application/authorization 边界，调用方也不能把一个系统的 bearer、Scope 或 DTO 用到另一个系统。
 
 ## 公共场景目录
 
@@ -90,6 +72,8 @@ Web MapLibre 的 tile/STAC 请求只指向同源 `/api/data-foundation/geo/...`�
 | `GET`          | `/api/v2/runs/{runId}/events`                           | 按 `after`/`limit` 读取权威 append-only Event |
 | `GET`          | `/api/v2/runs/{runId}/replay`                           | 读取 operator/team/role/agent 的 as-of 投影   |
 | `GET`          | `/api/v2/runs/{runId}/traces`                           | 读取最佳努力的 Trace summary overlay          |
+| `GET`          | `/api/v2/runs/{runId}/interactions`                     | 读取脱敏线程、工件引用与逐收件人交付状态      |
+| `GET`          | `/api/v2/runs/{runId}/evaluations`                      | 读取确定性 Run Evaluation                     |
 
 场景、AgentVersion 和 Run 管理写入都要求 UUID `Idempotency-Key`，并使用最小聚合的 `expectedVersion`。当前场景验证要求多个必需角色、至少两个不同 RunAgent 和明确的团队汇流条件；同一个 Agent 的多个标签不能满足 quorum。
 
@@ -111,7 +95,6 @@ Accept: application/json
 | `POST` | `/api/v2/runs/{runId}/sync`                       | 发放新资源，并可确认上一 Receipt chain head                    |
 | `GET`  | `/api/v2/runs/{runId}/tasks`                      | 恢复已经 issued 的 Task                                        |
 | `GET`  | `/api/v2/runs/{runId}/messages`                   | 恢复已经 issued 的 Message                                     |
-| `GET`  | `/api/v2/runs/{runId}/interactions`               | operator 读取脱敏线程、工件引用与逐收件人交付状态              |
 | `GET`  | `/api/v2/runs/{runId}/artifacts`                  | 恢复已经 issued 的 Artifact grant                              |
 | `GET`  | `/api/v2/runs/{runId}/submissions`                | 恢复已经 issued 的精确不可变 Submission 修订                   |
 | `GET`  | `/api/v2/runs/{runId}/feedback`                   | 恢复已经 issued 的分层 Feedback/ActionGrant                    |
@@ -198,4 +181,4 @@ operator 可以按授权请求 operator、team、role 或 agent 投影。RunAgen
 
 ## 显式 v1 compatibility
 
-旧 Episode 路由仍位于 `/api/v1`，包括 create/get/observe/observations/submissions/evaluation/feedback/advance/events。只有任务或协商元数据明确指定 v1 时才使用它；不得混用 v1 Episode ID、version、Observation evidence 或 idempotency key 与 v2 Run。当前 v1 仍是独立服务，尚未翻译到 v2 PostgreSQL 事实。
+Episode compatibility 路由位于 `/api/v1`，包括 create/get/observe/observations/submissions/evaluation/feedback/advance/events。只有任务或协商元数据明确指定 v1 时才使用它；不得混用 v1 Episode ID、version、Observation evidence 或 idempotency key 与 v2 Run。v1 是独立服务，不翻译到 v2 PostgreSQL 事实。

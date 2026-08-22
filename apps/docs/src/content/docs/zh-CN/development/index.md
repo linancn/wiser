@@ -21,17 +21,28 @@ lastReviewedAt: 2026-08-22
 lastReviewedCommit: ccd874eda8e16f8fd9169ec2f2769ff17f287c48
 ---
 
+## 开始前
+
+从仓库根目录启用 Corepack 并安装冻结依赖；Node/pnpm/Docker 的支持范围以根 `package.json` 和[快速开始](/quick-start/)为准：
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+```
+
+随后对实际目标路径运行 Docpact route，再创建或修改文件。
+
 ## 先选择工作类型
 
-| 要做的事                  | 从哪里开始                            | 首要验证                            |
-| ------------------------- | ------------------------------------- | ----------------------------------- |
-| 修改产品页面              | `apps/web`                            | `pnpm --filter @wiser/web test`     |
-| 修改文档站                | `apps/docs`                           | `pnpm --filter @wiser/docs build`   |
-| 修改 HTTP/GraphQL         | `apps/api`                            | `pnpm --filter @wiser/api test`     |
-| 修改 Agent EXCON 领域规则 | `packages/contracts`、`packages/core` | 根目录聚焦 Vitest + API/Worker 测试 |
-| 修改 Data Foundation      | `packages/data-*`、`apps/data-worker` | `pnpm data:verify`                  |
-| 修改 Supabase Auth/控制面 | `supabase`、`packages/platform-*`     | `pnpm supabase:verify`              |
-| 修改 MCP                  | `apps/mcp`                            | `pnpm --filter @wiser/mcp test`     |
+| 要做的事                  | 从哪里开始                                                              | 首要验证                            |
+| ------------------------- | ----------------------------------------------------------------------- | ----------------------------------- |
+| 修改产品页面              | `apps/web`                                                              | `pnpm --filter @wiser/web test`     |
+| 修改文档站                | `apps/docs`                                                             | `pnpm --filter @wiser/docs build`   |
+| 修改 HTTP/GraphQL         | `apps/api`                                                              | `pnpm --filter @wiser/api test`     |
+| 修改 Agent EXCON 领域规则 | `packages/contracts`、`packages/core`                                   | 根目录聚焦 Vitest + API/Worker 测试 |
+| 修改 Data Foundation      | `packages/data-*`、`apps/data-worker`、`infrastructure/data-foundation` | `pnpm data:verify`                  |
+| 修改 Supabase Auth/控制面 | `supabase`、`packages/platform-*`                                       | `pnpm supabase:verify`              |
+| 修改 MCP                  | `apps/mcp`                                                              | `pnpm --filter @wiser/mcp test`     |
 
 ## 指南目录
 

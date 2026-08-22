@@ -41,15 +41,23 @@ export DATA_PURPOSE=data-steward-console
 
 `DATA_API_URL` 必须是 `http/https`、无 userinfo/query/fragment，并以 `/api/data/v1/` 结束。Bearer 长度为 16–8192 字符且不能包含控制字符。Tenant/Project 必须是 UUID，Purpose 必须是有界安全标识。
 
-共享 Gateway 进程会先初始化 Agent EXCON HTTP client，所以即使调用方只使用 Data Tools，当前独立进程也必须提供有效的 EXCON API 配置：
+共享 Gateway 进程会先初始化 Agent EXCON HTTP client，所以即使调用方只使用 Data Tools，当前独立进程也必须提供非空且协议版本一致的 EXCON API 配置：
 
 ```bash
 export AGENT_EXCON_PROTOCOL_VERSION=v2
 export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
-export AGENT_EXCON_API_KEY=<credential-bound-to-one-run-agent>
+export AGENT_EXCON_API_KEY=<configured-excon-key>
 ```
 
-`AGENT_EXCON_API_KEY` 与 `DATA_API_BEARER_TOKEN` 是两个不同系统的身份，不能互相替代。Compose 的本机占位 token 可以让进程完成配置解析，但在统一 Auth 下不代表 EXCON Tool 已可调用。
+Data Tool 不会发送 `AGENT_EXCON_API_KEY`，因此 Data-only 本机进程可以使用占位值；一旦调用 `excon_*`，该值必须换成绑定具体 RunAgent 的真实 credential。它与 `DATA_API_BEARER_TOKEN` 不能互相替代。
+
+| 验证层             | Credential                                       | 只负责                                  |
+| ------------------ | ------------------------------------------------ | --------------------------------------- |
+| MCP HTTP transport | `DATA_MCP_BEARER_TOKEN`                          | 允许调用 `POST /mcp`                    |
+| Agent EXCON module | `AGENT_EXCON_API_KEY`                            | 绑定一个 RunAgent 的 `excon_*` 下游请求 |
+| Data module        | `DATA_API_BEARER_TOKEN` + Tenant/Project/Purpose | `data_*` 下游授权上下文                 |
+
+一个 Gateway request 可以发现两个模块，但不能把 transport 或某系统 principal 提升成另一系统的权限。
 
 本地 stdio：
 

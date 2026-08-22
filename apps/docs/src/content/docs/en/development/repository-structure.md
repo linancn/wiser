@@ -77,7 +77,7 @@ Agent EXCON production runtime scenarios live in `packages/excon-scenarios/scena
 | `@agent-excon/infra`     | External AI, PostgreSQL, Supabase, and related adapters                               |
 | `@agent-excon/scenarios` | Schema-validated runtime scenarios and testing-fixture API                            |
 | `apps/api/src/v2-*`      | Current EXCON v2 application services, durable journal composition, and HTTP adapters |
-| `apps/worker`            | Asynchronous deterministic evaluation worker                                          |
+| `apps/worker`            | PostgreSQL-backed v1 compatibility/testing worker; default API does not enqueue it    |
 
 ### Data Foundation
 

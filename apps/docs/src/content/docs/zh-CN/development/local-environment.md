@@ -32,13 +32,20 @@ lastReviewedCommit: ccd874eda8e16f8fd9169ec2f2769ff17f287c48
 
 `data:up` 不是脱离平台的独立数据栈：它读取运行中的本机 Supabase 状态、登录 seed operator，并通过 Compose profile 连同默认应用服务一起收敛。干净机器应优先使用 `stack:full:up`。
 
+## 宿主准备
+
+- 完整 Data profile 会同时运行数据库、ClamAV、搜索、图谱与 GIS，资源上限以 `compose.yaml` 为准；启动前确认 Docker 可用容量与磁盘，而不是依赖一个未经仓库验证的“最低配置”数字。
+- 部分镜像在 Apple Silicon 上使用显式 `linux/amd64` 模拟，首次拉取、初始化和健康检查会更久。
+- 安装和首次构建需要访问 npm registry 与容器 registry。
+- 确认下表端口没有被其他进程或旧 Compose project 占用；端口冲突时先定位占用者，不要随意改一端而遗漏相关回调、CORS 或 smoke 配置。
+
 ## 主要端口
 
 | 服务                                         | 本机入口                                             |
 | -------------------------------------------- | ---------------------------------------------------- |
 | Web                                          | `http://127.0.0.1:3000`                              |
 | API / OpenAPI                                | `http://127.0.0.1:3001` / `/openapi.json`            |
-| Agent EXCON Worker health                    | `http://127.0.0.1:3002/health/ready`                 |
+| EXCON v1 compatibility Worker health         | `http://127.0.0.1:3002/health/ready`                 |
 | Docs                                         | `http://127.0.0.1:4321`                              |
 | Data Worker health                           | `http://127.0.0.1:13003/health/ready`                |
 | MCP HTTP                                     | `http://127.0.0.1:13004/mcp`                         |
@@ -70,7 +77,16 @@ pnpm --filter @wiser/docs dev
 
 Data Foundation Web 使用 Supabase SSR Session，完整栈会为 Data smoke 和 Data MCP 注入本机 operator JWT。Agent EXCON live Web 仍从服务端 `WISER_WEB_OPERATOR_TOKEN` 读取 operator credential；EXCON MCP 仍需要绑定具体 RunAgent 的 `AGENT_EXCON_API_KEY`。因此“进程健康”不等于这两个 EXCON 客户端已经获得有效身份，失败时必须保留显式 unavailable/鉴权错误。
 
-共享 MCP 进程总会初始化 EXCON HTTP client；即使只开发 Data MCP，也必须提供有效的 `AGENT_EXCON_API_KEY`，同时再提供完整 `DATA_*` 配置。不要把 Compose 的本机占位 token 当成统一 Auth 凭据。
+共享 MCP 进程总会初始化 EXCON HTTP client；即使只开发 Data MCP，也必须配置非空 `AGENT_EXCON_API_KEY` 和完整 `DATA_*`。Data Tool 不会发送该 EXCON key，因此本机占位值可以用于 Data-only 进程配置；它不是统一 Auth 身份，也不能调用 `excon_*`。
+
+### 如何取得本机身份
+
+- 人类开发者在 `/zh-CN/login` 使用 quick-start 的 seed operator 登录，Web 通过 Supabase Session 访问 Platform 与 Data 页面。
+- Agent/服务 delegated credential 由有 `platform.delegation.manage` 的 Supabase 人类通过 `/api/platform/v1/delegations` 创建、签发、轮换和撤销；明文只返回一次。
+- EXCON MCP 的 `AGENT_EXCON_API_KEY` 必须来自受信任的 Run 编组/bootstrap，并绑定一个具体 RunAgent。仓库没有把 seed 密码自动换成通用 EXCON token 的 CLI；本机完整协作可使用版本化 Cookbook/Showcase 创建受限会话。
+- EXCON live Web operator credential 同样不由 `stack:full:up` 自动签发。取得方式与所选 operator workflow 相关；没有真实 credential 时保留 unavailable 状态。
+
+具体 header、scope 与调用顺序见 [Platform Auth](/architecture/unified-auth/)、[Agent EXCON HTTP](/protocols/http/) 和 [MCP](/protocols/mcp/)。
 
 ## 环境变量与秘密
 
@@ -81,10 +97,24 @@ Data Foundation Web 使用 Supabase SSR Session，完整栈会为 Data smoke 和
 ## 日志、停止与重置
 
 ```bash
+docker compose ps
+docker compose logs --tail=200 api web worker docs data-worker mcp-http telemetry-ingress
 pnpm data:logs
-pnpm observability:smoke
+pnpm exec supabase status
 pnpm data:down
+pnpm observability:down
 pnpm stack:down
 ```
 
-若完整栈失败，先检查 Docker 资源、端口占用和失败服务日志，再重新运行可幂等收敛的 `pnpm stack:full:up`。`pnpm supabase:verify` 会重置本机 Supabase；只有确定要丢弃 Data Foundation 本机数据时，才使用快速开始中的确认式 `data:reset`。
+`docker compose logs` 可以只保留本次失败的 service 名；服务未创建时先用 `docker compose ps -a`。Supabase 由 CLI 管理而不属于根 Compose project；`supabase status` 用于确认服务/端口，具体容器日志从本机 Docker runtime 查看。
+
+| 操作                                      | 删除什么                                             | 保留什么                                                 |
+| ----------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------- |
+| `pnpm stack:down`                         | 只删除/停止容器                                      | Compose named volumes、Supabase 本机数据、`.wiser/local` |
+| `pnpm supabase:reset` / `supabase:verify` | 重建 Supabase 控制面、Auth/EXCON schema 与 seed 数据 | Data Foundation volumes、`.wiser/local`                  |
+| 确认式 `pnpm data:reset`                  | allowlist 内的 Data PostgreSQL/S3/投影 named volumes | Supabase、observability volumes、`.wiser/local`          |
+| `pnpm observability:down`                 | 停止观测服务                                         | Tempo/Loki/Prometheus/Grafana named volumes              |
+
+仓库没有“一键删除所有本机状态”的命令。`.wiser/local/runtime-secrets.json` 保存 EXCON journal 重放所需的历史 HMAC key，现有 journal 仍在时不得删除或只生成新 key。只有在所有服务停止、Supabase/EXCON journal 已明确重置且不需要恢复旧记录时，才可以按团队密钥轮换流程处理该文件；Data reset 本身不需要删除它。
+
+若完整栈失败，先检查 Docker 资源、端口占用和失败服务日志，再重新运行可幂等收敛的 `pnpm stack:full:up`。

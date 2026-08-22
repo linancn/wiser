@@ -1,6 +1,6 @@
 ---
 title: 快速开始
-description: 从空工作区安装依赖、启动完整 WISER、登录并确认三个系统入口。
+description: 从干净 checkout 安装依赖、启动完整 WISER、登录并确认默认服务与 Data 验证路径。
 docType: workflow
 scope: repository
 status: active
@@ -52,7 +52,7 @@ pnpm stack:full:up
 
 1. 启动本机 Supabase Auth、控制面 PostgreSQL、Storage 与 Studio；
 2. 创建被 Git 忽略的本机运行密钥；
-3. 构建并启动 API、Web、Agent EXCON Worker 和文档站；
+3. 构建并启动 API、Web、Agent EXCON v1 compatibility/testing Worker 和文档站；该 Worker 只提供兼容进程健康，不执行默认 v2 评价；
 4. 启动 Data Foundation profile，执行 checksum migration 与确定性 seed；
 5. 启动 Data Worker、MCP Gateway 和数据基础设施；
 6. 运行跨 Data REST、GraphQL、MCP 和登录 Web 的端到端 smoke。
@@ -83,7 +83,17 @@ WiserLocalOperator-2026!
 
 这个账号和密码只能用于本机 seed，不能复制到共享或生产环境。
 
-完整栈会为 Data Foundation Web 与 Data MCP 注入真实的本机 Supabase 身份。Agent EXCON Web 的 live 读模型和 EXCON MCP 仍分别需要服务端 operator credential 与绑定具体 RunAgent 的 participant credential；配置缺失或无效时会显式显示 unavailable/鉴权错误，不会回退到伪造数据。
+完整栈会为 Data Foundation Web 与 Data MCP 注入真实的本机 Supabase 身份。共享 MCP 进程同时收到一个只够完成 EXCON client 配置的本机占位值；Data Tool 不使用它，但任何 `excon_*` 调用都会因没有绑定 RunAgent 的真实 credential 而鉴权失败。Agent EXCON Web 的 live 读模型也仍需要服务端 operator credential；缺失或无效时显式显示 unavailable，不回退伪造数据。
+
+## 验证 Agent EXCON 协议闭环
+
+使用隔离的本机 Lab 和四个确定性脚本 RunAgent 验证 EXCON HTTP/MCP、Receipt、Barrier、协作和评价，不产生模型用量：
+
+```bash
+pnpm cookbook:scripted
+```
+
+该命令验证 Agent EXCON 系统，但不把完整栈 Web 的占位 credential 升级成 live operator/RunAgent 身份。真实 EXCON live 客户端仍必须从受信任的 Run 编组或 operator workflow 获得专用 credential。
 
 ## 4. 停止
 

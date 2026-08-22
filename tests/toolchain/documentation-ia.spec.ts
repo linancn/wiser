@@ -42,14 +42,14 @@ describe('human documentation entrypoints', () => {
     for (const [document, headings] of [
       [
         chinese,
-        ['## 系统与入口', '## 应用进程', '## 五分钟启动', '## 开发与验证'],
+        ['## 系统与入口', '## 应用进程', '## 启动完整平台', '## 开发与验证'],
       ],
       [
         english,
         [
           '## Systems and entrypoints',
           '## Application processes',
-          '## Start in five minutes',
+          '## Start the complete platform',
           '## Develop and verify',
         ],
       ],
@@ -360,5 +360,39 @@ describe('runnable component guides', () => {
     expect(docpactRule(config, 'telemetry-stack')).toContain(
       '- path: apps/telemetry-ingress/README.md',
     );
+  });
+
+  it('preserves the current compatibility, identity, and authority boundaries', () => {
+    const root = read('README.md');
+    const excon = read(
+      'apps/docs/src/content/docs/zh-CN/architecture/agent-excon.md',
+    );
+    const data = read(
+      'apps/docs/src/content/docs/zh-CN/architecture/data-foundation.md',
+    );
+    const auth = read(
+      'apps/docs/src/content/docs/zh-CN/architecture/unified-auth.md',
+    );
+    const http = read('apps/docs/src/content/docs/zh-CN/protocols/http.md');
+    const operator = http.slice(
+      http.indexOf('## Operator 管理与观察'),
+      http.indexOf('## RunAgent 参训协议'),
+    );
+    const participant = http.slice(http.indexOf('## RunAgent 参训协议'));
+
+    expect(root).not.toContain('apps/web/src/components/platform');
+    expect(excon).toContain('PostgreSQL-backed v1 compatibility/testing');
+    expect(excon).toContain('默认 API 的内存 v1 不会向它 enqueue');
+    expect(data).toContain('PostGIS spatial readiness');
+    expect(data).toContain(
+      'Weaviate、OpenSearch、Neo4j 与 STAC 是可重建外部投影',
+    );
+    expect(data).not.toContain('任何投影都可清空重建');
+    expect(auth).toContain('platform_private.delegated_credentials');
+    expect(auth).toContain('excon_private.run_agent_credentials');
+    expect(auth).toContain('尚未提供此 token 的签发/轮换/撤销 API/CLI');
+    expect(operator).toContain('/interactions');
+    expect(operator).toContain('/evaluations');
+    expect(participant).not.toContain('/interactions');
   });
 });

@@ -21,15 +21,20 @@ lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 
 ## MCP 是 HTTP 适配器
 
-MCP Server 只调用公开 HTTP API，不复制状态机、权限、Receipt 或裁决逻辑，不直连 PostgreSQL，也不持有 service-role credential。默认协议是多场景、多智能体 **v2**，默认 API 基路径是 `/api/v2/`。
+MCP Server 的业务 Tool 与动态 Resource 只调用公开 HTTP API，不复制状态机、权限、Receipt 或裁决逻辑，不直连 PostgreSQL，也不持有 service-role credential。唯一例外是 `apps/mcp/src/scenario-resource.ts` 编译的静态双语场景指南；它不读取运行时资产、Run 或数据库，权威内容仍以 `@agent-excon/scenarios` 与[场景文档](/scenarios/yongding-river-dispatch/)为准。默认协议是多场景、多智能体 **v2**，默认 API 基路径是 `/api/v2/`。
 
 本地客户端走 stdio，Compose 入口走带认证的无状态 Streamable HTTP。输入是 strict Zod schema；成功结果在中文优先的 `content` 中镜像紧凑 `MACHINE_DATA`，同时返回同一份机器可读 `structuredContent`，兼容只展示文本的 Agent 客户端。SDK 精确版本以 `apps/mcp/package.json` 与根 lockfile 为准。
 
-## WISER 模块组合
+## 共享 Gateway 中的位置
 
-Agent EXCON、Data Foundation 与未来系统复用同一个 MCP Server。每个系统通过静态 `WiserMcpModule` 注册 Tool/Resource；模块 ID 必须命名空间化且全局唯一，重复 ID 会在连接 transport 前失败。模块注册只组合协议面，所有业务调用仍必须经 HTTP API。
+一个 Gateway 进程可以静态注册多个命名空间模块，但每个模块保留自己的下游身份与协议。本页后续只定义 Agent EXCON：
 
-Data Foundation 模块在五个 `DATA_API_*`/scope 环境值完整提供时注册 22 个 Tool 与 5 个受控 Resource；部分配置会失败关闭，完全未配置则只运行 EXCON。Data Tool 安全保留下游 `401 → NOT_AUTHENTICATED` 与 `403 → NOT_AUTHORIZED`，包含 Operation 的成功结果在顶层 `structuredContent.resource` 暴露精确 `operation://<uuid>`；Evidence/STAC Resource 经真实 HTTP、RLS 与 audit 读取。双层 bearer、上传/Operation 流程和响应上限见 [Data MCP](/protocols/data-mcp/)。
+| 模块            | Tool 命名 | 下游身份                                         | 权威参考                         |
+| --------------- | --------- | ------------------------------------------------ | -------------------------------- |
+| Agent EXCON     | `excon_*` | 绑定具体 RunAgent 的 `AGENT_EXCON_API_KEY`       | 本页                             |
+| Data Foundation | `data_*`  | `DATA_API_BEARER_TOKEN` + Tenant/Project/Purpose | [Data MCP](/protocols/data-mcp/) |
+
+Streamable HTTP 的 `DATA_MCP_BEARER_TOKEN` 只认证 `/mcp` transport，不能替代任何业务身份。当前进程总会初始化 EXCON client，因此只使用 Data Tool 时仍需非空 EXCON 配置；占位 key 不会被 Data Tool 发送，也不能调用 `excon_*`。这是组合限制，不表示两个 principal 或权限集合可以合并。
 
 ## 配置
 

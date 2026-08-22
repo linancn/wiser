@@ -106,7 +106,16 @@ pnpm docpact:route --paths 'apps/docs/src/content/docs/zh-CN/development/**,apps
 pnpm docpact:check
 ```
 
-该命令以当前 worktree 为差异来源，检查未覆盖变更、应复核文档与陈旧文档。需要逐条排查时保存完整报告，再按诊断 ID 查看：
+该命令只以当前未提交 worktree 为差异来源，检查未覆盖变更、应复核文档与陈旧文档。必须在每个 Red/Green 提交前运行；提交后它不会再看到该切片。
+
+保留多个小提交的分支在交接前还要运行 branch-wide lint，把 `<base-ref>` 替换为实际目标分支（通常 `main`）：
+
+```bash
+docpact lint --root . --merge-base <base-ref> \
+  --mode enforce --fail-on-uncovered-change --fail-on-stale-docs
+```
+
+需要逐条排查 worktree finding 时保存完整报告，再按诊断 ID 查看：
 
 ```bash
 docpact lint --root . --worktree --format json \

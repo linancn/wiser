@@ -21,17 +21,28 @@ lastReviewedAt: 2026-08-22
 lastReviewedCommit: ccd874eda8e16f8fd9169ec2f2769ff17f287c48
 ---
 
+## Before you start
+
+From the repository root, enable Corepack and install the frozen dependency graph. The root `package.json` and [Quick start](/en/quick-start/) define supported Node, pnpm, and Docker prerequisites:
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+```
+
+Then run Docpact route for the actual target paths before creating or changing files.
+
 ## Choose the work type first
 
-| Change                      | Start here                            | Primary verification                      |
-| --------------------------- | ------------------------------------- | ----------------------------------------- |
-| Product UI                  | `apps/web`                            | `pnpm --filter @wiser/web test`           |
-| Documentation site          | `apps/docs`                           | `pnpm --filter @wiser/docs build`         |
-| HTTP/GraphQL                | `apps/api`                            | `pnpm --filter @wiser/api test`           |
-| Agent EXCON domain rules    | `packages/contracts`, `packages/core` | Focused root Vitest plus API/worker tests |
-| Data Foundation             | `packages/data-*`, `apps/data-worker` | `pnpm data:verify`                        |
-| Supabase Auth/control plane | `supabase`, `packages/platform-*`     | `pnpm supabase:verify`                    |
-| MCP                         | `apps/mcp`                            | `pnpm --filter @wiser/mcp test`           |
+| Change                      | Start here                                                              | Primary verification                      |
+| --------------------------- | ----------------------------------------------------------------------- | ----------------------------------------- |
+| Product UI                  | `apps/web`                                                              | `pnpm --filter @wiser/web test`           |
+| Documentation site          | `apps/docs`                                                             | `pnpm --filter @wiser/docs build`         |
+| HTTP/GraphQL                | `apps/api`                                                              | `pnpm --filter @wiser/api test`           |
+| Agent EXCON domain rules    | `packages/contracts`, `packages/core`                                   | Focused root Vitest plus API/worker tests |
+| Data Foundation             | `packages/data-*`, `apps/data-worker`, `infrastructure/data-foundation` | `pnpm data:verify`                        |
+| Supabase Auth/control plane | `supabase`, `packages/platform-*`                                       | `pnpm supabase:verify`                    |
+| MCP                         | `apps/mcp`                                                              | `pnpm --filter @wiser/mcp test`           |
 
 ## Guide directory
 

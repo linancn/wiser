@@ -147,3 +147,5 @@ WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
 ```
 
 `data:reset` 只有在确认值正确时才会继续，并只删除脚本解析和校验过的 WISER Data Foundation named volumes；这些数据仍不可恢复。执行前先确认没有需要保留的本机上传、版本、对象或投影。重置后使用 `pnpm stack:full:up` 重建、迁移、seed 并 smoke。
+
+仓库当前没有保留现有命名卷同时创建临时 Data 数据库的标准命令。“从空库重放”应在 CI 或可丢弃的本机环境中，以确认式 `data:reset → stack:full:up` 证明；需要保留本机数据时停止，不要把破坏性 reset 当普通测试步骤。

@@ -1,6 +1,6 @@
 ---
 title: Backend development
-description: Source entrypoints and focused workflows for the shared Fastify API, Agent EXCON Worker, Data Worker, MCP, and Telemetry Ingress.
+description: Source entrypoints and focused workflows for the shared Fastify API, EXCON v1 compatibility Worker, Data Worker, MCP, and Telemetry Ingress.
 docType: runbook
 scope: wiser-backend
 status: active
@@ -49,14 +49,14 @@ Telemetry Ingress ────────► internal OTel Collector
 
 ## Processes and source entrypoints
 
-| Process                 | Entrypoint                           | Focused start                                      | Local entrypoint and health                                                 |
-| ----------------------- | ------------------------------------ | -------------------------------------------------- | --------------------------------------------------------------------------- |
-| Shared API `@wiser/api` | `apps/api/src/main.ts`, `app.ts`     | `pnpm --filter @wiser/api dev`                     | Defaults to `3001`; `/health/live`, `/health/ready`, `/openapi.json`        |
-| Agent EXCON Worker      | `apps/worker/src/main.ts`            | `pnpm --filter @agent-excon/worker dev`            | Process health defaults to `8081`; Compose maps `3002`                      |
-| Data Worker             | `apps/data-worker/src/main.ts`       | `pnpm --filter @wiser/data-worker dev`             | `/health/live`, `/health/ready`, `/metrics`; complete stack maps `13003`    |
-| MCP stdio               | `apps/mcp/src/index.ts`              | Build first, then `pnpm --filter @wiser/mcp start` | stdio; no HTTP port                                                         |
-| MCP HTTP                | `apps/mcp/src/http-main.ts`          | `pnpm --filter @wiser/mcp dev:http`                | `/mcp`, `/health/live`, `/health/ready`; complete stack maps `13004`        |
-| Telemetry Ingress       | `apps/telemetry-ingress/src/main.ts` | `pnpm --filter @wiser/telemetry-ingress dev`       | `/v1/traces`, `/v1/metrics`, `/v1/logs`; observability profile maps `14318` |
+| Process                       | Entrypoint                           | Focused start                                      | Local entrypoint and health                                                 |
+| ----------------------------- | ------------------------------------ | -------------------------------------------------- | --------------------------------------------------------------------------- |
+| Shared API `@wiser/api`       | `apps/api/src/main.ts`, `app.ts`     | `pnpm --filter @wiser/api dev`                     | Defaults to `3001`; `/health/live`, `/health/ready`, `/openapi.json`        |
+| EXCON v1 compatibility Worker | `apps/worker/src/main.ts`            | `pnpm --filter @agent-excon/worker dev`            | Health defaults `8081`, Compose `3002`; default API does not enqueue        |
+| Data Worker                   | `apps/data-worker/src/main.ts`       | `pnpm --filter @wiser/data-worker dev`             | `/health/live`, `/health/ready`, `/metrics`; complete stack maps `13003`    |
+| MCP stdio                     | `apps/mcp/src/index.ts`              | Build first, then `pnpm --filter @wiser/mcp start` | stdio; no HTTP port                                                         |
+| MCP HTTP                      | `apps/mcp/src/http-main.ts`          | `pnpm --filter @wiser/mcp dev:http`                | `/mcp`, `/health/live`, `/health/ready`; complete stack maps `13004`        |
+| Telemetry Ingress             | `apps/telemetry-ingress/src/main.ts` | `pnpm --filter @wiser/telemetry-ingress dev`       | `/v1/traces`, `/v1/metrics`, `/v1/logs`; observability profile maps `14318` |
 
 Complete-stack addresses in this table are Compose mappings; standalone process defaults may differ. When the work needs the same identity, databases, and dependencies as the complete platform, use `pnpm stack:full:up` instead of assembling environment variables manually. See the [local development environment](/en/development/local-environment/) for every port and stop command.
 
@@ -98,9 +98,9 @@ Treat `.env.example`, the runtime config loaders, and `compose.yaml` as the conf
 
 ## Workers
 
-### Agent EXCON Worker
+### Agent EXCON v1 compatibility Worker
 
-`apps/worker` claims pending evaluation work from Supabase/PostgreSQL, performs deterministic evaluation, and writes the outcome. `DATABASE_URL` is required; claim size, lease, polling, and health are configurable through `WORKER_*`. Its health server describes the Worker loop and exposes no business API.
+`apps/worker` consumes `excon_private.evaluation_jobs`, reads v1 `episodes/submissions`, and performs deterministic evaluation. Default API v1 is an in-process memory service, while v2 evaluates inside the API service/journal replay; neither enqueues this Worker. It therefore serves only PostgreSQL-backed v1 compatibility/testing. `DATABASE_URL` is required; claim size, lease, polling, and health use `WORKER_*`.
 
 When changing evaluation input, inspect all of these together:
 
@@ -111,7 +111,7 @@ When changing evaluation input, inspect all of these together:
 
 ### Data Worker
 
-`apps/data-worker` composes two kinds of work: controlled-ingestion handlers and consumption of authoritative Outbox events into rebuildable search, graph, STAC/PostGIS, and related projections. It accesses independent Data PostgreSQL through a restricted runtime role and uses object-store and internal-service adapters.
+`apps/data-worker` composes controlled-ingestion handlers and authority-Outbox completion targets. `POSTGIS` establishes governed spatial readiness inside data-postgres; Weaviate, OpenSearch, Neo4j, and STAC are rebuildable external projections. The Worker accesses independent Data PostgreSQL through a restricted runtime role and uses object-store/internal-service adapters.
 
 `apps/data-worker/src/config.ts` validates its configuration strictly. Prefer canonical `DATA_*` names. Compatibility aliases exist only for migration and produce a startup warning. The Worker's `/metrics` response is Prometheus text, not a business source of truth.
 
@@ -153,12 +153,15 @@ pnpm --filter @wiser/api typecheck
 pnpm --filter @wiser/api build
 ```
 
-For a real database, RLS, or full protocol path, also run:
+Add gates according to the authority that changed; do not run both database suites unconditionally:
 
 ```bash
-pnpm supabase:verify
-pnpm data:verify
-pnpm verify
+pnpm supabase:verify  # Supabase Auth/control/EXCON schema, RLS, seed only; resets local Supabase
+pnpm data:verify      # Data contracts/core/infra/Worker/Compose static and workspace checks
+pnpm data:smoke       # real Data database/object/projection/API/MCP/Web slice; needs running dependencies
+pnpm verify           # repository convergence after required focused and integration gates
 ```
+
+A pure EXCON protocol change normally needs no Data gate, and a pure Data change should not erase Supabase merely “for safety.” Combine the gates only for cross-system identity or complete-stack behavior.
 
 See [adding a WISER system](/en/development/adding-a-system/) for the complete new-system and module-registration checklist.

@@ -14,14 +14,20 @@ whenToUpdate:
   - 平台扩展点、系统模板、统一 Auth、UI 或交付门槛变化时
 checkPaths:
   - AGENTS.md
+  - package.json
   - pnpm-workspace.yaml
+  - compose.yaml
+  - .env.example
+  - packages/**
   - apps/api/**
   - apps/web/**
   - apps/mcp/**
+  - apps/*-worker/**
   - apps/docs/**
-  - packages/platform-contracts/**
-  - packages/platform-auth/**
+  - infrastructure/**
+  - scripts/**
   - .docpact/**
+  - .github/workflows/**
 lastReviewedAt: 2026-08-22
 lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
 ---
@@ -31,6 +37,16 @@ lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
 “新增系统”是建立新的业务事实边界，不是给现有系统增加一个页面。新系统与 Agent EXCON、Data Foundation 平级，共享 WISER 的 Supabase Auth、Fastify、Next.js、MCP、Docs、设计系统和可观测性入口，同时拥有独立 contracts、core、应用用例和权威数据。
 
 若需求只扩展已有系统已经拥有的事实、状态机或 API，应留在原系统内；不要为了目录整齐制造新的系统边界。
+
+## 开始前：先读取平台合同
+
+创建任何文件前，先用现有平台组合点取得权威阅读集：
+
+```bash
+pnpm docpact:route --paths 'AGENTS.md,package.json,apps/api/src/main.ts,apps/web/src/components/app-shell.tsx,apps/mcp/src/index.ts,apps/docs/src/content/docs/zh-CN/meta.json,.docpact/config.yaml'
+```
+
+阅读返回文档并确认确实需要新系统，再写下面的双语边界与第一个 Red。新路径建立后，第 7 节会用实际路径重跑 route。
 
 ## 0. 先写系统边界
 
@@ -104,6 +120,24 @@ Application 可以消费其他系统的公开 contracts；需要其他系统当�
 
 系统数据库只保存平台 subject、Tenant 和 Project 的受限引用，不复制用户、Session、membership 或第二套密码体系。
 
+独立数据库采用以下可发现结构，并在根 `package.json` 暴露同构操作命令；系统没有某个生命周期步骤时可以省略，但不能用人工补丁代替：
+
+```text
+infrastructure/<system>/postgres/migrations/  # NNNN_*.sql canonical history
+packages/<system>-infra/src/migrations/       # checksum runner + advisory lock
+scripts/<system>/                             # up/down/migrate/seed/verify/smoke/reset
+
+pnpm <system>:up
+pnpm <system>:migrate
+pnpm <system>:seed
+pnpm <system>:verify
+pnpm <system>:smoke
+pnpm <system>:down
+<EXACT_SYSTEM_RESET_CONFIRMATION> pnpm <system>:reset
+```
+
+部署还必须创建彼此独立的 migration owner 与 API role；只有实际存在 Worker 时才创建独立 Worker role。runtime 均为非超级用户、`NOBYPASSRLS`，reset 只能删除该系统 allowlist 内的本机资源并要求精确确认。空库重放在一次性 CI/开发环境中验证；若仓库尚未提供隔离模式，不得在有需保留数据的工作区执行破坏性 reset。
+
 ## 3. 接入统一 Auth
 
 新系统必须复用 `@wiser/platform-contracts` 与 `@wiser/platform-auth`：
@@ -125,7 +159,7 @@ Application 可以消费其他系统的公开 contracts；需要其他系统当�
 - 复用共享错误 envelope、request ID、CORS 和 OpenAPI；
 - 提供能区分 liveness 与依赖 readiness 的健康信息；
 - 写操作要求幂等键，并让 transaction/constraint 保证重试语义；
-- 在 `createDefaultApiApp` 的组合路径注册模块，并在 `onClose` 释放资源；
+- 在 `createDefaultApiApp` 中创建系统 runtime，并在 `app.ready()` 前通过 `registerWiserApiModules` 注册其 modules；测试可把同一 module 直接传给 `buildApp`，所有外部资源由 module/runtime 的 `onClose` 释放；
 - 用 Fastify `inject()` 验证路由、授权、响应 schema、错误码和无缓存头。
 
 除非有明确隔离或伸缩需求，不建立第二个公共 HTTP server。独立 Worker 只承担异步工作，业务操作仍由 API 进入。
@@ -173,37 +207,49 @@ Skill 只说明发现、调用、恢复和安全工作流。它同样通过 HTTP
 - 根 README 与文档首页中的系统入口；
 - 中文和英文语义同构页面、导航 `meta.json` 与完整 Docpact frontmatter。
 
-编码前对实际目标运行：
+路径建立后，先对每个新系统都必改的完整纵切重新运行：
 
 ```bash
-pnpm docpact:route --paths 'packages/<system>-*/**,apps/api/src/<system>/**,apps/web/src/app/[locale]/<system>/**'
+pnpm docpact:route --paths 'package.json,pnpm-workspace.yaml,.env.example,compose.yaml,README.md,README.en.md,packages/<system>-*/**,packages/platform-contracts/**,packages/platform-auth/**,apps/api/src/<system>/**,apps/api/src/platform/**,apps/api/src/main.ts,apps/web/src/app/*/<system>/**,apps/web/src/components/app-shell.tsx,apps/web/src/lib/i18n.ts,apps/web/e2e/**,apps/docs/src/content/docs/*/index.mdx,apps/docs/src/content/docs/*/architecture/<system>.md,apps/docs/src/content/docs/*/protocols/<system>-*.md,apps/docs/src/content/docs/*/development/*.md,apps/docs/src/content/docs/*/meta.json,.docpact/config.yaml,.github/workflows/**'
 ```
 
-实现后运行 `pnpm docpact:check`。若新增 ownership、routing alias、规则或治理覆盖，再运行 `pnpm docpact:validate`。不要用 waiver 或 baseline 掩盖新系统未被文档图覆盖。
+再只对实际创建的可选边界运行第二次 route，例如 `apps/mcp/src/<system>/**,apps/mcp/src/index.ts,apps/mcp/src/http-main.ts`、`apps/<system>-worker/**`、`infrastructure/<system>/**`、`scripts/<system>/**`。不存在的可选目录不要放进 glob；`no-tracked-path-matches` 必须修正输入而不是忽略。
+
+每个 Red/Green 提交前都运行 `pnpm docpact:check`，避免 worktree lint 在提交后看不到该切片。新系统必然扩展 ownership、coverage、inventory 和规则，因此必须运行 `pnpm docpact:validate`；最终还要运行下面的 branch-wide lint。不要用 waiver 或 baseline 掩盖新系统未被文档图覆盖。
 
 ## 8. 完成检查表
 
-| 范围        | 必须证明                                                                      |
-| ----------- | ----------------------------------------------------------------------------- |
-| Contracts   | schema 正负例、版本兼容、稳定错误码、所有消费者 typecheck                     |
-| Core        | 纯且确定性；不变量、状态转换和边界值有单元测试                                |
-| Application | 用例、事务、幂等、并发和外部端口失败均有测试                                  |
-| Auth        | Supabase/delegated credential、Tenant/Project、scope、ownership、RLS 负向用例 |
-| Database    | 空库迁移、重复迁移、约束、回滚/恢复策略和非超级用户运行角色                   |
-| API         | 模块注册、OpenAPI、健康、错误 envelope、资源关闭和 HTTP contract 测试         |
-| Worker      | claim/lease/heartbeat/retry、重复投递、优雅关闭和 metrics/health              |
-| MCP/Skill   | 只走 HTTP、schema/大小/超时、授权失败和 transport 一致性                      |
-| Web         | 中英文同构、中文默认、深浅主题、键盘、响应式和 fail-closed 状态               |
-| Docs        | 双语页面、导航、frontmatter、Docpact 路由/覆盖与无重复历史叙事                |
-| Operations  | Compose 配置、秘密边界、日志、健康、smoke 和停止路径                          |
+| 范围        | 必须证明                                                                            |
+| ----------- | ----------------------------------------------------------------------------------- |
+| Contracts   | schema 正负例、版本兼容、稳定错误码、所有消费者 typecheck                           |
+| Core        | 纯且确定性；不变量、状态转换和边界值有单元测试                                      |
+| Application | 用例、事务、幂等、并发和外部端口失败均有测试                                        |
+| Auth        | Supabase/delegated credential、Tenant/Project、scope、ownership、RLS 负向用例       |
+| Database    | 空库迁移、重复迁移、约束、回滚/恢复策略和非超级用户运行角色                         |
+| API         | 模块注册、OpenAPI、健康、错误 envelope、资源关闭和 HTTP contract 测试               |
+| Worker      | claim/lease/heartbeat/retry、重复投递、优雅关闭和 metrics/health                    |
+| MCP/Skill   | 只走 HTTP、schema/大小/超时、授权失败和 transport 一致性                            |
+| Web         | 中英文同构、中文默认、深浅主题、键盘、响应式和 fail-closed 状态                     |
+| Docs        | 双语页面、导航、frontmatter、Docpact 路由/覆盖与无重复历史叙事                      |
+| Operations  | Compose 配置、秘密边界、日志、健康、smoke 和停止路径                                |
+| CI          | 新 workspace scripts、数据库 lifecycle、Playwright/smoke 与 Docpact 已接入 workflow |
 
-每个 Green 检查点运行拥有该行为的聚焦测试；数据库和浏览器改动追加对应验证。可交接状态最终运行：
+每个新 workspace 必须声明实际适用的 `typecheck`、`build` 和 `test` scripts；包内 spec 使用根 Vitest 能发现的 `*.spec.ts` 位置。没有 test script 的 app 或无法被根 Vitest 收集的测试会被 `pnpm verify` 跳过，不能算已验证。
+
+每个 Green 检查点运行拥有该行为的聚焦测试；数据库和浏览器改动追加对应验证。可交接状态按顺序运行（删除确实不适用的可选门禁，并在评审说明原因）：
 
 ```bash
-pnpm verify
+pnpm <system>:verify
+pnpm <system>:smoke
 pnpm supabase:verify   # if the Supabase-managed schema changed
 pnpm data:verify       # if Data Foundation integration changed
+pnpm --filter @wiser/web test:e2e   # if the system has Web UI
+pnpm --filter @wiser/docs build
+pnpm --filter @wiser/docs test:e2e
 pnpm docpact:check
+pnpm docpact:validate
+docpact lint --root . --merge-base main --mode enforce --fail-on-uncovered-change --fail-on-stale-docs
+pnpm verify            # final repository convergence
 ```
 
 提交保持单一目的：contract/core、application/API、数据库、Worker/MCP、UI、文档分别形成可恢复的小提交。一个系统只有在其公开纵切、授权负向路径和运行说明都可验证时才算接入完成。

@@ -115,6 +115,21 @@ pnpm --filter @wiser/docs build
 pnpm --filter @wiser/docs test:e2e
 ```
 
+These standard Playwright configurations start isolated development servers and primarily verify reference/fixture-driven routes, locales, themes, and interactions. They do not prove unified Auth, the Data database, or an EXCON live credential. `pnpm stack:full:up` / `pnpm data:smoke` covers the authenticated Data vertical slice.
+
+The repository does not currently have a full-stack Playwright command that issues an EXCON operator credential. To verify EXCON live, obtain a real `WISER_WEB_OPERATOR_TOKEN` through a trusted operator flow, then run an isolated Web instance or dedicated test with `AGENT_EXCON_WEB_DATA_MODE=live` and server-side `AGENT_EXCON_API_INTERNAL_URL`. Without that step, report the result as reference-UI verification rather than live/Auth E2E.
+
+The reproducible model-free EXCON live Web path is the scripted Showcase. It starts an isolated Lab/API/Web, configures the `live` read model with a host-only operator token, and returns the `/collaboration` URL from status:
+
+```bash
+pnpm showcase:preflight
+pnpm showcase:start --profile scripted
+pnpm showcase:status
+pnpm showcase:stop
+```
+
+This proves the live read model and collaboration page, not automated Playwright interaction. Always stop afterward and verify TTL/credential cleanup.
+
 Playwright locators use user-visible roles, labels, text, or stable test IDs. Apply this checklist to every new UI:
 
 - Chinese and English preserve the same routes, information, states, and actions; English pages contain no untranslated Chinese narrative.

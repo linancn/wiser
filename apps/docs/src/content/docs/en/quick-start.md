@@ -1,6 +1,6 @@
 ---
 title: Quick start
-description: Install dependencies, start WISER, sign in, and confirm every system entrypoint from a clean workspace.
+description: Install dependencies from a clean checkout, start WISER, sign in, and confirm default services plus the Data verification path.
 docType: workflow
 scope: repository
 status: active
@@ -52,7 +52,7 @@ The command:
 
 1. starts local Supabase Auth, control-plane PostgreSQL, Storage, and Studio;
 2. creates ignored local runtime keys;
-3. builds and starts API, Web, the Agent EXCON worker, and docs;
+3. builds and starts API, Web, the Agent EXCON v1 compatibility/testing worker, and docs; that worker provides compatibility-process health and does not execute default v2 evaluation;
 4. starts the Data Foundation profile and runs checksum migrations plus deterministic seed;
 5. starts the Data worker, MCP gateway, and data infrastructure;
 6. runs an end-to-end smoke across Data REST, GraphQL, MCP, and authenticated Web.
@@ -83,7 +83,17 @@ WiserLocalOperator-2026!
 
 This account and password are only for local seed data. Never copy them into a shared or production environment.
 
-The complete stack injects a real local Supabase identity for Data Foundation Web and Data MCP. Agent EXCON live Web reads and EXCON MCP still require a server-side operator credential and a participant credential bound to one concrete RunAgent, respectively. Missing or invalid configuration produces an explicit unavailable/authentication error and never falls back to fabricated data.
+The complete stack injects a real local Supabase identity for Data Foundation Web and Data MCP. The shared MCP process also receives a local placeholder that is sufficient only to configure the EXCON client. Data Tools do not use it, but every `excon_*` call fails authentication until a real RunAgent-bound credential is supplied. Agent EXCON live Web still needs a server-side operator credential; missing or invalid identity produces an explicit unavailable state and never falls back to fabricated data.
+
+## Verify the Agent EXCON protocol loop
+
+Use an isolated local lab and four deterministic scripted RunAgents to verify EXCON HTTP/MCP, receipts, Barriers, collaboration, and evaluation without model use:
+
+```bash
+pnpm cookbook:scripted
+```
+
+This proves the Agent EXCON system but does not upgrade the complete-stack Web placeholder into a live operator/RunAgent identity. Real EXCON live clients still obtain dedicated credentials from a trusted Run staffing or operator workflow.
 
 ## 4. Stop
 

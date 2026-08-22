@@ -34,7 +34,7 @@ A behavior change starts with a failing test that describes a user outcome, prot
 2. **Green:** implement the smallest change that passes the test, then run regressions at the same boundary.
 3. **Refactor:** improve naming, duplication, and dependency direction while tests remain green and observable behavior stays unchanged.
 4. **Integrate:** run the real database, browser, observability, or vertical smoke required by the change type.
-5. **Document and commit:** update Chinese and English documentation, run Docpact and final gates, and retain small recoverable Red/Green commits.
+5. **Document and commit:** update Chinese/English docs, run worktree Docpact before every commit and branch-wide lint against the merge base before handoff, and retain small recoverable Red/Green commits.
 
 Tests should prefer public functions, HTTP, GraphQL, MCP, database policies, or visible UI. Do not substitute private-call counts for business outcomes. Reproduce a production defect with a regression test before fixing it.
 
@@ -79,7 +79,7 @@ Use the narrowest command during development, then return to root verification b
 | Agent EXCON contracts/core/infra | `pnpm exec vitest run packages/contracts/test packages/core/test packages/infra/test` |
 | Platform contracts/auth          | `pnpm exec vitest run packages/platform-contracts/test packages/platform-auth/test`   |
 | API composition                  | `pnpm --filter @wiser/api test`                                                       |
-| Agent EXCON Worker               | `pnpm --filter @agent-excon/worker test`                                              |
+| EXCON v1 compatibility Worker    | `pnpm --filter @agent-excon/worker test`                                              |
 | Data Worker                      | `pnpm --filter @wiser/data-worker test`                                               |
 | MCP composition                  | `pnpm --filter @wiser/mcp test`                                                       |
 | Telemetry Ingress                | `pnpm --filter @wiser/telemetry-ingress test`                                         |
@@ -122,7 +122,7 @@ pnpm data:down
 pnpm supabase:stop
 ```
 
-On a clean environment, `pnpm stack:full:up` converges Supabase startup, the Data profile, migrations, seed, and `data:smoke`. A passing smoke proves 18 fixed steps across upload, scanning, fingerprinting, fake Agent, deterministic transformation, quality/review, authority commit, Outbox, five projection targets, REST, GraphQL, MCP, and authenticated Web. It also verifies that Outbox replay does not duplicate projection facts.
+On a clean environment, `pnpm stack:full:up` converges Supabase startup, the Data profile, migrations, seed, and `data:smoke`. A passing smoke proves the fixed sequence across upload, scanning, fingerprinting, fake Agent, deterministic transformation, quality/review, authority commit, Outbox, five completion targets, REST, GraphQL, MCP, and authenticated Web. It also verifies that Outbox replay does not duplicate target facts.
 
 ## Playwright
 
@@ -200,5 +200,6 @@ Before a change is ready to hand off:
 - Visible UI copy exists in both languages, with theme, keyboard, and responsive behavior verified.
 - Default tests have no real model call, external cost, or secret dependency.
 - After coding, `pnpm docpact:check` has run and matched authoritative docs are updated or have genuine review evidence.
+- A multi-commit branch runs `docpact lint --root . --merge-base <base-ref> --mode enforce --fail-on-uncovered-change --fail-on-stale-docs` so committed Red/Green slices are included.
 - Required focused gates, integration smoke, and final `pnpm verify` all pass.
 - The Git diff contains only intended scope and passes `git diff --check`; Red is a recoverable checkpoint, while the final commit is Green and single-purpose.

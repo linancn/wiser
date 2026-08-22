@@ -49,7 +49,7 @@ lastReviewedCommit: 9b08f11b30895f78063d42881a16e62bb3ffc054
 ## Verification
 
 - Before coding, run `pnpm docpact:route --paths '<actual intended path or glob>'` and read the returned documents.
-- After coding, run `pnpm docpact:check`; update required documents or record an explicit Docpact review before committing.
+- Before each Red/Green commit, run `pnpm docpact:check`; update required documents or record an explicit Docpact review. Before handoff, also lint the full branch with `docpact lint --root . --merge-base <base-ref> --mode enforce --fail-on-uncovered-change --fail-on-stale-docs` so committed slices remain visible.
 - Validate governance changes with `pnpm docpact:validate`. Do not use baselines or waivers as routine suppressions.
 
 Run `pnpm verify` before each green milestone. Database and browser changes require their focused integration and Playwright checks as well.

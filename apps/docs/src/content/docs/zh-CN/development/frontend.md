@@ -115,6 +115,21 @@ pnpm --filter @wiser/docs build
 pnpm --filter @wiser/docs test:e2e
 ```
 
+这两个标准 Playwright 配置自启隔离的开发服务器，主要验证 reference/fixture 驱动的路由、语言、主题和交互；它们不证明统一 Auth、Data 数据库或 EXCON live credential。Data 的登录与真实 API 纵切由 `pnpm stack:full:up` / `pnpm data:smoke` 覆盖。
+
+仓库当前没有自动签发 EXCON operator credential 的 full-stack Playwright 命令。验证 EXCON live 时，先通过受信任 operator 流程取得真实 `WISER_WEB_OPERATOR_TOKEN`，再以 `AGENT_EXCON_WEB_DATA_MODE=live` 和服务端 `AGENT_EXCON_API_INTERNAL_URL` 运行一个隔离 Web 实例或专用测试；没有这一步就必须把结果表述为 reference UI 验证，而不是 live/Auth E2E。
+
+可复现的无模型 EXCON live Web 路径是 scripted Showcase。它启动隔离 Lab/API/Web，以 host-only operator token 配置 `live` read model，并在 status 中返回 `/collaboration` URL：
+
+```bash
+pnpm showcase:preflight
+pnpm showcase:start --profile scripted
+pnpm showcase:status
+pnpm showcase:stop
+```
+
+该路径证明 live read model 与协作页面，不是 Playwright 自动交互；展示后必须运行 stop 并确认 TTL/credential 清理。
+
 Playwright 使用用户可感知的 role、label、可见文本或稳定 test id 定位。每个新 UI 的验收清单如下：
 
 - 中文和英文保持相同路由、信息、状态与操作，英文页面没有遗漏的中文叙述文案。

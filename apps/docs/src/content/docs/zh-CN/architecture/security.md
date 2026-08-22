@@ -2,7 +2,7 @@
 title: 安全与数据边界
 description: 防止事实泄露、越权观察、凭据扩散和不可审计修改。
 docType: security-guide
-scope: agent-excon-v2
+scope: wiser-security
 status: active
 authoritative: true
 owner: wiser
@@ -14,12 +14,20 @@ whenToUpdate:
 checkPaths:
   - supabase/**
   - apps/api/**
+  - apps/web/**
+  - apps/mcp/**
+  - apps/data-worker/**
   - apps/telemetry-ingress/**
+  - packages/platform-auth/**
+  - packages/data-infra/**
+  - infrastructure/**
 lastReviewedAt: 2026-08-22
 lastReviewedCommit: 9465d7fada3ed33d926f6afac5041f8f9980c817
 ---
 
 ## 四类数据必须分开
+
+本页覆盖 WISER 平台级身份、数据库、秘密和遥测边界；下表先列 Agent EXCON 的可见性分层，Data Foundation 仍遵守后续相同的服务端隔离、RLS 与最小权限规则。
 
 | 数据层     | 示例                                           | 访问主体                     |
 | ---------- | ---------------------------------------------- | ---------------------------- |
@@ -68,11 +76,11 @@ WISER Web 只接收 Observability Gateway 产生的安全 DTO，不直接读取 
 
 ## Compose 安全
 
-官方 Supabase 镜像作为一个版本集合锁定；使用 Envoy 当前配置，不复用旧 Kong 配置。真实 `.env` 不提交 Git。数据库和 Studio 默认只绑定本机或受控网络，公开部署必须增加 TLS、备份、密钥轮换和网络策略。
+Supabase 镜像作为一个兼容版本集合锁定，gateway 配置与该集合一起验证。真实 `.env` 不提交 Git。数据库和 Studio 默认只绑定本机或受控网络，公开部署必须增加 TLS、备份、密钥轮换和网络策略。
 
 普通 `docker compose down` 保留数据；删除卷必须由操作者显式确认。
 
-## 发布前检查
+## 安全验证清单
 
 - [ ] 未释放的 Inject 无法通过 API、日志或错误详情推断。
 - [ ] Agent A 的回放、Trace 和日志不包含 Agent B 的私有 Receipt、提交或反馈。

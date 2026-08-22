@@ -106,7 +106,16 @@ Read the returned authoritative documents before drafting. If routing reports no
 pnpm docpact:check
 ```
 
-This command uses the current worktree as its diff source and checks uncovered changes, required document reviews, and stale documents. When a finding needs investigation, save the complete report and inspect the diagnostic ID:
+This command uses only the current uncommitted worktree as its diff source and checks uncovered changes, required reviews, and stale documents. Run it before every Red/Green commit; after a commit it can no longer see that slice.
+
+A branch retaining several small commits also runs branch-wide lint before handoff. Replace `<base-ref>` with the actual target branch, normally `main`:
+
+```bash
+docpact lint --root . --merge-base <base-ref> \
+  --mode enforce --fail-on-uncovered-change --fail-on-stale-docs
+```
+
+When a worktree finding needs investigation, save the complete report and inspect the diagnostic ID:
 
 ```bash
 docpact lint --root . --worktree --format json \

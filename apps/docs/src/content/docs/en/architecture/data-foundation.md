@@ -36,11 +36,12 @@ Supabase principal + Tenant/Project/Purpose
   → data-postgres RLS transaction / SeaweedFS S3
   → PostgreSQL durable job + Transactional Outbox
   → Data Worker
-  → PostGIS / Weaviate / OpenSearch / Neo4j / STAC
+  → PostGIS spatial readiness (inside the same data-postgres)
+  → rebuildable external Weaviate / OpenSearch / Neo4j / STAC projections
   → REST / GraphQL / MCP / authenticated Web readback
 ```
 
-GeoServer, TiTiler, and Martin run as Compose-internal GIS services in the same exactly pinned profile without host-published ports; external access traverses the unified-Auth Fastify GIS proxy. The authority Outbox has exactly five completion targets today: PostGIS, Weaviate, OpenSearch, Neo4j, and STAC. Every projection is disposable and rebuildable; none is identity, authorization, acceptance, or publication authority.
+GeoServer, TiTiler, and Martin run as Compose-internal GIS services in the same exactly pinned profile without host-published ports; external access traverses the unified-Auth Fastify GIS proxy. The Outbox ledger has five completion targets. `POSTGIS` establishes/verifies governed `catalog.spatial_extent` representations inside authoritative data-postgres; its source/version/spatial authority rows are not a disposable external projection. Weaviate, OpenSearch, Neo4j, and STAC are rebuildable external projections. No single target decides identity, authorization, acceptance, or publication.
 
 ## Packages and dependency direction
 
@@ -60,25 +61,11 @@ Dependency direction is `platform contracts <- data-contracts <- data-core <- ap
 
 `@wiser/data-contracts` is the sole source for REST, GraphQL, MCP, Skills, and runtime validation. Public DTOs use strict Zod 4 schemas; unknown and missing fields both fail. `GET /api/data/v1/capabilities` returns draft-7 input/output JSON Schema, scopes, security ceiling, execution mode, timeout, audit level, and exact mappings for all four transports.
 
-The Registry preserves this 22-item order:
-
-```text
-data.catalog.search              data.catalog.get
-data.query                       data.search.federated
-data.knowledge.search            data.graph.expand
-data.graph.findPath              data.geo.query
-data.geo.intersect               data.ingestion.create
-data.ingestion.submit            data.operation.get
-data.catalog.create              data.catalog.versions.list
-data.catalog.versions.get        data.uploadSession.create
-data.uploadSession.complete      data.ingestion.get
-data.ingestion.approve           data.ingestion.reject
-data.operation.cancel            data.operation.events
-```
+The Registry covers catalog/version, query/search, knowledge/graph, geo, upload/ingestion, and Operation lifecycles. Exact Capability IDs, order, versions, scopes, and transport mappings live only in the discovery endpoint and [protocol reference](/en/protocols/data-rest/); this architecture page does not maintain a second list.
 
 Every executor traverses input/output validation, live scopes, the security-level ceiling, purpose, declared timeout, command idempotency, and hash-only audit. Queries accept structured filters only—never arbitrary SQL, Cypher, OpenSearch DSL, shell, or database administration.
 
-Initial scopes are `data.catalog.read`, `data.query.execute`, `data.search.execute`, `data.knowledge.read`, `data.graph.read`, `data.geo.read`, `data.ingestion.write`, `data.operation.read`, and `data.publish`. The local `data-steward` Role seed covers all nine. A new Capability changes Registry, role/scope, API, MCP, Skill, docs, and verification together.
+The local `data-steward` Role seed grants only the scopes needed by the demonstration. A new Capability changes Registry, role/scope, API, MCP, Skill, docs, and verification together.
 
 ## Data model and independent migration history
 
@@ -113,7 +100,7 @@ The SeaweedFS adapter forces path-style S3 and derives every key from validated 
 
 Content remains in quarantine first. Fingerprinting establishes `catalog.content_blob`; formal commit idempotently promotes it to content-addressed raw/version keys. An identical hash can be reused, while a different hash is never overwritten. Abort removes only a derived quarantine object. Version-asset reads reauthorize through Supabase and data-postgres RLS, append audit, then return a 60-second `303` signed redirect. STAC manifests never expose long-lived S3 credentials.
 
-MCP Evidence/STAC Resources now have real HTTP authority boundaries too. Evidence GET returns only an RLS-visible fragment attached to a committed version and appends `data.evidence.read` hash-only audit. STAC GET first binds collection to the current Tenant/Project, reads bounded data from one fixed internal STAC origin, strips upstream internals, then reconciles published/accepted version, Evidence, source hash, security, policy, and quality in data-postgres before appending `data.stac-item.read`. Both JSON responses are capped at 256 KiB, and a STAC asset can target only the short-lived governed download endpoint above.
+MCP Evidence/STAC Resources read through real HTTP authority boundaries. Evidence GET returns only an RLS-visible fragment attached to a committed version and appends `data.evidence.read` hash-only audit. STAC GET first binds collection to the current Tenant/Project, reads bounded data from one fixed internal STAC origin, strips upstream internals, then reconciles published/accepted version, Evidence, source hash, security, policy, and quality in data-postgres before appending `data.stac-item.read`. Both JSON responses are capped at 256 KiB, and a STAC asset can target only the short-lived governed download endpoint above.
 
 Only an approved frozen review checkpoint can create a formal version. One data-postgres transaction commits DataItemVersion, quality/lineage facts, Operation event, Audit, and Outbox. Supabase, data-postgres, and S3 never pretend to share a distributed transaction.
 
@@ -132,7 +119,7 @@ Policy may move eligible non-terminal states to FAILED or CANCELLED;
 REJECTED, PUBLISHED, FAILED, and CANCELLED are terminal.
 ```
 
-The default Worker registers a concrete `data.ingestion.process.v1` Handler rather than an empty Registry:
+The default Worker executes ingestion through the concrete `data.ingestion.process.v1` Handler:
 
 1. restore uploads and version from authority;
 2. verify size/media type through the S3 reader;
@@ -143,7 +130,7 @@ The default Worker registers a concrete `data.ingestion.process.v1` Handler rath
 7. let the fixture fake Agent propose schema/semantic plans, then validate confidence and shape through an injected validator;
 8. run deterministic transformation, quality, and EPSG:4326/4490/3857 alignment;
 9. freeze a hash-only review checkpoint and route low-confidence/high-risk work to human review;
-10. commit authority and Outbox after approval, then publish only after five projections succeed.
+10. commit authority and Outbox after approval, then publish only after all five completion-target ledgers succeed.
 
 An Agent proposes explanations and plans. It cannot modify source data, silently correct fields, decide quality/acceptance, bypass review, or write authority/projection stores. The fake Agent and `DeterministicFakeEmbedding` are for tests, CI, and local smoke only; identical text, version, and dimension yield identical finite vectors. Worker records Agent run/action, model identity, input/output hashes, and transform plan without putting prompts, credentials, or object bodies in audit.
 
@@ -155,9 +142,9 @@ Worker uses PostgreSQL `FOR UPDATE SKIP LOCKED`, lease owner/expiry, heartbeat, 
 
 `ProjectionOutboxConsumer` reads after a monotonic checkpoint. Per-target `PENDING/RUNNING/SUCCEEDED/FAILED` ledger survives crashes; an external write that completed before ledger update can be retried safely, while a succeeded target is skipped. Projection identity derives from authoritative DataItem/Version/Evidence IDs:
 
-If all five projections succeeded but the matching Operation is already `FAILED` or `CANCELLED`, that publication poison event may neither rewrite the terminal Operation nor publish the authoritative version. Consumer writes `PUBLICATION_OPERATION_TERMINAL` to `consumer_checkpoint.last_error` and advances past the event so it cannot block the queue head; a later successful event clears the summary. Original Job, Operation, projection ledger, and version evidence remain intact.
+If all five completion targets succeeded but the matching Operation is already `FAILED` or `CANCELLED`, that publication poison event may neither rewrite the terminal Operation nor publish the authoritative version. Consumer writes `PUBLICATION_OPERATION_TERMINAL` to `consumer_checkpoint.last_error` and advances past the event so it cannot block the queue head; a later successful event clears the summary. Original Job, Operation, target ledger, and version evidence remain intact.
 
-- PostGIS retains source geometry plus CGCS2000 and Web Mercator derivatives;
+- data-postgres/PostGIS `catalog.spatial_extent` retains RLS-protected source geometry, CGCS2000 canonical geometry, and a Web Mercator display derivative; authority rows are not cleared with projection caches;
 - Weaviate uses Worker-provided versioned vectors and an authenticated tenant;
 - OpenSearch uses a governed ICU index;
 - Neo4j uses fixed parameterized `MERGE` facts;

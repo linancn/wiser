@@ -27,6 +27,8 @@ WISER is the product and platform context. Agent EXCON and Data Foundation are p
 
 The composition roots wire unified Supabase Auth, platform identity/delegation, the durable EXCON v2 command journal, Data Capabilities, REST, GraphQL, MCP/Skill, system workers, projections, and bilingual Web. `pnpm stack:full:up` starts the default complete stack inside one platform identity boundary and runs the Data smoke. v1 Episodes remain an explicit in-memory compatibility path, not the unified platform's durable runtime.
 
+“Unified identity” means one Supabase/Platform authority and authorization context, not one interactive credential reused by every client. Data Web uses the human Supabase SSR session; EXCON live Web uses a server-side operator credential; the MCP transport bearer, EXCON RunAgent credential, and Data API identity protect different boundaries and are not interchangeable.
+
 ## System boundaries
 
 | Context         | Owns                                                                             | Does not own                                           |
@@ -57,13 +59,14 @@ WISER Fastify composition root
 
 ## Authority matrix
 
-| Store                                    | Authoritative content                                        | Consistency rule                                                         |
-| ---------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| Supabase Auth/PostgreSQL                 | users, sessions, tenants, projects, memberships, EXCON facts | single WISER identity and control plane                                  |
-| data-postgres/PostGIS                    | DataItems, versions, quality, lineage, Operations, Outbox    | structured Data Foundation authority                                     |
-| S3-compatible object store               | source objects and immutable version assets                  | content addressed; committed by a PostgreSQL manifest after verification |
-| OpenSearch/Weaviate/Neo4j/STAC/GeoServer | search, graph, and GIS projections                           | disposable, rebuildable, idempotent, never authorization authority       |
-| OpenTelemetry                            | technical diagnostic projection                              | sampled; never business state, authorization, or adjudication            |
+| Store/service                  | Authoritative content                                        | Consistency rule                                                         |
+| ------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| Supabase Auth/PostgreSQL       | users, sessions, tenants, projects, memberships, EXCON facts | single WISER identity and control plane                                  |
+| data-postgres/PostGIS          | DataItems, versions, quality, lineage, Operations, Outbox    | structured Data Foundation authority                                     |
+| S3-compatible object store     | source objects and immutable version assets                  | content addressed; committed by a PostgreSQL manifest after verification |
+| OpenSearch/Weaviate/Neo4j/STAC | search, graph, and external GIS projections                  | disposable, rebuildable, idempotent, never authorization authority       |
+| GeoServer/TiTiler/Martin       | none; Compose-internal GIS serving only                      | fixed origins, no host ports, every request traverses API                |
+| OpenTelemetry                  | technical diagnostic projection                              | sampled; never business state, authorization, or adjudication            |
 
 Projections push down Tenant, Project, Version, security-level, and policy-version filters, but authoritative authorization is checked again before returning, downloading, exporting, or publishing content. A stale policy projection fails closed.
 

@@ -61,6 +61,20 @@ platform_private.control_outbox
 - 所有暴露表启用 RLS，并同时使用主体、Tenant、Project 和所有权谓词；`TO authenticated` 本身不构成授权。
 - 特权函数进入未暴露 schema，固定安全 `search_path`，撤销默认 `PUBLIC EXECUTE`。
 
+## Platform HTTP 入口
+
+| 方法   | 路径                                                             | 作用                                                             |
+| ------ | ---------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `GET`  | `/api/platform/v1/me`                                            | 返回安全的 Actor、Role、Scope、security ceiling 与 authz version |
+| `POST` | `/api/platform/v1/delegations`                                   | 创建有边界的 Delegation                                          |
+| `GET`  | `/api/platform/v1/delegations/{delegationId}`                    | 读取安全 metadata                                                |
+| `POST` | `/api/platform/v1/delegations/{delegationId}/credentials`        | 签发一次性明文 credential                                        |
+| `POST` | `/api/platform/v1/delegations/{delegationId}/credentials:rotate` | 轮换并一次性返回新明文                                           |
+| `POST` | `/api/platform/v1/delegations/{delegationId}:revoke`             | 撤销 Delegation                                                  |
+| `POST` | `/api/platform/v1/credentials/{credentialId}:revoke`             | 撤销单个 credential                                              |
+
+`/me` 与委托路由都要求 Bearer、Tenant、Project 与 Purpose。所有写操作要求 UUID `Idempotency-Key`；Delegation 命令还要求经过验证且具备 `platform.delegation.manage` 的 Supabase human。响应为 `private, no-store`，issue/rotate 的明文不可恢复。
+
 ## 请求处理
 
 ```text
@@ -82,26 +96,28 @@ Web 使用 Supabase SSR Cookie。Server Component 转发当前 Access Token，Fa
 
 Shell 的用户状态只来自刚完成验证的 authenticated claims，不把用户可编辑 metadata 渲染成可信 Role 或管理员标签。Claims 无效、过期、带特权角色、服务不可用或格式畸形时，一律进入匿名/fail-closed 状态。
 
-`WISER_WEB_OPERATOR_TOKEN` 不再代表交互式用户。需要平台诊断的服务账户必须拥有明确 Scope，且只能在服务端使用。
+`WISER_WEB_OPERATOR_TOKEN` 是服务端 operator/service identity，不是交互式用户 Session。需要平台诊断的服务账户必须拥有明确 Scope，且只能在服务端使用。
 
 ## Agent 与 MCP 委托
 
-用户或服务通过授权 API 为具体 Agent/Run/Project 签发短期 delegated credential。请求 Scope 与委托人实时 Scope 求交集，Purpose、安全等级上限和有效期固化在 Delegation 中。
+经验证且具备 `platform.delegation.manage` 的 Supabase human 通过授权 API 为具体 Agent/Run/Project 签发短期 delegated credential。请求 Scope 与委托人实时 Scope 求交集，Purpose、安全等级上限和有效期固化在 Delegation 中。
 
-- 委托链第一版最大深度为一。
+- 委托链最大深度为一。
 - 明文 credential 只返回一次；数据库保存带服务器 Pepper 的 HMAC。
 - 委托 Bearer Token 固定使用 `wdc1.<key-id>.<secret>` 封装；公开 key id 只定位私有记录，`hmac_key_id` 选择可轮换的服务端密钥且不会暴露密钥本身。
 - 验证时只用公开 key id 定位记录，在进程内重算 HMAC 并执行固定长度的 timing-safe 比较；未知 key、畸形 Token 与 HMAC 不匹配使用同一失败表面。
 - Delegation 带乐观版本；撤销和轮换保留旧 Credential 安全事实，删除 Tenant、Project 或 Delegation 不得级联擦除历史。
-- 撤销委托人 Membership、Project、Agent 或 credential 后，下一次请求失败。
+- 撤销委托人 Membership、Project、Agent、Delegation 或 credential 后，下一次请求失败。
 - MCP Tool 参数、Message、Artifact、日志与 Trace 不得包含凭据。
-- EXCON 私有表只保留通用 credential 与 `runAgentId/runId` 的绑定。
+- Platform delegated credential 位于 `platform_private.delegated_credentials`，使用 `wdc1.` envelope。EXCON 另有 `excon_private.run_agent_credentials` opaque capability token，直接绑定 `runAgentId/runId` 与协议 Scope；两者不是同一行或同一种 token。
 
-Fastify `platform.delegation` 模块现已固定 create、metadata read、issue、rotate 与 revoke 的 HTTP 命令边界。只有通过验证且拥有 `platform.delegation.manage` 的 Supabase human 才能调用；命令必须使用 UUID 幂等键，TTL 最长一小时，委托 Scope 必须已知，ceiling 不得高于调用方实时上限。明文只出现在成功的 issue/rotate 响应中，所有响应均为 `private, no-store`。`PostgresPlatformDelegationService` 在每个事务内重验 Supabase Session 与实时 Membership，取得幂等锁和 aggregate 行锁，把 credential 有效期裁剪到 15 分钟与 Delegation expiry 中较早者，保证单 active credential，并原子写 Audit 与 Control Outbox。同 hash 命令可安全重放；issue/rotate 重放返回 `SECRET_NOT_RECOVERABLE`，不会保存可恢复明文。Audit、Outbox 与错误中均不含 Token/HMAC。
+Telemetry Ingress 不签发新身份；它验证上述独立 EXCON RunAgent capability token 的 HMAC，并要求协议级 `telemetry:write` scope、未过期/未撤销 credential、有效 RunAgent、AgentVersion 与 AgentIdentity 生命周期。该 verifier **不会**重新解析 Platform `wdc1.` Delegation、Tenant/Project Membership 或其撤销状态；撤销平台 Membership 不会单独使 telemetry token 失效。仓库尚未提供此 token 的签发/轮换/撤销 API/CLI，生产部署必须提供并测试受信任 lifecycle workflow，否则数据库模式不能视为可运营完成。
 
-Delegated Bearer 解析会在任何数据库查询前校验封装格式，再按公开 key id 加载一条私有记录，在 Node 内执行固定长度 timing-safe HMAC 比较，之后才信任控制事实。每个请求都实时复核双方 Actor、双方 Tenant/Project Membership、Tenant、Project、Delegation/Credential 生命周期、Purpose 与 expiry。有效 Scope 是委托 Scope、委托人实时 Scope 与注入的 known-scope registry 的有序交集；有效安全 ceiling 取 Delegation 与委托人当前 ceiling 中较低者。第一版不使用正向授权缓存。
+Fastify `platform.delegation` 模块定义 create、metadata read、issue、rotate 与 revoke 的 HTTP 命令边界。只有通过验证且拥有 `platform.delegation.manage` 的 Supabase human 才能调用；命令必须使用 UUID 幂等键，TTL 最长一小时，委托 Scope 必须已知，ceiling 不得高于调用方实时上限。明文只出现在成功的 issue/rotate 响应中，所有响应均为 `private, no-store`。`PostgresPlatformDelegationService` 在每个事务内重验 Supabase Session 与实时 Membership，取得幂等锁和 aggregate 行锁，把 credential 有效期裁剪到 15 分钟与 Delegation expiry 中较早者，保证单 active credential，并原子写 Audit 与 Control Outbox。同 hash 命令可安全重放；issue/rotate 重放返回 `SECRET_NOT_RECOVERABLE`，不会保存可恢复明文。Audit、Outbox 与错误中均不含 Token/HMAC。
 
-Agent EXCON v2 participant authenticator 与 Data Capability Handler 现在复用同一个 prefix-routed Platform Resolver。完整栈给 EXCON 注入固定 Tenant/Project/Purpose，并要求 delegated principal 的 `runAgentIds`/Scope 与请求资源一致；Data REST、GraphQL、MCP 和 Web server DAL 都用同一 Supabase JWT 或 `wdc1.` credential 解析实时上下文。EXCON command journal 和 data-postgres 只保存 scoped subject reference/audit，不创建第二套身份系统。
+Delegated Bearer 解析会在任何数据库查询前校验封装格式，再按公开 key id 加载一条私有记录，在 Node 内执行固定长度 timing-safe HMAC 比较，之后才信任控制事实。每个请求都实时复核双方 Actor、双方 Tenant/Project Membership、Tenant、Project、Delegation/Credential 生命周期、Purpose 与 expiry。有效 Scope 是委托 Scope、委托人实时 Scope 与注入的 known-scope registry 的有序交集；有效安全 ceiling 取 Delegation 与委托人当前 ceiling 中较低者。授权解析不使用正向缓存。
+
+Agent EXCON v2 participant authenticator 与 Data Capability Handler 复用同一个 prefix-routed Platform Resolver。完整栈给 EXCON 注入固定 Tenant/Project/Purpose，并要求 delegated principal 的 `runAgentIds`/Scope 与请求资源一致；Data REST、GraphQL、MCP 和 Web server DAL 都用同一 Supabase JWT 或 `wdc1.` credential 解析实时上下文。EXCON command journal 和 data-postgres 只保存 scoped subject reference/audit，不创建第二套身份系统。
 
 ## Data Foundation 跨库引用
 

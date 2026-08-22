@@ -1,140 +1,91 @@
 ---
-title: WISER HTTP API host guide
+title: WISER shared HTTP API component guide
+description: Bilingual process guide for running, configuring, and verifying the shared WISER Fastify API host.
 docType: component-guide
 scope: apps/api
 status: active
 authoritative: true
 owner: wiser
-language: en
+language: bilingual
 whenToUse:
-  - when changing or running the shared HTTP API boundary
+  - when changing, running, or locating the owning module for a public boundary in the shared WISER HTTP API process
 whenToUpdate:
-  - when API modules, routes, authentication, or runtime durability changes
+  - when API entrypoints, route prefixes, runtime modes, or focused commands change
 checkPaths:
   - apps/api/**
   - packages/contracts/**
-  - packages/core/**
-  - packages/excon-scenarios/**
+  - packages/platform-*/**
   - packages/data-*/**
+  - packages/excon-scenarios/**
+  - .env.example
+  - compose.yaml
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
+lastReviewedCommit: ed36c7913b5dd2b2542adf1aa1ce1e5d9a70029f
 ---
 
-# WISER API host
+# WISER API / WISER 共享 API
 
-This is the shared Fastify composition root for WISER Platform, Agent EXCON, Data Foundation, and future systems. Modules are statically imported as namespaced `WiserApiModule` values; duplicate ids fail before readiness. No transport scans TypeScript AST or bypasses system application/authorization boundaries.
+## 职责 / Responsibility
 
-For the complete local runtime, use the repository workflow instead of assembling secrets by hand:
+`@wiser/api` 是 WISER Platform、Agent EXCON 与 Data Foundation 的共享 Fastify 组合宿主。它负责 HTTP、统一身份上下文、模块注册、健康检查和 OpenAPI 边界；系统业务规则仍属于各自的 core/application，客户端不得绕过 API 直读数据库。 / `@wiser/api` is the shared Fastify composition host for WISER Platform, Agent EXCON, and Data Foundation. It owns HTTP, unified identity context, module registration, health checks, and OpenAPI; system rules remain in their core/application layers, and clients must not bypass the API to read databases.
+
+## 入口 / Entrypoints
+
+- 进程入口 / process entry: `apps/api/src/main.ts`
+- Fastify 组合根 / composition root: `apps/api/src/app.ts`
+- Platform 模块 / Platform modules: `apps/api/src/platform/`
+- Agent EXCON v2 / Agent EXCON v2: `apps/api/src/v2-routes.ts`
+- Data Foundation 模块 / Data Foundation modules: `apps/api/src/data-foundation/`
+
+| 公共边界 / Public boundary                       | 所属系统 / Owner                                        |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| `/api/platform/v1/*`                             | WISER Platform identity and delegation                  |
+| `/api/v1/*`, `/api/v2/*`                         | Agent EXCON compatibility and current protocol          |
+| `/api/data/v1/*`                                 | Data Foundation REST, resources, and governed GIS proxy |
+| `/graphql`                                       | Data Foundation GraphQL                                 |
+| `/health/live`, `/health/ready`, `/openapi.json` | Shared process operations and API discovery             |
+
+完整路由、请求结构和授权语义以文档站的协议参考为准，不在组件 README 中维护第二份清单。 / The documentation-site protocol references are authoritative for routes, payloads, and authorization semantics; this component guide does not duplicate them.
+
+## 运行 / Run
+
+包含统一 Auth 和两个系统依赖的推荐入口 / Recommended entry with unified Auth and both systems:
 
 ```bash
 pnpm stack:full:up
 ```
 
-For protocol/unit development with local compatibility defaults:
+仅做 API 协议或单元开发 / API-only protocol or unit development:
 
 ```bash
-API_PORT=3001 pnpm --filter @wiser/api dev
+pnpm --filter @wiser/api dev
 ```
 
-Non-production defaults to `WISER_AUTH_MODE=off`, `EXCON_V2_MODE=memory`, and `DATA_FOUNDATION_MODE=off` only when the corresponding runtime fields are absent. Production forbids Auth/Data off and forbids the EXCON memory runtime.
+默认监听 `http://127.0.0.1:3001`。独立开发模式可使用 Auth off、EXCON memory、Data off，因此不能证明完整集成。生产构建使用 `pnpm --filter @wiser/api build` 后运行 `pnpm --filter @wiser/api start`。 / The default endpoint is `http://127.0.0.1:3001`. Standalone development may use Auth off, EXCON memory, and Data off, so it does not prove full integration. For a production build, run `pnpm --filter @wiser/api build` and then `pnpm --filter @wiser/api start`.
 
-## Unified Auth composition
+## 配置边界 / Configuration boundary
 
-`WISER_AUTH_MODE=supabase` creates one current `supabase-js` `getClaims` client, bounded PostgreSQL control-plane Pool, prefix-routed Supabase JWT/delegated Resolver, and transactional Delegation service. It requires:
+- `API_HOST`, `API_PORT`, and `API_CORS_ORIGIN` configure only the HTTP process boundary.
+- `WISER_AUTH_MODE` selects unified Auth; Supabase URL/key and the control-plane database remain server-only.
+- `EXCON_V2_MODE` selects the EXCON runtime; persistent journal and lease-key settings remain server-only.
+- `DATA_FOUNDATION_MODE` enables Data Foundation only with unified Auth and its complete database, object-store, Worker, and internal-service configuration.
+- `.env.example`, `compose.yaml`, and runtime config loaders are the variable sources of truth; do not copy secrets, version pins, or persistence algorithms into this README.
 
-```text
-SUPABASE_URL
-SUPABASE_PUBLISHABLE_KEY
-DATABASE_URL
-WISER_DELEGATED_CREDENTIAL_HMAC_KEYS
+## 验证 / Verify
+
+```bash
+pnpm --filter @wiser/api test
+pnpm --filter @wiser/api typecheck
+pnpm --filter @wiser/api build
+pnpm verify
 ```
 
-Every protected request supplies Bearer, Tenant, Project, and Purpose. The Resolver verifies the Supabase Session or strict `wdc1.<public-key-id>.<secret>` credential, then resolves live membership, roles, scopes, L0–L3 ceiling, and authorization version. A malformed/failed delegated credential is never retried as JWT, and failed JWT authentication never falls back to a local token.
+涉及 Supabase、RLS 或 Data PostgreSQL 时，另运行 `pnpm supabase:verify` 或 `pnpm data:verify`。 / For Supabase, RLS, or Data PostgreSQL changes, also run `pnpm supabase:verify` or `pnpm data:verify`.
 
-Platform routes include:
+## 权威文档 / Authoritative documentation
 
-- `GET /api/platform/v1/me`, a safe principal/authorization projection;
-- create/read/issue/rotate/revoke under `/api/platform/v1/delegations`;
-- credential revoke under `/api/platform/v1/credentials/:credentialId:revoke`.
-
-Delegation commands require a Supabase human with `platform.delegation.manage` and a UUID `Idempotency-Key`. Issue/rotate return plaintext once; replay returns `SECRET_NOT_RECOVERABLE`. Audit, Outbox, errors, and metadata never contain plaintext or HMAC.
-
-## Agent EXCON runtime durability
-
-v1 `InMemoryExerciseService` remains the explicit legacy Episode compatibility implementation. Its state does not survive restart and v2 failures never downgrade to v1.
-
-v2 has two deliberate modes:
-
-- `memory`: deterministic protocol tests and isolated local labs only; forbidden in production;
-- `postgres`: the full-stack/production mode, configured by `EXCON_JOURNAL_DATABASE_URL` and `EXCON_LEASE_HMAC_KEYS`.
-
-The PostgreSQL mode wraps the deterministic v2 service in an append-only command journal. It records all 19 v2 mutations (`createScenario` through `endorseSubmission`) as immutable intent/outcome rows, including canonical request/result hashes and a deterministic tape of generated UUIDs, timestamps, and lease counters. Lease tokens are never stored in plaintext; journal arguments contain HMAC secret references keyed by a retained rotation key id.
-
-Startup requires a non-superuser role, acquires one PostgreSQL advisory writer lock, loads every intent/outcome in sequence, verifies schema/hash/secret references, replays the generation tape, and compares each result or stable rejection. Corrupt, incomplete, drifted, unknown-key, or concurrently owned journals fail closed. Fastify shutdown releases the writer lock and closes the Pool.
-
-This is durable restart recovery, but it is intentionally a single-writer journal/replay adapter rather than one normalized PostgreSQL repository per v2 aggregate.
-
-### EXCON routes
-
-- `GET /health/live`, `GET /health/ready`, `GET /openapi.json`
-- explicit v1 Episode API under `/api/v1`
-- public v2 scenario catalog under `/api/v2/scenarios`
-- operator Scenario/Agent/Run lifecycle and replay under `/api/v2`
-- RunAgent `/sync`, Task leases, Messages, Artifacts, Submissions, endorsements, Feedback, and agent-safe replay under `/api/v2`
-
-The bundled Yongding case pack enters the runtime only through the validated public exports of the private workspace package `@agent-excon/scenarios`; API code never reads or constructs package-internal asset paths.
-
-The participant authenticator uses the same Platform Resolver when unified Auth is active. The injected EXCON Tenant, Project, and Purpose are fixed server context; a Supabase human or delegated Agent must have the right live EXCON roles/scopes and RunAgent binding. Static participant/operator tokens exist only when Auth is explicitly off outside production.
-
-## Data Foundation runtime
-
-`DATA_FOUNDATION_MODE=enabled` requires unified Auth and validates the complete Data runtime configuration at startup. It creates:
-
-- one bounded non-superuser data-postgres API Pool;
-- internal and public-endpoint SeaweedFS S3 clients;
-- all 22 exact Capability executors (read, command, and specialized query);
-- one `DataCapabilityHandler` with hash-only audit;
-- readiness probes for database, object store, and Data Worker;
-- REST, schema-first GraphQL, governed Evidence/STAC Resource, fixed-origin GIS proxy, and asset-download modules.
-
-Startup fails unless executor ids exactly match the Registry. `onClose` closes the Pool and both S3 clients exactly once.
-
-### Data routes
-
-- `GET /api/data/v1/health`
-- `GET /api/data/v1/capabilities`
-- `GET /api/data/v1/capabilities/:capabilityId/:version`
-- all 22 Registry REST mappings under `/api/data/v1`
-- `GET /api/data/v1/evidence/fragments/:evidenceId` for committed, RLS-authorized, audited Evidence projections
-- `GET /api/data/v1/stac/collections/:collectionId/items/:itemId` for sanitized, authority-reconciled STAC 1.1 Items
-- `GET /api/data/v1/tenants/:tenantId/projects/:projectId/versions/:versionId/assets/source` for audited short-lived `303` redirects
-- `GET|HEAD /api/data/v1/geo/ogc/{wms|wfs|wcs|wmts}`
-- governed STAC under `/api/data/v1/geo/stac`
-- version-pinned vector/raster tiles under `/api/data/v1/geo/tiles/{vector|raster}/versions/...`
-- `POST /graphql` with all 22 schema-first fields
-
-REST requires UUID idempotency keys for commands, strong `If-Match: "vN"` for versioned commands, cursor paging, safe ETags, no-store, and bounded Operation SSE snapshots. GraphQL shares the Handler, allows one mutation field, disables batching/subscriptions/GraphiQL, enforces depth/complexity/timeout, and disables introspection in production.
-
-Evidence requires `data.knowledge.read`; STAC requires `data.geo.read`. Both re-resolve the unified context, run short data-postgres RLS transactions, append hash-only audit, cap JSON at 256 KiB, and fail closed. STAC additionally rejects a collection outside the current Tenant/Project before calling one fixed internal STAC origin, strips upstream links/unknown fields, and verifies the returned version, evidence, source hash, security, policy, quality, acceptance, publication, and governed asset href.
-
-Every GIS proxy call requires `data.geo.read`, accepts GET/HEAD only, and maps to a startup-validated fixed internal origin. OGC requests use per-service query/request allowlists and fixed Tenant/Project/Version filters. STAC exposes only the current deterministic collection. Vector tiles require an RLS-authorized spatial Version and inject scope into Martin's single MVT function. Raster tiles select an authorized RAW TIFF/GeoTIFF COG and verify its content-addressed key server-side before giving TiTiler a constrained S3 URI; callers cannot supply a source URL. Response content types, size (8 MiB), timeout (5 seconds), ETag/Last-Modified, and ALLOWED/DENIED/FAILED audit are bounded. GeoServer, STAC API, TiTiler, and Martin have no host-published ports.
-
-## Shared OpenAPI
-
-`GET /openapi.json` is one OpenAPI 3.1 document titled **WISER Platform API**, not an Agent-EXCON-only document. All 22 Data REST operations are generated from the Zod 4 Capability Registry: route registration projects draft-7 input/output Schema into path/query/body/header fields, success responses, stable operation ids, `data-foundation` tags, and `bearerAuth`. Pass-through Fastify compilers avoid a competing validation implementation; `DataCapabilityHandler` remains the sole runtime strict-Zod gate.
-
-The governed GIS proxy also appears in that document through explicit route-specific Fastify Schemas for OGC, STAC, vector MVT, and raster tiles. Those operations document required identity headers, safe path/query fields, binary/content types, and stable public errors. Hidden mutating-method guards still return `405` but do not advertise nonexistent GIS writes.
-
-The API pins `graphql` `16.14.2` with Mercurius `16.10.0` as the latest actually compatible stable line tested under TypeScript 7. GraphQL 17 is outside the supported and validated Mercurius peer/runtime boundary for this delivery. `@types/node` remains `24.13.3` because the repository runtime is Node 24; a newer type major would describe a different runtime rather than a safe dependency upgrade.
-
-Data query adapters accept only structured inputs. PostgreSQL, OpenSearch, Weaviate, Neo4j, PostGIS, and pgSTAC credentials stay server-side. Results are reauthorized against Supabase context and data-postgres RLS before return or asset redirect.
-
-## Deterministic and secret boundaries
-
-- Deterministic EXCON evaluation and Data quality/publication policy never call an LLM.
-- AI adapters may propose explanations or plans, but never score, authorize, approve, or publish.
-- Tests/CI and the local Data smoke use the fake provider/embedding.
-- Never mount `~/.codex/auth.json` into this process or a container.
-- Never expose Supabase service-role, database URLs, S3 keys, projection credentials, journal HMAC keys, delegated HMAC keys, or Task lease tokens in a browser, MCP argument, log, or telemetry.
-
-See the bilingual Fumadocs references for [Agent EXCON HTTP](../docs/src/content/docs/en/protocols/http.md), [Data REST](../docs/src/content/docs/en/protocols/data-rest.md), and [Data GraphQL](../docs/src/content/docs/en/protocols/data-graphql.md).
+- [后端开发](../docs/src/content/docs/zh-CN/development/backend.md) / [Backend development](../docs/src/content/docs/en/development/backend.md)
+- [统一 Auth 与 Platform HTTP](../docs/src/content/docs/zh-CN/architecture/unified-auth.md) / [Unified Auth and Platform HTTP](../docs/src/content/docs/en/architecture/unified-auth.md)
+- [本机开发环境](../docs/src/content/docs/zh-CN/development/local-environment.md) / [Local environment](../docs/src/content/docs/en/development/local-environment.md)
+- [Agent EXCON HTTP](../docs/src/content/docs/zh-CN/protocols/http.md) / [Agent EXCON HTTP](../docs/src/content/docs/en/protocols/http.md)
+- [Data REST](../docs/src/content/docs/zh-CN/protocols/data-rest.md) / [Data REST](../docs/src/content/docs/en/protocols/data-rest.md); [Data GraphQL](../docs/src/content/docs/zh-CN/protocols/data-graphql.md) / [Data GraphQL](../docs/src/content/docs/en/protocols/data-graphql.md)

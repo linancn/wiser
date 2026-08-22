@@ -1,5 +1,6 @@
 ---
-title: WISER MCP Gateway guide
+title: WISER MCP Gateway component guide
+description: Bilingual process guide for running, configuring, and verifying the shared WISER MCP adapter.
 docType: component-guide
 scope: apps/mcp
 status: active
@@ -7,157 +8,82 @@ authoritative: true
 owner: wiser
 language: bilingual
 whenToUse:
-  - when changing, running, or integrating the MCP adapter
+  - when changing, running, integrating, or locating transport and system-module boundaries in the shared MCP Gateway
 whenToUpdate:
-  - when MCP tools, HTTP mappings, credentials, or protocol selection changes
+  - when MCP entrypoints, transports, module composition, or credential boundaries change
 checkPaths:
   - apps/mcp/**
   - apps/api/**
+  - packages/contracts/**
+  - packages/data-contracts/**
   - skills/agent-excon/**
   - skills/wiser-data-foundation/**
+  - .env.example
+  - compose.yaml
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
+lastReviewedCommit: ed36c7913b5dd2b2542adf1aa1ce1e5d9a70029f
 ---
 
-# WISER MCP Gateway
+# WISER MCP Gateway / WISER MCP 网关
 
-本包提供 WISER Agent EXCON 与 Data Foundation 的共享本地 stdio MCP Gateway，以及面向 Compose/远程客户端的无状态 Streamable HTTP 入口。它只调用公开 HTTP API，不读 PostgreSQL/投影，不持有 service-role 凭据，也不通过 Web 参训。EXCON 默认协议是多场景、多智能体 **v2**，默认 API 基路径是 `/api/v2/`。
+## 职责 / Responsibility
 
-This package provides the shared local stdio MCP Gateway for WISER Agent EXCON and Data Foundation plus a stateless Streamable HTTP entrypoint for Compose or remote clients. It calls only public HTTP APIs, never reads PostgreSQL/projections, never holds service-role credentials, and does not exercise through Web. EXCON defaults to multi-scenario, multi-agent **v2** with `/api/v2/` as its base path.
+`@wiser/mcp` 把 Agent EXCON 与 Data Foundation 的公开 HTTP 能力适配为同一个 MCP Server。业务 Tool 与动态 Resource 只调用 `@wiser/api`，不导入 application service，也不读取数据库、journal 或投影。唯一例外是 `scenario-resource.ts` 中编译进进程的静态双语场景说明；它不含 Run 状态或权威数据，场景包与文档站仍是事实来源。 / Business Tools and dynamic Resources call only `@wiser/api`. The sole exception is a compiled static bilingual scenario guide in `scenario-resource.ts`; it carries no Run state or authority data, and the scenario package/docs remain authoritative.
 
-WISER systems extend the same server through explicit `WiserMcpModule` values. Module ids are statically registered, namespaced, and unique; duplicate ids fail before a transport connects. A module may register Tools and Resources, but every business operation still uses an HTTP client rather than importing application or database code.
+## 入口 / Entrypoints
 
-## 配置 / Configuration
+- stdio: `apps/mcp/src/index.ts`
+- Streamable HTTP: `apps/mcp/src/http-main.ts`
+- shared server composition: `apps/mcp/src/server.ts`
+- Agent EXCON HTTP adapter: `apps/mcp/src/http-client.ts`
+- Data Foundation module: `apps/mcp/src/data-foundation/`
+
+当前共享 Server 注册 EXCON 与可选 Data 模块。Tool、Resource 与工作流的完整清单只在文档站维护。 / The shared server currently registers EXCON and the optional Data module. Complete Tool, Resource, and workflow catalogs live only in the documentation site.
+
+## 运行 / Run
+
+完整平台会在 `http://127.0.0.1:13004/mcp` 启动 HTTP Gateway / The full platform starts the HTTP Gateway at `http://127.0.0.1:13004/mcp`:
 
 ```bash
-export AGENT_EXCON_API_KEY=<short-lived-run-agent-token>
-# Optional; this is already the default:
-export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
+pnpm stack:full:up
+```
 
+本机 stdio / Local stdio:
+
+```bash
 pnpm --filter @wiser/mcp build
 pnpm --filter @wiser/mcp start
 ```
 
-`AGENT_EXCON_API_KEY` 必须是短期、可撤销、最小 scope，且服务端绑定具体 `run_agent_id` 的参训 token。不要把 token 写入 MCP 工具参数、Message、Artifact、Submission、日志或提交记录。
-
-`AGENT_EXCON_API_KEY` must be a short-lived, revocable, least-scope participant token bound server-side to one concrete `run_agent_id`. Never put the token in MCP tool arguments, Messages, Artifacts, Submissions, logs, or commits.
-
-Data Foundation 在以下五项全部存在时注册 22 个 Tool 与 5 个 Resource；部分配置会失败关闭，全部缺失则只启动 EXCON：
-
-Data Foundation registers 22 Tools and five Resources when all five values are present. Partial configuration fails closed; omitting all five starts EXCON alone:
+独立 HTTP 开发 / Standalone HTTP development:
 
 ```bash
-export DATA_API_URL=http://127.0.0.1:3001/api/data/v1/
-export DATA_API_BEARER_TOKEN=<supabase-jwt-or-wdc1-delegated-credential>
-export DATA_TENANT_ID=<tenant-uuid>
-export DATA_PROJECT_ID=<project-uuid>
-export DATA_PURPOSE=data-steward-console
+pnpm --filter @wiser/mcp dev:http
 ```
 
-Data command inputs add UUID `idempotencyKey`; upload complete, ingestion submit/approve/reject, and Operation cancel also map `expectedVersion` to `If-Match`. Full Tool/Resource tables are in [`protocols/data-mcp.md`](../docs/src/content/docs/en/protocols/data-mcp.md).
+独立 HTTP 默认端口是 `3100`；`POST /mcp` 是 MCP 入口，`GET /health/live` 与 `GET /health/ready` 是无认证健康检查。 / Standalone HTTP defaults to port `3100`; `POST /mcp` is the MCP endpoint, while `GET /health/live` and `GET /health/ready` are unauthenticated health checks.
 
-Data Tool 的下游 `401`/`403` 分别安全保留为 `NOT_AUTHENTICATED`/`NOT_AUTHORIZED`，但绝不转发 API `details`、Bearer 或后端正文。包含顶层或嵌套 Operation ID 的成功结果还会在顶层 `structuredContent.resource` 返回精确 `operation://<uuid>`。Evidence 与 STAC Resource 现在由真实 HTTP GET 支撑，并在 API 侧重新执行 Scope、RLS、权威复核和 append-only audit。
+## 配置边界 / Configuration boundary
 
-Data Tool failures preserve downstream `401`/`403` safely as `NOT_AUTHENTICATED`/`NOT_AUTHORIZED` without forwarding API `details`, Bearers, or backend bodies. A success with a top-level or nested Operation id also exposes exact `operation://<uuid>` at top-level `structuredContent.resource`. Evidence and STAC Resources now use real HTTP GETs that reapply scopes, RLS, authority reconciliation, and append-only audit in the API.
+- Gateway 总会初始化 EXCON client；只使用 Data 模块时也必须配置非空 `AGENT_EXCON_API_KEY`，但只有调用 `excon_*` 才要求它是绑定 RunAgent 的真实 credential。`AGENT_EXCON_API_URL` 仍必须与 protocol version 一致。 / The Gateway always initializes the EXCON client, so Data-only use still configures a non-empty key. It must be a real RunAgent-bound credential only when invoking `excon_*`.
+- Data 模块要求 `DATA_API_URL`、`DATA_API_BEARER_TOKEN`、`DATA_TENANT_ID`、`DATA_PROJECT_ID` 与 `DATA_PURPOSE` 五项全部存在；全部缺失时不注册 Data，部分配置时启动失败。 / The Data module requires all five values; no Data configuration omits the module, while partial configuration fails startup.
+- HTTP transport 要求 `DATA_MCP_BEARER_TOKEN`；`DATA_MCP_HOST` 与 `DATA_MCP_PORT` 只配置监听边界。 / HTTP transport requires `DATA_MCP_BEARER_TOKEN`; host and port configure only its listener.
+- 两层 bearer 不可互换：`DATA_MCP_BEARER_TOKEN` 只认证 `/mcp` 网关边界，`DATA_API_BEARER_TOKEN` 作为统一 WISER identity 发送到 Data API；EXCON 另用绑定 RunAgent 的 API credential。
+- The two bearer layers are not interchangeable: `DATA_MCP_BEARER_TOKEN` authenticates only `/mcp`, while `DATA_API_BEARER_TOKEN` carries unified WISER identity downstream; EXCON uses its own RunAgent-bound API credential.
+- 所有 token 都留在进程环境，禁止进入 Tool 参数、Resource URI、日志、遥测或 Git。 / Keep every token in the process environment; never place one in Tool arguments, Resource URIs, logs, telemetry, or Git.
 
-### Streamable HTTP / Streamable HTTP transport
-
-Compose 使用独立 bearer 保护 `/mcp`。该 bearer 只负责网关入口认证，不能替代发送到 Agent EXCON API 的 `AGENT_EXCON_API_KEY`。健康端点无需 bearer；所有响应禁止缓存。每个 MCP 请求创建一个新的无状态 SDK server/transport，因此当前入口不发放或恢复 MCP session。
-
-Compose protects `/mcp` with a separate bearer. This bearer authenticates only the gateway boundary and does not replace the `AGENT_EXCON_API_KEY` sent to the Agent EXCON API. Health endpoints do not require a bearer and every boundary response is non-cacheable. Each MCP request gets a fresh stateless SDK server/transport, so this entrypoint does not issue or resume MCP sessions.
+## 验证 / Verify
 
 ```bash
-export DATA_MCP_BEARER_TOKEN=<random-secret-at-least-16-characters>
-export DATA_MCP_HOST=127.0.0.1 # optional; default 0.0.0.0
-export DATA_MCP_PORT=3100      # optional
-
+pnpm --filter @wiser/mcp test
+pnpm --filter @wiser/mcp typecheck
 pnpm --filter @wiser/mcp build
-pnpm --filter @wiser/mcp start:http
+pnpm verify
 ```
 
-- `POST http://127.0.0.1:3100/mcp` requires `Authorization: Bearer …`.
-- `GET /health/live` reports process liveness; `GET /health/ready` turns unhealthy while graceful shutdown drains in-flight requests.
-- Tokens in query parameters, MCP arguments, logs, telemetry, or committed environment files are forbidden. / 禁止把 token 放入 query、MCP 参数、日志、遥测或提交的环境文件。
+## 权威文档 / Authoritative documentation
 
-### 显式 v1 兼容 / Explicit v1 compatibility
-
-v1 工具不会被自动回退启用。只有任务明确指定 legacy Episode 协议时，才同时设置以下两项：
-
-v1 tools are never enabled by automatic fallback. Set both values only when the assignment explicitly identifies the legacy Episode protocol:
-
-```bash
-export AGENT_EXCON_PROTOCOL_VERSION=v1
-export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v1/
-```
-
-`AGENT_EXCON_PROTOCOL_VERSION` 只接受 `v2`（默认）或 `v1`（显式兼容）；其他值会在启动时失败。如果手工配置 `AGENT_EXCON_API_URL`，路径版本必须与协议版本一致。
-
-`AGENT_EXCON_PROTOCOL_VERSION` accepts only `v2` (default) or `v1` (explicit compatibility); every other value fails at startup. A manually configured `AGENT_EXCON_API_URL` must match the selected protocol version.
-
-## v2 Tools
-
-| MCP tool                         | HTTP operation relative to `/api/v2/`          | Effect                                                                |
-| -------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
-| `excon_get_assignment`           | `GET runs/{runId}/me`                          | Read the credential-bound RunAgent, role, and sync cursor             |
-| `excon_sync`                     | `POST runs/{runId}/sync`                       | Issue new resources and optionally acknowledge the prior Receipt head |
-| `excon_wait_and_sync`            | `POST runs/{runId}/sync`                       | Wait on wall time, then issue one normal sync without virtual advance |
-| `excon_list_tasks`               | `GET runs/{runId}/tasks`                       | Recover already-issued Tasks                                          |
-| `excon_list_messages`            | `GET runs/{runId}/messages`                    | Recover already-issued Messages                                       |
-| `excon_list_artifacts`           | `GET runs/{runId}/artifacts`                   | Recover already-issued Artifacts                                      |
-| `excon_list_submissions`         | `GET runs/{runId}/submissions`                 | Recover exact already-issued immutable Submission revisions           |
-| `excon_claim_task`               | `POST tasks/{taskId}:claim`                    | Claim a fenced Task lease                                             |
-| `excon_begin_task`               | `POST tasks/{taskId}:begin`                    | Begin work under the current lease                                    |
-| `excon_heartbeat_task`           | `POST tasks/{taskId}:heartbeat`                | Request a bounded lease renewal                                       |
-| `excon_release_task`             | `POST tasks/{taskId}:release`                  | Release the current lease                                             |
-| `excon_submit_task_result`       | `POST tasks/{taskId}/submissions`              | Create an immutable evidence-backed result                            |
-| `excon_post_message`             | `POST runs/{runId}/messages`                   | Post to an immutable recipient snapshot                               |
-| `excon_publish_artifact`         | `POST runs/{runId}/artifacts`                  | Publish an Artifact and first immutable version                       |
-| `excon_publish_artifact_version` | `POST artifacts/{artifactId}/versions`         | Append from an exact base version                                     |
-| `excon_endorse_submission`       | `POST submissions/{submissionId}/endorsements` | Consume a matching ActionGrant to endorse one revision                |
-| `excon_get_feedback`             | `GET runs/{runId}/feedback`                    | Recover already-issued layered Feedback and grants                    |
-| `excon_get_replay_cursor`        | `GET runs/{runId}/replay`                      | Read only this agent's `issued` or `acknowledged` perspective         |
-
-`/sync` 是发放新 Task、Message、Artifact grant、Submission 和 Feedback 的唯一入口。五个 recovery GET 只返回已有 Receipt 的资源，不会使 `eligible` 内容提前可见。
-
-`/sync` is the only entry that issues new Tasks, Messages, Artifact grants, Submissions, and Feedback. The five recovery GETs return only already-receipted resources and never make `eligible` content visible early.
-
-## 工作流示例 / Workflow examples
-
-1. **启动与 Receipt 对账 / Bootstrap and Receipt reconciliation**
-
-   - 先调用 `excon_get_assignment`，要求返回的 `runAgent.id`/`runAgent.runId` 与可信启动参数一致。
-   - 使用 `syncCursor.afterReceiptSeq` 调用 `excon_sync`。处理完非空批次后，下一次 sync 用精确 `throughReceiptSeq` 和 `receiptHeadHash` 确认。
-   - 等待 Barrier 时使用 `excon_wait_and_sync`，先按墙钟有界等待再执行一次普通 sync；它不推进虚拟时钟。
-   - Call `excon_get_assignment` first and require `runAgent.id`/`runAgent.runId` to match the trusted bootstrap. Sync from `syncCursor.afterReceiptSeq`; acknowledge a processed non-empty batch with its exact sequence and head hash on the next sync.
-   - Use `excon_wait_and_sync` at a Barrier to wait on wall time before one normal sync; it never advances virtual time.
-
-2. **Task 租约与提交 / Task lease and submission**
-
-   - `excon_list_tasks` 恢复已发放 Task；使用 Task 自身 `lockVersion` 调用 `excon_claim_task`。
-   - 保存返回的 `claimEpoch` 与不透明 `leaseToken`，然后 begin，长任务在到期前 heartbeat。
-   - `excon_submit_task_result` 必须引用至少一个已验证 Receipt 或已授权 ArtifactVersion。
-   - Recover issued Tasks, claim with the Task's own `lockVersion`, preserve `claimEpoch` and the opaque `leaseToken`, then begin and heartbeat before expiry. A result must cite at least one verified Receipt or authorized ArtifactVersion.
-
-3. **多智能体协作与回放 / Multi-agent collaboration and replay**
-
-   - 使用 `excon_post_message` 传递明确请求，使用 `excon_publish_artifact`/`excon_publish_artifact_version` 共享不可变证据。
-   - 先通过 `excon_sync` 获取 Submission Receipt，再用 `excon_list_submissions` 恢复并审阅精确不可变修订；仅在 Feedback 发放匹配 ActionGrant 后调用 `excon_endorse_submission`。
-   - 交接时用 `excon_get_replay_cursor` 请求自身 `agent` 视角；工具不允许 operator/team/role/eligible 视角。
-   - Use explicit Messages and immutable ArtifactVersions to collaborate. Before endorsement, issue the Submission Receipt with `excon_sync`, recover and review the exact immutable revision with `excon_list_submissions`, and require matching Feedback to grant the action. Handoff with the agent-safe replay tool, which never exposes operator/team/role/eligible perspectives.
-
-## 安全与响应边界 / Safety and response bounds
-
-- 所有输入使用 strict Zod schema；额外字段（包括 token）在发送 HTTP 前被拒绝。 / All inputs use strict Zod schemas; extra fields, including tokens, are rejected before HTTP dispatch.
-- 所有写工具都要求 UUID 幂等键。安全重试时 actor、tool/path、body 与幂等键必须完全不变。 / Every write requires a UUID idempotency key; a safe retry preserves the actor, tool/path, body, and key exactly.
-- 成功工具在中文优先的 `content` 中镜像紧凑 `MACHINE_DATA`，同时保留同一份机器可读 `structuredContent`，兼容只展示文本的 Agent 客户端；API `details` 不会转发。 / Successful tools mirror compact `MACHINE_DATA` in Chinese-first `content` while preserving the same machine-readable `structuredContent` for text-only Agent clients; API `details` are never forwarded.
-- 单次完整 MCP 响应超过 32,000 字符时，适配器返回 `MCP_RESPONSE_TOO_LARGE`，并要求缩小 `sync.maxItems` 或回放游标。 / A complete MCP response over 32,000 characters returns `MCP_RESPONSE_TOO_LARGE` with guidance to narrow `sync.maxItems` or the replay cursor.
-
-Resource `excon://scenarios/jing-jin-ji-yongding-river` 提供中英文的京津冀永定河合成多智能体演练说明。 / The resource provides the bilingual guide for the synthetic Jing-Jin-Ji Yongding River multi-agent exercise.
-
-## 当前后端边界 / Current backend boundary
-
-EXCON 的 18 个 v2 Tool 与 Data 的 22 个 Tool 均由 `listTools()`、strict schema 与 HTTP mapping 测试验证；MCP 始终只是适配器。完整栈中的 EXCON v2 通过单 writer、非超级用户 PostgreSQL append-only command journal 持久化全部 19 个 mutation，并在启动时验证生成值 tape、hash 与 lease HMAC reference 后重放。memory 只供显式非生产 Lab；v1 仍是独立的内存 compatibility protocol。
-
-All 18 EXCON v2 Tools and 22 Data Tools are verified through `listTools()`, strict schemas, and HTTP mappings; MCP always remains an adapter. The complete stack persists all 19 EXCON v2 mutations through a single-writer, non-superuser, append-only PostgreSQL command journal and verifies generation tapes, hashes, and lease-HMAC references before startup replay. Memory is an explicit non-production lab mode; v1 remains a separate in-memory compatibility protocol.
-
-Data Tools reach the fully composed 22-executor runtime and preserve unified Supabase authorization. The Streamable HTTP boundary bearer is only gateway authentication; it never replaces either system's downstream API credential. Participant-safe EXCON Submission recovery still returns only immutable revisions receipted to that RunAgent; never substitute operator replay.
+- [后端开发](../docs/src/content/docs/zh-CN/development/backend.md) / [Backend development](../docs/src/content/docs/en/development/backend.md)
+- [Agent EXCON MCP](../docs/src/content/docs/zh-CN/protocols/mcp.md) / [Agent EXCON MCP](../docs/src/content/docs/en/protocols/mcp.md)
+- [Data Foundation MCP](../docs/src/content/docs/zh-CN/protocols/data-mcp.md) / [Data Foundation MCP](../docs/src/content/docs/en/protocols/data-mcp.md)
+- [本机开发环境](../docs/src/content/docs/zh-CN/development/local-environment.md) / [Local environment](../docs/src/content/docs/en/development/local-environment.md)

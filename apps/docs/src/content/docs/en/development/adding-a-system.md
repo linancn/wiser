@@ -14,14 +14,20 @@ whenToUpdate:
   - when platform extension points, the system template, unified Auth, UI, or delivery gates change
 checkPaths:
   - AGENTS.md
+  - package.json
   - pnpm-workspace.yaml
+  - compose.yaml
+  - .env.example
+  - packages/**
   - apps/api/**
   - apps/web/**
   - apps/mcp/**
+  - apps/*-worker/**
   - apps/docs/**
-  - packages/platform-contracts/**
-  - packages/platform-auth/**
+  - infrastructure/**
+  - scripts/**
   - .docpact/**
+  - .github/workflows/**
 lastReviewedAt: 2026-08-22
 lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
 ---
@@ -31,6 +37,16 @@ lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
 “Adding a system” means establishing a new business-fact boundary, not adding one page to an existing system. The new system is a peer of Agent EXCON and Data Foundation. It shares WISER Supabase Auth, Fastify, Next.js, MCP, Docs, design system, and observability entrypoints while owning its contracts, core, application use cases, and authoritative data.
 
 If the requirement only extends facts, state machines, or APIs already owned by an existing system, keep it inside that system. Do not manufacture a new system boundary for directory symmetry.
+
+## Before starting: read the platform contracts
+
+Before creating any file, route the existing platform composition points to obtain the authoritative reading set:
+
+```bash
+pnpm docpact:route --paths 'AGENTS.md,package.json,apps/api/src/main.ts,apps/web/src/components/app-shell.tsx,apps/mcp/src/index.ts,apps/docs/src/content/docs/en/meta.json,.docpact/config.yaml'
+```
+
+Read the returned documents and confirm a new system is justified before drafting the bilingual boundary and first Red. After new paths exist, section 7 reruns route over the actual slice.
 
 ## 0. Define the system boundary first
 
@@ -104,6 +120,24 @@ Document the authoritative database and migration owner before creating tables:
 
 The system database stores only scoped references to platform subjects, tenants, and projects. It does not copy users, Sessions, memberships, or a second password system.
 
+Use this discoverable structure for an independent database and expose isomorphic lifecycle commands from root `package.json`. Omit steps the system genuinely does not have, but never replace them with manual patches:
+
+```text
+infrastructure/<system>/postgres/migrations/  # NNNN_*.sql canonical history
+packages/<system>-infra/src/migrations/       # checksum runner + advisory lock
+scripts/<system>/                             # up/down/migrate/seed/verify/smoke/reset
+
+pnpm <system>:up
+pnpm <system>:migrate
+pnpm <system>:seed
+pnpm <system>:verify
+pnpm <system>:smoke
+pnpm <system>:down
+<EXACT_SYSTEM_RESET_CONFIRMATION> pnpm <system>:reset
+```
+
+Provision separate migration-owner and API roles; create a separate Worker role only when a Worker actually exists. Runtime roles are non-superuser and `NOBYPASSRLS`; reset removes only allowlisted local resources for that system and requires exact confirmation. Prove empty-database replay in disposable CI/development state. If the repository does not yet provide an isolated mode, never run a destructive reset in a workspace whose data must be retained.
+
 ## 3. Integrate unified Auth
 
 The new system reuses `@wiser/platform-contracts` and `@wiser/platform-auth`:
@@ -125,7 +159,7 @@ Create runtime config, application adapters, and one or more `WiserApiModule` im
 - reuse the shared error envelope, request ID, CORS, and OpenAPI;
 - expose health information that distinguishes liveness from dependency readiness;
 - require idempotency keys for writes, with transactions and constraints enforcing retry semantics;
-- register modules in the `createDefaultApiApp` composition path and release resources from `onClose`;
+- create the system runtime inside `createDefaultApiApp` and register its modules through `registerWiserApiModules` before `app.ready()`; tests may pass the same module directly to `buildApp`, and module/runtime `onClose` hooks release every external resource;
 - use Fastify `inject()` tests for routes, authorization, response schemas, error codes, and no-cache headers.
 
 Do not create a second public HTTP server without a concrete isolation or scaling requirement. An independent Worker performs asynchronous work; business operations still enter through the API.
@@ -173,13 +207,15 @@ Each system needs at least:
 - system entrypoints in the root README and documentation home;
 - semantically isomorphic Chinese and English pages, navigation `meta.json`, and complete Docpact frontmatter.
 
-Before coding, route the actual targets:
+After paths exist, rerun route over the complete slice every new system must change:
 
 ```bash
-pnpm docpact:route --paths 'packages/<system>-*/**,apps/api/src/<system>/**,apps/web/src/app/[locale]/<system>/**'
+pnpm docpact:route --paths 'package.json,pnpm-workspace.yaml,.env.example,compose.yaml,README.md,README.en.md,packages/<system>-*/**,packages/platform-contracts/**,packages/platform-auth/**,apps/api/src/<system>/**,apps/api/src/platform/**,apps/api/src/main.ts,apps/web/src/app/*/<system>/**,apps/web/src/components/app-shell.tsx,apps/web/src/lib/i18n.ts,apps/web/e2e/**,apps/docs/src/content/docs/*/index.mdx,apps/docs/src/content/docs/*/architecture/<system>.md,apps/docs/src/content/docs/*/protocols/<system>-*.md,apps/docs/src/content/docs/*/development/*.md,apps/docs/src/content/docs/*/meta.json,.docpact/config.yaml,.github/workflows/**'
 ```
 
-Run `pnpm docpact:check` after implementation. If the change adds ownership, routing aliases, rules, or governance coverage, also run `pnpm docpact:validate`. Do not use a waiver or baseline to hide a new system missing from the documentation graph.
+Then route only optional boundaries that were actually created, such as `apps/mcp/src/<system>/**,apps/mcp/src/index.ts,apps/mcp/src/http-main.ts`, `apps/<system>-worker/**`, `infrastructure/<system>/**`, or `scripts/<system>/**`. Do not include omitted optional directories; investigate and correct every `no-tracked-path-matches` warning.
+
+Run `pnpm docpact:check` before every Red/Green commit so worktree lint cannot lose a committed slice. A new system necessarily extends ownership, coverage, inventory, and rules, so `pnpm docpact:validate` is mandatory; finish with the branch-wide lint below. Do not use a waiver or baseline to hide a new system missing from the documentation graph.
 
 ## 8. Completion checklist
 
@@ -196,14 +232,24 @@ Run `pnpm docpact:check` after implementation. If the change adds ownership, rou
 | Web         | Isomorphic Chinese/English, Chinese default, both themes, keyboard, responsive, and fail-closed states    |
 | Docs        | Bilingual pages, navigation, frontmatter, Docpact routing/coverage, and no duplicate historical narrative |
 | Operations  | Compose config, secret boundary, logs, health, smoke, and stop paths                                      |
+| CI          | New workspace scripts, database lifecycle, Playwright/smoke, and Docpact are wired into the workflow      |
 
-Run the focused owning tests at every Green checkpoint, adding database and browser verification when those surfaces change. A handoff-ready state finally runs:
+Every new workspace declares the applicable `typecheck`, `build`, and `test` scripts. Package specs use a root-Vitest-discoverable `*.spec.ts` location. An app with no test script, or a test outside root Vitest collection, is silently skipped by `pnpm verify` and does not count as verified.
+
+Run focused owning tests at every Green checkpoint and add database/browser verification for those surfaces. For handoff, run in this order (remove only genuinely inapplicable optional gates and explain why in review):
 
 ```bash
-pnpm verify
+pnpm <system>:verify
+pnpm <system>:smoke
 pnpm supabase:verify   # if the Supabase-managed schema changed
 pnpm data:verify       # if Data Foundation integration changed
+pnpm --filter @wiser/web test:e2e   # if the system has Web UI
+pnpm --filter @wiser/docs build
+pnpm --filter @wiser/docs test:e2e
 pnpm docpact:check
+pnpm docpact:validate
+docpact lint --root . --merge-base main --mode enforce --fail-on-uncovered-change --fail-on-stale-docs
+pnpm verify            # final repository convergence
 ```
 
 Keep commits single-purpose: contracts/core, application/API, database, Worker/MCP, UI, and documentation form separate recoverable commits. A system is integrated only when its public vertical slice, negative authorization paths, and operating instructions are all verifiable.

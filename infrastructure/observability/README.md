@@ -14,8 +14,8 @@ checkPaths:
   - infrastructure/observability/**
   - apps/telemetry-ingress/**
   - compose.yaml
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: ed36c7913b5dd2b2542adf1aa1ce1e5d9a70029f
 ---
 
 # WISER local observability profile
@@ -32,15 +32,32 @@ Platform OTLP gRPC/HTTP ──────────────────�
 Grafana ← Tempo + Prometheus + Loki
 ```
 
-The pinned images are the latest stable releases verified from the upstream release APIs on 2026-08-20:
+## Prerequisite
 
-- OpenTelemetry Collector Contrib `0.159.0`
-- Tempo `3.0.3` in monolithic `target=all` mode
-- Prometheus `3.14.0`
-- Loki `3.7.6`
-- Grafana `13.2.0`
+The telemetry ingress uses the shared `agent-excon-dev:local` application image.
+On a clean checkout, build that image before starting this profile. Starting either
+application stack builds it as part of the normal workflow:
 
-Start and stop it independently from the application stack:
+```bash
+pnpm stack:up
+# or
+pnpm stack:full:up
+```
+
+To build only the shared image without starting the application stack, run:
+
+```bash
+docker compose build api
+```
+
+The exact image tags, digests, build context, and profile membership live in
+[compose.yaml](../../compose.yaml); it is the version source of truth for this
+runbook.
+
+## Operate
+
+Validate the resolved Compose configuration, start the profile, verify it, and stop
+it with:
 
 ```bash
 pnpm observability:config
@@ -49,7 +66,18 @@ pnpm observability:smoke
 pnpm observability:down
 ```
 
-Grafana listens on <http://127.0.0.1:3300>. Participant OTLP/HTTP enters through <http://127.0.0.1:14318>; trusted platform OTLP uses loopback ports `4317` and `4318`. Prometheus listens on <http://127.0.0.1:9090>. Data persists in named volumes until explicitly removed.
+`observability:down` stops the profile services. Telemetry data remains in named
+volumes until those volumes are explicitly removed.
+
+## Local endpoints
+
+| Surface                       | Address                  | Intended caller            |
+| ----------------------------- | ------------------------ | -------------------------- |
+| Grafana                       | <http://127.0.0.1:3300>  | Local operator             |
+| Participant OTLP/HTTP ingress | <http://127.0.0.1:14318> | Participant agents         |
+| Trusted platform OTLP/gRPC    | `127.0.0.1:4317`         | Local platform processes   |
+| Trusted platform OTLP/HTTP    | <http://127.0.0.1:4318>  | Local platform processes   |
+| Prometheus                    | <http://127.0.0.1:9090>  | Local operator and Grafana |
 
 ## Trust boundary
 
@@ -58,3 +86,12 @@ The participant-facing ingress validates an opaque credential, binds it to one `
 The direct Collector ports remain available only for trusted local platform instrumentation. They bind to loopback and are not the participant endpoint.
 
 The Collector deletes known prompt, completion, tool-body, submission, feedback, and hidden-outcome attributes as a second line of defense. Applications must still avoid emitting those values in the first place. Telemetry remains best-effort and never replaces PostgreSQL RunEvent/Receipt audit facts.
+
+## Verification
+
+Run `pnpm observability:smoke` after the profile reports healthy. The smoke check
+waits for the ingress and Collector, sends traces, logs, and metrics, confirms they
+are queryable through Tempo, Loki, and Prometheus, and verifies identity
+normalization plus both ingress rejection and Collector redaction of sensitive
+attributes. A successful run prints a JSON object whose `status` is `ok`; any
+failed assertion exits non-zero.

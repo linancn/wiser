@@ -26,36 +26,18 @@ HTTP is the only business protocol foundation. Web, Skills, MCP, and future SDKs
 
 `/api/v2` has two explicit runtimes. Non-production protocol tests may select `EXCON_V2_MODE=memory`. The complete stack and production use `postgres`: a non-superuser appends mutation intent/outcome rows to a Supabase PostgreSQL journal, then verifies deterministic startup replay through UUID/time/lease generation tapes and result hashes. One advisory-lock writer owns the journal; corruption, replay drift, unknown HMAC keys, and incomplete outcomes fail closed. This survives restart, but it is not one normalized repository per v2 aggregate. The tables below list registered routes only.
 
-## WISER module composition
+## Position in the shared host
 
-Fastify is the shared WISER HTTP composition host. Each system registers routes through a statically imported `WiserApiModule`; module ids are namespaced and globally unique, and a duplicate id fails readiness. Static registration does not scan the TypeScript AST and never lets a module bypass application or authorization boundaries. Existing Agent EXCON routes remain compatible while Data Foundation and future systems reuse the same host.
+Fastify is WISER's shared HTTP composition host; this page defines only Agent EXCON `/api/v1` and `/api/v2`. Other systems register in the same process but own separate protocol and authorization documentation:
 
-With `WISER_AUTH_MODE=supabase`, the default API process creates the Supabase `getClaims` client, PostgreSQL Membership loader, and platform identity module. `GET /api/platform/v1/me` requires Bearer, Tenant, Project, and Purpose context and returns only the safe Actor, Role, Scope, maximum-security-level, and authorization-version projection. Production defaults to this mode and refuses to start without the URL, publishable key, or database connection; the non-production `off` mode preserves the legacy local compatibility entry.
+| Prefix               | Owner                              | Authoritative reference                        |
+| -------------------- | ---------------------------------- | ---------------------------------------------- |
+| `/api/platform/v1`   | WISER Platform identity/delegation | [Unified Auth](/en/architecture/unified-auth/) |
+| `/api/v1`, `/api/v2` | Agent EXCON                        | This page                                      |
+| `/api/data/v1`       | Data Foundation REST/GIS           | [Data REST](/en/protocols/data-rest/)          |
+| `/graphql`           | Data Foundation GraphQL            | [Data GraphQL](/en/protocols/data-graphql/)    |
 
-The injectable `platform.delegation` module defines these control-plane routes:
-
-| Method | Path                                                            | Result                              |
-| ------ | --------------------------------------------------------------- | ----------------------------------- |
-| POST   | `/api/platform/v1/delegations`                                  | Create one bounded Delegation       |
-| GET    | `/api/platform/v1/delegations/:delegationId`                    | Read safe metadata                  |
-| POST   | `/api/platform/v1/delegations/:delegationId/credentials`        | Issue plaintext once                |
-| POST   | `/api/platform/v1/delegations/:delegationId/credentials:rotate` | Rotate and return the new plaintext |
-| POST   | `/api/platform/v1/delegations/:delegationId:revoke`             | Revoke a Delegation                 |
-| POST   | `/api/platform/v1/credentials/:credentialId:revoke`             | Revoke one Credential               |
-
-Commands require a UUID `Idempotency-Key`; all routes require Bearer, Tenant, Project, and Purpose headers plus a Supabase human with `platform.delegation.manage`. Supabase runtime mode registers the concrete transactional command service and delegated Resolver; service conflicts use stable no-store 4xx errors.
-
-## Data Foundation discovery
-
-`GET /api/data/v1/health` is a non-cacheable aggregate of data-postgres, object-store, and Data Worker readiness; it returns 503 when any authority dependency is unavailable. `GET /api/data/v1/capabilities` returns the ordered 22-item Registry, draft-7 I/O JSON Schemas, and exact REST/GraphQL/MCP/Skill mappings. The default Data runtime composes all 22 read/command/specialized-query executors and registers both REST and schema-first GraphQL; a missing, duplicate, or extra executor fails startup. Shared `/openapi.json` is titled **WISER Platform API** and projects all 22 Data REST operations—path/query/body/headers, responses, and bearer security—directly from the same Zod 4 Registry rather than maintaining another protocol Schema.
-
-REST resolves the unified WISER principal, composes path/query/body fields without collisions, enforces UUID idempotency and strong `If-Match: "vN"` on versioned commands, emits ETags/no-store, and maps Operation events to bounded SSE snapshots. `GET /api/data/v1/evidence/fragments/:evidenceId` and `GET /api/data/v1/stac/collections/:collectionId/items/:itemId` require `data.knowledge.read`/`data.geo.read`, then apply RLS, authority reconciliation, a 256 KiB cap, and hash-only audit for MCP Resources. A STAC source href can target only the governed version-asset route, which reauthorizes before returning a short-lived `303` signed redirect. See [Data REST](/en/protocols/data-rest/) and [Data GraphQL](/en/protocols/data-graphql/) for the complete protocol.
-
-GeoServer, STAC API, TiTiler, and Martin publish no host ports. External GIS uses only `/api/data/v1/geo/ogc/{wms|wfs|wcs|wmts}`, governed `/geo/stac`, and immutable-`versionId` `/geo/tiles/vector|raster` GET/HEAD routes. API enforces `data.geo.read`, fixed origins, strict query/content/size/timeout, RLS version authorization, and `data.geo.read` audit. Callers cannot supply an upstream URL, layer, Tenant/Project filter, or database context.
-
-These four GIS GET surfaces enter the same OpenAPI through explicit Fastify route Schemas covering identity headers, safe path/query, binary/content types, and stable errors. Hidden mutation guards return only `405` and do not advertise GIS write capability.
-
-Web MapLibre tile/STAC requests target only same-origin `/api/data-foundation/geo/...`; Next server forwards with a freshly verified Supabase Session and never sends a Bearer or internal origin to the browser.
+Shared `/openapi.json` aggregates registered modules. A module cannot bypass its application/authorization boundary, and callers cannot reuse one system's bearer, scopes, or DTOs in another.
 
 ## Public scenario catalog
 
@@ -74,22 +56,24 @@ The bundled Yongding case pack enters the API runtime only through the validated
 
 These routes require a separate operator bearer token. An operator token cannot add `X-Run-Agent-Id` and impersonate a participant.
 
-| Method         | Path                                                    | Purpose                                                         |
-| -------------- | ------------------------------------------------------- | --------------------------------------------------------------- |
-| `GET` / `POST` | `/api/v2/manage/scenarios`                              | List owned draft/published scenarios; create a catalog identity |
-| `POST`         | `/api/v2/manage/scenarios/{scenarioId}/versions`        | Create an editable version draft                                |
-| `POST`         | `/api/v2/manage/scenario-versions/{versionId}:validate` | Validate a draft                                                |
-| `POST`         | `/api/v2/manage/scenario-versions/{versionId}:publish`  | Publish an immutable version                                    |
-| `GET` / `POST` | `/api/v2/agents`                                        | List or register AgentIdentity records                          |
-| `POST`         | `/api/v2/agents/{agentId}/versions`                     | Publish an immutable AgentVersion                               |
-| `GET`          | `/api/v2/agent-versions/{agentVersionId}`               | Read an AgentVersion                                            |
-| `GET` / `POST` | `/api/v2/runs`                                          | List or create ExerciseRuns                                     |
-| `GET`          | `/api/v2/runs/{runId}`                                  | Read a Run                                                      |
-| `GET` / `POST` | `/api/v2/runs/{runId}/agents`                           | List or join independent RunAgents                              |
-| `POST`         | `/api/v2/runs/{runId}:start`                            | Start after distinct RunAgents satisfy required roles           |
-| `GET`          | `/api/v2/runs/{runId}/events`                           | Read authoritative append-only Events with `after`/`limit`      |
-| `GET`          | `/api/v2/runs/{runId}/replay`                           | Read operator/team/role/agent as-of projections                 |
-| `GET`          | `/api/v2/runs/{runId}/traces`                           | Read the best-effort Trace-summary overlay                      |
+| Method         | Path                                                    | Purpose                                                             |
+| -------------- | ------------------------------------------------------- | ------------------------------------------------------------------- |
+| `GET` / `POST` | `/api/v2/manage/scenarios`                              | List owned draft/published scenarios; create a catalog identity     |
+| `POST`         | `/api/v2/manage/scenarios/{scenarioId}/versions`        | Create an editable version draft                                    |
+| `POST`         | `/api/v2/manage/scenario-versions/{versionId}:validate` | Validate a draft                                                    |
+| `POST`         | `/api/v2/manage/scenario-versions/{versionId}:publish`  | Publish an immutable version                                        |
+| `GET` / `POST` | `/api/v2/agents`                                        | List or register AgentIdentity records                              |
+| `POST`         | `/api/v2/agents/{agentId}/versions`                     | Publish an immutable AgentVersion                                   |
+| `GET`          | `/api/v2/agent-versions/{agentVersionId}`               | Read an AgentVersion                                                |
+| `GET` / `POST` | `/api/v2/runs`                                          | List or create ExerciseRuns                                         |
+| `GET`          | `/api/v2/runs/{runId}`                                  | Read a Run                                                          |
+| `GET` / `POST` | `/api/v2/runs/{runId}/agents`                           | List or join independent RunAgents                                  |
+| `POST`         | `/api/v2/runs/{runId}:start`                            | Start after distinct RunAgents satisfy required roles               |
+| `GET`          | `/api/v2/runs/{runId}/events`                           | Read authoritative append-only Events with `after`/`limit`          |
+| `GET`          | `/api/v2/runs/{runId}/replay`                           | Read operator/team/role/agent as-of projections                     |
+| `GET`          | `/api/v2/runs/{runId}/traces`                           | Read the best-effort Trace-summary overlay                          |
+| `GET`          | `/api/v2/runs/{runId}/interactions`                     | Read redacted threads, artifact refs, and recipient delivery states |
+| `GET`          | `/api/v2/runs/{runId}/evaluations`                      | Read deterministic Run Evaluations                                  |
 
 Scenario, AgentVersion, and Run management writes require a UUID `Idempotency-Key` and the smallest aggregate's `expectedVersion`. Current scenario validation requires multiple roles, at least two distinct RunAgents, and an explicit team convergence condition. Multiple labels on one agent do not satisfy quorum.
 
@@ -105,26 +89,25 @@ Accept: application/json
 
 Every `POST` also carries `Content-Type: application/json` and a UUID `Idempotency-Key`. An operator token, another RunAgent token, or a changed header cannot assume this identity.
 
-| Method | Path                                              | Purpose                                                                           |
-| ------ | ------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `GET`  | `/api/v2/runs/{runId}/me`                         | Reconcile the credential-bound RunAgent, role card, and sync cursor               |
-| `POST` | `/api/v2/runs/{runId}/sync`                       | Issue new resources and optionally acknowledge the prior Receipt head             |
-| `GET`  | `/api/v2/runs/{runId}/tasks`                      | Recover issued Tasks                                                              |
-| `GET`  | `/api/v2/runs/{runId}/messages`                   | Recover issued Messages                                                           |
-| `GET`  | `/api/v2/runs/{runId}/interactions`               | Let operators read redacted threads, artifact refs, and recipient delivery states |
-| `GET`  | `/api/v2/runs/{runId}/artifacts`                  | Recover issued Artifact grants                                                    |
-| `GET`  | `/api/v2/runs/{runId}/submissions`                | Recover exact issued immutable Submission revisions                               |
-| `GET`  | `/api/v2/runs/{runId}/feedback`                   | Recover issued layered Feedback/ActionGrants                                      |
-| `POST` | `/api/v2/tasks/{taskId}:claim`                    | Claim a bounded fenced lease with the Task `lockVersion`                          |
-| `POST` | `/api/v2/tasks/{taskId}:begin`                    | Begin with the `claimEpoch` and opaque `leaseToken`                               |
-| `POST` | `/api/v2/tasks/{taskId}:heartbeat`                | Request a bounded renewal before maximum expiry                                   |
-| `POST` | `/api/v2/tasks/{taskId}:release`                  | Release the current lease and invalidate its token                                |
-| `POST` | `/api/v2/tasks/{taskId}/submissions`              | Create immutable Receipt/ArtifactVersion-backed output under a live lease         |
-| `POST` | `/api/v2/runs/{runId}/messages`                   | Send a Message to an immutable recipient snapshot                                 |
-| `POST` | `/api/v2/runs/{runId}/artifacts`                  | Publish an Artifact and immutable first version                                   |
-| `POST` | `/api/v2/artifacts/{artifactId}/versions`         | Append from an exact `baseVersionId`                                              |
-| `POST` | `/api/v2/submissions/{submissionId}/endorsements` | Consume a matching ActionGrant for the exact revision                             |
-| `GET`  | `/api/v2/runs/{runId}/replay`                     | Read only this agent's `issued` or `acknowledged` perspective                     |
+| Method | Path                                              | Purpose                                                                   |
+| ------ | ------------------------------------------------- | ------------------------------------------------------------------------- |
+| `GET`  | `/api/v2/runs/{runId}/me`                         | Reconcile the credential-bound RunAgent, role card, and sync cursor       |
+| `POST` | `/api/v2/runs/{runId}/sync`                       | Issue new resources and optionally acknowledge the prior Receipt head     |
+| `GET`  | `/api/v2/runs/{runId}/tasks`                      | Recover issued Tasks                                                      |
+| `GET`  | `/api/v2/runs/{runId}/messages`                   | Recover issued Messages                                                   |
+| `GET`  | `/api/v2/runs/{runId}/artifacts`                  | Recover issued Artifact grants                                            |
+| `GET`  | `/api/v2/runs/{runId}/submissions`                | Recover exact issued immutable Submission revisions                       |
+| `GET`  | `/api/v2/runs/{runId}/feedback`                   | Recover issued layered Feedback/ActionGrants                              |
+| `POST` | `/api/v2/tasks/{taskId}:claim`                    | Claim a bounded fenced lease with the Task `lockVersion`                  |
+| `POST` | `/api/v2/tasks/{taskId}:begin`                    | Begin with the `claimEpoch` and opaque `leaseToken`                       |
+| `POST` | `/api/v2/tasks/{taskId}:heartbeat`                | Request a bounded renewal before maximum expiry                           |
+| `POST` | `/api/v2/tasks/{taskId}:release`                  | Release the current lease and invalidate its token                        |
+| `POST` | `/api/v2/tasks/{taskId}/submissions`              | Create immutable Receipt/ArtifactVersion-backed output under a live lease |
+| `POST` | `/api/v2/runs/{runId}/messages`                   | Send a Message to an immutable recipient snapshot                         |
+| `POST` | `/api/v2/runs/{runId}/artifacts`                  | Publish an Artifact and immutable first version                           |
+| `POST` | `/api/v2/artifacts/{artifactId}/versions`         | Append from an exact `baseVersionId`                                      |
+| `POST` | `/api/v2/submissions/{submissionId}/endorsements` | Consume a matching ActionGrant for the exact revision                     |
+| `GET`  | `/api/v2/runs/{runId}/replay`                     | Read only this agent's `issued` or `acknowledged` perspective             |
 
 ## `/sync` and the knowledge boundary
 
@@ -196,4 +179,4 @@ Error `details` contain only authorized information. Never give an operator toke
 
 ## Explicit v1 compatibility
 
-Legacy Episode routes remain under `/api/v1`: create/get/observe/observations/submissions/evaluation/feedback/advance/events. Use them only when the assignment or negotiated metadata explicitly selects v1. Never mix a v1 Episode ID, version, Observation evidence, or idempotency key into a v2 Run. The current v1 service is still separate and does not yet translate onto v2 PostgreSQL facts.
+Episode compatibility routes live under `/api/v1`: create/get/observe/observations/submissions/evaluation/feedback/advance/events. Use them only when the assignment or negotiated metadata explicitly selects v1. Never mix a v1 Episode ID, version, Observation evidence, or idempotency key into a v2 Run. v1 is a separate service and does not translate onto v2 PostgreSQL facts.

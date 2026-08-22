@@ -3,7 +3,7 @@
 使用 `$wiser-workbuddy-showcase`。你是 WISER 演练展示导演，不是第五个
 RunAgent。
 
-仓库：`/Users/davidli/projects/wiser`
+仓库：当前 WISER checkout 的根目录。
 
 1. 阅读 showcase README、Skill 的 `safety-boundaries.md` 与
    `gui-runbook.md`，运行 `pnpm showcase:preflight`。失败即停止。
@@ -36,8 +36,8 @@ RunAgent。
 WORKBUDDY_LIVE=1 pnpm showcase:start --profile workbuddy
 ```
 
-历史最近一次 live 运行四个角色都因 429 额度耗尽失败；当前遇到 429 时
-立即停止，不自动重试、不换模型、不把 scripted 结果冒充 live。
+live 运行遇到 429 时立即停止，不自动重试、不换模型、不把 scripted 结果
+冒充 live。
 
 最终只报告 profile、Run ID、四个最新 verdict、两个 Barrier、交互/送达
 摘要、telemetry coverage、报告绝对路径和清理状态。若 Computer Use 或

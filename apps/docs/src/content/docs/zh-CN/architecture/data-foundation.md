@@ -36,11 +36,12 @@ Supabase principal + Tenant/Project/Purpose
   → data-postgres RLS transaction / SeaweedFS S3
   → PostgreSQL durable job + Transactional Outbox
   → Data Worker
-  → PostGIS / Weaviate / OpenSearch / Neo4j / STAC
+  → PostGIS spatial readiness（同一 data-postgres）
+  → Weaviate / OpenSearch / Neo4j / STAC 可重建外部投影
   → REST / GraphQL / MCP / authenticated Web readback
 ```
 
-GeoServer、TiTiler 和 Martin 作为 Compose-internal GIS 服务存在于同一个精确锁定 profile，不发布 host port；外部只经过统一 Auth 的 Fastify GIS 代理。当前权威 Outbox 的五个完成目标是 PostGIS、Weaviate、OpenSearch、Neo4j 与 STAC。任何投影都可清空重建，不承担身份、授权、验收或发布权威。
+GeoServer、TiTiler 和 Martin 作为 Compose-internal GIS 服务存在于同一个精确锁定 profile，不发布 host port；外部只经过统一 Auth 的 Fastify GIS 代理。Outbox ledger 有五个完成目标。`POSTGIS` 目标在权威 data-postgres 内建立/验证受治理的 `catalog.spatial_extent` 空间表示；其 source/version/spatial authority rows 不能当作可丢弃外部投影。Weaviate、OpenSearch、Neo4j 与 STAC 是可重建外部投影。任何单一 target 都不承担身份、授权、验收或发布决定。
 
 ## 包与依赖方向
 
@@ -60,25 +61,11 @@ GeoServer、TiTiler 和 Martin 作为 Compose-internal GIS 服务存在于同一
 
 `@wiser/data-contracts` 是 REST、GraphQL、MCP、Skill 与 runtime validation 的唯一契约源。公开对象使用 strict Zod 4 schema；未知字段和缺失必填字段均失败。`GET /api/data/v1/capabilities` 返回 draft-7 输入/输出 JSON Schema、Scope、安全上限、执行模式、timeout、audit level 以及精确的四种 transport mapping。
 
-Registry 的稳定顺序包含 22 项：
-
-```text
-data.catalog.search              data.catalog.get
-data.query                       data.search.federated
-data.knowledge.search            data.graph.expand
-data.graph.findPath              data.geo.query
-data.geo.intersect               data.ingestion.create
-data.ingestion.submit            data.operation.get
-data.catalog.create              data.catalog.versions.list
-data.catalog.versions.get        data.uploadSession.create
-data.uploadSession.complete      data.ingestion.get
-data.ingestion.approve           data.ingestion.reject
-data.operation.cancel            data.operation.events
-```
+Registry 覆盖 catalog/version、query/search、knowledge/graph、geo、upload/ingestion 与 Operation 生命周期。精确 Capability ID、顺序、版本、Scope 与各 transport mapping 只由 discovery endpoint 和[协议参考](/protocols/data-rest/)维护，架构页不复制第二份清单。
 
 所有执行器统一经过输入/输出校验、实时 Scope、安全等级 ceiling、Purpose、声明 timeout、command 幂等和 hash-only audit。查询只接受结构化 filter；不接受任意 SQL、Cypher、OpenSearch DSL、shell 或数据库管理命令。
 
-首批能力使用 `data.catalog.read`、`data.query.execute`、`data.search.execute`、`data.knowledge.read`、`data.graph.read`、`data.geo.read`、`data.ingestion.write`、`data.operation.read` 与 `data.publish`。本机 `data-steward` Role seed 覆盖这九项；新增 Capability 时必须同时更新 Registry、Role/Scope、API、MCP、Skill、文档和验证。
+本机 `data-steward` Role seed 覆盖演示所需的最小 Scope。新增 Capability 时必须同时更新 Registry、Role/Scope、API、MCP、Skill、文档和验证。
 
 ## 数据模型与独立迁移历史
 
@@ -113,7 +100,7 @@ SeaweedFS adapter 强制 path-style S3，并只从已验证的 Tenant/Project/Up
 
 内容先停留在 `quarantine`。指纹后 `catalog.content_blob` 保存内容身份，正式提交把对象幂等提升到内容寻址的 raw/version key；相同 hash 可复用，不同 hash 永不覆盖。Abort 只能删除派生 quarantine 对象。API 读取版本资产时重新执行 Supabase 授权和 data-postgres RLS，追加 audit，再返回 60 秒 `303` signed redirect；STAC manifest 不直接暴露长期 S3 credential。
 
-MCP Evidence/STAC Resource 现在也有真实 HTTP 权威边界。Evidence GET 只读取调用方 RLS 可见且关联已提交版本的 fragment，并追加 `data.evidence.read` hash-only audit。STAC GET 先把 collection 绑定到当前 Tenant/Project，再从固定内部 STAC origin 有界读取，剥离上游内部字段，并在 data-postgres 中复核已发布/已验收版本、Evidence、source hash、安全等级、policy 与质量；通过后追加 `data.stac-item.read`。两个 JSON 响应都不超过 256 KiB，STAC asset 只能指向上述短期授权下载入口。
+MCP Evidence/STAC Resource 通过真实 HTTP 权威边界读取。Evidence GET 只读取调用方 RLS 可见且关联已提交版本的 fragment，并追加 `data.evidence.read` hash-only audit。STAC GET 先把 collection 绑定到当前 Tenant/Project，再从固定内部 STAC origin 有界读取，剥离上游内部字段，并在 data-postgres 中复核已发布/已验收版本、Evidence、source hash、安全等级、policy 与质量；通过后追加 `data.stac-item.read`。两个 JSON 响应都不超过 256 KiB，STAC asset 只能指向上述短期授权下载入口。
 
 正式版本只能从已批准且冻结的 review checkpoint 创建。一个 data-postgres 事务提交 DataItemVersion、质量/血缘事实、Operation event、Audit 与 Outbox；Supabase、data-postgres 和 S3 之间不伪造分布式事务。
 
@@ -132,7 +119,7 @@ RECEIVED → QUARANTINED → SECURITY_SCANNED → FINGERPRINTED
 REJECTED、PUBLISHED、FAILED、CANCELLED 为终态。
 ```
 
-默认 Worker 现在注册了具体 `data.ingestion.process.v1` Handler，而不是空 Registry：
+默认 Worker 以具体 `data.ingestion.process.v1` Handler 执行入库：
 
 1. 从权威表恢复上传资产和当前版本；
 2. 通过 S3 reader 核对 size/media type；
@@ -143,11 +130,11 @@ REJECTED、PUBLISHED、FAILED、CANCELLED 为终态。
 7. fixture fake Agent 提出 schema/semantic plan，注入 validator 校验置信度与形状；
 8. 确定性 transformer、质量规则与 EPSG:4326/4490/3857 对齐执行；
 9. 冻结 hash-only review checkpoint，低置信度/高风险进入人工审核；
-10. 批准后提交权威版本与 Outbox，等待五类投影成功再发布。
+10. 批准后提交权威版本与 Outbox，等待五个 completion target ledger 成功再发布。
 
 Agent 只提出解释与计划，不能修改原始数据、静默纠正字段、决定质量/验收、绕过审核或直接写权威/投影存储。fake Agent 和 `DeterministicFakeEmbedding` 只用于测试、CI 与本机 smoke；同文本、版本和维度产生相同有限向量。Worker 记录 Agent run/action、模型 identity、input/output hash 与 transform plan，不把 prompt、凭据或对象正文写入 audit。
 
-质量门禁只读取确定性检查；blocking rule 失败时即使总分过阈值也不能通过。派生安全等级取全部来源最高值，只能显式提高不能降低。发布要求已提交版本、可发布验收、通过质量门禁、`PROJECTING` 状态和五个唯一 `SUCCEEDED` 投影。
+质量门禁只读取确定性检查；blocking rule 失败时即使总分过阈值也不能通过。派生安全等级取全部来源最高值，只能显式提高不能降低。发布要求已提交版本、可发布验收、通过质量门禁、`PROJECTING` 状态和五个唯一 `SUCCEEDED` completion target。
 
 ## 持久任务、Outbox 与投影
 
@@ -155,9 +142,9 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 
 `ProjectionOutboxConsumer` 读取单调 checkpoint。每个 target 的 `PENDING/RUNNING/SUCCEEDED/FAILED` ledger 跨崩溃保留；外部写成功但 ledger 尚未更新时可安全重试，已成功 target 会跳过。投影 identity 由 DataItem/Version/Evidence 等权威 ID 派生：
 
-若五类投影已经成功，但对应 Operation 已进入 `FAILED` 或 `CANCELLED`，该 publication poison event 不得改写 Operation 终态，也不得发布权威版本。Consumer 以 `PUBLICATION_OPERATION_TERMINAL` 写入 `consumer_checkpoint.last_error` 并推进该 event，避免队首永久阻塞；后续成功 event 清除摘要。原 Job、Operation、projection ledger 与版本证据全部保留。
+若五个 completion target 已成功，但对应 Operation 已进入 `FAILED` 或 `CANCELLED`，该 publication poison event 不得改写 Operation 终态，也不得发布权威版本。Consumer 以 `PUBLICATION_OPERATION_TERMINAL` 写入 `consumer_checkpoint.last_error` 并推进该 event，避免队首永久阻塞；后续成功 event 清除摘要。原 Job、Operation、target ledger 与版本证据全部保留。
 
-- PostGIS 保留 source geometry，并存 CGCS2000 与 Web Mercator 派生形状；
+- data-postgres/PostGIS 的 `catalog.spatial_extent` 保存受 RLS 保护的 source geometry、CGCS2000 canonical geometry 与 Web Mercator display derivative；权威记录不可随投影缓存清空；
 - Weaviate 使用 Worker 提供的固定版本向量与受认证 tenant；
 - OpenSearch 使用受治理 ICU 索引；
 - Neo4j 使用固定参数化 `MERGE`；

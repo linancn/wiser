@@ -27,6 +27,8 @@ WISER 是产品与平台总上下文。Agent EXCON 与 Data Foundation 是平级
 
 组合根接入统一 Supabase Auth、平台身份/委托模块、持久化 EXCON v2 command journal、Data Capability、REST、GraphQL、MCP/Skill、系统 Worker、投影和双语 Web。`pnpm stack:full:up` 在同一平台身份边界下启动默认完整栈并执行 Data smoke；v1 Episode 是显式内存 compatibility，不代表统一平台的持久化路径。
 
+“统一身份”表示同一 Supabase/Platform 权威和授权上下文，不表示所有客户端复用一枚交互式 credential。Data Web 使用用户的 Supabase SSR Session；EXCON live Web 使用服务端 operator credential；MCP transport bearer、EXCON RunAgent credential 与 Data API identity 各自承担不同边界，不能互换。
+
 ## 系统边界
 
 | 上下文          | 拥有的事实                                                                      | 不拥有                           |
@@ -57,13 +59,14 @@ WISER Fastify composition root
 
 ## 权威矩阵
 
-| 存储                                     | 权威内容                                          | 一致性规则                                  |
-| ---------------------------------------- | ------------------------------------------------- | ------------------------------------------- |
-| Supabase Auth/PostgreSQL                 | 用户、Session、租户、项目、Membership、EXCON 事实 | 单一 WISER 身份与控制面                     |
-| data-postgres/PostGIS                    | DataItem、版本、质量、血缘、Operation、Outbox     | Data Foundation 结构化权威面                |
-| S3 兼容对象存储                          | 原始对象和不可变版本资产                          | 内容寻址、校验后由 PostgreSQL manifest 提交 |
-| OpenSearch/Weaviate/Neo4j/STAC/GeoServer | 检索、图谱与 GIS 投影                             | 可清空、可重建、幂等、非授权权威            |
-| OpenTelemetry                            | 技术诊断投影                                      | 可采样，不参与业务状态、权限或裁决          |
+| 存储/服务                      | 权威内容                                          | 一致性规则                                  |
+| ------------------------------ | ------------------------------------------------- | ------------------------------------------- |
+| Supabase Auth/PostgreSQL       | 用户、Session、租户、项目、Membership、EXCON 事实 | 单一 WISER 身份与控制面                     |
+| data-postgres/PostGIS          | DataItem、版本、质量、血缘、Operation、Outbox     | Data Foundation 结构化权威面                |
+| S3 兼容对象存储                | 原始对象和不可变版本资产                          | 内容寻址、校验后由 PostgreSQL manifest 提交 |
+| OpenSearch/Weaviate/Neo4j/STAC | 检索、图谱与外部 GIS 投影                         | 可清空、可重建、幂等、非授权权威            |
+| GeoServer/TiTiler/Martin       | 无；只提供 Compose-internal GIS serving           | 固定 origin、无 host port、所有访问经 API   |
+| OpenTelemetry                  | 技术诊断投影                                      | 可采样，不参与业务状态、权限或裁决          |
 
 投影必须下推 Tenant、Project、Version、安全等级和策略版本过滤，但返回、下载、导出与发布前仍由权威 AuthorizationService 复核。投影策略落后时必须 fail closed。
 

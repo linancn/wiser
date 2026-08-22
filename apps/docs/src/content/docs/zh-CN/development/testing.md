@@ -34,7 +34,7 @@ lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
 2. **Green**：实现让该测试通过的最小变化，并运行同一边界的回归测试。
 3. **Refactor**：在测试保持全绿时整理命名、重复和依赖方向，不改变外部行为。
 4. **Integrate**：根据变化类型运行真实数据库、浏览器、可观测性或纵向 smoke。
-5. **Document and commit**：更新中英文文档，运行 Docpact 与最终门禁，保留小而可恢复的 Red/Green 提交。
+5. **Document and commit**：更新中英文文档；每个提交前运行 worktree Docpact check，分支交接前再对 merge base 运行 branch-wide lint；保留小而可恢复的 Red/Green 提交。
 
 测试优先调用公开函数、HTTP、GraphQL、MCP、数据库策略或可见 UI。不要用私有函数调用次数代替业务结果；生产缺陷先以回归测试复现。
 
@@ -79,7 +79,7 @@ pnpm verify
 | Agent EXCON contracts/core/infra | `pnpm exec vitest run packages/contracts/test packages/core/test packages/infra/test` |
 | Platform contracts/auth          | `pnpm exec vitest run packages/platform-contracts/test packages/platform-auth/test`   |
 | API composition                  | `pnpm --filter @wiser/api test`                                                       |
-| Agent EXCON Worker               | `pnpm --filter @agent-excon/worker test`                                              |
+| EXCON v1 compatibility Worker    | `pnpm --filter @agent-excon/worker test`                                              |
 | Data Worker                      | `pnpm --filter @wiser/data-worker test`                                               |
 | MCP composition                  | `pnpm --filter @wiser/mcp test`                                                       |
 | Telemetry Ingress                | `pnpm --filter @wiser/telemetry-ingress test`                                         |
@@ -122,7 +122,7 @@ pnpm data:down
 pnpm supabase:stop
 ```
 
-在干净环境中，`pnpm stack:full:up` 会执行启动 Supabase、启动 Data profile、migration、seed 和 `data:smoke` 的收敛流程。Smoke 的成功证明 18 个固定步骤跨越上传、扫描、指纹、fake Agent、确定性转换、质量/审核、权威提交、Outbox、五类投影、REST、GraphQL、MCP 和登录 Web，并验证 Outbox 重放不重复创建投影事实。
+在干净环境中，`pnpm stack:full:up` 会执行启动 Supabase、启动 Data profile、migration、seed 和 `data:smoke` 的收敛流程。Smoke 的成功证明固定步骤跨越上传、扫描、指纹、fake Agent、确定性转换、质量/审核、权威提交、Outbox、五个 completion target、REST、GraphQL、MCP 和登录 Web，并验证 Outbox 重放不重复创建 target facts。
 
 ## Playwright
 
@@ -200,5 +200,6 @@ WORKBUDDY_LIVE=1 pnpm cookbook:workbuddy
 - 可见 UI 同步中英文文案，并验证主题、键盘和响应式行为。
 - 默认测试没有真实模型调用、外部费用或秘密依赖。
 - 编码后运行 `pnpm docpact:check`，更新命中的权威文档或记录真实审查证据。
+- 多提交分支对目标 base 运行 `docpact lint --root . --merge-base <base-ref> --mode enforce --fail-on-uncovered-change --fail-on-stale-docs`，覆盖已经提交的 Red/Green 切片。
 - 所需聚焦门禁、集成 smoke 和最终 `pnpm verify` 均通过。
 - Git diff 只包含预期范围，`git diff --check` 通过；Red 是可恢复检查点，最终提交处于 Green 且目的单一。

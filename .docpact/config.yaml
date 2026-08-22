@@ -1,7 +1,7 @@
 version: 1
 layout: repo
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 9b08f11b30895f78063d42881a16e62bb3ffc054
+lastReviewedCommit: ed36c7913b5dd2b2542adf1aa1ce1e5d9a70029f
 catalog:
   repos:
     - id: wiser
@@ -33,7 +33,10 @@ ownership:
         include:
           - packages/platform-*/**
           - apps/api/src/platform/**
-          - apps/web/src/components/platform/**
+          - apps/web/src/components/current-user-control.tsx
+          - apps/web/src/lib/auth*
+          - apps/web/src/lib/supabase/**
+          - apps/web/src/app/[locale]/auth/**
       ownerRepo: wiser
     - id: data-foundation
       paths:
@@ -101,7 +104,6 @@ coverage:
     - apps/api/src/data-foundation/**
     - apps/mcp/src/data-foundation/**
     - apps/data-worker/src/**
-    - apps/web/src/components/platform/**
     - apps/web/src/app/[locale]/data-foundation/**
     - packages/contracts/src/**
     - packages/core/src/**
@@ -130,6 +132,7 @@ coverage:
     - examples/agent-excon/workbuddy-yongding-tdd/scripts/**
     - examples/agent-excon/workbuddy-yongding-tdd/showcase/schemas/**
     - examples/agent-excon/workbuddy-yongding-tdd/showcase/scripts/**
+    - examples/agent-excon/workbuddy-yongding-tdd/showcase/*.md
     - examples/agent-excon/workbuddy-yongding-tdd/showcase/showcase.yaml
 freshness:
   warn_after_commits: 50
@@ -167,7 +170,10 @@ routing:
       paths:
         - packages/platform-*/**
         - apps/api/src/platform/**
-        - apps/web/src/components/platform/**
+        - apps/web/src/components/current-user-control.tsx
+        - apps/web/src/lib/auth*
+        - apps/web/src/lib/supabase/**
+        - apps/web/src/app/*/auth/**
         - apps/docs/src/content/docs/*/architecture/wiser-platform.md
         - apps/docs/src/content/docs/*/architecture/unified-auth.md
         - apps/docs/src/content/docs/*/architecture/design-system.md
@@ -192,9 +198,12 @@ docInventory:
     - README.en.md
     - SECURITY.md
     - apps/api/README.md
+    - apps/data-worker/README.md
     - apps/docs/README.md
     - apps/mcp/README.md
+    - apps/telemetry-ingress/README.md
     - apps/web/README.md
+    - apps/worker/README.md
     - infrastructure/observability/README.md
     - apps/docs/src/content/docs/*/index.mdx
     - apps/docs/src/content/docs/*/development/*.md
@@ -258,6 +267,10 @@ rules:
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/development/local-environment.md
         mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/development/repository-structure.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/development/repository-structure.md
+        mode: review_or_update
     reason: Toolchain changes must keep bilingual installation and local development commands accurate.
   - id: wiser-platform-contracts
     scope: repo
@@ -279,6 +292,10 @@ rules:
       - path: apps/docs/src/content/docs/zh-CN/development/backend.md
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/development/backend.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/development/adding-a-system.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/development/adding-a-system.md
         mode: review_or_update
     reason: Shared API composition and platform contracts must preserve the bilingual multi-system host boundary.
   - id: wiser-platform-auth
@@ -380,6 +397,8 @@ rules:
       - path: apps/data-worker/src/**
         kind: code
     requiredDocs:
+      - path: apps/data-worker/README.md
+        mode: review_or_update
       - path: apps/docs/src/content/docs/zh-CN/architecture/data-foundation.md
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/architecture/data-foundation.md
@@ -455,7 +474,7 @@ rules:
         kind: code
       - path: apps/web/src/components/theme-toggle.tsx
         kind: code
-      - path: apps/web/src/components/platform/**
+      - path: apps/web/src/components/current-user-control.tsx
         kind: code
     requiredDocs:
       - path: apps/docs/src/content/docs/zh-CN/architecture/design-system.md
@@ -604,6 +623,8 @@ rules:
       - path: apps/worker/src/**
         kind: code
     requiredDocs:
+      - path: apps/worker/README.md
+        mode: review_or_update
       - path: apps/docs/src/content/docs/zh-CN/architecture/agent-excon.md
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/architecture/agent-excon.md
@@ -612,7 +633,7 @@ rules:
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/development/testing.md
         mode: review_or_update
-    reason: Agent EXCON evaluation worker changes can alter deterministic evaluation, concurrency, and verification behavior.
+    reason: PostgreSQL-backed Agent EXCON v1 compatibility worker changes must keep its deterministic evaluation and testing boundary accurate.
   - id: ai-infrastructure
     scope: repo
     repo: wiser
@@ -770,6 +791,8 @@ rules:
       - path: infrastructure/observability/smoke.mjs
         kind: configuration
     requiredDocs:
+      - path: apps/telemetry-ingress/README.md
+        mode: review_or_update
       - path: infrastructure/observability/README.md
         mode: review_or_update
       - path: apps/docs/src/content/docs/zh-CN/architecture/multi-agent-observability.md
@@ -825,6 +848,8 @@ rules:
     scope: repo
     repo: wiser
     triggers:
+      - path: examples/agent-excon/workbuddy-yongding-tdd/showcase/*.md
+        kind: agent-workflow
       - path: examples/agent-excon/workbuddy-yongding-tdd/showcase/schemas/**
         kind: agent-workflow
       - path: examples/agent-excon/workbuddy-yongding-tdd/showcase/scripts/**

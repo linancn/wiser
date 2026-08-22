@@ -93,6 +93,6 @@ Grafana ← Tempo + Prometheus + Loki
 
 参训者不能直连 Collector；Ingress 绑定 RunAgent 身份、覆盖身份属性、限流并拒绝敏感正文。WISER 自己呈现 Run 级协作图和领域回放；Grafana/Tempo 用于单个 Trace 的 technical drill-down。两侧通过 `trace_id` 和 `event_id` 深链。
 
-## 首个验收场景
+## 验收案例
 
 同一永定河场景版本启动四角色 Run。四个不同 RunAgent 获得不同 Receipt 并行工作，通过 Artifact 汇聚到团队 Submission；Evaluation 分别返回个人、角色和团队 Feedback；导调员切换 Agent 视角时看不到其当时未获得的信息。删除全部 Telemetry 后，Event/Receipt 回放仍能复算。

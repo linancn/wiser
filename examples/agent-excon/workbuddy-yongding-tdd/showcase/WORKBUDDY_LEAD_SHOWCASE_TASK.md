@@ -32,9 +32,8 @@ Lead 执行本任务时，Lead 本身仍可能使用已登录的 WorkBuddy 订�
    临时目录已删除。
 
 `workbuddy` 会产生真实模型用量。只有 Codex 在同一条任务消息中明确写出
-“用户已在当前任务授权 live WorkBuddy 用量”时才可运行。历史最近一次
-live 四路均出现 429；当前再遇到 429 立即停止，不自动重试、切换模型或
-回退后宣称 live 成功。
+“用户已在当前任务授权 live WorkBuddy 用量”时才可运行。遇到 429 立即
+停止，不自动重试、切换模型或回退后宣称 live 成功。
 
 最终答复保持简短；Lead 的退出码或 Agent 自报不能替代四个最新确定性
 `ACCEPTED` 与 `analysis-ready`、`endorsement-ready` 两个 Barrier。

@@ -30,29 +30,31 @@ WISER 是承载水智能产品的多系统平台。仓库内的业务系统共�
 
 ## 系统与入口
 
-| 系统                       | 面向人的前端                                  | 对外后端入口                                           | 主要源码                                                                                                |
-| -------------------------- | --------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| WISER Platform             | 登录、用户菜单与统一 Shell：`/zh-CN/login`    | 身份与委托：`/api/platform/v1`                         | `packages/platform-*`、`apps/api/src/platform`、`apps/web/src/components/platform`、`supabase`          |
-| Agent EXCON                | 场景与 Run：`/zh-CN/scenarios`、`/zh-CN/runs` | HTTP：`/api/v2`；MCP：`/mcp`                           | `packages/contracts`、`packages/core`、`packages/infra`、`packages/excon-scenarios`、`apps/worker`      |
-| Data Foundation / 数据基座 | 数据工作区：`/zh-CN/data-foundation`          | REST：`/api/data/v1`；GraphQL：`/graphql`；MCP：`/mcp` | `packages/data-*`、`apps/api/src/data-foundation`、`apps/data-worker`、`infrastructure/data-foundation` |
+| 系统                       | 面向人的前端                                  | 对外后端入口                                           | 主要源码                                                                                                                                                                                  |
+| -------------------------- | --------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| WISER Platform             | 登录、用户菜单与统一 Shell：`/zh-CN/login`    | 身份与委托：`/api/platform/v1`                         | `packages/platform-*`、`apps/api/src/platform`、`apps/web/src/components/app-shell.tsx`、`apps/web/src/components/current-user-control.tsx`、`apps/web/src/app/[locale]/auth`、`supabase` |
+| Agent EXCON                | 场景与 Run：`/zh-CN/scenarios`、`/zh-CN/runs` | HTTP：`/api/v2`；MCP：`/mcp`                           | `packages/contracts`、`packages/core`、`packages/infra`、`packages/excon-scenarios`；`apps/worker` 仅属 v1 compatibility                                                                  |
+| Data Foundation / 数据基座 | 数据工作区：`/zh-CN/data-foundation`          | REST：`/api/data/v1`；GraphQL：`/graphql`；MCP：`/mcp` | `packages/data-*`、`apps/api/src/data-foundation`、`apps/data-worker`、`infrastructure/data-foundation`                                                                                   |
 
 所有浏览器、Skill 和 MCP 客户端都通过 HTTP 边界访问业务能力，不直连数据库、对象存储或投影。系统级说明见[平台架构](./apps/docs/src/content/docs/zh-CN/architecture/wiser-platform.md)。
 
+`/mcp` 是共享 Gateway：Agent EXCON Tool 使用 `excon_*` 命名与 RunAgent credential，Data Tool 使用 `data_*` 命名与 Data API identity；两套下游身份不能互换。发现和调用流程见各自 MCP 协议页。
+
 ## 应用进程
 
-| 路径                     | 类型        | 职责                                                           | 完整栈入口                            |
-| ------------------------ | ----------- | -------------------------------------------------------------- | ------------------------------------- |
-| `apps/web`               | 前端        | WISER 产品界面；中文默认，支持英文与深浅色主题                 | `http://127.0.0.1:3000/zh-CN`         |
-| `apps/docs`              | 前端        | 全系统 Fumadocs 文档站                                         | `http://127.0.0.1:4321`               |
-| `apps/api`               | 后端        | 统一 Fastify Host；组合 Platform、Agent EXCON、Data Foundation | `http://127.0.0.1:3001`               |
-| `apps/worker`            | 后端 Worker | Agent EXCON 的确定性评价任务                                   | `http://127.0.0.1:3002/health/ready`  |
-| `apps/data-worker`       | 后端 Worker | Data Foundation 入库、质量、发布与投影任务                     | `http://127.0.0.1:13003/health/ready` |
-| `apps/mcp`               | 协议网关    | 将 Agent EXCON 与 Data Foundation MCP Tool 映射到 HTTP API     | `http://127.0.0.1:13004/mcp`          |
-| `apps/telemetry-ingress` | 可选后端    | 认证、限流并脱敏外部 RunAgent 的 OTLP/HTTP 遥测                | `http://127.0.0.1:14318`              |
+| 路径                     | 类型        | 职责                                                                                             | 完整栈入口                            |
+| ------------------------ | ----------- | ------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| `apps/web`               | 前端        | WISER 产品界面；中文默认，支持英文与深浅色主题                                                   | `http://127.0.0.1:3000/zh-CN`         |
+| `apps/docs`              | 前端        | 全系统 Fumadocs 文档站                                                                           | `http://127.0.0.1:4321`               |
+| `apps/api`               | 后端        | 统一 Fastify Host；组合 Platform、Agent EXCON、Data Foundation                                   | `http://127.0.0.1:3001`               |
+| `apps/worker`            | 后端 Worker | PostgreSQL-backed v1 compatibility/testing Worker；默认 API 不 enqueue，v2 在 API service 内评价 | `http://127.0.0.1:3002/health/ready`  |
+| `apps/data-worker`       | 后端 Worker | Data Foundation 入库、质量、发布与投影任务                                                       | `http://127.0.0.1:13003/health/ready` |
+| `apps/mcp`               | 协议网关    | 将 Agent EXCON 与 Data Foundation MCP Tool 映射到 HTTP API                                       | `http://127.0.0.1:13004/mcp`          |
+| `apps/telemetry-ingress` | 可选后端    | 认证、限流并脱敏外部 RunAgent 的 OTLP/HTTP 遥测                                                  | `http://127.0.0.1:14318`              |
 
 Supabase Studio、数据库、对象存储、检索/GIS 与可观测性服务的完整端口表见[本机开发环境](./apps/docs/src/content/docs/zh-CN/development/local-environment.md)。
 
-## 五分钟启动
+## 启动完整平台
 
 需要 Node.js 24、Corepack、Docker Engine 与 Docker Compose。版本范围以 [`package.json`](./package.json) 为准。
 
@@ -62,7 +64,7 @@ pnpm install --frozen-lockfile
 pnpm stack:full:up
 ```
 
-首次构建和端到端 smoke 会花费一些时间；命令成功返回后打开：
+首次构建和 Data 端到端 smoke 会花费一些时间；命令成功返回后，默认服务和 Data 验证路径可用。Agent EXCON live Web/MCP 仍需要后文所述的专用 credential。打开：
 
 - 产品界面：<http://127.0.0.1:3000/zh-CN>
 - 文档：<http://127.0.0.1:4321>
@@ -82,7 +84,7 @@ WiserLocalOperator-2026!
 pnpm stack:down
 ```
 
-逐步启动、日志、重置与故障排查见[快速开始](./apps/docs/src/content/docs/zh-CN/quick-start.md)。
+第一次完整运行见[快速开始](./apps/docs/src/content/docs/zh-CN/quick-start.md)；分步运行、日志、全部端口与故障排查见[本机开发环境](./apps/docs/src/content/docs/zh-CN/development/local-environment.md)。`stack:down` 会保留命名卷和 `.wiser/local` 中的本机重放密钥；不要在仍需恢复 EXCON journal 时删除这些历史 key。
 
 ## 开发与验证
 
@@ -92,17 +94,28 @@ pnpm stack:down
 pnpm dev
 ```
 
-该模式不启用统一 Auth、EXCON PostgreSQL journal 或 Data Foundation；准确边界见[开发手册](./apps/docs/src/content/docs/zh-CN/development/index.md)。提交前的主验证入口是：
+也可以在独立终端只运行需要的进程：
+
+```bash
+pnpm --filter @wiser/api dev
+pnpm --filter @wiser/web dev
+pnpm --filter @wiser/docs dev
+```
+
+这些模式不启用统一 Auth、EXCON PostgreSQL journal 或 Data Foundation；准确边界见[开发手册](./apps/docs/src/content/docs/zh-CN/development/index.md)。提交前的主验证入口是：
 
 ```bash
 pnpm verify
 ```
 
-数据库改动还需要运行对应的集成验证。注意 `supabase:verify` 会重置本机 Supabase 数据库：
+它覆盖格式、type-aware lint、全部 workspace 类型/单元测试/build 与默认 Compose config；不包含数据库 reset/集成、Playwright、Data/observability smoke 或 Docpact。
+
+数据库改动按权威边界追加门禁。`supabase:verify` 是真实 reset/pgTAP/RLS 验证并会清空本机 Supabase；`data:verify` 只做 Data 脚本/workspace/Compose 静态验证，真实 Data schema/存储/投影改动还要在可丢弃环境运行 `stack:full:up` 或开发手册中的 migrate/seed/smoke 顺序：
 
 ```bash
-pnpm supabase:verify
-pnpm data:verify
+pnpm supabase:verify  # Supabase/Platform/EXCON database changes
+pnpm data:verify      # Data static/workspace gate
+pnpm stack:full:up    # Data live integration when required
 ```
 
 仓库采用 Red → Green → Refactor、小提交和 Docpact 文档治理。完整流程见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
@@ -126,6 +139,8 @@ tests/          跨应用、工具链与验收测试
 - [文档首页](./apps/docs/src/content/docs/zh-CN/index.mdx)
 - [快速开始](./apps/docs/src/content/docs/zh-CN/quick-start.md)
 - [开发手册](./apps/docs/src/content/docs/zh-CN/development/index.md)
+- [数据库与迁移](./apps/docs/src/content/docs/zh-CN/development/databases.md)
+- [测试与验证](./apps/docs/src/content/docs/zh-CN/development/testing.md)
 - [平台架构](./apps/docs/src/content/docs/zh-CN/architecture/wiser-platform.md)
 - [接口文档](./apps/docs/src/content/docs/zh-CN/protocols/meta.json)
 

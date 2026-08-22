@@ -61,6 +61,20 @@ platform_private.control_outbox
 - Every exposed table enables RLS with subject, Tenant, Project, and ownership predicates. `TO authenticated` alone is not authorization.
 - Privileged functions live in an unexposed schema, set a safe `search_path`, and revoke default `PUBLIC EXECUTE`.
 
+## Platform HTTP entrypoints
+
+| Method | Path                                                             | Purpose                                                                     |
+| ------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `GET`  | `/api/platform/v1/me`                                            | Return safe Actor, Role, Scope, security-ceiling, and authz-version context |
+| `POST` | `/api/platform/v1/delegations`                                   | Create a bounded Delegation                                                 |
+| `GET`  | `/api/platform/v1/delegations/{delegationId}`                    | Read safe metadata                                                          |
+| `POST` | `/api/platform/v1/delegations/{delegationId}/credentials`        | Issue plaintext once                                                        |
+| `POST` | `/api/platform/v1/delegations/{delegationId}/credentials:rotate` | Rotate and return new plaintext once                                        |
+| `POST` | `/api/platform/v1/delegations/{delegationId}:revoke`             | Revoke a Delegation                                                         |
+| `POST` | `/api/platform/v1/credentials/{credentialId}:revoke`             | Revoke one credential                                                       |
+
+`/me` and delegation routes require Bearer, Tenant, Project, and Purpose. Every write requires a UUID `Idempotency-Key`; Delegation commands also require a verified Supabase human with `platform.delegation.manage`. Responses are `private, no-store`, and issue/rotate plaintext is unrecoverable.
+
 ## Request processing
 
 ```text
@@ -82,26 +96,28 @@ Web uses Supabase SSR cookies. Server Components forward the current access toke
 
 The Shell derives its user indicator only from a freshly verified authenticated claim set. It never renders user-editable metadata as a trusted role or administrator label. Invalid, expired, privileged, unavailable, or malformed claims produce the same anonymous/fail-closed state.
 
-`WISER_WEB_OPERATOR_TOKEN` no longer represents an interactive user. Platform-diagnostic service identities need explicit scopes and remain server-side.
+`WISER_WEB_OPERATOR_TOKEN` is a server-side operator/service identity, not an interactive user session. Platform-diagnostic service identities need explicit scopes and remain server-side.
 
 ## Agent and MCP delegation
 
-A user or service calls an authorized API to issue a short-lived delegated credential for one Agent, Run, and Project. Requested scopes are intersected with the delegator's current scopes; purpose, maximum security level, and expiry are fixed in the Delegation.
+A verified Supabase human with `platform.delegation.manage` calls the authorized API to issue a short-lived delegated credential for one Agent, Run, and Project. Requested scopes are intersected with the delegator's current scopes; purpose, maximum security level, and expiry are fixed in the Delegation.
 
-- Delegation depth is one in the first release.
+- Delegation depth is limited to one.
 - Plaintext credentials are returned once; storage uses a server-peppered HMAC.
 - Delegated bearer tokens use the strict `wdc1.<key-id>.<secret>` envelope. The public key id locates one private row; `hmac_key_id` selects a versioned server key without exposing it.
 - Verification locates by public key id, recomputes the HMAC in process, and uses a fixed-length timing-safe comparison; unknown key ids, malformed tokens, and mismatches return the same failure surface.
 - Delegations have an optimistic version. Revocation and rotation keep old Credential rows as security facts; Tenant, Project, or Delegation deletion cannot cascade through that history.
 - Revoking delegator membership, Project, Agent, delegation, or credential rejects the next request.
 - MCP tool arguments, Messages, Artifacts, logs, and traces never contain credentials.
-- EXCON private data retains only the binding between the general credential and `runAgentId/runId`.
+- Platform delegated credentials live in `platform_private.delegated_credentials` and use the `wdc1.` envelope. EXCON separately stores opaque capability tokens in `excon_private.run_agent_credentials`, directly binding protocol scopes to `runAgentId/runId`. They are neither the same row nor the same token type.
 
-The Fastify `platform.delegation` module now fixes the HTTP command boundary for create, metadata read, issue, rotate, and revoke. It accepts only verified Supabase humans with `platform.delegation.manage`, UUID idempotency keys, a maximum one-hour TTL, known delegated scopes, and a ceiling no higher than the caller's live ceiling. Plaintext appears only in successful issue/rotate responses and every response is `private, no-store`. `PostgresPlatformDelegationService` revalidates the Supabase Session and live memberships inside each transaction, takes idempotency and aggregate locks, clips credentials to 15 minutes and the Delegation expiry, preserves one active credential, and writes Audit plus Control Outbox atomically. Same-hash command replay is safe; issue/rotate replay returns `SECRET_NOT_RECOVERABLE` rather than storing recoverable plaintext. Audit, Outbox, and errors contain neither token nor HMAC.
+Telemetry Ingress issues no new identity. It verifies the HMAC of that separate EXCON RunAgent capability token and requires the protocol-level `telemetry:write` scope, an unexpired/unrevoked credential, a valid RunAgent, and active AgentVersion/AgentIdentity lifecycle. This verifier does **not** resolve the Platform `wdc1.` Delegation, Tenant/Project memberships, or their revocation state, so Platform membership revocation alone does not invalidate the token. The repository has no issuance/rotation/revocation API or CLI for this token. Production deployment must supply and test a trusted lifecycle workflow; otherwise database mode is not operationally complete.
+
+The Fastify `platform.delegation` module defines the HTTP command boundary for create, metadata read, issue, rotate, and revoke. It accepts only verified Supabase humans with `platform.delegation.manage`, UUID idempotency keys, a maximum one-hour TTL, known delegated scopes, and a ceiling no higher than the caller's live ceiling. Plaintext appears only in successful issue/rotate responses and every response is `private, no-store`. `PostgresPlatformDelegationService` revalidates the Supabase Session and live memberships inside each transaction, takes idempotency and aggregate locks, clips credentials to 15 minutes and the Delegation expiry, preserves one active credential, and writes Audit plus Control Outbox atomically. Same-hash command replay is safe; issue/rotate replay returns `SECRET_NOT_RECOVERABLE` rather than storing recoverable plaintext. Audit, Outbox, and errors contain neither token nor HMAC.
 
 Delegated bearer resolution parses the envelope before any database lookup, loads one private record by its public key id, verifies the HMAC in Node with a fixed-length timing-safe comparison, and only then trusts control facts. Every request rechecks both actors, both Tenant/Project memberships, the Tenant, Project, delegation and credential lifecycle, Purpose, and expiry. Effective scopes are the sorted intersection of delegation scopes, the delegator's current live scopes, and the injected known-scope registry; the effective security ceiling is the lower of the delegation and the delegator's current ceiling. No positive authorization cache is used.
 
-The Agent EXCON v2 participant authenticator and Data Capability Handler now reuse the same prefix-routed Platform Resolver. The complete stack injects fixed EXCON Tenant/Project/Purpose and requires delegated `runAgentIds`/scopes to match the resource. Data REST, GraphQL, MCP, and the Web server DAL all resolve live context from the same Supabase JWT or `wdc1.` credential. The EXCON command journal and data-postgres retain only scoped subject references/audit and never create another identity system.
+The Agent EXCON v2 participant authenticator and Data Capability Handler reuse the same prefix-routed Platform Resolver. The complete stack injects fixed EXCON Tenant/Project/Purpose and requires delegated `runAgentIds`/scopes to match the resource. Data REST, GraphQL, MCP, and the Web server DAL all resolve live context from the same Supabase JWT or `wdc1.` credential. The EXCON command journal and data-postgres retain only scoped subject references/audit and never create another identity system.
 
 ## Cross-database Data Foundation references
 

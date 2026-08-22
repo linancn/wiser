@@ -33,16 +33,16 @@ Agent EXCON（智能体演练场 / 导调中枢）把水系统任务编译成可
 
 ## 系统组成
 
-| 层                | 位置                         | 职责                                                        |
-| ----------------- | ---------------------------- | ----------------------------------------------------------- |
-| Contracts         | `packages/contracts`         | strict DTO、协议 schema 与公开错误                          |
-| Core              | `packages/core`              | Run、Task、Barrier、Event/Receipt、评价与归因的纯确定性规则 |
-| Application/infra | `packages/infra`、`apps/api` | 用例组合、AI adapter、HTTP、Auth 与持久化边界               |
-| Scenario assets   | `packages/excon-scenarios`   | 经过校验的版本化运行时场景包                                |
-| Evaluation worker | `apps/worker`                | 从数据库领取评价任务并执行确定性/受控 AI 流程               |
-| MCP               | `apps/mcp`                   | 把参训 Tool 映射到 HTTP API；不读取数据库                   |
-| Web               | `apps/web`                   | 场景、Run、协作、回放、Trace 与诊断界面                     |
-| Database          | `supabase`                   | EXCON schema、RLS、journal、seed 与 pgTAP                   |
+| 层                      | 位置                         | 职责                                                            |
+| ----------------------- | ---------------------------- | --------------------------------------------------------------- |
+| Contracts               | `packages/contracts`         | strict DTO、协议 schema 与公开错误                              |
+| Core                    | `packages/core`              | Run、Task、Barrier、Event/Receipt、评价与归因的纯确定性规则     |
+| Application/infra       | `packages/infra`、`apps/api` | 用例组合、AI adapter、HTTP、Auth 与持久化边界                   |
+| Scenario assets         | `packages/excon-scenarios`   | 经过校验的版本化运行时场景包                                    |
+| v1 compatibility worker | `apps/worker`                | 消费 PostgreSQL v1 Episode evaluation jobs；默认 API 不 enqueue |
+| MCP                     | `apps/mcp`                   | 把参训 Tool 映射到 HTTP API；不读取数据库                       |
+| Web                     | `apps/web`                   | 场景、Run、协作、回放、Trace 与诊断界面                         |
+| Database                | `supabase`                   | EXCON schema、RLS、journal、seed 与 pgTAP                       |
 
 Core 不导入数据库、HTTP、框架、时钟、随机、文件系统或 AI provider。依赖方向始终从纯领域向外。
 
@@ -143,7 +143,7 @@ Recovery GET 只返回已经 issued 的 Task、Message、Artifact、Submission �
 
 ## v1 兼容边界
 
-`/api/v1` Episode 是显式、独立、内存中的兼容协议。它不写入 v2 journal，状态不会跨重启恢复；v2 错误也不会自动降级到 v1。只有调用方明确选择 v1 协议与 `/api/v1/` 基路径时，Skill/MCP 才注册 legacy 操作。不要在文档或代码中把 v1 Episode 与 v2 Run 说成同一事实模型。
+`/api/v1` Episode 是显式、独立、内存中的兼容协议。它不写入 v2 journal，状态不会跨重启恢复；v2 错误也不会自动降级到 v1。`apps/worker` 消费的是另一条 PostgreSQL-backed v1 compatibility/testing job 路径，默认 API 的内存 v1 不会向它 enqueue。只有调用方明确选择 v1 协议与 `/api/v1/` 基路径时，Skill/MCP 才注册 legacy 操作。不要把 v1 Episode、该 Worker 与 v2 Run 说成同一执行模型。
 
 ## AI 边界
 
@@ -151,5 +151,7 @@ Recovery GET 只返回已经 issued 的 Task、Message、Artifact、Submission �
 - 可信宿主可以显式使用本机 Codex；认证文件不进入容器。
 - OpenAI-compatible adapter 的 endpoint、model 与能力由服务端配置。
 - AI 可以生成受 schema 约束的解释或建议，不能决定确定性评分、Barrier、授权或最终 verdict。
+
+`apps/worker` 不调用 AI；它只服务 PostgreSQL-backed v1 compatibility/testing 路径。v2 evaluator 运行在 API deterministic service 内，并随 journal 重放。可选 AI adapter 位于可信宿主的 infrastructure/application 边界，输出必须先通过 schema 与本地规则，不能进入任何权威 verdict 路径。
 
 公开操作见 [Agent EXCON HTTP](/protocols/http/) 与 [Agent EXCON MCP](/protocols/mcp/)；测试策略见[测试与验证](/development/testing/)。

@@ -33,16 +33,16 @@ External agents load versioned Skills and participate through HTTP or MCP. Web m
 
 ## System composition
 
-| Layer             | Location                     | Responsibility                                                                          |
-| ----------------- | ---------------------------- | --------------------------------------------------------------------------------------- |
-| Contracts         | `packages/contracts`         | Strict DTOs, protocol schemas, and public errors                                        |
-| Core              | `packages/core`              | Pure deterministic Run, Task, Barrier, Event/Receipt, evaluation, and attribution rules |
-| Application/infra | `packages/infra`, `apps/api` | Use-case composition, AI adapters, HTTP, Auth, and persistence boundaries               |
-| Scenario assets   | `packages/excon-scenarios`   | Validated, versioned runtime scenario packs                                             |
-| Evaluation worker | `apps/worker`                | Claims evaluation jobs and executes deterministic/controlled-AI flows                   |
-| MCP               | `apps/mcp`                   | Maps participant tools to HTTP and never reads a database                               |
-| Web               | `apps/web`                   | Scenario, Run, collaboration, replay, trace, and diagnostic UI                          |
-| Database          | `supabase`                   | EXCON schemas, RLS, journal, seed, and pgTAP                                            |
+| Layer                   | Location                     | Responsibility                                                                          |
+| ----------------------- | ---------------------------- | --------------------------------------------------------------------------------------- |
+| Contracts               | `packages/contracts`         | Strict DTOs, protocol schemas, and public errors                                        |
+| Core                    | `packages/core`              | Pure deterministic Run, Task, Barrier, Event/Receipt, evaluation, and attribution rules |
+| Application/infra       | `packages/infra`, `apps/api` | Use-case composition, AI adapters, HTTP, Auth, and persistence boundaries               |
+| Scenario assets         | `packages/excon-scenarios`   | Validated, versioned runtime scenario packs                                             |
+| v1 compatibility worker | `apps/worker`                | Consumes PostgreSQL v1 Episode evaluation jobs; default API does not enqueue it         |
+| MCP                     | `apps/mcp`                   | Maps participant tools to HTTP and never reads a database                               |
+| Web                     | `apps/web`                   | Scenario, Run, collaboration, replay, trace, and diagnostic UI                          |
+| Database                | `supabase`                   | EXCON schemas, RLS, journal, seed, and pgTAP                                            |
 
 Core imports no database, HTTP, framework, clock, random, filesystem, or AI-provider code. Dependencies always point outward from the pure domain.
 
@@ -143,7 +143,7 @@ The local Supabase operator signed in by the complete stack currently serves Dat
 
 ## v1 compatibility boundary
 
-`/api/v1` Episodes are an explicit, separate, in-memory compatibility protocol. They do not write the v2 journal, do not survive restart, and never receive automatic fallback from a v2 error. Skill/MCP registers legacy operations only when a caller explicitly selects v1 and the `/api/v1/` base path. Documentation and code must not describe v1 Episodes and v2 Runs as one fact model.
+`/api/v1` Episodes are an explicit, separate, in-memory compatibility protocol. They do not write the v2 journal, do not survive restart, and never receive automatic fallback from a v2 error. `apps/worker` consumes a different PostgreSQL-backed v1 compatibility/testing job path; default in-memory v1 never enqueues it. Skill/MCP registers legacy operations only when a caller explicitly selects v1 and the `/api/v1/` base path. Do not describe v1 Episodes, that Worker, and v2 Runs as one execution model.
 
 ## AI boundary
 
@@ -151,5 +151,7 @@ The local Supabase operator signed in by the complete stack currently serves Dat
 - A trusted development host may explicitly use local Codex; authentication files never enter containers.
 - The OpenAI-compatible adapter receives endpoint, model, and capability configuration server-side.
 - AI may produce schema-bounded explanation or proposals, but cannot decide deterministic scores, Barriers, authorization, or final verdicts.
+
+`apps/worker` calls no AI and serves only the PostgreSQL-backed v1 compatibility/testing path. The v2 evaluator runs inside the deterministic API service and journal replay. Optional AI adapters live at trusted host infrastructure/application boundaries, and their output passes schema plus local rules before use. It never enters an authoritative verdict path.
 
 See [Agent EXCON HTTP](/en/protocols/http/) and [Agent EXCON MCP](/en/protocols/mcp/) for public operations, and [Testing and verification](/en/development/testing/) for test strategy.

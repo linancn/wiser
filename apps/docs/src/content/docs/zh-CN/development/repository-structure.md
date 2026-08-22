@@ -70,14 +70,14 @@ Agent EXCON 的生产运行时场景位于 `packages/excon-scenarios/scenarios/`
 
 ### Agent EXCON
 
-| 包或目录                 | 责任                                                       |
-| ------------------------ | ---------------------------------------------------------- |
-| `@agent-excon/contracts` | 对外 DTO、命令、事件和协议 schema                          |
-| `@agent-excon/core`      | 确定性的 Scenario、Run、Task、Receipt、Feedback 与裁决规则 |
-| `@agent-excon/infra`     | AI、PostgreSQL、Supabase 等外部 adapter                    |
-| `@agent-excon/scenarios` | 经 schema 校验的运行时场景与测试 fixture API               |
-| `apps/api/src/v2-*`      | 当前 EXCON v2 应用服务、持久化 journal 组合和 HTTP adapter |
-| `apps/worker`            | 异步确定性评估 Worker                                      |
+| 包或目录                 | 责任                                                                   |
+| ------------------------ | ---------------------------------------------------------------------- |
+| `@agent-excon/contracts` | 对外 DTO、命令、事件和协议 schema                                      |
+| `@agent-excon/core`      | 确定性的 Scenario、Run、Task、Receipt、Feedback 与裁决规则             |
+| `@agent-excon/infra`     | AI、PostgreSQL、Supabase 等外部 adapter                                |
+| `@agent-excon/scenarios` | 经 schema 校验的运行时场景与测试 fixture API                           |
+| `apps/api/src/v2-*`      | 当前 EXCON v2 应用服务、持久化 journal 组合和 HTTP adapter             |
+| `apps/worker`            | PostgreSQL-backed v1 compatibility/testing Worker；默认 API 不 enqueue |
 
 ### Data Foundation
 

@@ -41,15 +41,23 @@ export DATA_PURPOSE=data-steward-console
 
 `DATA_API_URL` must be HTTP(S), have no userinfo/query/fragment, and end in `/api/data/v1/`. Bearer length is 16–8192 characters with no control characters. Tenant/Project are UUIDs, and Purpose is a bounded safe identifier.
 
-The shared Gateway process initializes its Agent EXCON HTTP client first. Even when a caller uses only Data Tools, the current standalone process therefore needs valid EXCON API configuration:
+The shared Gateway process initializes its Agent EXCON HTTP client first. Even when a caller uses only Data Tools, the current standalone process therefore needs non-empty EXCON configuration consistent with its protocol version:
 
 ```bash
 export AGENT_EXCON_PROTOCOL_VERSION=v2
 export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
-export AGENT_EXCON_API_KEY=<credential-bound-to-one-run-agent>
+export AGENT_EXCON_API_KEY=<configured-excon-key>
 ```
 
-`AGENT_EXCON_API_KEY` and `DATA_API_BEARER_TOKEN` identify callers in different systems and cannot substitute for each other. A local Compose placeholder can satisfy process configuration, but it does not make EXCON Tools callable under unified Auth.
+Data Tools never send `AGENT_EXCON_API_KEY`, so a Data-only local process may use a placeholder. Before invoking `excon_*`, replace it with a real credential bound to one RunAgent. It cannot substitute for `DATA_API_BEARER_TOKEN`, or vice versa.
+
+| Verification layer | Credential                                          | Sole responsibility                             |
+| ------------------ | --------------------------------------------------- | ----------------------------------------------- |
+| MCP HTTP transport | `DATA_MCP_BEARER_TOKEN`                             | Permit `POST /mcp`                              |
+| Agent EXCON module | `AGENT_EXCON_API_KEY`                               | Bind `excon_*` downstream calls to one RunAgent |
+| Data module        | `DATA_API_BEARER_TOKEN` plus Tenant/Project/Purpose | Authorize `data_*` downstream context           |
+
+One Gateway request can discover both modules, but neither the transport principal nor one system principal gains the other system's permissions.
 
 Local stdio:
 
@@ -170,8 +178,8 @@ Other network, 5xx, contract, and unclassified failures converge to secret-safe 
   "ok": false,
   "error": {
     "code": "DATA_API_ERROR",
-    "message": "The Data Foundation API could not complete the request.",
-    "action": "Reconcile identity, scope, and Operation status before a safe retry."
+    "message": "数据基座 API 暂时无法完成请求。 / The Data Foundation API could not complete the request.",
+    "action": "核对身份、范围与 Operation 状态后安全重试。 / Reconcile identity, scope, and Operation status before a safe retry."
   }
 }
 ```
