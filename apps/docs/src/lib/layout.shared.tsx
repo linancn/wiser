@@ -19,7 +19,7 @@ function Brand() {
       <RiverMark />
       <span>
         <strong>WISER</strong>
-        <small>水地图 · Agent EXCON</small>
+        <small>WISER Platform</small>
       </span>
     </span>
   );

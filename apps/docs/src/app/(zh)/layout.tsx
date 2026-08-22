@@ -7,10 +7,10 @@ import '../global.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'WISER 水地图 · Agent EXCON',
+    default: 'WISER Platform',
     template: '%s | WISER',
   },
-  description: 'WISER Agent EXCON 多智能体演练平台开发文档。',
+  description: 'WISER Platform、Agent EXCON 与数据基座的统一双语开发文档。',
   icons: [{ rel: 'icon', url: '/favicon.svg', type: 'image/svg+xml' }],
 };
 
