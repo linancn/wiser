@@ -488,9 +488,9 @@ describe('Data Foundation REST module', () => {
     expect(response.statusCode).toBe(200);
     const query = document.paths['/api/data/v1/query']?.['post'];
     expect(query?.requestBody).toBeDefined();
-    expect(query?.responses?.['200']).toMatchObject({
-      content: { 'application/json': { schema: expect.any(Object) } },
-    });
+    expect(query?.responses?.['200']).toHaveProperty(
+      'content.application/json.schema',
+    );
     expect(query?.security).toEqual([{ bearerAuth: [] }]);
 
     const catalog = document.paths['/api/data/v1/catalog/data-items']?.['get'];

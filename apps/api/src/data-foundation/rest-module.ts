@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
 
 import {
   DATA_CAPABILITY_IDS,
@@ -225,6 +226,123 @@ function record(value: unknown): Readonly<Record<string, unknown>> | null {
     : null;
 }
 
+type CapabilityRuntimeSchema =
+  (typeof DATA_CAPABILITY_REGISTRY)[DataCapabilityId]['inputSchema'];
+
+function jsonSchema(
+  schema: CapabilityRuntimeSchema,
+): Readonly<Record<string, unknown>> {
+  return z.toJSONSchema(schema, { target: 'draft-7' });
+}
+
+function pathParameterNames(path: string): readonly string[] {
+  return Object.freeze(
+    [...path.matchAll(/:([A-Za-z][A-Za-z0-9]*)/g)].map((match) => match[1]!),
+  );
+}
+
+function projectObjectSchema(
+  source: Readonly<Record<string, unknown>>,
+  selectedNames: readonly string[],
+): Readonly<Record<string, unknown>> | null {
+  if (selectedNames.length === 0) return null;
+  const sourceProperties = record(source['properties']);
+  if (sourceProperties === null) return null;
+  const properties: Record<string, unknown> = {};
+  for (const name of selectedNames) {
+    const property = sourceProperties[name];
+    if (property === undefined) return null;
+    properties[name] = property;
+  }
+  const sourceRequired = Array.isArray(source['required'])
+    ? source['required'].filter(
+        (name): name is string =>
+          typeof name === 'string' && selectedNames.includes(name),
+      )
+    : [];
+  return {
+    ...source,
+    properties,
+    ...(sourceRequired.length === 0
+      ? { required: undefined }
+      : { required: sourceRequired }),
+    additionalProperties: false,
+  };
+}
+
+function requestHeadersSchema(
+  capabilityId: DataCapabilityId,
+  kind: 'query' | 'command',
+): Readonly<Record<string, unknown>> {
+  const required = [
+    'x-wiser-tenant-id',
+    'x-wiser-project-id',
+    'x-wiser-purpose',
+    ...(kind === 'command' ? ['idempotency-key'] : []),
+    ...(VERSIONED_COMMANDS.has(capabilityId) ? ['if-match'] : []),
+  ];
+  return {
+    type: 'object',
+    required,
+    properties: {
+      'x-wiser-tenant-id': { type: 'string', format: 'uuid' },
+      'x-wiser-project-id': { type: 'string', format: 'uuid' },
+      'x-wiser-purpose': {
+        type: 'string',
+        minLength: 1,
+        maxLength: 128,
+      },
+      ...(kind === 'command'
+        ? { 'idempotency-key': { type: 'string', format: 'uuid' } }
+        : {}),
+      ...(VERSIONED_COMMANDS.has(capabilityId)
+        ? { 'if-match': { type: 'string', pattern: '^"v[1-9]\\d*"$' } }
+        : {}),
+    },
+    additionalProperties: true,
+  };
+}
+
+function capabilityRouteSchema(capabilityId: DataCapabilityId) {
+  const definition = DATA_CAPABILITY_REGISTRY[capabilityId];
+  const input = jsonSchema(definition.inputSchema);
+  const properties = record(input['properties']);
+  if (properties === null) {
+    throw new Error(`Capability ${capabilityId} requires an object input.`);
+  }
+  const pathNames = pathParameterNames(definition.restMapping.path);
+  const transportNames = Object.keys(properties).filter(
+    (name) => !pathNames.includes(name),
+  );
+  const params = projectObjectSchema(input, pathNames);
+  const transport = projectObjectSchema(input, transportNames);
+  const response =
+    definition.restMapping.responseMode === 'SSE'
+      ? { type: 'string', contentMediaType: 'text/event-stream' }
+      : jsonSchema(definition.outputSchema);
+  return {
+    tags: ['data-foundation'],
+    summary: capabilityId,
+    description: `WISER Data Capability ${capabilityId} v${definition.version}`,
+    operationId: capabilityId.replaceAll('.', '_'),
+    security: [{ bearerAuth: [] }],
+    headers: requestHeadersSchema(capabilityId, definition.kind),
+    ...(params === null ? {} : { params }),
+    ...(transport === null
+      ? {}
+      : definition.restMapping.method === 'GET'
+        ? { querystring: transport }
+        : { body: transport }),
+    response: {
+      [definition.restMapping.successStatus]: response,
+    },
+  };
+}
+
+const passThroughValidatorCompiler = () => (value: unknown) => ({ value });
+const passThroughSerializerCompiler = () => (value: unknown) =>
+  typeof value === 'string' ? value : JSON.stringify(value);
+
 function normalizeQuery(
   value: unknown,
 ): Readonly<Record<string, unknown>> | null {
@@ -416,6 +534,9 @@ export function createDataFoundationRestModule(
         app.route({
           method: definition.restMapping.method,
           url: definition.restMapping.path,
+          schema: capabilityRouteSchema(capabilityId),
+          validatorCompiler: passThroughValidatorCompiler,
+          serializerCompiler: passThroughSerializerCompiler,
           handler: async (request, reply) => {
             setNoStore(reply);
             const resolved = await resolveContext(request, options.resolver);
