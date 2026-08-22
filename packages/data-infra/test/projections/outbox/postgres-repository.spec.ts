@@ -172,6 +172,9 @@ describe('Postgres projection outbox repository', () => {
       /insert into event\.consumer_checkpoint/i.test(text),
     );
     expect(checkpoint?.text).toMatch(/greatest/i);
+    expect(checkpoint?.text).toMatch(
+      /last_error\s*=\s*case[\s\S]*jsonb_build_object\('category'/i,
+    );
     expect(checkpoint?.values).toContain(event.outboxEventId);
     expect(pool.clients.every(({ released }) => released)).toBe(true);
 

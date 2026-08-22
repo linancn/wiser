@@ -44,6 +44,7 @@ class FakeClient implements DataPostgresClient {
     readonly values?: readonly unknown[];
   }> = [];
   projectionReady = true;
+  operationStatus = 'RUNNING';
   released = false;
 
   query(
@@ -148,7 +149,7 @@ class FakeClient implements DataPostgresClient {
             acceptance_status: 'PASSED',
             version_publication_status: 'UNPUBLISHED',
             version_published_at: null,
-            operation_status: 'RUNNING',
+            operation_status: this.operationStatus,
           },
         ],
       });
@@ -320,5 +321,25 @@ describe('PostgreSQL projection authority', () => {
     expect(
       (blockedClient as FakeClient).queries.map(({ text }) => text.trim()),
     ).toContain('ROLLBACK');
+  });
+
+  it('acknowledges a terminal Operation without rewriting authority publication state', async () => {
+    const pool = new FakePool();
+    const client = await pool.connect();
+    (client as FakeClient).operationStatus = 'FAILED';
+    pool.connect = () => Promise.resolve(client);
+    const gate = new PostgresProjectionPublicationGate(
+      pool,
+      '71000000-0000-4000-8000-000000000012',
+    );
+
+    await expect(gate.publish(event)).resolves.toBe('TERMINAL_OPERATION');
+
+    const sql = (client as FakeClient).queries
+      .map(({ text }) => text)
+      .join('\n');
+    expect(sql).not.toContain("state = 'PROJECTING'");
+    expect(sql).not.toContain("state = 'PUBLISHED'");
+    expect(sql).not.toMatch(/insert into security\.audit_event/i);
   });
 });
