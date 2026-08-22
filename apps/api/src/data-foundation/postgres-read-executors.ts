@@ -217,9 +217,9 @@ insert into security.audit_event (
 values (
   $1::uuid, $2::uuid, $3::uuid, $4, 'data_capability', $5, $6, $7,
   jsonb_strip_nulls(jsonb_build_object(
-    'traceId', $10, 'auditLevel', $11, 'actorType', $12,
-    'delegatedBy', $13, 'inputHash', $14, 'outputHash', $15,
-    'errorCode', $16
+    'traceId', $10::text, 'auditLevel', $11::text, 'actorType', $12::text,
+    'delegatedBy', $13::text, 'inputHash', $14::text,
+    'outputHash', $15::text, 'errorCode', $16::text
   )),
   $8, $9::bigint, 1, $17::timestamptz
 )
