@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -11,6 +11,19 @@ function read(path: string): string {
 
 function readJson(path: string): Record<string, unknown> {
   return JSON.parse(read(path)) as Record<string, unknown>;
+}
+
+function markdownFiles(path: string): string[] {
+  const root = resolve(repositoryRoot, path);
+  return readdirSync(root).flatMap((entry) => {
+    const child = `${path}/${entry}`;
+    const absolute = resolve(repositoryRoot, child);
+    return statSync(absolute).isDirectory()
+      ? markdownFiles(child)
+      : /\.mdx?$/.test(entry)
+        ? [child]
+        : [];
+  });
 }
 
 describe('human documentation entrypoints', () => {
@@ -111,5 +124,90 @@ describe('human documentation entrypoints', () => {
 
     expect(webScripts.dev).toBe('next dev --hostname 127.0.0.1 --port 3000');
     expect(docsScripts.dev).toBe('next dev --hostname 127.0.0.1 --port 4321');
+  });
+});
+
+describe('developer handbook and current-state architecture', () => {
+  const developmentPages = [
+    'index.md',
+    'repository-structure.md',
+    'local-environment.md',
+    'backend.md',
+    'frontend.md',
+    'databases.md',
+    'testing.md',
+    'documentation.md',
+    'adding-a-system.md',
+  ];
+
+  it('provides the same complete developer handbook in both languages', () => {
+    for (const locale of ['zh-CN', 'en']) {
+      const root = `apps/docs/src/content/docs/${locale}/development`;
+      for (const page of developmentPages) {
+        expect(existsSync(resolve(repositoryRoot, root, page)), page).toBe(
+          true,
+        );
+      }
+
+      const meta = readJson(`${root}/meta.json`);
+      expect(meta.pages).toEqual(
+        developmentPages.map((page) => page.replace(/\.md$/, '')),
+      );
+    }
+  });
+
+  it('replaces milestone and migration narratives with current architecture', () => {
+    for (const removed of [
+      'docs/roadmap.md',
+      'docs/design/v2-multi-scenario-multi-agent-observability.md',
+      'apps/docs/src/content/docs/zh-CN/architecture/migration-tdd.md',
+      'apps/docs/src/content/docs/en/architecture/migration-tdd.md',
+      'apps/docs/src/content/docs/zh-CN/contributing/tdd.md',
+      'apps/docs/src/content/docs/en/contributing/tdd.md',
+    ]) {
+      expect(existsSync(resolve(repositoryRoot, removed)), removed).toBe(false);
+    }
+
+    for (const locale of ['zh-CN', 'en']) {
+      const architecture = `apps/docs/src/content/docs/${locale}/architecture`;
+      expect(
+        existsSync(resolve(repositoryRoot, architecture, 'agent-excon.md')),
+      ).toBe(true);
+      expect(
+        existsSync(resolve(repositoryRoot, architecture, 'overview.md')),
+      ).toBe(false);
+
+      const excon = read(`${architecture}/agent-excon.md`);
+      for (const invariant of [
+        'RunAgent',
+        'Barrier',
+        'AgentViewReceipt',
+        'Idempotency-Key',
+        'OpenTelemetry',
+      ]) {
+        expect(excon, `${locale}: ${invariant}`).toContain(invariant);
+      }
+    }
+  });
+
+  it('removes superseded delivery language from human-facing documentation', () => {
+    const corpus = [
+      'README.md',
+      'README.en.md',
+      ...markdownFiles('apps/docs/src/content/docs'),
+    ]
+      .map(read)
+      .join('\n');
+
+    for (const historicalNarrative of [
+      '当前已交付',
+      '本轮实际',
+      '本轮关键',
+      'this delivery',
+      'Delivered now',
+      'delivered state',
+    ]) {
+      expect(corpus).not.toContain(historicalNarrative);
+    }
   });
 });
