@@ -51,11 +51,17 @@ afterEach(async () => {
 
 function appWith(options: {
   readonly resolved?: PlatformRequestContext | null;
-  readonly response?: {
-    readonly status: number;
-    readonly contentType: string;
-    readonly body: Uint8Array;
-  };
+  readonly response?:
+    | {
+        readonly status: number;
+        readonly contentType: string;
+        readonly body: Uint8Array;
+      }
+    | ((request: DataFoundationGeoProxyRequest) => {
+        readonly status: number;
+        readonly contentType: string;
+        readonly body: Uint8Array;
+      });
   readonly requestError?: DataFoundationGeoProxyError;
 }) {
   const requests: DataFoundationGeoProxyRequest[] = [];
@@ -77,7 +83,9 @@ function appWith(options: {
         return Promise.reject(options.requestError);
       }
       return Promise.resolve(
-        options.response ?? {
+        (typeof options.response === 'function'
+          ? options.response(request)
+          : options.response) ?? {
           status: 200,
           contentType: 'application/json; charset=utf-8',
           body: new TextEncoder().encode('{"ok":true}'),
@@ -172,7 +180,8 @@ describe('Data Foundation governed GIS proxy', () => {
     });
     expect(method.statusCode).toBe(405);
 
-    const ssrf = await fixture.app.inject({
+    const governed = appWith({});
+    const ssrf = await governed.app.inject({
       method: 'GET',
       url:
         '/api/data/v1/geo/tiles/raster/versions/' +
@@ -182,17 +191,15 @@ describe('Data Foundation governed GIS proxy', () => {
     });
     expect(ssrf.statusCode).toBe(422);
 
-    const admin = await fixture.app.inject({
+    const admin = await governed.app.inject({
       method: 'GET',
       url: '/api/data/v1/geo/stac/..%2F_mgmt%2Fhealth',
       headers,
     });
     expect(admin.statusCode).toBe(422);
-    expect(fixture.proxy.request).not.toHaveBeenCalled();
+    expect(governed.proxy.request).not.toHaveBeenCalled();
     expect(fixture.audits).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ decision: 'DENIED' }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ decision: 'DENIED' })]),
     );
   });
 
@@ -208,9 +215,7 @@ describe('Data Foundation governed GIS proxy', () => {
     expect(response.statusCode).toBe(200);
     const request = fixture.requests[0]!;
     expect(request.target).toBe('STAC');
-    expect(request.path).toMatch(
-      /^\/collections\/wiser-[a-f0-9]{32}\/items$/,
-    );
+    expect(request.path).toMatch(/^\/collections\/wiser-[a-f0-9]{32}\/items$/);
     expect(Object.fromEntries(request.query)).toEqual({ limit: '10' });
 
     const unscoped = await fixture.app.inject({
@@ -224,11 +229,18 @@ describe('Data Foundation governed GIS proxy', () => {
 
   it('authorizes vector versions and resolves raster authority URLs server-side', async () => {
     const fixture = appWith({
-      response: {
-        status: 200,
-        contentType: 'application/vnd.mapbox-vector-tile',
-        body: Uint8Array.from([26, 0]),
-      },
+      response: (request) =>
+        request.target === 'TITILER'
+          ? {
+              status: 200,
+              contentType: 'image/png',
+              body: Uint8Array.from([137, 80, 78, 71]),
+            }
+          : {
+              status: 200,
+              contentType: 'application/vnd.mapbox-vector-tile',
+              body: Uint8Array.from([26, 0]),
+            },
     });
 
     const vector = await fixture.app.inject({
@@ -253,11 +265,6 @@ describe('Data Foundation governed GIS proxy', () => {
       policyVersion: '7',
     });
 
-    fixture.proxy.request.mockResolvedValueOnce({
-      status: 200,
-      contentType: 'image/png',
-      body: Uint8Array.from([137, 80, 78, 71]),
-    });
     const raster = await fixture.app.inject({
       method: 'GET',
       url:

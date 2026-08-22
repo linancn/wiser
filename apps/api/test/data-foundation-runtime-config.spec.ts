@@ -100,7 +100,7 @@ describe('Data Foundation API runtime configuration', () => {
       },
       geo: {
         geoserverUrl: complete.DATA_GEOSERVER_URL,
-        titilerUrl: complete.DATA_TITILER_URL,
+        titilerUrl: 'http://titiler',
         martinUrl: complete.DATA_MARTIN_URL,
       },
       publicApiOrigin: complete.DATA_PUBLIC_API_ORIGIN,

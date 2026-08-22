@@ -24,6 +24,16 @@ import {
   type DataCapabilityExecutor,
 } from './capability-handler.js';
 import { createDataFoundationGraphqlModule } from './graphql-module.js';
+import {
+  createDataFoundationGeoProxyModule,
+  type DataFoundationGeoAuditPort,
+  type DataFoundationGeoAuthorityPort,
+  type DataFoundationGeoProxyPort,
+} from './geo-proxy-module.js';
+import {
+  FixedOriginDataFoundationGeoProxyPort,
+  PostgresDataFoundationGeoAuthorityPort,
+} from './geo-proxy-ports.js';
 import { createDataFoundationModule } from './plugin.js';
 import {
   createPostgresDataCommandRuntime,
@@ -97,6 +107,13 @@ export interface DataFoundationRuntimeFactories {
     config: Extract<DataFoundationApiRuntimeConfig, { mode: 'enabled' }>,
     pool: DataFoundationSharedPool,
   ): DataFoundationResourcePort;
+  createGeoAuthorityPort(
+    config: Extract<DataFoundationApiRuntimeConfig, { mode: 'enabled' }>,
+    pool: DataFoundationSharedPool,
+  ): DataFoundationGeoAuthorityPort & DataFoundationGeoAuditPort;
+  createGeoProxyPort(
+    config: Extract<DataFoundationApiRuntimeConfig, { mode: 'enabled' }>,
+  ): DataFoundationGeoProxyPort;
   probeDatabase(pool: DataFoundationSharedPool): Promise<boolean>;
   probeWorker(workerUrl: string): Promise<boolean>;
 }
@@ -246,6 +263,23 @@ const defaultFactories: DataFoundationRuntimeFactories = {
       },
     });
   },
+  createGeoAuthorityPort(config, pool) {
+    return new PostgresDataFoundationGeoAuthorityPort({
+      pool: (pool as DefaultPool).pg,
+      bucket: config.objectStore.bucket,
+    });
+  },
+  createGeoProxyPort(config) {
+    return new FixedOriginDataFoundationGeoProxyPort({
+      origins: {
+        GEOSERVER: config.geo.geoserverUrl,
+        STAC: config.stac.url,
+        TITILER: config.geo.titilerUrl,
+        MARTIN: config.geo.martinUrl,
+      },
+      stacBearerToken: config.stac.bearerToken,
+    });
+  },
   async probeDatabase(pool) {
     try {
       await (pool as DefaultPool).pg.query('select 1');
@@ -315,6 +349,8 @@ export function createDataFoundationRuntimeFromEnvironment(
       objectStore.store,
     );
     const resources = factories.createResourcePort(config, pool);
+    const geoAuthority = factories.createGeoAuthorityPort(config, pool);
+    const geoProxy = factories.createGeoProxyPort(config);
     const executors = exactExecutors([
       read.executors,
       command.executors,
@@ -355,6 +391,12 @@ export function createDataFoundationRuntimeFromEnvironment(
       createDataFoundationResourceModule({
         resolver: platformAuth.resolver,
         resources,
+      }),
+      createDataFoundationGeoProxyModule({
+        resolver: platformAuth.resolver,
+        authority: geoAuthority,
+        proxy: geoProxy,
+        audit: geoAuthority,
       }),
     ]);
     return Object.freeze({ enabled: true, modules, executors });

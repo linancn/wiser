@@ -79,6 +79,9 @@ services:
       DATA_NEO4J_PASSWORD: ${NEO4J_PASSWORD:-WiserLocalNeo4j-5d6f13b9}
       DATA_STAC_API_URL: http://stac-api:8080
       DATA_STAC_API_BEARER_TOKEN: ${STAC_API_BEARER_TOKEN:-wiser-local-stac-bearer-2cc4d01f}
+      DATA_GEOSERVER_URL: http://geoserver:8080
+      DATA_TITILER_URL: http://titiler:80
+      DATA_MARTIN_URL: http://martin:3000
       DATA_PUBLIC_API_ORIGIN: http://127.0.0.1:3001
       DATA_FAKE_EMBEDDING_DIMENSIONS: '32'
       NODE_EXTRA_CA_CERTS: /etc/wiser/opensearch/root-ca.pem
@@ -569,8 +572,8 @@ services:
       HEALTHCHECK_URL: http://127.0.0.1:8080/geoserver/web/
       EXTRA_JAVA_OPTS: -Xms256m -Xmx1g
       RUN_UNPRIVILEGED: 'true'
-    ports:
-      - 127.0.0.1:18081:8080
+    expose:
+      - '8080'
     volumes:
       - type: volume
         source: geoserver-data
@@ -605,8 +608,8 @@ services:
       DB_MIN_CONN_SIZE: '1'
       DB_MAX_CONN_SIZE: '5'
       ENABLE_TRANSACTIONS_EXTENSIONS: 'true'
-    ports:
-      - 127.0.0.1:18082:8080
+    expose:
+      - '8080'
     depends_on:
       data-migrate:
         condition: service_completed_successfully
@@ -641,8 +644,8 @@ services:
       AWS_VIRTUAL_HOSTING: 'FALSE'
       GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
       WEB_CONCURRENCY: '1'
-    ports:
-      - 127.0.0.1:18000:80
+    expose:
+      - '80'
     depends_on:
       seaweedfs:
         condition: service_healthy
@@ -662,8 +665,8 @@ services:
     image: ghcr.io/maplibre/martin:1.14.0@sha256:fe5e8952312ca8ea0a25c4b1f72ceb13676f2b50dca310843e48b31c8ceb2264
     environment:
       DATABASE_URL: postgresql://wiser_data_gis:${DATA_GIS_DATABASE_PASSWORD:-wiser-local-gis-runtime-e7c124a9}@data-postgres:5432/wiser_data
-    ports:
-      - 127.0.0.1:13000:3000
+    expose:
+      - '3000'
     depends_on:
       data-runtime-provision:
         condition: service_completed_successfully

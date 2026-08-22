@@ -55,7 +55,8 @@ function proxyRequest(
 
 describe('fixed-origin GIS upstream port', () => {
   it('uses only configured service origins, injects internal credentials, and bounds the body', async () => {
-    const requested: { readonly url: string; readonly init: RequestInit }[] = [];
+    const requested: { readonly url: string; readonly init: RequestInit }[] =
+      [];
     const port = new FixedOriginDataFoundationGeoProxyPort({
       origins: {
         GEOSERVER: 'http://geoserver:8080',
@@ -92,9 +93,7 @@ describe('fixed-origin GIS upstream port', () => {
       contentType: 'application/json',
       etag: '"safe-etag"',
     });
-    expect(new TextDecoder().decode(response.body)).toBe(
-      '{"conformsTo":[]}',
-    );
+    expect(new TextDecoder().decode(response.body)).toBe('{"conformsTo":[]}');
     expect(response).not.toHaveProperty('setCookie');
   });
 
@@ -124,9 +123,7 @@ describe('fixed-origin GIS upstream port', () => {
       ),
     ).rejects.toMatchObject({ code: 'INVALID_CONFIGURATION' });
     await expect(
-      port.request(
-        proxyRequest({ target: 'STAC', path: '/_mgmt/health' }),
-      ),
+      port.request(proxyRequest({ target: 'STAC', path: '/_mgmt/health' })),
     ).rejects.toMatchObject({ code: 'INVALID_CONFIGURATION' });
     await expect(port.request(proxyRequest())).rejects.toMatchObject({
       code: 'RESPONSE_TOO_LARGE',
@@ -206,14 +203,17 @@ describe('Postgres GIS authority and audit port', () => {
   });
 
   it('rejects absent, non-COG, or storage-key-conflicting versions without returning backend details', async () => {
-    const client = new FakeClient([], [
-      {
-        version_id: VERSION_ID,
-        storage_key: 'tenants/another/project/object',
-        content_hash: HASH,
-        media_type: 'application/geo+json',
-      },
-    ]);
+    const client = new FakeClient(
+      [],
+      [
+        {
+          version_id: VERSION_ID,
+          storage_key: 'tenants/another/project/object',
+          content_hash: HASH,
+          media_type: 'application/geo+json',
+        },
+      ],
+    );
     const port = new PostgresDataFoundationGeoAuthorityPort({
       pool: { connect: () => Promise.resolve(client) },
       bucket: 'wiser-authority',

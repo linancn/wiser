@@ -30,6 +30,11 @@ export type DataFoundationApiRuntimeConfig =
         readonly url: string;
         readonly bearerToken: string;
       };
+      readonly geo: {
+        readonly geoserverUrl: string;
+        readonly titilerUrl: string;
+        readonly martinUrl: string;
+      };
       readonly publicApiOrigin: string;
       readonly fakeEmbeddingDimensions: number;
     };
@@ -54,6 +59,9 @@ const RUNTIME_FIELDS = [
   'DATA_NEO4J_PASSWORD',
   'DATA_STAC_API_URL',
   'DATA_STAC_API_BEARER_TOKEN',
+  'DATA_GEOSERVER_URL',
+  'DATA_TITILER_URL',
+  'DATA_MARTIN_URL',
   'DATA_PUBLIC_API_ORIGIN',
 ] as const;
 
@@ -235,6 +243,20 @@ export function loadDataFoundationApiRuntimeConfig(
         required(environment, 'DATA_STAC_API_BEARER_TOKEN'),
         'DATA_STAC_API_BEARER_TOKEN',
         16,
+      ),
+    },
+    geo: {
+      geoserverUrl: endpoint(
+        required(environment, 'DATA_GEOSERVER_URL'),
+        'DATA_GEOSERVER_URL',
+      ),
+      titilerUrl: endpoint(
+        required(environment, 'DATA_TITILER_URL'),
+        'DATA_TITILER_URL',
+      ),
+      martinUrl: endpoint(
+        required(environment, 'DATA_MARTIN_URL'),
+        'DATA_MARTIN_URL',
       ),
     },
     publicApiOrigin: endpoint(
