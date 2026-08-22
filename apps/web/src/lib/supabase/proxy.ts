@@ -49,11 +49,15 @@ export function loadWebSupabaseConfig(
     throw new Error('WISER_AUTH_MODE must be off or supabase.');
   }
 
-  const supabaseUrl = environment['NEXT_PUBLIC_SUPABASE_URL'];
+  const browserSupabaseUrl = environment['NEXT_PUBLIC_SUPABASE_URL'];
+  const supabaseUrl = environment['SUPABASE_URL'] ?? browserSupabaseUrl;
   const supabasePublishableKey =
     environment['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'];
-  if (!validHttpUrl(supabaseUrl)) {
+  if (!validHttpUrl(browserSupabaseUrl)) {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL is required for Supabase Auth.');
+  }
+  if (!validHttpUrl(supabaseUrl)) {
+    throw new Error('SUPABASE_URL must be a valid internal Supabase origin.');
   }
   if (
     supabasePublishableKey === undefined ||

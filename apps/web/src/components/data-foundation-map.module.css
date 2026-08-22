@@ -1,0 +1,45 @@
+.map {
+  position: relative;
+  min-height: clamp(330px, 55vw, 620px);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background-color: var(--surface-strong);
+  background-image:
+    linear-gradient(var(--border-on-strong) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-on-strong) 1px, transparent 1px);
+  background-size: 36px 36px;
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.map :global(.maplibregl-ctrl-group) {
+  border: 1px solid var(--border-on-strong);
+  background: var(--surface-glass);
+  box-shadow: var(--shadow-soft);
+}
+
+.map :global(.maplibregl-ctrl button) {
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.map :global(.maplibregl-ctrl-attrib) {
+  color: var(--text-secondary);
+  background: var(--surface-glass);
+}
+
+@media (max-width: 640px) {
+  .map {
+    min-height: 360px;
+    border-radius: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
