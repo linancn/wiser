@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PlatformRequestContext } from '@wiser/platform-contracts';
+import { deterministicStacCollectionId } from '@wiser/data-infra';
 
 import {
   DataFoundationResourceError,
@@ -14,7 +15,10 @@ const SESSION_ID = 'db000000-0000-4000-8000-000000000004';
 const EVIDENCE_ID = 'db000000-0000-4000-8000-000000000005';
 const DATA_ITEM_ID = 'db000000-0000-4000-8000-000000000006';
 const VERSION_ID = 'db000000-0000-4000-8000-000000000007';
-const COLLECTION_ID = `wiser-${'a'.repeat(32)}`;
+const COLLECTION_ID = deterministicStacCollectionId({
+  tenantId: TENANT_ID,
+  projectId: PROJECT_ID,
+});
 const ITEM_ID = `wiser-${'b'.repeat(48)}`;
 const SOURCE_HASH = 'c'.repeat(64);
 
@@ -53,10 +57,17 @@ function authorityRow() {
     created_at: '2026-08-22T08:00:00.000Z',
     publication_status: 'PUBLISHED',
     acceptance_status: 'PASSED',
+    quality_grade: 'A',
   };
 }
 
-function fixture() {
+function fixture(
+  options: {
+    readonly stacBody?: unknown;
+    readonly stacStatus?: number;
+    readonly stacHeaders?: Readonly<Record<string, string>>;
+  } = {},
+) {
   const queries: Array<{ text: string; values?: readonly unknown[] }> = [];
   const client = {
     query(text: string, values?: readonly unknown[]) {
@@ -71,50 +82,54 @@ function fixture() {
     },
     release: vi.fn(),
   };
-  const fetcher = vi.fn(() =>
+  const defaultStacBody = {
+    stac_version: '1.1.0',
+    stac_extensions: [],
+    type: 'Feature',
+    id: ITEM_ID,
+    collection: COLLECTION_ID,
+    bbox: [116.1, 39.7, 116.1, 39.7],
+    geometry: { type: 'Point', coordinates: [116.1, 39.7] },
+    properties: {
+      datetime: '2026-08-22T08:00:00.000Z',
+      title: 'Yongding governed asset',
+      description: 'Published WISER STAC evidence.',
+      tenantId: TENANT_ID,
+      projectId: PROJECT_ID,
+      dataItemId: DATA_ITEM_ID,
+      versionId: VERSION_ID,
+      evidenceId: EVIDENCE_ID,
+      securityLevel: 'L1_INTERNAL',
+      policyVersion: 7,
+      sourceHash: SOURCE_HASH,
+      qualityGrade: 'A',
+      acceptanceStatus: 'PASSED',
+      publicationStatus: 'PUBLISHED',
+      businessDomains: ['water-monitoring'],
+      channels: ['stac'],
+      limitations: [],
+    },
+    links: [{ rel: 'self', href: 'http://stac-api:8080/internal' }],
+    assets: {
+      source: {
+        href: `http://api:3001/api/data/v1/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/assets/source`,
+        type: 'application/geo+json',
+        roles: ['data'],
+        'file:checksum': `sha256:${SOURCE_HASH}`,
+        'file:size': 1024,
+      },
+    },
+    internal_secret: 'must-not-pass-through',
+  };
+  const fetcher = vi.fn((_input: string | URL | Request, _init?: RequestInit) =>
     Promise.resolve(
-      new Response(
-        JSON.stringify({
-          stac_version: '1.1.0',
-          stac_extensions: [],
-          type: 'Feature',
-          id: ITEM_ID,
-          collection: COLLECTION_ID,
-          bbox: [116.1, 39.7, 116.1, 39.7],
-          geometry: { type: 'Point', coordinates: [116.1, 39.7] },
-          properties: {
-            datetime: '2026-08-22T08:00:00.000Z',
-            title: 'Yongding governed asset',
-            description: 'Published WISER STAC evidence.',
-            tenantId: TENANT_ID,
-            projectId: PROJECT_ID,
-            dataItemId: DATA_ITEM_ID,
-            versionId: VERSION_ID,
-            evidenceId: EVIDENCE_ID,
-            securityLevel: 'L1_INTERNAL',
-            policyVersion: 7,
-            sourceHash: SOURCE_HASH,
-            qualityGrade: 'A',
-            acceptanceStatus: 'PASSED',
-            publicationStatus: 'PUBLISHED',
-            businessDomains: ['water-monitoring'],
-            channels: ['stac'],
-            limitations: [],
-          },
-          links: [{ rel: 'self', href: 'http://stac-api:8080/internal' }],
-          assets: {
-            source: {
-              href: `http://api:3001/api/data/v1/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/assets/source`,
-              type: 'application/geo+json',
-              roles: ['data'],
-              'file:checksum': `sha256:${SOURCE_HASH}`,
-              'file:size': 1024,
-            },
-          },
-          internal_secret: 'must-not-pass-through',
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/geo+json' } },
-      ),
+      new Response(JSON.stringify(options.stacBody ?? defaultStacBody), {
+        status: options.stacStatus ?? 200,
+        headers: {
+          'Content-Type': 'application/geo+json',
+          ...options.stacHeaders,
+        },
+      }),
     ),
   );
   const port = new PostgresDataFoundationResourcePort({
@@ -155,8 +170,15 @@ describe('PostgreSQL-backed Data Resource port', () => {
     expect(sql).toContain("set_config('statement_timeout'");
     expect(sql).toContain('security.authorized_row');
     expect(sql).toContain('security.audit_event');
-    expect(sql).toContain('data.evidence.read');
+    expect(queries.flatMap(({ values }) => values ?? [])).toContain(
+      'data.evidence.read',
+    );
     expect(sql).toContain('referenceHash');
+    const audit = queries.find(({ text }) =>
+      /data\.resource\.audit/.test(text),
+    );
+    expect(audit?.values?.[5]).toMatch(/^[a-f0-9]{64}$/);
+    expect(audit?.values?.[5]).not.toBe(EVIDENCE_ID);
     expect(client.release).toHaveBeenCalledOnce();
   });
 
@@ -170,8 +192,14 @@ describe('PostgreSQL-backed Data Resource port', () => {
     });
 
     const [input, init] = fetcher.mock.calls[0]!;
-    expect(new URL(String(input)).origin).toBe('http://stac-api:8080');
-    expect(new URL(String(input)).pathname).toBe(
+    const requestedUrl =
+      input instanceof Request
+        ? input.url
+        : input instanceof URL
+          ? input.href
+          : input;
+    expect(new URL(requestedUrl).origin).toBe('http://stac-api:8080');
+    expect(new URL(requestedUrl).pathname).toBe(
       `/collections/${COLLECTION_ID}/items/${ITEM_ID}`,
     );
     expect(new Headers(init?.headers).get('authorization')).toBe(
@@ -190,7 +218,14 @@ describe('PostgreSQL-backed Data Resource port', () => {
     const sql = queries.map(({ text }) => text).join('\n');
     expect(sql).toContain('data.resource.stac.authorize');
     expect(sql).toContain("publication_status = 'PUBLISHED'");
-    expect(sql).toContain('data.stac-item.read');
+    expect(queries.flatMap(({ values }) => values ?? [])).toContain(
+      'data.stac-item.read',
+    );
+    const audit = queries.find(({ text }) =>
+      /data\.resource\.audit/.test(text),
+    );
+    expect(audit?.values?.[5]).toMatch(/^[a-f0-9]{64}$/);
+    expect(audit?.values?.[5]).not.toContain(ITEM_ID);
   });
 
   it('rejects cross-tenant collections before fetch and maps hidden rows to the same safe not-found error', async () => {
@@ -209,7 +244,7 @@ describe('PostgreSQL-backed Data Resource port', () => {
 
     const hidden = fixture();
     hidden.queries.splice(0);
-    const originalQuery = hidden.client.query;
+    const originalQuery = hidden.client.query.bind(hidden.client);
     hidden.client.query = (text: string, values?: readonly unknown[]) => {
       if (/data\.resource\.evidence\.lookup/.test(text)) {
         return Promise.resolve({ rows: [] });
@@ -222,5 +257,61 @@ describe('PostgreSQL-backed Data Resource port', () => {
     expect(hiddenError).toBeInstanceOf(DataFoundationResourceError);
     expect(hiddenError).toMatchObject({ code: 'NOT_FOUND' });
     expect(String(hiddenError)).not.toContain(EVIDENCE_ID);
+  });
+
+  it('rejects oversized or identity-conflicting STAC responses before authority audit', async () => {
+    const oversized = fixture({
+      stacHeaders: { 'Content-Length': '300000' },
+    });
+    const oversizedError = await oversized.port
+      .readStacItem({ context, collectionId: COLLECTION_ID, itemId: ITEM_ID })
+      .catch((error: unknown) => error);
+    expect(oversizedError).toBeInstanceOf(DataFoundationResourceError);
+    expect(oversizedError).toMatchObject({ code: 'RESPONSE_TOO_LARGE' });
+    expect(oversized.queries).toHaveLength(0);
+
+    const conflicting = fixture({
+      stacBody: {
+        stac_version: '1.1.0',
+        stac_extensions: [],
+        type: 'Feature',
+        id: ITEM_ID,
+        collection: COLLECTION_ID,
+        bbox: [116.1, 39.7, 116.1, 39.7],
+        geometry: { type: 'Point', coordinates: [116.1, 39.7] },
+        properties: {
+          datetime: '2026-08-22T08:00:00.000Z',
+          tenantId: 'db000000-0000-4000-8000-000000000099',
+          projectId: PROJECT_ID,
+          dataItemId: DATA_ITEM_ID,
+          versionId: VERSION_ID,
+          evidenceId: EVIDENCE_ID,
+          securityLevel: 'L1_INTERNAL',
+          policyVersion: 7,
+          sourceHash: SOURCE_HASH,
+          qualityGrade: 'A',
+          acceptanceStatus: 'PASSED',
+          publicationStatus: 'PUBLISHED',
+          businessDomains: [],
+          channels: ['stac'],
+          limitations: [],
+        },
+        assets: {
+          source: {
+            href: `http://api:3001/api/data/v1/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/assets/source`,
+            type: 'application/geo+json',
+            roles: ['data'],
+            'file:checksum': `sha256:${SOURCE_HASH}`,
+            'file:size': 1024,
+          },
+        },
+      },
+    });
+    const conflictingError = await conflicting.port
+      .readStacItem({ context, collectionId: COLLECTION_ID, itemId: ITEM_ID })
+      .catch((error: unknown) => error);
+    expect(conflictingError).toBeInstanceOf(DataFoundationResourceError);
+    expect(conflictingError).toMatchObject({ code: 'INVALID_RESPONSE' });
+    expect(conflicting.queries).toHaveLength(0);
   });
 });

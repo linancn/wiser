@@ -110,6 +110,10 @@ function factories(overrides: Partial<DataFoundationRuntimeFactories> = {}) {
           expiresAt: '2026-08-22T08:01:00.000Z',
         }),
     })),
+    createResourcePort: vi.fn(() => ({
+      readEvidence: () => Promise.resolve({}),
+      readStacItem: () => Promise.resolve({}),
+    })),
     probeDatabase: vi.fn(() => Promise.resolve(true)),
     probeWorker: vi.fn(() => Promise.resolve(true)),
     ...overrides,
@@ -128,6 +132,7 @@ describe('Data Foundation production runtime composition', () => {
       { id: 'data.foundation', register() {} },
       { id: 'data.foundation.rest', register() {} },
       { id: 'data.foundation.graphql', register() {} },
+      { id: 'data.foundation.resources', register() {} },
     ];
     const modules = createDefaultApiModules(
       {},
@@ -145,6 +150,7 @@ describe('Data Foundation production runtime composition', () => {
       'data.foundation',
       'data.foundation.rest',
       'data.foundation.graphql',
+      'data.foundation.resources',
     ]);
   });
 
@@ -163,6 +169,7 @@ describe('Data Foundation production runtime composition', () => {
       'data.foundation',
       'data.foundation.rest',
       'data.foundation.graphql',
+      'data.foundation.resources',
     ]);
     const app = buildApp({ logger: false, modules: runtime.modules });
     openApps.push(app);

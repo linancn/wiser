@@ -147,6 +147,16 @@ function success(data: JsonObject): CallToolResult {
   };
 }
 
+function resourceText(payload: JsonObject): string {
+  const serialized = JSON.stringify(payload);
+  if (serialized.length <= RESPONSE_CHARACTER_LIMIT) return serialized;
+  return JSON.stringify({
+    error: 'MCP_RESOURCE_TOO_LARGE',
+    message:
+      '数据资源超过 MCP 安全上限。 / The data resource exceeds the MCP safety limit.',
+  });
+}
+
 function objectSchema(id: DataCapabilityId): z.ZodObject<z.ZodRawShape> {
   const schema = DATA_CAPABILITY_REGISTRY[id].inputSchema;
   if (!(schema instanceof z.ZodObject)) {
@@ -377,7 +387,7 @@ function registerResources(
             {
               uri: uri.href,
               mimeType: 'application/json',
-              text: JSON.stringify(payload),
+              text: resourceText(payload),
             },
           ],
         };

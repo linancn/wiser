@@ -156,8 +156,10 @@ describe('Data Foundation governed resource routes', () => {
   });
 
   it('fails closed before resource I/O for missing auth, invalid references, or missing scopes', async () => {
-    const restrictedContext = structuredClone(context);
-    restrictedContext.authorization.scopes = [];
+    const restrictedContext: PlatformRequestContext = {
+      ...context,
+      authorization: { ...context.authorization, scopes: [] },
+    };
     const { app, resources } = appWith({ resolved: restrictedContext });
 
     const missing = await app.inject({

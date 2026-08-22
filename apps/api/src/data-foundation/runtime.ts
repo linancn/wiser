@@ -40,6 +40,9 @@ import {
   createDataFoundationRestModule,
   type DataFoundationAssetDownloadPort,
 } from './rest-module.js';
+import { createDataFoundationResourceModule } from './resource-module.js';
+import { PostgresDataFoundationResourcePort } from './postgres-resource-port.js';
+import type { DataFoundationResourcePort } from './resource-types.js';
 import {
   PostgresDataAssetDownloadPort,
   type AssetDownloadObjectStore,
@@ -90,6 +93,10 @@ export interface DataFoundationRuntimeFactories {
     pool: DataFoundationSharedPool,
     objectStore: unknown,
   ): DataFoundationAssetDownloadPort;
+  createResourcePort(
+    config: Extract<DataFoundationApiRuntimeConfig, { mode: 'enabled' }>,
+    pool: DataFoundationSharedPool,
+  ): DataFoundationResourcePort;
   probeDatabase(pool: DataFoundationSharedPool): Promise<boolean>;
   probeWorker(workerUrl: string): Promise<boolean>;
 }
@@ -229,6 +236,16 @@ const defaultFactories: DataFoundationRuntimeFactories = {
       ttlSeconds: 60,
     });
   },
+  createResourcePort(config, pool) {
+    return new PostgresDataFoundationResourcePort({
+      pool: (pool as DefaultPool).pg,
+      stac: {
+        baseUrl: config.stac.url,
+        bearerToken: config.stac.bearerToken,
+        publicApiOrigin: config.publicApiOrigin,
+      },
+    });
+  },
   async probeDatabase(pool) {
     try {
       await (pool as DefaultPool).pg.query('select 1');
@@ -297,6 +314,7 @@ export function createDataFoundationRuntimeFromEnvironment(
       pool,
       objectStore.store,
     );
+    const resources = factories.createResourcePort(config, pool);
     const executors = exactExecutors([
       read.executors,
       command.executors,
@@ -333,6 +351,10 @@ export function createDataFoundationRuntimeFromEnvironment(
         resolver: platformAuth.resolver,
         handler,
         production: environment['NODE_ENV'] === 'production',
+      }),
+      createDataFoundationResourceModule({
+        resolver: platformAuth.resolver,
+        resources,
       }),
     ]);
     return Object.freeze({ enabled: true, modules, executors });
