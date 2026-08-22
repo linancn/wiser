@@ -16,7 +16,7 @@ checkPaths:
   - skills/agent-excon/**
   - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 ---
 
 # WISER MCP Gateway
@@ -55,6 +55,10 @@ export DATA_PURPOSE=data-steward-console
 ```
 
 Data command inputs add UUID `idempotencyKey`; upload complete, ingestion submit/approve/reject, and Operation cancel also map `expectedVersion` to `If-Match`. Full Tool/Resource tables are in [`protocols/data-mcp.md`](../docs/src/content/docs/en/protocols/data-mcp.md).
+
+Data Tool 的下游 `401`/`403` 分别安全保留为 `NOT_AUTHENTICATED`/`NOT_AUTHORIZED`，但绝不转发 API `details`、Bearer 或后端正文。包含顶层或嵌套 Operation ID 的成功结果还会在顶层 `structuredContent.resource` 返回精确 `operation://<uuid>`。Evidence 与 STAC Resource 现在由真实 HTTP GET 支撑，并在 API 侧重新执行 Scope、RLS、权威复核和 append-only audit。
+
+Data Tool failures preserve downstream `401`/`403` safely as `NOT_AUTHENTICATED`/`NOT_AUTHORIZED` without forwarding API `details`, Bearers, or backend bodies. A success with a top-level or nested Operation id also exposes exact `operation://<uuid>` at top-level `structuredContent.resource`. Evidence and STAC Resources now use real HTTP GETs that reapply scopes, RLS, authority reconciliation, and append-only audit in the API.
 
 ### Streamable HTTP / Streamable HTTP transport
 

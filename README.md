@@ -16,7 +16,7 @@ checkPaths:
   - compose.yaml
   - docs/roadmap.md
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 ---
 
 # WISER · 水地图
@@ -60,6 +60,8 @@ tests/          跨边界 fixture 与验收测试
 - workspace 固定的 Supabase CLI
 
 npm 依赖使用精确版本并由一个 `pnpm-lock.yaml` 锁定；容器使用稳定 tag 加 `sha256` digest，Data Foundation 镜像登记在 [`infrastructure/data-foundation/versions.env`](./infrastructure/data-foundation/versions.env)，禁止 `latest`。
+
+本轮关键应用 pin：AWS S3 SDK/presigner `3.1116.0`、Next.js `16.3.2`、Fumadocs core/UI `16.15.0` 与 MDX `15.3.1`、MapLibre GL JS `6.5.0`。pnpm 仍对其他包执行 24 小时 `minimumReleaseAge`；只对这些刚核验并精确锁定的 AWS/Smithy、Next、Fumadocs、MapLibre 包做窄例外。GraphQL `16.14.2` + Mercurius `16.10.0` 是当前 Fastify 5/TS7 兼容线；`@types/node` `24.13.3` 刻意对齐 Node 24，而不追随不同 runtime major。
 
 ## 安装与验证
 

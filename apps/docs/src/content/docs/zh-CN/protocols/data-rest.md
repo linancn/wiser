@@ -1,6 +1,6 @@
 ---
 title: Data REST API
-description: Data Foundation 22 项 Capability、统一身份、幂等、版本、SSE 与资产下载协议。
+description: Data Foundation 22 项 Capability、OpenAPI、受控 Resource、幂等、SSE 与资产下载协议。
 docType: protocol-reference
 scope: data-rest-api
 status: active
@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 ---
 
 ## 协议边界
@@ -48,6 +48,12 @@ MCP、Skill 和 Web 的服务端 DAL 都通过这个 HTTP 边界工作。任何�
 ```
 
 `projections: rebuildable` 表示投影不是授权权威，并不表示可在响应中忽略 Tenant/Project/security filter。
+
+## OpenAPI 契约投影
+
+共享 `GET /openapi.json` 返回 OpenAPI 3.1 文档，标题固定为 **WISER Platform API**，同时覆盖 Platform、Agent EXCON 与 Data Foundation。Data 的 22 项 Capability 不维护第二份手写 Schema：Fastify 在注册路由时直接把 Registry 的 Zod 4 输入/输出转换成 draft-7 JSON Schema，再按 path、query、body 与 required Header 投影为 OpenAPI operation。
+
+每个 Data operation 都带 `data-foundation` tag、稳定 `operationId`、`bearerAuth`、成功状态的响应 Schema，以及 command 的 `Idempotency-Key` 和版本化 command 的 `If-Match`。Fastify 的 schema compiler 在这里服务于 OpenAPI 投影；运行时唯一业务门禁仍是同一 `DataCapabilityHandler` 的 strict Zod 输入/输出校验，不能让生成文档变成第二个行为来源。
 
 ## 身份与上下文 Header
 
@@ -139,6 +145,19 @@ URL 的 TTL 是 60–900 秒；调用方不能改 key。API 在完成前通过 H
 
 断线后使用最后确认的 cursor 重新请求。不要用 wall-clock 或进度百分比合成事件，也不要把重复 event 当作新的状态转换。
 
+## Evidence 与 STAC Resource 读取
+
+以下两条受控 GET 不属于 22 项业务 Capability；它们专门承载 MCP Resource，并仍复用统一 Auth、data-postgres RLS、授权后审计与 no-store：
+
+| 路径                                                        | Scope                 | 权威与输出边界                                                                                                                 |
+| ----------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `/api/data/v1/evidence/fragments/:evidenceId`               | `data.knowledge.read` | `evidenceId` 必须是 UUID；只返回调用方可见且关联已提交版本的 Evidence、locator/hash、可选 excerpt、安全/策略/版本元数据        |
+| `/api/data/v1/stac/collections/:collectionId/items/:itemId` | `data.geo.read`       | collection 必须是当前 Tenant/Project 的确定性 `wiser-<32 hex>`；item 为 `wiser-<48 hex>`；只返回经权威版本复核的 STAC 1.1 Item |
+
+Evidence 事务同时对 fragment 与其 DataItemVersion 执行 `security.authorized_row`，把 `data.evidence.read` 和引用 hash 写入 append-only audit；隐藏与不存在使用同一 `404`。STAC 路由先拒绝跨 Tenant/Project collection，再从固定内部 STAC origin 有界读取，剥离上游 link/未知字段，并逐项核对 DataItem、Version、Evidence、source hash、安全等级、policy、质量、验收与 `PUBLISHED` 状态。其 source asset href 必须精确指向下述受控下载入口；成功读取追加 `data.stac-item.read` audit。
+
+两个 Resource 响应最大 256 KiB，均为 `application/json` 和 `private, no-store`。引用非法返回 `422`，输出过大返回 `413`，上游投影契约不合法返回 `502`，依赖不可用返回 `503`；数据库、内部 STAC bearer、上游 URL 和原始错误正文永不回显。
+
 ## 授权资产下载
 
 已发布 STAC Item 的 source asset 使用：
@@ -188,8 +207,10 @@ Data REST 错误是扁平安全 envelope：
 | `401` | bearer 或 Tenant/Project/Purpose 上下文缺失/无效    |
 | `403` | 已知身份缺少 Scope、security ceiling 或资源权限     |
 | `404` | 资源不存在或调用方无权知道其存在                    |
+| `413` | 受控 Resource 超过 256 KiB 响应上限                 |
 | `409` | 状态、版本、内容不可变或幂等冲突                    |
 | `422` | strict schema、Header 或领域前置条件失败            |
+| `502` | 上游 Resource/投影响应不符合受控契约                |
 | `503` | authority、Worker 或 projection dependency 暂不可用 |
 | `500` | 服务端契约/配置失败；响应仍不泄露内部详情           |
 

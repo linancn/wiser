@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 ---
 
 ## Current runtime boundary
@@ -39,6 +39,10 @@ The complete local stack shares one Supabase Auth, Fastify API, Next.js Web, MCP
 | Docker       | Engine 29+ / Compose 5+                                       |
 | Supabase CLI | Exact workspace pin                                           |
 | Docpact      | `0.1.9`                                                       |
+
+Key UI/data dependencies are exact too: AWS S3 SDK/presigner `3.1116.0`, Next.js `16.3.2`, Fumadocs core/UI `16.15.0`, Fumadocs MDX `15.3.1`, and MapLibre GL JS `6.5.0`. pnpm preserves the 24-hour supply-chain cooldown for all other packages and narrowly adds `minimumReleaseAgeExclude` only for this just-verified stable vendor set; the frozen lockfile still fixes every integrity hash.
+
+Compatibility takes precedence over blindly following a major. GraphQL `16.14.2` with Mercurius `16.10.0` is the combination actually built under Fastify 5/TS7, and `@types/node` `24.13.3` matches the Node 24 runtime. GraphQL 17 or a newer Node type major is outside this delivery's compatibility boundary.
 
 ```bash
 node --version

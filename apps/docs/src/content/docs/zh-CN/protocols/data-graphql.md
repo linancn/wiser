@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/graphql-module.ts
   - packages/data-contracts/src/capability/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 ---
 
 ## 入口与权威契约
@@ -29,6 +29,8 @@ Content-Type: application/json
 ```
 
 实现使用 Mercurius 的 schema-first SDL，不使用 decorator 或 TypeScript AST 扫描。GraphQL field 只是 22 项 Capability 的投影；resolver 与 REST 调用同一个 `DataCapabilityHandler`，因此输入/输出 Zod 校验、Scope、安全 ceiling、Purpose、timeout、幂等和 audit 语义一致。
+
+运行时精确锁定 GraphQL `16.14.2` 与 Mercurius `16.10.0`；这是实际通过 Fastify 5、Node 24 与 TypeScript 7 的最新兼容组合。GraphQL 17 不在本轮受支持/验证的 peer runtime 边界，不能为了追 major 绕过构建证据。
 
 SDL 位于 `apps/api/src/data-foundation/schema.graphql`，运行时同一常量有回归测试。Capability 的完整 JSON Schema 与版本仍以 `GET /api/data/v1/capabilities` 为权威发现入口。
 

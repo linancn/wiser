@@ -16,7 +16,7 @@ checkPaths:
   - compose.yaml
   - docs/roadmap.md
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 ---
 
 # WISER · Water Intelligence System & Engine for Reconfiguration
@@ -58,6 +58,8 @@ Dependency direction is `platform contracts <- system contracts <- core <- appli
 - workspace-pinned Supabase CLI
 
 npm dependencies are exact and share one `pnpm-lock.yaml`. Containers use a stable tag plus `sha256` digest; Data Foundation pins are audited in [`infrastructure/data-foundation/versions.env`](./infrastructure/data-foundation/versions.env), and `latest` is forbidden.
+
+Key application pins in this delivery are AWS S3 SDK/presigner `3.1116.0`, Next.js `16.3.2`, Fumadocs core/UI `16.15.0` with MDX `15.3.1`, and MapLibre GL JS `6.5.0`. pnpm retains the 24-hour `minimumReleaseAge` for everything else and narrowly exempts only the just-verified, exactly pinned AWS/Smithy, Next, Fumadocs, and MapLibre packages. GraphQL `16.14.2` with Mercurius `16.10.0` is the validated Fastify 5/TS7 line; `@types/node` `24.13.3` deliberately matches Node 24 rather than a different runtime major.
 
 ## Install and verify
 

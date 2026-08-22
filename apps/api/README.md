@@ -16,7 +16,7 @@ checkPaths:
   - packages/core/**
   - packages/data-*/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 ---
 
 # WISER API host
@@ -92,7 +92,7 @@ The participant authenticator uses the same Platform Resolver when unified Auth 
 - all 22 exact Capability executors (read, command, and specialized query);
 - one `DataCapabilityHandler` with hash-only audit;
 - readiness probes for database, object store, and Data Worker;
-- REST, schema-first GraphQL, and governed asset-download modules.
+- REST, schema-first GraphQL, governed Evidence/STAC Resource, and asset-download modules.
 
 Startup fails unless executor ids exactly match the Registry. `onClose` closes the Pool and both S3 clients exactly once.
 
@@ -102,10 +102,20 @@ Startup fails unless executor ids exactly match the Registry. `onClose` closes t
 - `GET /api/data/v1/capabilities`
 - `GET /api/data/v1/capabilities/:capabilityId/:version`
 - all 22 Registry REST mappings under `/api/data/v1`
+- `GET /api/data/v1/evidence/fragments/:evidenceId` for committed, RLS-authorized, audited Evidence projections
+- `GET /api/data/v1/stac/collections/:collectionId/items/:itemId` for sanitized, authority-reconciled STAC 1.1 Items
 - `GET /api/data/v1/tenants/:tenantId/projects/:projectId/versions/:versionId/assets/source` for audited short-lived `303` redirects
 - `POST /graphql` with all 22 schema-first fields
 
 REST requires UUID idempotency keys for commands, strong `If-Match: "vN"` for versioned commands, cursor paging, safe ETags, no-store, and bounded Operation SSE snapshots. GraphQL shares the Handler, allows one mutation field, disables batching/subscriptions/GraphiQL, enforces depth/complexity/timeout, and disables introspection in production.
+
+Evidence requires `data.knowledge.read`; STAC requires `data.geo.read`. Both re-resolve the unified context, run short data-postgres RLS transactions, append hash-only audit, cap JSON at 256 KiB, and fail closed. STAC additionally rejects a collection outside the current Tenant/Project before calling one fixed internal STAC origin, strips upstream links/unknown fields, and verifies the returned version, evidence, source hash, security, policy, quality, acceptance, publication, and governed asset href.
+
+## Shared OpenAPI
+
+`GET /openapi.json` is one OpenAPI 3.1 document titled **WISER Platform API**, not an Agent-EXCON-only document. All 22 Data REST operations are generated from the Zod 4 Capability Registry: route registration projects draft-7 input/output Schema into path/query/body/header fields, success responses, stable operation ids, `data-foundation` tags, and `bearerAuth`. Pass-through Fastify compilers avoid a competing validation implementation; `DataCapabilityHandler` remains the sole runtime strict-Zod gate.
+
+The API pins `graphql` `16.14.2` with Mercurius `16.10.0` as the latest actually compatible stable line tested under TypeScript 7. GraphQL 17 is outside the supported and validated Mercurius peer/runtime boundary for this delivery. `@types/node` remains `24.13.3` because the repository runtime is Node 24; a newer type major would describe a different runtime rather than a safe dependency upgrade.
 
 Data query adapters accept only structured inputs. PostgreSQL, OpenSearch, Weaviate, Neo4j, PostGIS, and pgSTAC credentials stay server-side. Results are reauthorized against Supabase context and data-postgres RLS before return or asset redirect.
 

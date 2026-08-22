@@ -18,7 +18,7 @@ checkPaths:
   - packages/data-contracts/src/capability/**
   - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 ---
 
 ## 只做 HTTP 适配
@@ -121,7 +121,7 @@ GET Tool 只编码 boolean、number、string 或 string array query；path param
 6. 只有具备 `data.publish` 的 steward 在 `WAITING_REVIEW` 使用 approve/reject；
 7. 状态到 `SUCCEEDED`/`PUBLISHED` 后再查询固定版本。
 
-长任务 Tool 返回共享 `operationId`，不会在 MCP 请求中等待整个入库或投影过程。
+长任务 Tool 返回共享 `operationId`，不会在 MCP 请求中等待整个入库或投影过程。Gateway 从顶层或嵌套 `operation.operationId` 派生同一个 `operation://` URI，并把它放在成功结果的顶层 `structuredContent.resource`，便于跨 Tool/Resource 恢复。
 
 ## Resources
 
@@ -135,18 +135,25 @@ Gateway 注册五类模板；每次读取都通过同一个 Data API bearer、Te
 | `schema://capabilities/{capabilityId}/{version}`   | 固定 Capability schema/mapping         |
 | `stac://collections/{collectionId}/items/{itemId}` | 受授权 STAC Item 与治理后的 asset href |
 
-URI segment 只接受安全字母数字与 `._:-`，不允许斜线、遍历、query 或 credential。Resource 返回 `application/json`；无效引用或下游不可用使用安全错误对象，不回显内部 HTTP/数据库正文。
+URI segment 只接受安全字母数字与 `._:-`，不允许斜线、遍历、query 或 credential。Evidence 与 STAC Resource 分别经真实 `/evidence/fragments/:evidenceId` 和 `/stac/collections/:collectionId/items/:itemId` GET 重新执行 Scope、RLS、权威复核与 audit；STAC asset 只指向短期授权下载路由。Resource 返回 `application/json`；无效引用或下游不可用使用安全错误对象，不回显内部 HTTP/数据库正文。
 
 ## 响应与上限
 
 成功结果同时提供：
 
 - 中文优先的 `content`，包含紧凑 `MACHINE_DATA`；
-- 同一份机器可读 `structuredContent = { ok: true, data }`。
+- 同一份机器可读 `structuredContent = { ok: true, data, resource? }`；存在合法 Operation ID 时，`resource` 精确为 `operation://<uuid>`。
 
 完整 MCP 结果超过 32,000 字符时返回 `MCP_RESPONSE_TOO_LARGE`，不截断后伪装成完整事实。收窄 `first`、filter 或 cursor。下游 HTTP 正文最大 1 MiB，单个 SSE snapshot 最多 10,000 events，并受每次请求 timeout 保护。
 
-适配器不会把 Data API 的内部 `details` 转发给 Agent。失败返回双语安全类别与下一步：
+适配器不会把 Data API 的内部 `details`、Bearer 或后端正文转发给 Agent。Tool 调用保留两类可安全行动的身份语义：
+
+| 下游 HTTP | `structuredContent.error.code` | 安全恢复动作                                                        |
+| --------- | ------------------------------ | ------------------------------------------------------------------- |
+| `401`     | `NOT_AUTHENTICATED`            | 刷新或重新配置短期 Data API credential                              |
+| `403`     | `NOT_AUTHORIZED`               | 核对 Tenant、Project、Purpose、Scope 与安全等级；不能靠重试扩大权限 |
+
+其他网络、5xx、契约和未分类失败统一为不泄密的 `DATA_API_ERROR`：
 
 ```json
 {
@@ -158,6 +165,8 @@ URI segment 只接受安全字母数字与 `._:-`，不允许斜线、遍历、q
   }
 }
 ```
+
+这一区分只保留身份类别，不传递 API `details`、资源存在性或 Scope 内部清单。MCP Resource 读取仍把下游失败收敛为安全 `DATA_RESOURCE_UNAVAILABLE`，避免通过 Resource error surface 推断隐藏资源。
 
 ## 安全重试
 

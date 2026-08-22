@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 ---
 
 ## MCP 是 HTTP 适配器
@@ -29,7 +29,7 @@ MCP Server 只调用公开 HTTP API，不复制状态机、权限、Receipt 或�
 
 Agent EXCON、Data Foundation 与未来系统复用同一个 MCP Server。每个系统通过静态 `WiserMcpModule` 注册 Tool/Resource；模块 ID 必须命名空间化且全局唯一，重复 ID 会在连接 transport 前失败。模块注册只组合协议面，所有业务调用仍必须经 HTTP API。
 
-Data Foundation 模块在五个 `DATA_API_*`/scope 环境值完整提供时注册 22 个 Tool 与 5 个受控 Resource；部分配置会失败关闭，完全未配置则只运行 EXCON。Data Tool、双层 bearer、上传/Operation 流程和响应上限见 [Data MCP](/protocols/data-mcp/)。
+Data Foundation 模块在五个 `DATA_API_*`/scope 环境值完整提供时注册 22 个 Tool 与 5 个受控 Resource；部分配置会失败关闭，完全未配置则只运行 EXCON。Data Tool 安全保留下游 `401 → NOT_AUTHENTICATED` 与 `403 → NOT_AUTHORIZED`，包含 Operation 的成功结果在顶层 `structuredContent.resource` 暴露精确 `operation://<uuid>`；Evidence/STAC Resource 经真实 HTTP、RLS 与 audit 读取。双层 bearer、上传/Operation 流程和响应上限见 [Data MCP](/protocols/data-mcp/)。
 
 ## 配置
 

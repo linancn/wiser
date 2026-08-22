@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 ---
 
 ## 已交付边界
@@ -108,6 +108,8 @@ SeaweedFS adapter 强制 path-style S3，并只从已验证的 Tenant/Project/Up
 
 内容先停留在 `quarantine`。指纹后 `catalog.content_blob` 保存内容身份，正式提交把对象幂等提升到内容寻址的 raw/version key；相同 hash 可复用，不同 hash 永不覆盖。Abort 只能删除派生 quarantine 对象。API 读取版本资产时重新执行 Supabase 授权和 data-postgres RLS，追加 audit，再返回 60 秒 `303` signed redirect；STAC manifest 不直接暴露长期 S3 credential。
 
+MCP Evidence/STAC Resource 现在也有真实 HTTP 权威边界。Evidence GET 只读取调用方 RLS 可见且关联已提交版本的 fragment，并追加 `data.evidence.read` hash-only audit。STAC GET 先把 collection 绑定到当前 Tenant/Project，再从固定内部 STAC origin 有界读取，剥离上游内部字段，并在 data-postgres 中复核已发布/已验收版本、Evidence、source hash、安全等级、policy 与质量；通过后追加 `data.stac-item.read`。两个 JSON 响应都不超过 256 KiB，STAC asset 只能指向上述短期授权下载入口。
+
 正式版本只能从已批准且冻结的 review checkpoint 创建。一个 data-postgres 事务提交 DataItemVersion、质量/血缘事实、Operation event、Audit 与 Outbox；Supabase、data-postgres 和 S3 之间不伪造分布式事务。
 
 ## 确定性入库与 Agent 边界
@@ -158,13 +160,21 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 
 ## 协议与产品面
 
-- REST：`/api/data/v1` 的 discovery、22 项 Capability、Operation SSE 与授权资产重定向；见 [Data REST](/protocols/data-rest/)。
+- REST：`/api/data/v1` 的 discovery、22 项 Capability、Operation SSE、Evidence/STAC Resource 与授权资产重定向；22 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
 - GraphQL：`POST /graphql`，22 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
 - MCP：stdio/无状态 Streamable HTTP，22 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
 - Skill：`skills/wiser-data-foundation` 定义发现、查询、上传、入库、Operation 与安全解释流程。
 - Web：现有 Next.js 应用中的 14 个 Data route，server-only DAL、真实 Supabase Session、双语、主题、状态/错误分支和 MapLibre GeoJSON 地图。
 
 Web 当前负责治理与查询，不在 Server Action 或 Route Handler 执行文件解析、向量化、GIS 转换或投影。mutation 由 REST、GraphQL、MCP 或 Skill 发起。
+
+## 精确应用依赖与兼容例外
+
+本轮实际在 Node 24 + TypeScript 7 上通过 typecheck/build 的关键精确版本为：AWS S3 SDK/client presigner `3.1116.0`，Next.js `16.3.2`，Fumadocs core/UI `16.15.0`、MDX `15.3.1`，MapLibre GL JS `6.5.0`。根 `pnpm-lock.yaml` 固定全部传递版本和 integrity。
+
+pnpm 11 的 `minimumReleaseAge: 1440` 对其他生态仍保持 24 小时供应链冷却；只对本轮明确核验且立即采用的新稳定版本做窄 allowlist：`@aws-sdk/*`、`@smithy/*`、`@next/*`/`next`、三个 Fumadocs 包和 `maplibre-gl`。这不是通用跳过，依赖仍使用精确版本与冻结 lockfile。
+
+两个“最新兼容”例外按运行边界固定 major：GraphQL `16.14.2` 与 Mercurius `16.10.0` 是当前验证的 Fastify 5/TS7 组合，GraphQL 17 不在本轮受支持 peer/runtime 范围；`@types/node` `24.13.3` 对齐 Node 24，引入更新的类型 major 会描述不同 runtime。
 
 ## 精确锁定的本机 profile
 

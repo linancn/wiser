@@ -1,6 +1,6 @@
 ---
 title: Data REST API
-description: Data Foundation's 22 Capabilities, unified identity, idempotency, versions, SSE, and asset-download protocol.
+description: Data Foundation's 22 Capabilities, OpenAPI, governed Resources, idempotency, SSE, and asset-download protocol.
 docType: protocol-reference
 scope: data-rest-api
 status: active
@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 ---
 
 ## Protocol boundary
@@ -48,6 +48,12 @@ A ready response has this core shape:
 ```
 
 `projections: rebuildable` means projections are not authorization authority. It never permits omission of Tenant/Project/security filters.
+
+## OpenAPI contract projection
+
+Shared `GET /openapi.json` returns OpenAPI 3.1 with the fixed title **WISER Platform API**, covering Platform, Agent EXCON, and Data Foundation. The 22 Data Capabilities do not maintain another handwritten schema. At route registration, Fastify converts Registry Zod 4 input/output into draft-7 JSON Schema and projects it into path, query, body, and required-header OpenAPI operations.
+
+Every Data operation has the `data-foundation` tag, a stable `operationId`, `bearerAuth`, its successful response Schema, plus `Idempotency-Key` for commands and `If-Match` for versioned commands. Fastify schema compilers serve the OpenAPI projection here; the single runtime behavior gate remains strict Zod input/output validation in the shared `DataCapabilityHandler`. Generated documentation never becomes a second behavior source.
 
 ## Identity and context headers
 
@@ -139,6 +145,19 @@ URLs live for 60–900 seconds and callers cannot alter keys. API HEAD-verifies 
 
 Reconnect with the last confirmed cursor. Never synthesize events from wall time or progress percentages, and do not treat a repeated event as a new transition.
 
+## Evidence and STAC Resource reads
+
+These governed GETs are not part of the 22 business Capabilities. They specifically back MCP Resources while still using unified Auth, data-postgres RLS, post-authorization audit, and no-store:
+
+| Path                                                        | Scope                 | Authority and output boundary                                                                                                                                       |
+| ----------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/data/v1/evidence/fragments/:evidenceId`               | `data.knowledge.read` | `evidenceId` is a UUID; returns only caller-visible Evidence attached to a committed version, with locator/hash, optional excerpt, security/policy/version metadata |
+| `/api/data/v1/stac/collections/:collectionId/items/:itemId` | `data.geo.read`       | collection is the current Tenant/Project's deterministic `wiser-<32 hex>` and item is `wiser-<48 hex>`; returns only an authority-reconciled STAC 1.1 Item          |
+
+The Evidence transaction applies `security.authorized_row` to both fragment and DataItemVersion, then appends `data.evidence.read` with a reference hash. Hidden and absent use the same `404`. STAC rejects a cross-Tenant/Project collection before fetch, reads from one fixed bounded internal STAC origin, strips upstream links/unknown fields, and reconciles DataItem, Version, Evidence, source hash, security, policy, quality, acceptance, and `PUBLISHED`. Its source asset href must exactly match the governed download route below; a successful read appends `data.stac-item.read` audit.
+
+Both Resource responses are bounded to 256 KiB, `application/json`, and `private, no-store`. Invalid references return `422`, excessive output `413`, an invalid projection contract `502`, and unavailable dependencies `503`. Database details, internal STAC bearer/origin, upstream URLs, and raw errors never appear.
+
 ## Authorized asset download
 
 Published STAC source assets use:
@@ -188,8 +207,10 @@ Data REST uses a flat safe envelope:
 | `401` | Missing/invalid bearer or Tenant/Project/Purpose context              |
 | `403` | Known identity lacks scope, security ceiling, or resource permission  |
 | `404` | Resource absent or its existence cannot be disclosed                  |
+| `413` | Governed Resource exceeds the 256 KiB response limit                  |
 | `409` | State, version, immutability, or idempotency conflict                 |
 | `422` | Strict schema, header, or domain precondition failed                  |
+| `502` | Upstream Resource/projection violates its governed contract           |
 | `503` | Authority, Worker, or projection dependency unavailable               |
 | `500` | Server contract/configuration failure with no internal detail exposed |
 

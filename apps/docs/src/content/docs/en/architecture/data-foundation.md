@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 ---
 
 ## Delivered boundary
@@ -108,6 +108,8 @@ The SeaweedFS adapter forces path-style S3 and derives every key from validated 
 
 Content remains in quarantine first. Fingerprinting establishes `catalog.content_blob`; formal commit idempotently promotes it to content-addressed raw/version keys. An identical hash can be reused, while a different hash is never overwritten. Abort removes only a derived quarantine object. Version-asset reads reauthorize through Supabase and data-postgres RLS, append audit, then return a 60-second `303` signed redirect. STAC manifests never expose long-lived S3 credentials.
 
+MCP Evidence/STAC Resources now have real HTTP authority boundaries too. Evidence GET returns only an RLS-visible fragment attached to a committed version and appends `data.evidence.read` hash-only audit. STAC GET first binds collection to the current Tenant/Project, reads bounded data from one fixed internal STAC origin, strips upstream internals, then reconciles published/accepted version, Evidence, source hash, security, policy, and quality in data-postgres before appending `data.stac-item.read`. Both JSON responses are capped at 256 KiB, and a STAC asset can target only the short-lived governed download endpoint above.
+
 Only an approved frozen review checkpoint can create a formal version. One data-postgres transaction commits DataItemVersion, quality/lineage facts, Operation event, Audit, and Outbox. Supabase, data-postgres, and S3 never pretend to share a distributed transaction.
 
 ## Deterministic ingestion and Agent boundary
@@ -158,13 +160,21 @@ Matching query adapters push down Tenant, Project, Version, security, policy ver
 
 ## Protocol and product surfaces
 
-- REST: `/api/data/v1` discovery, 22 Capabilities, Operation SSE, and authorized asset redirects; see [Data REST](/en/protocols/data-rest/).
+- REST: `/api/data/v1` discovery, 22 Capabilities, Operation SSE, Evidence/STAC Resources, and authorized asset redirects. Fastify OpenAPI for all 22 Capabilities is projected directly from the Zod 4 Registry under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
 - GraphQL: `POST /graphql`, 22 schema-first fields sharing the same Handler; see [Data GraphQL](/en/protocols/data-graphql/).
 - MCP: stdio/stateless Streamable HTTP, 22 Tools and governed Resources that call HTTP only; see [Data MCP](/en/protocols/data-mcp/).
 - Skill: `skills/wiser-data-foundation` documents discovery, query, upload, ingestion, Operation, and security workflows.
 - Web: 14 Data routes in the existing Next.js app with server-only DAL, real Supabase session, both locales/themes, truthful state/error branches, and MapLibre GeoJSON preview.
 
 Web currently governs and queries; it never performs file parsing, vectorization, GIS transformation, or projection in a Server Action or Route Handler. Mutations enter through REST, GraphQL, MCP, or the Skill.
+
+## Exact application dependencies and compatibility exceptions
+
+Key exact versions actually typechecked and built on Node 24 + TypeScript 7 are AWS S3 SDK/client presigner `3.1116.0`, Next.js `16.3.2`, Fumadocs core/UI `16.15.0`, Fumadocs MDX `15.3.1`, and MapLibre GL JS `6.5.0`. Root `pnpm-lock.yaml` fixes every transitive version and integrity hash.
+
+pnpm 11 keeps `minimumReleaseAge: 1440`—the 24-hour supply-chain cooldown—for every other ecosystem. Its narrow allowlist contains only just-verified stable packages intentionally adopted in this delivery: `@aws-sdk/*`, `@smithy/*`, `@next/*`/`next`, the three Fumadocs packages, and `maplibre-gl`. It is not a general bypass; exact versions and the frozen lockfile still apply.
+
+Two “latest compatible” exceptions deliberately retain a runtime major. GraphQL `16.14.2` with Mercurius `16.10.0` is the validated Fastify 5/TS7 combination; GraphQL 17 is outside this delivery's supported peer/runtime boundary. `@types/node` `24.13.3` matches Node 24, while a newer type major would describe a different runtime.
 
 ## Exactly pinned local profile
 

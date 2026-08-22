@@ -18,7 +18,7 @@ checkPaths:
   - packages/data-contracts/src/capability/**
   - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 ---
 
 ## HTTP adapter only
@@ -121,7 +121,7 @@ GET Tools encode only boolean, number, string, or string-array queries, and URL-
 6. only a steward with `data.publish` approves/rejects at `WAITING_REVIEW`;
 7. query a fixed version only after `SUCCEEDED`/`PUBLISHED`.
 
-Long-running Tools return the shared `operationId`; they do not hold one MCP request through ingestion and projection.
+Long-running Tools return the shared `operationId`; they do not hold one MCP request through ingestion and projection. Gateway derives the same `operation://` URI from either a top-level id or nested `operation.operationId` and places it at top-level `structuredContent.resource` for recovery across Tools and Resources.
 
 ## Resources
 
@@ -135,18 +135,25 @@ Gateway registers five templates. Every read reauthorizes through the same Data 
 | `schema://capabilities/{capabilityId}/{version}`   | Fixed Capability schema/mapping               |
 | `stac://collections/{collectionId}/items/{itemId}` | Authorized STAC Item with governed asset href |
 
-URI segments accept only safe alphanumerics plus `._:-`; slash, traversal, query, and credentials are forbidden. Resources return `application/json`. Invalid references or downstream unavailability use safe error objects and never echo internal HTTP/database bodies.
+URI segments accept only safe alphanumerics plus `._:-`; slash, traversal, query, and credentials are forbidden. Evidence and STAC Resources use real `/evidence/fragments/:evidenceId` and `/stac/collections/:collectionId/items/:itemId` GETs that reapply scopes, RLS, authority reconciliation, and audit; STAC assets point only to the short-lived governed download route. Resources return `application/json`. Invalid references or downstream unavailability use safe error objects and never echo internal HTTP/database bodies.
 
 ## Responses and limits
 
 A success returns both:
 
 - Chinese-first `content` with compact `MACHINE_DATA`;
-- identical machine-readable `structuredContent = { ok: true, data }`.
+- identical machine-readable `structuredContent = { ok: true, data, resource? }`; when a valid Operation id exists, `resource` is exactly `operation://<uuid>`.
 
 A complete MCP result over 32,000 characters returns `MCP_RESPONSE_TOO_LARGE`; it is never truncated and presented as complete fact. Reduce `first`, filters, or cursor scope. Downstream HTTP bodies are bounded to 1 MiB, one SSE snapshot to 10,000 events, and every request has a timeout.
 
-The adapter never forwards Data API internal `details`. Failure uses a bilingual safe class and action:
+The adapter never forwards Data API internal `details`, Bearers, or backend bodies. Tool calls preserve two safely actionable identity semantics:
+
+| Downstream HTTP | `structuredContent.error.code` | Safe recovery action                                                                        |
+| --------------- | ------------------------------ | ------------------------------------------------------------------------------------------- |
+| `401`           | `NOT_AUTHENTICATED`            | Refresh or reconfigure the short-lived Data API credential                                  |
+| `403`           | `NOT_AUTHORIZED`               | Reconcile Tenant, Project, Purpose, scopes, and security level; retries cannot widen access |
+
+Other network, 5xx, contract, and unclassified failures converge to secret-safe `DATA_API_ERROR`:
 
 ```json
 {
@@ -158,6 +165,8 @@ The adapter never forwards Data API internal `details`. Failure uses a bilingual
   }
 }
 ```
+
+This distinction preserves only the identity class; it never forwards API `details`, resource existence, or internal scope lists. MCP Resource reads still converge downstream failures to safe `DATA_RESOURCE_UNAVAILABLE` so the Resource error surface cannot reveal hidden content.
 
 ## Safe retry
 

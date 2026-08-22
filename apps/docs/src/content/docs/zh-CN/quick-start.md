@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 ---
 
 ## 先认识当前边界
@@ -39,6 +39,10 @@ lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 | Docker       | Engine 29+ / Compose 5+                  |
 | Supabase CLI | workspace 精确锁定版本                   |
 | Docpact      | `0.1.9`                                  |
+
+关键 UI/数据依赖同样精确锁定：AWS S3 SDK/presigner `3.1116.0`、Next.js `16.3.2`、Fumadocs core/UI `16.15.0`、Fumadocs MDX `15.3.1`、MapLibre GL JS `6.5.0`。pnpm 对其他包保持 24 小时供应链冷却，只对这组刚核验的新稳定 vendor 包做窄 `minimumReleaseAgeExclude`；冻结 lockfile 仍固定每个 integrity。
+
+兼容性优先于盲目追 major：GraphQL `16.14.2` + Mercurius `16.10.0` 是实际通过 Fastify 5/TS7 build 的组合；`@types/node` `24.13.3` 与 Node 24 runtime 对齐。GraphQL 17 或更新 Node 类型 major 不属于本轮兼容边界。
 
 ```bash
 node --version
