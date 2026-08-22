@@ -8,10 +8,14 @@ test('serves Chinese by default and preserves the English corpus', async ({
   await expect(
     page.getByRole('heading', { name: 'wiser water, better future' }),
   ).toBeVisible();
+  await expect(page.getByText('WISER Platform', { exact: true })).toBeVisible();
+  await expect(page.locator('main')).toContainText('数据基座');
   await expect(page.getByText('公平性约束')).toBeVisible();
 
   await page.goto('/en/');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.getByText('WISER Platform', { exact: true })).toBeVisible();
+  await expect(page.locator('main')).toContainText('Data Foundation');
   await expect(page.getByText('Fairness invariant')).toBeVisible();
 
   await page.goto('/quick-start/');
