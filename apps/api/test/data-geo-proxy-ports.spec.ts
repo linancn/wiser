@@ -2,12 +2,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { PlatformRequestContext } from '@wiser/platform-contracts';
 
+import { buildApp } from '../src/app.js';
 import {
   FixedOriginDataFoundationGeoProxyPort,
   PostgresDataFoundationGeoAuthorityPort,
 } from '../src/data-foundation/geo-proxy-ports.js';
 import {
   DataFoundationGeoProxyError,
+  createDataFoundationGeoProxyModule,
   type DataFoundationGeoAuditRecord,
   type DataFoundationGeoProxyRequest,
 } from '../src/data-foundation/geo-proxy-module.js';
@@ -162,6 +164,48 @@ class FakeClient {
 }
 
 describe('Postgres GIS authority and audit port', () => {
+  it('keeps contextless authentication denials at 401/403 while recording only a safe structured log', async () => {
+    const connect = vi.fn(() => Promise.reject(new Error('must not connect')));
+    const authority = new PostgresDataFoundationGeoAuthorityPort({
+      pool: { connect },
+      bucket: 'wiser-authority',
+    });
+    const app = buildApp({
+      logger: false,
+      modules: [
+        createDataFoundationGeoProxyModule({
+          resolver: { resolve: () => Promise.resolve(null) },
+          authority,
+          audit: authority,
+          proxy: {
+            request: () =>
+              Promise.reject(new Error('must not reach upstream')),
+          },
+        }),
+      ],
+    });
+
+    const missing = await app.inject({
+      method: 'GET',
+      url: '/api/data/v1/geo/stac/conformance',
+    });
+    const invalid = await app.inject({
+      method: 'GET',
+      url: '/api/data/v1/geo/stac/conformance',
+      headers: {
+        authorization: 'Bearer invalid',
+        'x-wiser-tenant-id': TENANT_ID,
+        'x-wiser-project-id': PROJECT_ID,
+        'x-wiser-purpose': 'map-review',
+      },
+    });
+
+    expect(missing.statusCode).toBe(401);
+    expect(invalid.statusCode).toBe(403);
+    expect(connect).not.toHaveBeenCalled();
+    await app.close();
+  });
+
   it('reauthorizes an immutable version through RLS before deriving a raster S3 URL', async () => {
     const storageKey =
       `tenants/${TENANT_ID}/projects/${PROJECT_ID}` +
@@ -225,6 +269,41 @@ describe('Postgres GIS authority and audit port', () => {
     await expect(
       port.resolveRasterVersion({ context, versionId: VERSION_ID }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('selects an authorized COG even when an earlier version asset is non-raster', async () => {
+    const validStorageKey =
+      `tenants/${TENANT_ID}/projects/${PROJECT_ID}` +
+      `/versions/${VERSION_ID}/sha256/${HASH}`;
+    const client = new FakeClient([], [
+      {
+        version_id: VERSION_ID,
+        storage_key: validStorageKey.replace(HASH, 'b'.repeat(64)),
+        content_hash: 'b'.repeat(64),
+        media_type: 'application/geo+json',
+      },
+      {
+        version_id: VERSION_ID,
+        storage_key: validStorageKey,
+        content_hash: HASH,
+        media_type: 'image/tiff; application=geotiff',
+      },
+    ]);
+    const port = new PostgresDataFoundationGeoAuthorityPort({
+      pool: { connect: () => Promise.resolve(client) },
+      bucket: 'wiser-authority',
+    });
+
+    await expect(
+      port.resolveRasterVersion({ context, versionId: VERSION_ID }),
+    ).resolves.toEqual({
+      sourceUrl: `s3://wiser-authority/${validStorageKey}`,
+    });
+    expect(
+      client.queries.find(({ text }) =>
+        /data\.geo-authority\.raster/i.test(text),
+      )?.text,
+    ).toMatch(/split_part\(asset\.media_type/i);
   });
 
   it('writes authenticated read and denial audit facts without raw paths or credentials', async () => {

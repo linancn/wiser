@@ -117,6 +117,54 @@ function appWith(options: {
 }
 
 describe('Data Foundation governed GIS proxy', () => {
+  it('publishes explicit bearer-authenticated OpenAPI contracts for every GIS route family', async () => {
+    const fixture = appWith({});
+    const response = await fixture.app.inject({
+      method: 'GET',
+      url: '/openapi.json',
+    });
+    const document = response.json<{
+      paths: Record<
+        string,
+        Record<
+          string,
+          {
+            tags?: readonly string[];
+            security?: readonly unknown[];
+            parameters?: readonly { readonly name?: string }[];
+            responses?: Readonly<Record<string, unknown>>;
+          }
+        >
+      >;
+    }>();
+
+    for (const [path, parameters] of [
+      ['/api/data/v1/geo/ogc/{service}', ['service', 'request']],
+      ['/api/data/v1/geo/stac/*', ['*']],
+      [
+        '/api/data/v1/geo/tiles/vector/versions/{versionId}/{z}/{x}/{tile}',
+        ['versionId', 'z', 'x', 'tile'],
+      ],
+      [
+        '/api/data/v1/geo/tiles/raster/versions/{versionId}/{tms}/{z}/{x}/{tile}',
+        ['versionId', 'tms', 'z', 'x', 'tile'],
+      ],
+    ] as const) {
+      const operation = document.paths[path]?.['get'];
+      expect(operation?.tags).toContain('data-foundation');
+      expect(operation?.security).toEqual([{ bearerAuth: [] }]);
+      expect(operation?.responses?.['200']).toBeDefined();
+      expect(operation?.responses).not.toHaveProperty('default');
+      for (const parameter of parameters) {
+        expect(operation?.parameters).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ name: parameter }),
+          ]),
+        );
+      }
+    }
+  });
+
   it('authenticates OGC reads and maps only a fixed service endpoint', async () => {
     const fixture = appWith({
       response: {
