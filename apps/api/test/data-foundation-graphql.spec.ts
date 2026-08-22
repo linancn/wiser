@@ -27,6 +27,7 @@ const DATA_ITEM_ID = 'd2000000-0000-4000-8000-000000000005';
 const INGESTION_ID = 'd2000000-0000-4000-8000-000000000006';
 const OPERATION_ID = 'd2000000-0000-4000-8000-000000000007';
 const IDEMPOTENCY_KEY = 'd2000000-0000-4000-8000-000000000008';
+const VERSION_ID = 'd2000000-0000-4000-8000-000000000009';
 
 const requestContext: PlatformRequestContext = {
   principal: {
@@ -121,6 +122,7 @@ function appWith(
                   name: 'Yongding stations',
                   securityLevel: 'L1_INTERNAL',
                   sourceOrganization: 'restricted-source',
+                  __selectedVersion: { versionId: VERSION_ID },
                 },
               ],
               nextCursor: 'cursor-next',
@@ -197,7 +199,13 @@ describe('Data Foundation schema-first GraphQL transport', () => {
       payload: {
         query: `query {
           dataCatalog(filter: { query: "station" }, first: 2, after: "cursor-1") {
-            nodes { dataItemId name securityLevel sourceOrganization }
+            nodes {
+              dataItemId
+              name
+              securityLevel
+              sourceOrganization
+              selectedVersion { versionId }
+            }
             pageInfo { endCursor hasNextPage }
           }
         }`,
@@ -214,6 +222,7 @@ describe('Data Foundation schema-first GraphQL transport', () => {
               name: 'Yongding stations',
               securityLevel: 'L1_INTERNAL',
               sourceOrganization: null,
+              selectedVersion: { versionId: VERSION_ID },
             },
           ],
           pageInfo: { endCursor: 'cursor-next', hasNextPage: true },
