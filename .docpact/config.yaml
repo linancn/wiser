@@ -1,7 +1,7 @@
 version: 1
 layout: repo
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 catalog:
   repos:
     - id: wiser
@@ -196,6 +196,9 @@ docInventory:
     - apps/docs/src/content/docs/*/architecture/data-foundation.md
     - apps/docs/src/content/docs/*/protocols/http.md
     - apps/docs/src/content/docs/*/protocols/mcp.md
+    - apps/docs/src/content/docs/*/protocols/data-rest.md
+    - apps/docs/src/content/docs/*/protocols/data-graphql.md
+    - apps/docs/src/content/docs/*/protocols/data-mcp.md
     - apps/docs/src/content/docs/*/quick-start.md
     - apps/docs/src/content/docs/*/scenarios/yongding-river-dispatch.md
     - cookbooks/workbuddy-yongding-tdd/README.md
@@ -304,6 +307,18 @@ rules:
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/architecture/data-foundation.md
         mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/protocols/data-rest.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/protocols/data-rest.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/protocols/data-graphql.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/protocols/data-graphql.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/protocols/data-mcp.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/protocols/data-mcp.md
+        mode: review_or_update
     reason: Data Foundation public DTO and Capability changes must preserve one bilingual transport-neutral contract.
   - id: data-foundation-core
     scope: repo
@@ -354,11 +369,51 @@ rules:
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/architecture/data-foundation.md
         mode: review_or_update
-      - path: apps/docs/src/content/docs/zh-CN/protocols/http.md
+      - path: apps/docs/src/content/docs/zh-CN/protocols/data-rest.md
         mode: review_or_update
-      - path: apps/docs/src/content/docs/en/protocols/http.md
+      - path: apps/docs/src/content/docs/en/protocols/data-rest.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/protocols/data-graphql.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/protocols/data-graphql.md
         mode: review_or_update
     reason: Data Foundation HTTP composition and Capability transport changes must stay aligned in both locales.
+  - id: data-foundation-mcp
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: apps/mcp/src/data-foundation/**
+        kind: code
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/architecture/data-foundation.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/data-foundation.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/protocols/data-mcp.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/protocols/data-mcp.md
+        mode: review_or_update
+    reason: Data MCP Tools, Resources, transport mapping, and response boundaries require their own bilingual protocol review.
+  - id: data-foundation-web
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: apps/web/src/app/*/data-foundation/**
+        kind: code
+      - path: apps/web/src/components/data-foundation-*
+        kind: code
+      - path: apps/web/src/lib/data-foundation*
+        kind: code
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/architecture/data-foundation.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/data-foundation.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/architecture/design-system.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/design-system.md
+        mode: review_or_update
+    reason: Data Foundation Web changes must preserve the delivered authority states and shared bilingual light/dark design contract.
   - id: wiser-design-system
     scope: repo
     repo: wiser
