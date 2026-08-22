@@ -103,10 +103,10 @@ describe('Fumadocs documentation application', () => {
       ...(manifest.devDependencies as Record<string, string>),
     };
 
-    expect(dependencies.next).toBe('16.3.1');
-    expect(dependencies['fumadocs-core']).toBe('16.14.5');
-    expect(dependencies['fumadocs-ui']).toBe('16.14.5');
-    expect(dependencies['fumadocs-mdx']).toBe('15.3.0');
+    expect(dependencies.next).toBe('16.3.2');
+    expect(dependencies['fumadocs-core']).toBe('16.15.0');
+    expect(dependencies['fumadocs-ui']).toBe('16.15.0');
+    expect(dependencies['fumadocs-mdx']).toBe('15.3.1');
     expect(dependencies).not.toHaveProperty('astro');
     expect(dependencies).not.toHaveProperty('@astrojs/check');
     expect(dependencies).not.toHaveProperty('@astrojs/starlight');
