@@ -29,7 +29,10 @@ describe('WISER domain asset layout', () => {
       name: '@agent-excon/scenarios',
       private: true,
       type: 'module',
-      exports: { '.': './src/index.ts' },
+      exports: {
+        '.': './src/index.ts',
+        './testing': './src/testing.ts',
+      },
     });
     expect(apiDependencies['@agent-excon/scenarios']).toBe('workspace:*');
     expect(loader).toContain("from '@agent-excon/scenarios'");
