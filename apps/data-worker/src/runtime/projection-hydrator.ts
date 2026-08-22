@@ -92,7 +92,7 @@ export interface HydratedProjectionInputs {
   readonly postgis: readonly SpatialProjectionInput[];
   readonly evidence: readonly EvidenceProjectionInput[];
   readonly graph: readonly KnowledgeGraphProjectionInput[];
-  readonly stac: StacProjectionInput;
+  readonly stac?: StacProjectionInput;
 }
 
 const UUID =
@@ -122,8 +122,12 @@ function uuid(value: unknown): string {
   return value;
 }
 
-function uuidArray(value: unknown): readonly string[] {
-  if (!Array.isArray(value) || value.length < 1 || value.length > 10_000) {
+function uuidArray(value: unknown, minimum = 1): readonly string[] {
+  if (
+    !Array.isArray(value) ||
+    value.length < minimum ||
+    value.length > 10_000
+  ) {
     throw hydrationError();
   }
   const result = value.map(uuid);
@@ -146,15 +150,14 @@ function authorityIds(event: ProjectionEvent): ProjectionAuthorityIds {
     assetIds: uuidArray(event.payload['assetIds']),
     contentBlobIds: uuidArray(event.payload['contentBlobIds']),
     evidenceFragmentIds: uuidArray(event.payload['evidenceFragmentIds']),
-    spatialExtentIds: uuidArray(event.payload['spatialExtentIds']),
+    spatialExtentIds: uuidArray(event.payload['spatialExtentIds'], 0),
     checkRunId: uuid(event.payload['checkRunId']),
     processRunId: uuid(event.payload['processRunId']),
   };
   if (
     ids.dataItemId !== event.dataItemId ||
     ids.versionId !== event.versionId ||
-    ids.assetIds.length !== ids.contentBlobIds.length ||
-    ids.spatialExtentIds.length !== 1
+    ids.assetIds.length !== ids.contentBlobIds.length
   ) {
     throw hydrationError();
   }
@@ -250,7 +253,13 @@ export class ProjectionInputHydrator {
       const oldest = this.#cache.keys().next().value;
       if (oldest !== undefined) this.#cache.delete(oldest);
     }
-    const hydration = this.#hydrate(event);
+    const pending = this.#hydrate(event);
+    const hydration = pending.catch((error: unknown) => {
+      if (this.#cache.get(event.eventId) === hydration) {
+        this.#cache.delete(event.eventId);
+      }
+      throw error;
+    });
     this.#cache.set(event.eventId, hydration);
     return hydration;
   }
@@ -333,14 +342,9 @@ export class ProjectionInputHydrator {
         entityName: snapshot.dataItem.name,
       });
     }
-    const spatial = snapshot.spatial[0];
     const asset = snapshot.assets[0];
     const firstEvidence = snapshot.evidence[0];
-    if (
-      spatial === undefined ||
-      asset === undefined ||
-      firstEvidence === undefined
-    ) {
+    if (asset === undefined || firstEvidence === undefined) {
       throw hydrationError();
     }
     const governed = {
@@ -365,6 +369,48 @@ export class ProjectionInputHydrator {
       systemTo: null,
       policyVersion: event.policyVersion,
     };
+    const stac = (() => {
+      if (snapshot.spatial.length === 0) return undefined;
+      const bounds = snapshot.spatial.reduce(
+        (result, extent) => {
+          if (extent.bbox.length < 4) throw hydrationError();
+          return [
+            Math.min(result[0], extent.bbox[0]!),
+            Math.min(result[1], extent.bbox[1]!),
+            Math.max(result[2], extent.bbox[2]!),
+            Math.max(result[3], extent.bbox[3]!),
+          ] as const;
+        },
+        [Infinity, Infinity, -Infinity, -Infinity] as const,
+      );
+      if (bounds.some((coordinate) => !Number.isFinite(coordinate))) {
+        throw hydrationError();
+      }
+      const [minX, minY, maxX, maxY] = bounds;
+      return Object.freeze({
+        ...governed,
+        title: snapshot.dataItem.name,
+        description: evidenceContent(snapshot, firstEvidence).slice(0, 4_096),
+        geometry:
+          snapshot.spatial.length === 1
+            ? snapshot.spatial[0]!.wgs84GeoJson
+            : {
+                type: 'Polygon' as const,
+                coordinates: [
+                  [
+                    [minX, minY],
+                    [maxX, minY],
+                    [maxX, maxY],
+                    [minX, maxY],
+                    [minX, minY],
+                  ],
+                ],
+              },
+        bbox: bounds,
+        assetMediaType: asset.mediaType,
+        assetSizeBytes: asset.sizeBytes,
+      });
+    })();
     return Object.freeze({
       postgis: Object.freeze(
         snapshot.spatial.map((extent) => ({
@@ -381,15 +427,7 @@ export class ProjectionInputHydrator {
       ),
       evidence: Object.freeze(evidenceInputs),
       graph: Object.freeze(graphInputs),
-      stac: Object.freeze({
-        ...governed,
-        title: snapshot.dataItem.name,
-        description: evidenceContent(snapshot, firstEvidence).slice(0, 4_096),
-        geometry: spatial.wgs84GeoJson,
-        bbox: spatial.bbox,
-        assetMediaType: asset.mediaType,
-        assetSizeBytes: asset.sizeBytes,
-      }),
+      ...(stac === undefined ? {} : { stac }),
     });
   }
 }
@@ -419,8 +457,13 @@ export function createProjectionTargets(options: {
     {
       kind: 'WEAVIATE',
       project: async (event) => {
-        weaviateReady ??= options.weaviate.ensureCollection();
-        await weaviateReady;
+        const ready = (weaviateReady ??= options.weaviate.ensureCollection());
+        try {
+          await ready;
+        } catch (error) {
+          if (weaviateReady === ready) weaviateReady = undefined;
+          throw error;
+        }
         const input = await options.hydrator.hydrate(event);
         for (const evidence of input.evidence) {
           await options.weaviate.put(evidence);
@@ -430,8 +473,13 @@ export function createProjectionTargets(options: {
     {
       kind: 'OPENSEARCH',
       project: async (event) => {
-        openSearchReady ??= options.opensearch.ensureIndex();
-        await openSearchReady;
+        const ready = (openSearchReady ??= options.opensearch.ensureIndex());
+        try {
+          await ready;
+        } catch (error) {
+          if (openSearchReady === ready) openSearchReady = undefined;
+          throw error;
+        }
         const input = await options.hydrator.hydrate(event);
         for (const evidence of input.evidence) {
           await options.opensearch.put(evidence);
@@ -449,7 +497,7 @@ export function createProjectionTargets(options: {
       kind: 'STAC',
       project: async (event) => {
         const input = await options.hydrator.hydrate(event);
-        await options.stac.put(input.stac);
+        if (input.stac !== undefined) await options.stac.put(input.stac);
       },
     },
   ] satisfies readonly ProjectionTarget[]);

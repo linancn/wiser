@@ -114,16 +114,17 @@ export interface DataWorkerRuntimeOptions {
 function defaultWait(milliseconds: number, signal: AbortSignal): Promise<void> {
   if (signal.aborted) return Promise.resolve();
   return new Promise((resolve) => {
-    const timer = setTimeout(resolve, milliseconds);
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal.removeEventListener('abort', finish);
+      resolve();
+    };
+    const timer = setTimeout(finish, milliseconds);
     timer.unref();
-    signal.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timer);
-        resolve();
-      },
-      { once: true },
-    );
+    signal.addEventListener('abort', finish, { once: true });
   });
 }
 
@@ -173,9 +174,14 @@ export class DataWorkerRuntime {
   stop(): Promise<void> {
     if (this.#stopPromise !== null) return this.#stopPromise;
     this.#stopPromise = (async () => {
-      await this.#scheduler.stop();
-      await this.#projectionConsumer.close();
-      for (const close of this.#close) await close();
+      const results = await Promise.allSettled([
+        this.#scheduler.stop(),
+        this.#projectionConsumer.close(),
+        ...this.#close.map((close) => close()),
+      ]);
+      if (results.some(({ status }) => status === 'rejected')) {
+        throw new Error('Data Worker resources could not close cleanly.');
+      }
     })();
     return this.#stopPromise;
   }

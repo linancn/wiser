@@ -25,7 +25,10 @@ describe('immutable version publication lifecycle migration', () => {
       'policy_version',
     ]) {
       expect(migration).toMatch(
-        new RegExp(`new\\.${immutableField} is distinct from old\\.${immutableField}`, 'i'),
+        new RegExp(
+          `new\\.${immutableField} is not distinct from old\\.${immutableField}`,
+          'i',
+        ),
       );
     }
     expect(migration).toMatch(/before update or delete/i);

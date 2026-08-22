@@ -14,6 +14,7 @@ export class BoundedProjectionHttpClient
   readonly #timeoutMs: number;
   readonly #maximumResponseBytes: number;
   readonly #fetch: typeof globalThis.fetch;
+  readonly #shutdown = new AbortController();
 
   constructor(options: {
     readonly allowedOrigins: readonly string[];
@@ -74,13 +75,19 @@ export class BoundedProjectionHttpClient
       throw new Error('Projection HTTP request failed safely.');
     }
     try {
+      if (this.#shutdown.signal.aborted) {
+        throw new Error('projection client closed');
+      }
       const response = await this.#fetch(url, {
         method: request.method,
         headers: request.headers,
         ...(request.body === undefined
           ? {}
           : { body: JSON.stringify(request.body) }),
-        signal: AbortSignal.timeout(this.#timeoutMs),
+        signal: AbortSignal.any([
+          this.#shutdown.signal,
+          AbortSignal.timeout(this.#timeoutMs),
+        ]),
       });
       const reader = response.body?.getReader();
       const chunks: Uint8Array[] = [];
@@ -118,5 +125,9 @@ export class BoundedProjectionHttpClient
     } catch {
       throw new Error('Projection HTTP request failed safely.');
     }
+  }
+
+  close(): void {
+    this.#shutdown.abort();
   }
 }

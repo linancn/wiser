@@ -149,6 +149,8 @@ const PUBLICATION_LOCK_SQL = `
 select session.state, session.row_version as session_row_version,
   session.operation_id, item.publication_status,
   item.row_version as item_row_version, version.acceptance_status,
+  version.publication_status as version_publication_status,
+  version.published_at as version_published_at,
   operation.status as operation_status
 from ingestion.session as session
 join catalog.data_item as item
@@ -171,7 +173,7 @@ where session.tenant_id = $1::uuid and session.project_id = $2::uuid
   and operation.security_level = $5 and operation.policy_version = $6::bigint
   and security.authorized_row(session.tenant_id, session.project_id,
     session.security_level, session.policy_version)
-for update of session, item, operation
+for update of session, item, version, operation
 `;
 
 const PROJECTION_GATE_SQL = `
@@ -216,6 +218,16 @@ where tenant_id = $1::uuid and project_id = $2::uuid
   and row_version = $4::bigint and security_level = $5
   and policy_version = $6::bigint
 returning row_version
+`;
+
+const DATA_ITEM_VERSION_PUBLISHED_SQL = `
+update catalog.data_item_version set publication_status = 'PUBLISHED',
+  published_at = clock_timestamp(), updated_at = clock_timestamp()
+where tenant_id = $1::uuid and project_id = $2::uuid
+  and data_item_id = $3::uuid and version_id = $4::uuid
+  and publication_status = 'UNPUBLISHED' and published_at is null
+  and security_level = $5 and policy_version = $6::bigint
+returning version_id
 `;
 
 const PUBLICATION_OPERATION_EVENTS_SQL = `
@@ -264,6 +276,8 @@ select exists (
   where session.tenant_id = $1::uuid and session.project_id = $2::uuid
     and version.version_id = $3::uuid and session.state = 'PUBLISHED'
     and item.publication_status = 'PUBLISHED'
+    and version.publication_status = 'PUBLISHED'
+    and version.published_at is not null
     and session.security_level = $4 and session.policy_version = $5::bigint
     and item.security_level = $4 and item.policy_version = $5::bigint
 ) as published
@@ -597,7 +611,16 @@ export class PostgresProjectionPublicationGate implements ProjectionPublicationG
         throw new Error('Publication gate is not satisfied.');
       }
       const state = text(row, 'state');
-      if (state === 'PUBLISHED') return;
+      if (state === 'PUBLISHED') {
+        if (
+          text(row, 'publication_status') !== 'PUBLISHED' ||
+          text(row, 'version_publication_status') !== 'PUBLISHED' ||
+          row['version_published_at'] === null
+        ) {
+          throw new Error('Publication authority is inconsistent.');
+        }
+        return;
+      }
       if (state !== 'COMMITTED' && state !== 'PROJECTING') {
         throw new Error('Publication state is invalid.');
       }
@@ -634,6 +657,17 @@ export class PostgresProjectionPublicationGate implements ProjectionPublicationG
           event.policyVersion,
         ]);
         if (item.rows.length !== 1) throw new Error('Publication conflict.');
+      }
+      if (text(row, 'version_publication_status') !== 'PUBLISHED') {
+        const version = await client.query(DATA_ITEM_VERSION_PUBLISHED_SQL, [
+          event.tenantId,
+          event.projectId,
+          event.dataItemId,
+          event.versionId,
+          event.securityLevel,
+          event.policyVersion,
+        ]);
+        if (version.rows.length !== 1) throw new Error('Publication conflict.');
       }
       const operationStatus = text(row, 'operation_status');
       if (operationStatus !== 'RUNNING') {

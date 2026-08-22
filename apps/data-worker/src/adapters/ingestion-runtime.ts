@@ -455,7 +455,7 @@ insert into knowledge.evidence_fragment (
   asset_id, locator, content_hash, excerpt, security_level, policy_version,
   row_version
 ) values ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6::uuid,
-  $7::jsonb, decode($8, 'hex'), null, $9, $10::bigint, 1)
+  $7::jsonb, decode($8, 'hex'), $9, $10, $11::bigint, 1)
 on conflict (tenant_id, project_id, evidence_fragment_id) do nothing
 `;
 
@@ -566,6 +566,7 @@ interface FrozenAssetFact {
   readonly parserHash: string;
   readonly profileHash: string;
   readonly classificationHash: string;
+  readonly evidenceExcerpt?: string;
 }
 
 const UUID =
@@ -667,6 +668,9 @@ function frozenAssets(
       parserHash: text(asset, 'parserHash'),
       profileHash: text(asset, 'profileHash'),
       classificationHash: text(asset, 'classificationHash'),
+      ...(asset['evidenceExcerpt'] === undefined
+        ? {}
+        : { evidenceExcerpt: text(asset, 'evidenceExcerpt') }),
     };
     if (
       result.assetId !== checkpoint.assetIds[index] ||
@@ -682,7 +686,16 @@ function frozenAssets(
         result.parserHash,
         result.profileHash,
         result.classificationHash,
-      ].every((digest) => SHA256.test(digest))
+      ].every((digest) => SHA256.test(digest)) ||
+      (result.evidenceExcerpt !== undefined &&
+        (result.evidenceExcerpt.length > 8_192 ||
+          [...result.evidenceExcerpt].some((character) => {
+            const code = character.charCodeAt(0);
+            return (
+              code === 0 ||
+              (code < 32 && !['\t', '\n', '\r'].includes(character))
+            );
+          })))
     ) {
       throw runtimeError('INGESTION_AUTHORITY_INVALID', false);
     }
@@ -1495,6 +1508,7 @@ export class PostgresIngestionAuthority implements IngestionAuthorityPort {
             versionObject: version,
           }),
           asset.sourceHash,
+          asset.evidenceExcerpt ?? null,
           security,
           request.policyVersion,
         ]);
@@ -1982,12 +1996,27 @@ export class TikaIngestionParser {
         ) {
           throw runtimeError('TIKA_INVALID_RESPONSE', false);
         }
+        let sourceCrs = 'EPSG:4326';
+        const crs = (parsed as Record<string, unknown>)['crs'];
+        if (crs !== undefined) {
+          const crsRecord = record(crs);
+          const properties = record(crsRecord['properties']);
+          const name = properties['name'];
+          if (
+            crsRecord['type'] !== 'name' ||
+            typeof name !== 'string' ||
+            !['EPSG:4326', 'EPSG:4490', 'EPSG:3857'].includes(name)
+          ) {
+            throw runtimeError('TIKA_INVALID_RESPONSE', false);
+          }
+          sourceCrs = name;
+        }
         return {
           kind: 'geojson' as const,
           contentHash,
           metadata: {
             geojson: true,
-            sourceCrs: 'EPSG:4326',
+            sourceCrs,
             sourceGeoJson: parsed as Readonly<Record<string, unknown>>,
           },
         };
@@ -2032,7 +2061,12 @@ export class TikaIngestionParser {
           throw runtimeError('TIKA_INVALID_RESPONSE', false);
         }
         const metadata = { ...(parsed[0] as Record<string, unknown>) };
+        const extractedText = metadata['X-TIKA:content'];
         delete metadata['X-TIKA:content'];
+        if (typeof extractedText === 'string') {
+          const excerpt = extractedText.trim().slice(0, 8_192);
+          if (excerpt.length > 0) metadata['wiser:excerpt'] = excerpt;
+        }
         return {
           kind: 'document' as const,
           contentHash: digest.digest('hex'),

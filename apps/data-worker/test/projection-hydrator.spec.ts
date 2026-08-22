@@ -275,7 +275,7 @@ describe('five-target projection hydrator', () => {
       neo4j: { put: calls.neo4j },
       stac: { put: calls.stac },
     });
-    await Promise.all(targets.map(({ project }) => project(nonSpatialEvent)));
+    await Promise.all(targets.map((target) => target.project(nonSpatialEvent)));
     expect(calls.postgis).not.toHaveBeenCalled();
     expect(calls.stac).not.toHaveBeenCalled();
     expect(calls.weaviate).toHaveBeenCalledOnce();

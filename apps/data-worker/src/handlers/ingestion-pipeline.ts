@@ -499,6 +499,31 @@ function boundedText(value: unknown): string {
   return value;
 }
 
+function optionalEvidenceExcerpt(
+  metadata: Readonly<Record<string, unknown>>,
+): string | undefined {
+  const value = metadata['wiser:excerpt'];
+  if (value === undefined) return undefined;
+  if (
+    typeof value !== 'string' ||
+    value.length < 1 ||
+    value.length > 8_192 ||
+    [...value].some((character) => {
+      const code = character.charCodeAt(0);
+      return (
+        code === 0 || (code < 32 && !['\t', '\n', '\r'].includes(character))
+      );
+    })
+  ) {
+    throw new IngestionPipelinePortError(
+      'INVALID_PIPELINE_PORT_RESPONSE',
+      false,
+      'Invalid evidence excerpt response.',
+    );
+  }
+  return value;
+}
+
 function validatedAlignment(
   value: unknown,
   assets: readonly IngestionAssetCheckpoint[],
@@ -1193,20 +1218,26 @@ export function createIngestionPipelineHandler(
     );
 
     const assetManifest = Object.freeze({
-      assets: quarantined.map((asset, index) => ({
-        assetId: asset.assetId,
-        ordinal: assets[index]!.ordinal,
-        uploadId: assets[index]!.uploadId,
-        quarantineObjectRef: asset.objectRef,
-        sourceKind: asset.sourceKind,
-        mediaType: asset.mediaType,
-        size: asset.size,
-        sourceHash: fingerprints[index]!.fingerprint,
-        scanHash: canonicalPipelineHash(scans[index]),
-        parserHash: parsedAssets[index]!.contentHash,
-        profileHash: profiles[index]!.profileHash,
-        classificationHash: classifications[index]!.classificationHash,
-      })),
+      assets: quarantined.map((asset, index) => {
+        const evidenceExcerpt = optionalEvidenceExcerpt(
+          parsedAssets[index]!.metadata,
+        );
+        return {
+          assetId: asset.assetId,
+          ordinal: assets[index]!.ordinal,
+          uploadId: assets[index]!.uploadId,
+          quarantineObjectRef: asset.objectRef,
+          sourceKind: asset.sourceKind,
+          mediaType: asset.mediaType,
+          size: asset.size,
+          sourceHash: fingerprints[index]!.fingerprint,
+          scanHash: canonicalPipelineHash(scans[index]),
+          parserHash: parsedAssets[index]!.contentHash,
+          profileHash: profiles[index]!.profileHash,
+          classificationHash: classifications[index]!.classificationHash,
+          ...(evidenceExcerpt === undefined ? {} : { evidenceExcerpt }),
+        };
+      }),
       transformedArtifactRef: artifactRef,
       transformedHash: transformed.outputHash,
       validatedPlan: Object.freeze({

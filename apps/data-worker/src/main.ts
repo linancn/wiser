@@ -37,14 +37,34 @@ export async function main(environment: NodeJS.ProcessEnv): Promise<void> {
   const shutdown = () => abort.abort();
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
+  let runFailure: Error | undefined;
   try {
     await runtime.start(abort.signal);
-  } finally {
-    await runtime.stop();
-    await closeDataWorkerHttpServer(server);
-    process.off('SIGINT', shutdown);
-    process.off('SIGTERM', shutdown);
+  } catch (error) {
+    runFailure =
+      error instanceof Error ? error : new Error('Data Worker runtime failed.');
   }
+  let shutdownFailure: Error | undefined;
+  try {
+    await runtime.stop();
+  } catch (error) {
+    shutdownFailure =
+      error instanceof Error
+        ? error
+        : new Error('Data Worker shutdown failed.');
+  }
+  try {
+    await closeDataWorkerHttpServer(server);
+  } catch (error) {
+    shutdownFailure ??=
+      error instanceof Error
+        ? error
+        : new Error('Data Worker HTTP shutdown failed.');
+  }
+  process.off('SIGINT', shutdown);
+  process.off('SIGTERM', shutdown);
+  if (runFailure !== undefined) throw runFailure;
+  if (shutdownFailure !== undefined) throw shutdownFailure;
 }
 
 void main(process.env).catch((error: unknown) => {

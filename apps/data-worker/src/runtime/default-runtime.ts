@@ -185,6 +185,10 @@ export function createDefaultDataWorkerRuntime(
     onProjectionError: (category) =>
       logger.warn('data_worker_projection_batch_failed', { category }),
     close: [
+      () => {
+        http.close();
+        return Promise.resolve();
+      },
       () => hydrator.close(),
       () => publication.close(),
       () => ingestionPool.end(),

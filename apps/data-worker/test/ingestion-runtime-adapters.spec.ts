@@ -297,9 +297,7 @@ function frozenCheckpoint(): FrozenIngestionCheckpoint {
         parserHash: ordinal === 0 ? 'c'.repeat(64) : 'd'.repeat(64),
         profileHash: '2'.repeat(64),
         classificationHash: '3'.repeat(64),
-        ...(ordinal === 0
-          ? { evidenceExcerpt: 'hello water evidence' }
-          : {}),
+        ...(ordinal === 0 ? { evidenceExcerpt: 'hello water evidence' } : {}),
       })),
       transformedArtifactRef: 'quarantine/transform',
       transformedHash: 'e'.repeat(64),

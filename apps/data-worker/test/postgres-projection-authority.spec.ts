@@ -146,6 +146,8 @@ class FakeClient implements DataPostgresClient {
             publication_status: 'UNPUBLISHED',
             item_row_version: '1',
             acceptance_status: 'PASSED',
+            version_publication_status: 'UNPUBLISHED',
+            version_published_at: null,
             operation_status: 'RUNNING',
           },
         ],
@@ -229,7 +231,18 @@ describe('PostgreSQL projection authority', () => {
       '71000000-0000-4000-8000-000000000012',
     );
     await gate.publish(event);
-    const sql = pool.clients[0]!.queries.map(({ text }) => text).join('\n');
+    await expect(
+      gate.isPublished({
+        tenantId: event.tenantId,
+        projectId: event.projectId,
+        versionId: event.versionId,
+        securityLevel: event.securityLevel,
+        policyVersion: event.policyVersion,
+      }),
+    ).resolves.toBe(true);
+    const sql = pool.clients
+      .flatMap(({ queries }) => queries.map(({ text }) => text))
+      .join('\n');
     expect(sql).toContain("state = 'PROJECTING'");
     expect(sql).toContain("state = 'PUBLISHED'");
     expect(sql).toContain("publication_status = 'PUBLISHED'");

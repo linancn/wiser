@@ -78,9 +78,13 @@ describe('bounded internal projection HTTP client', () => {
       timeoutMs: 30_000,
       maximumResponseBytes: 1_024,
       fetch: (_url, init) => {
-        requestSignal = init?.signal as AbortSignal;
+        const signal = init?.signal;
+        if (!(signal instanceof AbortSignal)) {
+          throw new Error('missing request signal');
+        }
+        requestSignal = signal;
         return new Promise<Response>((_resolve, reject) => {
-          requestSignal.addEventListener(
+          signal.addEventListener(
             'abort',
             () => reject(new Error('aborted backend request')),
             { once: true },
