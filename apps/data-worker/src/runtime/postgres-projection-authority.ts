@@ -94,8 +94,8 @@ order by array_position($5::uuid[], evidence_fragment_id)
 const SPATIAL_SQL = `
 /* data-worker.projection-hydration.spatial */
 select spatial_extent_id, source_crs,
-  ST_AsGeoJSON(source_geometry)::jsonb as source_geojson,
-  ST_AsGeoJSON(ST_Transform(canonical_geometry, 4326))::jsonb as wgs84_geojson,
+  ST_AsGeoJSON(source_geometry, 9, 0)::jsonb as source_geojson,
+  ST_AsGeoJSON(ST_Transform(canonical_geometry, 4326), 9, 0)::jsonb as wgs84_geojson,
   array[
     ST_XMin(ST_Extent(ST_Transform(canonical_geometry, 4326))),
     ST_YMin(ST_Extent(ST_Transform(canonical_geometry, 4326))),
@@ -404,61 +404,58 @@ export class PostgresProjectionHydrationAuthority implements ProjectionHydration
     ids: ProjectionAuthorityIds,
   ): Promise<ProjectionAuthoritySnapshot> {
     return transaction(this.pool, event, true, async (client) => {
-      const [itemVersion, assets, evidence, spatial, quality, lineage] =
-        await Promise.all([
-          client.query(ITEM_VERSION_SQL, [
-            event.tenantId,
-            event.projectId,
-            ids.dataItemId,
-            ids.versionId,
-            event.securityLevel,
-            event.policyVersion,
-          ]),
-          client.query(ASSETS_SQL, [
-            event.tenantId,
-            event.projectId,
-            ids.dataItemId,
-            ids.versionId,
-            ids.assetIds,
-            ids.contentBlobIds,
-            event.securityLevel,
-            event.policyVersion,
-          ]),
-          client.query(EVIDENCE_SQL, [
-            event.tenantId,
-            event.projectId,
-            ids.dataItemId,
-            ids.versionId,
-            ids.evidenceFragmentIds,
-            event.securityLevel,
-            event.policyVersion,
-          ]),
-          client.query(SPATIAL_SQL, [
-            event.tenantId,
-            event.projectId,
-            ids.dataItemId,
-            ids.versionId,
-            ids.spatialExtentIds,
-            event.securityLevel,
-            event.policyVersion,
-          ]),
-          client.query(QUALITY_SQL, [
-            event.tenantId,
-            event.projectId,
-            ids.checkRunId,
-            ids.dataItemId,
-            event.securityLevel,
-            event.policyVersion,
-          ]),
-          client.query(LINEAGE_SQL, [
-            event.tenantId,
-            event.projectId,
-            ids.processRunId,
-            ids.dataItemId,
-            event.securityLevel,
-            event.policyVersion,
-          ]),
-        ]);
+      const itemVersion = await client.query(ITEM_VERSION_SQL, [
+        event.tenantId,
+        event.projectId,
+        ids.dataItemId,
+        ids.versionId,
+        event.securityLevel,
+        event.policyVersion,
+      ]);
+      const assets = await client.query(ASSETS_SQL, [
+        event.tenantId,
+        event.projectId,
+        ids.dataItemId,
+        ids.versionId,
+        ids.assetIds,
+        ids.contentBlobIds,
+        event.securityLevel,
+        event.policyVersion,
+      ]);
+      const evidence = await client.query(EVIDENCE_SQL, [
+        event.tenantId,
+        event.projectId,
+        ids.dataItemId,
+        ids.versionId,
+        ids.evidenceFragmentIds,
+        event.securityLevel,
+        event.policyVersion,
+      ]);
+      const spatial = await client.query(SPATIAL_SQL, [
+        event.tenantId,
+        event.projectId,
+        ids.dataItemId,
+        ids.versionId,
+        ids.spatialExtentIds,
+        event.securityLevel,
+        event.policyVersion,
+      ]);
+      const quality = await client.query(QUALITY_SQL, [
+        event.tenantId,
+        event.projectId,
+        ids.checkRunId,
+        ids.dataItemId,
+        event.securityLevel,
+        event.policyVersion,
+      ]);
+      const lineage = await client.query(LINEAGE_SQL, [
+        event.tenantId,
+        event.projectId,
+        ids.processRunId,
+        ids.dataItemId,
+        event.securityLevel,
+        event.policyVersion,
+      ]);
       const row = itemVersion.rows[0];
       const qualityRow = quality.rows[0];
       const lineageRow = lineage.rows[0];

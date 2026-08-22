@@ -38,7 +38,7 @@ export class DeterministicFakeEmbedding implements EmbeddingPort {
     ) {
       throw new Error('Fake embedding dimensions must be from 8 to 4096.');
     }
-    if (!/^[a-z][a-z0-9._-]{2,63}$/.test(options.version)) {
+    if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(options.version)) {
       throw new Error('Fake embedding version is invalid.');
     }
     this.model = Object.freeze({

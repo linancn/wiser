@@ -62,6 +62,7 @@ interface ResolvedValue {
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const SEMANTIC_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 const SECURITY_LEVELS = new Set<DataJobScope['maxSecurityLevel']>([
   'L0_PUBLIC',
   'L1_INTERNAL',
@@ -489,7 +490,7 @@ export function loadDataWorkerConfig(
     embeddingVersion: safeKey(
       value('DATA_FAKE_EMBEDDING_VERSION'),
       'DATA_FAKE_EMBEDDING_VERSION',
-      /^[a-z][a-z0-9._-]{2,63}$/,
+      SEMANTIC_VERSION_PATTERN,
     ),
     publicationWaitTimeoutMs,
     publicationWaitPollMs: integer(
