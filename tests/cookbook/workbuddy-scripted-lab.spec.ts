@@ -6,8 +6,8 @@ import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { startV2LocalLabServer } from '../../apps/api/src/index.js';
-import { launchWorkBuddyRoles } from '../../cookbooks/workbuddy-yongding-tdd/scripts/launch-four-agents.mjs';
-import { renderWorkBuddyRuntime } from '../../cookbooks/workbuddy-yongding-tdd/scripts/render-workbuddy-config.mjs';
+import { launchWorkBuddyRoles } from '../../examples/agent-excon/workbuddy-yongding-tdd/scripts/launch-four-agents.mjs';
+import { renderWorkBuddyRuntime } from '../../examples/agent-excon/workbuddy-yongding-tdd/scripts/render-workbuddy-config.mjs';
 import {
   RunEvaluationListSchema,
   RunInteractionListSchema,

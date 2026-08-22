@@ -11,7 +11,7 @@ whenToUse:
 whenToUpdate:
   - showcase profile、脚本、session schema 或 GUI 流程变化时
 checkPaths:
-  - cookbooks/workbuddy-yongding-tdd/showcase/**
+  - examples/agent-excon/workbuddy-yongding-tdd/showcase/**
   - skills/wiser-workbuddy-showcase/**
 lastReviewedAt: 2026-08-21
 lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee

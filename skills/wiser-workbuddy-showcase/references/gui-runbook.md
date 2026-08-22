@@ -20,7 +20,7 @@ WorkBuddy 显示登录、订阅或 macOS 自动化权限界面，暂停并交还
 2. 在 WorkBuddy 中打开 `/Users/davidli/projects/wiser`，创建一个新的顶层
    Lead 任务。不要恢复旧参训会话。
 3. 将
-   `cookbooks/workbuddy-yongding-tdd/showcase/WORKBUDDY_LEAD_SHOWCASE_TASK.md`
+   `examples/agent-excon/workbuddy-yongding-tdd/showcase/WORKBUDDY_LEAD_SHOWCASE_TASK.md`
    的内容和所选 profile 交给 Lead。一个 Lead 只控制生命周期，不调用
    参训 MCP。
 4. 等待 Lead 报告脱敏的 `showcase-session.json` 绝对路径。可用

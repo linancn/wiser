@@ -377,7 +377,7 @@ describe('Docpact documentation governance', () => {
     expect(docpactRule(config, 'participant-skill')).toBe('');
     expect(docpactRule(config, 'workbuddy-workflows')).toBe('');
     expect(docpactRule(config, 'workbuddy-cookbook-runtime')).not.toContain(
-      '- path: cookbooks/workbuddy-yongding-tdd/**',
+      '- path: examples/agent-excon/workbuddy-yongding-tdd/**',
     );
   });
 

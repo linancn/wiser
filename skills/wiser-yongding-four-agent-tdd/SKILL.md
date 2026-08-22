@@ -5,7 +5,7 @@ description: Run, validate, or diagnose the local WISER Yongding River four-agen
 
 # WISER WorkBuddy four-agent TDD
 
-Act as the host controller, never as a fifth WISER participant. From the repository root, read `cookbooks/workbuddy-yongding-tdd/README.md` and its architecture/failure references before running a command.
+Act as the host controller, never as a fifth WISER participant. From the repository root, read `examples/agent-excon/workbuddy-yongding-tdd/README.md` and its architecture/failure references before running a command.
 
 ## Required sequence
 

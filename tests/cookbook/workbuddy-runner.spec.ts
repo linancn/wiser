@@ -8,11 +8,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   collectOperatorEvents,
   runWorkBuddyCookbook,
-} from '../../cookbooks/workbuddy-yongding-tdd/scripts/run-cookbook.mjs';
+} from '../../examples/agent-excon/workbuddy-yongding-tdd/scripts/run-cookbook.mjs';
 import {
   hasCoordinatorFinalEvidence,
   hasCoordinatorReleaseEvidence,
-} from '../../cookbooks/workbuddy-yongding-tdd/scripts/scripted-participant.mjs';
+} from '../../examples/agent-excon/workbuddy-yongding-tdd/scripts/scripted-participant.mjs';
 
 const temporaryDirectories: string[] = [];
 

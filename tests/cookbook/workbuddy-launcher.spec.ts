@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   launchWorkBuddyRoles,
   parseWorkBuddyJson,
-} from '../../cookbooks/workbuddy-yongding-tdd/scripts/launch-four-agents.mjs';
+} from '../../examples/agent-excon/workbuddy-yongding-tdd/scripts/launch-four-agents.mjs';
 
 const roles = [
   'water-evidence',

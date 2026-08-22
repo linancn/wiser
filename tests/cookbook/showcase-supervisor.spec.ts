@@ -17,7 +17,7 @@ import {
   runShowcasePreflight,
   startShowcaseSupervisor,
   waitForHttpReady,
-} from '../../cookbooks/workbuddy-yongding-tdd/showcase/scripts/supervisor.mjs';
+} from '../../examples/agent-excon/workbuddy-yongding-tdd/showcase/scripts/supervisor.mjs';
 
 const temporaryDirectories: string[] = [];
 

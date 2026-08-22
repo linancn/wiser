@@ -18,10 +18,10 @@ describe('WISER WorkBuddy showcase execution bundle', () => {
         read('skills/wiser-workbuddy-showcase/references/gui-runbook.md'),
         read('skills/wiser-workbuddy-showcase/references/safety-boundaries.md'),
         read(
-          'cookbooks/workbuddy-yongding-tdd/showcase/CODEX_SHOWCASE_TASK.md',
+          'examples/agent-excon/workbuddy-yongding-tdd/showcase/CODEX_SHOWCASE_TASK.md',
         ),
         read(
-          'cookbooks/workbuddy-yongding-tdd/showcase/WORKBUDDY_LEAD_SHOWCASE_TASK.md',
+          'examples/agent-excon/workbuddy-yongding-tdd/showcase/WORKBUDDY_LEAD_SHOWCASE_TASK.md',
         ),
       ],
     );
@@ -57,10 +57,12 @@ describe('WISER WorkBuddy showcase execution bundle', () => {
 
   it('publishes a strict, redacted session contract and three explicit profiles', async () => {
     const [readme, manifestSource, schemaSource] = await Promise.all([
-      read('cookbooks/workbuddy-yongding-tdd/showcase/README.md'),
-      read('cookbooks/workbuddy-yongding-tdd/showcase/showcase.yaml'),
+      read('examples/agent-excon/workbuddy-yongding-tdd/showcase/README.md'),
       read(
-        'cookbooks/workbuddy-yongding-tdd/showcase/schemas/showcase-session.schema.json',
+        'examples/agent-excon/workbuddy-yongding-tdd/showcase/showcase.yaml',
+      ),
+      read(
+        'examples/agent-excon/workbuddy-yongding-tdd/showcase/schemas/showcase-session.schema.json',
       ),
     ]);
     const schema = JSON.parse(schemaSource) as {

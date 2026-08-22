@@ -11,7 +11,7 @@ whenToUse:
 whenToUpdate:
   - profile、启动命令、报告或清理流程变化时
 checkPaths:
-  - cookbooks/workbuddy-yongding-tdd/**
+  - examples/agent-excon/workbuddy-yongding-tdd/**
   - skills/wiser-workbuddy-showcase/**
   - skills/wiser-yongding-four-agent-tdd/**
 lastReviewedAt: 2026-08-21
