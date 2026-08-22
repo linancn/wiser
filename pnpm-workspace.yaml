@@ -5,6 +5,21 @@ packages:
 allowBuilds:
   esbuild: true
 
+# Keep pnpm 11's 24-hour supply-chain cooldown. These vendors are narrowly
+# exempted because WISER intentionally pins and verifies their just-released
+# stable versions in this delivery; the frozen lockfile still fixes every
+# package version and integrity hash.
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - '@aws-sdk/*'
+  - '@smithy/*'
+  - '@next/*'
+  - next
+  - fumadocs-core
+  - fumadocs-mdx
+  - fumadocs-ui
+  - maplibre-gl
+
 catalog:
   '@types/node': 24.13.3
   typescript: 7.0.2
