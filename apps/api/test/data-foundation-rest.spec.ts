@@ -466,4 +466,56 @@ describe('Data Foundation REST module', () => {
     expect(health.statusCode).toBe(200);
     expect(capabilities.statusCode).toBe(200);
   });
+
+  it('projects the Zod capability contracts into generated OpenAPI operations', async () => {
+    const { app } = appWith();
+    const response = await app.inject({ method: 'GET', url: '/openapi.json' });
+    const document = response.json<{
+      paths: Record<
+        string,
+        Record<
+          string,
+          {
+            requestBody?: unknown;
+            parameters?: readonly unknown[];
+            responses?: Record<string, unknown>;
+            security?: readonly unknown[];
+          }
+        >
+      >;
+    }>();
+
+    expect(response.statusCode).toBe(200);
+    const query = document.paths['/api/data/v1/query']?.['post'];
+    expect(query?.requestBody).toBeDefined();
+    expect(query?.responses?.['200']).toMatchObject({
+      content: { 'application/json': { schema: expect.any(Object) } },
+    });
+    expect(query?.security).toEqual([{ bearerAuth: [] }]);
+
+    const catalog = document.paths['/api/data/v1/catalog/data-items']?.['get'];
+    expect(catalog?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'first', in: 'query' }),
+      ]),
+    );
+    const version =
+      document.paths[
+        '/api/data/v1/catalog/data-items/{dataItemId}/versions/{versionId}'
+      ]?.['get'];
+    expect(version?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'dataItemId',
+          in: 'path',
+          required: true,
+        }),
+        expect.objectContaining({
+          name: 'versionId',
+          in: 'path',
+          required: true,
+        }),
+      ]),
+    );
+  });
 });
