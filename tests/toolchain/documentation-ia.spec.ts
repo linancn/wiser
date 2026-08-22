@@ -9,6 +9,10 @@ function read(path: string): string {
   return readFileSync(resolve(repositoryRoot, path), 'utf8');
 }
 
+function readJson(path: string): Record<string, unknown> {
+  return JSON.parse(read(path)) as Record<string, unknown>;
+}
+
 describe('human documentation entrypoints', () => {
   it('makes the root README a current system and runtime directory', () => {
     const chinese = read('README.md');
@@ -99,5 +103,19 @@ describe('human documentation entrypoints', () => {
     expect(chinese).toContain('/development/');
     expect(english).toContain('/en/development/');
     expect(`${chinese}\n${english}`).not.toContain('<HomeTimeline');
+  });
+
+  it('gives each application a deterministic local development port', () => {
+    const web = readJson('apps/web/package.json');
+    const docs = readJson('apps/docs/package.json');
+    const webScripts = web.scripts as Record<string, string>;
+    const docsScripts = docs.scripts as Record<string, string>;
+
+    expect(webScripts.dev).toBe(
+      'next dev --hostname 127.0.0.1 --port 3000',
+    );
+    expect(docsScripts.dev).toBe(
+      'next dev --hostname 127.0.0.1 --port 4321',
+    );
   });
 });
