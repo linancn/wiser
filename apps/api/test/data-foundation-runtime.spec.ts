@@ -39,6 +39,9 @@ const enabledEnvironment = {
   DATA_NEO4J_PASSWORD: 'neo4j-secret',
   DATA_STAC_API_URL: 'http://stac-api:8080',
   DATA_STAC_API_BEARER_TOKEN: 'stac-bearer-secret',
+  DATA_GEOSERVER_URL: 'http://geoserver:8080',
+  DATA_TITILER_URL: 'http://titiler:80',
+  DATA_MARTIN_URL: 'http://martin:3000',
   DATA_PUBLIC_API_ORIGIN: 'http://api:3001',
 } as NodeJS.ProcessEnv;
 
@@ -114,6 +117,23 @@ function factories(overrides: Partial<DataFoundationRuntimeFactories> = {}) {
       readEvidence: () => Promise.resolve({}),
       readStacItem: () => Promise.resolve({}),
     })),
+    createGeoAuthorityPort: vi.fn(() => ({
+      authorizeVectorVersion: () => Promise.resolve(),
+      resolveRasterVersion: () =>
+        Promise.resolve({
+          sourceUrl:
+            's3://wiser-authority/tenants/a/projects/b/versions/c/sha256/d',
+        }),
+      record: () => Promise.resolve(),
+    })),
+    createGeoProxyPort: vi.fn(() => ({
+      request: () =>
+        Promise.resolve({
+          status: 200,
+          contentType: 'application/json',
+          body: new Uint8Array(),
+        }),
+    })),
     probeDatabase: vi.fn(() => Promise.resolve(true)),
     probeWorker: vi.fn(() => Promise.resolve(true)),
     ...overrides,
@@ -133,6 +153,7 @@ describe('Data Foundation production runtime composition', () => {
       { id: 'data.foundation.rest', register() {} },
       { id: 'data.foundation.graphql', register() {} },
       { id: 'data.foundation.resources', register() {} },
+      { id: 'data.foundation.geo-proxy', register() {} },
     ];
     const modules = createDefaultApiModules(
       {},
@@ -151,6 +172,7 @@ describe('Data Foundation production runtime composition', () => {
       'data.foundation.rest',
       'data.foundation.graphql',
       'data.foundation.resources',
+      'data.foundation.geo-proxy',
     ]);
   });
 
@@ -170,6 +192,7 @@ describe('Data Foundation production runtime composition', () => {
       'data.foundation.rest',
       'data.foundation.graphql',
       'data.foundation.resources',
+      'data.foundation.geo-proxy',
     ]);
     const app = buildApp({ logger: false, modules: runtime.modules });
     openApps.push(app);

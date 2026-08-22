@@ -25,6 +25,9 @@ const complete = {
   DATA_NEO4J_PASSWORD: 'local-neo4j-password',
   DATA_STAC_API_URL: 'http://stac-api:8080',
   DATA_STAC_API_BEARER_TOKEN: 'local-stac-bearer-token',
+  DATA_GEOSERVER_URL: 'http://geoserver:8080',
+  DATA_TITILER_URL: 'http://titiler:80',
+  DATA_MARTIN_URL: 'http://martin:3000',
   DATA_PUBLIC_API_ORIGIN: 'http://api:3001',
   DATA_FAKE_EMBEDDING_DIMENSIONS: '64',
 } as const;
@@ -94,6 +97,11 @@ describe('Data Foundation API runtime configuration', () => {
       stac: {
         url: complete.DATA_STAC_API_URL,
         bearerToken: complete.DATA_STAC_API_BEARER_TOKEN,
+      },
+      geo: {
+        geoserverUrl: complete.DATA_GEOSERVER_URL,
+        titilerUrl: complete.DATA_TITILER_URL,
+        martinUrl: complete.DATA_MARTIN_URL,
       },
       publicApiOrigin: complete.DATA_PUBLIC_API_ORIGIN,
       fakeEmbeddingDimensions: 64,
