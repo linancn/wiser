@@ -14,7 +14,7 @@ import {
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const scriptPath = fileURLToPath(import.meta.url);
-const repositoryRoot = resolve(scriptDirectory, '../../../../');
+const repositoryRoot = resolve(scriptDirectory, '../../../../..');
 
 function pause(milliseconds) {
   return new Promise((resolvePause) => {

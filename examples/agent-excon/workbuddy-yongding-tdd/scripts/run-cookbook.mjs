@@ -5,11 +5,11 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { startV2LocalLabServer } from '../../../apps/api/src/index.ts';
+import { startV2LocalLabServer } from '../../../../apps/api/src/index.ts';
 import {
   BestEffortTelemetryOverlaySchema,
   RunInteractionListSchema,
-} from '../../../packages/contracts/src/index.ts';
+} from '../../../../packages/contracts/src/index.ts';
 
 import { launchWorkBuddyRoles } from './launch-four-agents.mjs';
 import { renderWorkBuddyRuntime } from './render-workbuddy-config.mjs';
@@ -451,7 +451,7 @@ export async function runWorkBuddyCookbook(options) {
 function cliOptions(argv) {
   const modeIndex = argv.indexOf('--mode');
   const outputIndex = argv.indexOf('--output');
-  const repositoryRoot = resolve(cookbookRoot, '../..');
+  const repositoryRoot = resolve(cookbookRoot, '../../..');
   const mode = modeIndex < 0 ? 'scripted' : argv[modeIndex + 1];
   const faultIndex = argv.indexOf('--fault');
   const stamp = new Date().toISOString().replaceAll(/[:.]/g, '-');

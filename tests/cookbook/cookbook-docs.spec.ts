@@ -13,12 +13,14 @@ describe('WorkBuddy Yongding cookbook documentation', () => {
   it('ships a Chinese-default bilingual, executable, and safety-scoped cookbook', async () => {
     const [readme, task, architecture, faults, skill, manifest] =
       await Promise.all([
-        read('cookbooks/workbuddy-yongding-tdd/README.md'),
-        read('cookbooks/workbuddy-yongding-tdd/WORKBUDDY_TASK.md'),
-        read('cookbooks/workbuddy-yongding-tdd/architecture.md'),
-        read('cookbooks/workbuddy-yongding-tdd/failure-injection.md'),
+        read('examples/agent-excon/workbuddy-yongding-tdd/README.md'),
+        read('examples/agent-excon/workbuddy-yongding-tdd/WORKBUDDY_TASK.md'),
+        read('examples/agent-excon/workbuddy-yongding-tdd/architecture.md'),
+        read(
+          'examples/agent-excon/workbuddy-yongding-tdd/failure-injection.md',
+        ),
         read('skills/wiser-yongding-four-agent-tdd/SKILL.md'),
-        read('cookbooks/workbuddy-yongding-tdd/cookbook.yaml'),
+        read('examples/agent-excon/workbuddy-yongding-tdd/cookbook.yaml'),
       ]);
     const combined = [readme, task, architecture, faults, skill, manifest].join(
       '\n',
@@ -54,7 +56,7 @@ describe('WorkBuddy Yongding cookbook documentation', () => {
     const [evalsSource, reportSchemaSource] = await Promise.all([
       read('skills/wiser-yongding-four-agent-tdd/evals/evals.json'),
       read(
-        'cookbooks/workbuddy-yongding-tdd/schemas/cookbook-report.schema.json',
+        'examples/agent-excon/workbuddy-yongding-tdd/schemas/cookbook-report.schema.json',
       ),
     ]);
     const evals = JSON.parse(evalsSource) as { evals: unknown[] };
@@ -79,7 +81,7 @@ describe('WorkBuddy Yongding cookbook documentation', () => {
       read('.gitignore'),
       read('package.json'),
       read(
-        'cookbooks/workbuddy-yongding-tdd/scripts/install-codebuddy-skill.mjs',
+        'examples/agent-excon/workbuddy-yongding-tdd/scripts/install-codebuddy-skill.mjs',
       ),
     ]);
     const manifest = JSON.parse(manifestSource) as {
@@ -88,7 +90,7 @@ describe('WorkBuddy Yongding cookbook documentation', () => {
 
     expect(ignore).toMatch(/^\.codebuddy\/$/m);
     expect(manifest.scripts['codebuddy:install-skill']).toBe(
-      'node cookbooks/workbuddy-yongding-tdd/scripts/install-codebuddy-skill.mjs',
+      'node examples/agent-excon/workbuddy-yongding-tdd/scripts/install-codebuddy-skill.mjs',
     );
     expect(installer).toContain("'.codebuddy'");
     expect(installer).toContain("'skills'");

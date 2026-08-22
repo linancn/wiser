@@ -14,9 +14,10 @@ whenToUpdate:
 checkPaths:
   - apps/api/**
   - packages/contracts/**
+  - packages/excon-scenarios/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 8169cc9c274ec3622b9c0ddd8d544eb8afe06f27
+lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 ---
 
 ## Default protocol and implementation status
@@ -59,6 +60,8 @@ Web MapLibre tile/STAC requests target only same-origin `/api/data-foundation/ge
 ## Public scenario catalog
 
 These reads need no bearer credential. They expose published safe DTOs and cannot reveal drafts or validation failures.
+
+The bundled Yongding case pack enters the API runtime only through the validated public exports of the private workspace package `@agent-excon/scenarios`; the HTTP layer never reads or constructs package-internal asset paths.
 
 | Method | Path                                            | Purpose                                           |
 | ------ | ----------------------------------------------- | ------------------------------------------------- |

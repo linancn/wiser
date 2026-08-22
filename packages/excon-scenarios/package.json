@@ -1,0 +1,33 @@
+{
+  "name": "@agent-excon/scenarios",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "SEE LICENSE IN scenarios/jjj-yongding-replenishment-2023/LICENSE-DATA.md",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "files": [
+    "src",
+    "dist",
+    "scenarios"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@agent-excon/contracts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "4.1.11"
+  },
+  "engines": {
+    "node": ">=24.18.0 <25"
+  }
+}

@@ -1,10 +1,12 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 import { afterEach, describe, expect, it } from 'vitest';
+
+import { loadYongdingStageFixture } from '@agent-excon/scenarios/testing';
 
 const execute = promisify(execFile);
 const temporaryDirectories: string[] = [];
@@ -12,10 +14,7 @@ const script = new URL(
   '../../skills/agent-excon/scripts/validate-allocation-plan.mjs',
   import.meta.url,
 );
-const stageOne = new URL(
-  '../../scenarios/jjj-yongding-replenishment-2023/fixture/stage-1.json',
-  import.meta.url,
-);
+const stageOne = loadYongdingStageFixture(1);
 
 afterEach(async () => {
   await Promise.all(
@@ -38,7 +37,7 @@ async function tempJson(name: string, value: unknown): Promise<string> {
 
 describe('Agent EXCON Skill validator', () => {
   it('checks the canonical plan against the current released rules', async () => {
-    const fixture = JSON.parse(await readFile(stageOne, 'utf8')) as {
+    const fixture = stageOne as {
       canonicalPlan: unknown;
       rules: unknown;
     };
@@ -122,7 +121,7 @@ describe('Agent EXCON Skill validator', () => {
   ])(
     'rejects $name instead of reporting currentRules=true',
     async ({ rules }) => {
-      const fixture = JSON.parse(await readFile(stageOne, 'utf8')) as {
+      const fixture = stageOne as {
         canonicalPlan: unknown;
       };
       const planPath = await tempJson(

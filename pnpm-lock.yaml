@@ -19,6 +19,9 @@ catalogs:
 importers:
   .:
     devDependencies:
+      '@agent-excon/scenarios':
+        specifier: workspace:*
+        version: link:packages/excon-scenarios
       '@types/node':
         specifier: 24.13.3
         version: 24.13.3
@@ -55,6 +58,9 @@ importers:
       '@agent-excon/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@agent-excon/scenarios':
+        specifier: workspace:*
+        version: link:../../packages/excon-scenarios
       '@fastify/cors':
         specifier: 11.3.0
         version: 11.3.0
@@ -390,6 +396,25 @@ importers:
       tsx:
         specifier: 4.23.12
         version: 4.23.12
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 4.1.11
+        version: 4.1.11(@types/node@24.13.3)(@vitest/coverage-v8@4.1.11)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
+
+  packages/excon-scenarios:
+    dependencies:
+      '@agent-excon/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

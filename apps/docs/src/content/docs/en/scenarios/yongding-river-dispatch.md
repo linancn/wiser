@@ -12,10 +12,10 @@ whenToUse:
 whenToUpdate:
   - when scenario facts, synthetic fixtures, evaluation rules, or sources change
 checkPaths:
-  - scenarios/jjj-yongding-replenishment-2023/**
+  - packages/excon-scenarios/scenarios/jjj-yongding-replenishment-2023/**
   - skills/agent-excon/references/yongding-allocation.md
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 ---
 
 ## Scenario status

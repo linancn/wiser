@@ -11,11 +11,11 @@ whenToUse:
 whenToUpdate:
   - 进程拓扑、凭据隔离或权威报告边界变化时
 checkPaths:
-  - cookbooks/workbuddy-yongding-tdd/scripts/**
-  - cookbooks/workbuddy-yongding-tdd/cookbook.yaml
+  - examples/agent-excon/workbuddy-yongding-tdd/scripts/**
+  - examples/agent-excon/workbuddy-yongding-tdd/cookbook.yaml
   - apps/api/src/v2-local-lab-runtime.ts
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 ---
 
 # 运行架构与信任边界

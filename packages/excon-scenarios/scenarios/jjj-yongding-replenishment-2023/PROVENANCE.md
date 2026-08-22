@@ -11,9 +11,9 @@ whenToUse:
 whenToUpdate:
   - when sources, licensing, facts, or generated fixtures change
 checkPaths:
-  - scenarios/jjj-yongding-replenishment-2023/**
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+  - packages/excon-scenarios/scenarios/jjj-yongding-replenishment-2023/**
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 ---
 
 # Provenance and data boundary / 来源与数据边界

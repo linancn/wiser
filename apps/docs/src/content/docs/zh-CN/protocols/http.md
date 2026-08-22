@@ -14,9 +14,10 @@ whenToUpdate:
 checkPaths:
   - apps/api/**
   - packages/contracts/**
+  - packages/excon-scenarios/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 8169cc9c274ec3622b9c0ddd8d544eb8afe06f27
+lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 ---
 
 ## 默认协议与实现状态
@@ -59,6 +60,8 @@ Web MapLibre 的 tile/STAC 请求只指向同源 `/api/data-foundation/geo/...`�
 ## 公共场景目录
 
 这些读取不需要 bearer credential，只返回已发布的安全 DTO，不能推断草稿或校验错误。
+
+内置永定河 case pack 只通过私有 workspace package `@agent-excon/scenarios` 的已校验 public exports 进入 API runtime；HTTP 层不会读取或拼接包内资产路径。
 
 | 方法  | 路径                                            | 作用                   |
 | ----- | ----------------------------------------------- | ---------------------- |

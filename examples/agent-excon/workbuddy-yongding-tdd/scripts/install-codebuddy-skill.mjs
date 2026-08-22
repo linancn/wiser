@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  '../../..',
+  '../../../..',
 );
 const skillName = 'wiser-yongding-four-agent-tdd';
 const sourceRoot = join(repositoryRoot, 'skills', skillName);

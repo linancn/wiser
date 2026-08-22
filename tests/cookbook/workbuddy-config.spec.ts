@@ -11,7 +11,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { renderWorkBuddyRuntime } from '../../cookbooks/workbuddy-yongding-tdd/scripts/render-workbuddy-config.mjs';
+import { renderWorkBuddyRuntime } from '../../examples/agent-excon/workbuddy-yongding-tdd/scripts/render-workbuddy-config.mjs';
 
 const roles = [
   'water-evidence',

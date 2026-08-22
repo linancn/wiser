@@ -1,7 +1,7 @@
 version: 1
 layout: repo
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 catalog:
   repos:
     - id: wiser
@@ -66,8 +66,8 @@ ownership:
     - id: scenarios-and-agent-workflows
       paths:
         include:
-          - cookbooks/**
-          - scenarios/**
+          - packages/excon-scenarios/**
+          - examples/agent-excon/**
       ownerRepo: wiser
 coverage:
   include:
@@ -109,19 +109,20 @@ coverage:
     - supabase/migrations/**
     - supabase/schemas/**
     - supabase/seed.sql
-    - scenarios/**/facts/**
-    - scenarios/**/fixture/**
-    - scenarios/**/manifest.json
-    - scenarios/**/provenance/**
-    - scenarios/**/v2/**
-    - cookbooks/workbuddy-yongding-tdd/cookbook.yaml
-    - cookbooks/workbuddy-yongding-tdd/failure-injection.md
-    - cookbooks/workbuddy-yongding-tdd/roles/**
-    - cookbooks/workbuddy-yongding-tdd/schemas/**
-    - cookbooks/workbuddy-yongding-tdd/scripts/**
-    - cookbooks/workbuddy-yongding-tdd/showcase/schemas/**
-    - cookbooks/workbuddy-yongding-tdd/showcase/scripts/**
-    - cookbooks/workbuddy-yongding-tdd/showcase/showcase.yaml
+    - packages/excon-scenarios/src/**
+    - packages/excon-scenarios/scenarios/**/facts/**
+    - packages/excon-scenarios/scenarios/**/fixture/**
+    - packages/excon-scenarios/scenarios/**/manifest.json
+    - packages/excon-scenarios/scenarios/**/provenance/**
+    - packages/excon-scenarios/scenarios/**/v2/**
+    - examples/agent-excon/workbuddy-yongding-tdd/cookbook.yaml
+    - examples/agent-excon/workbuddy-yongding-tdd/failure-injection.md
+    - examples/agent-excon/workbuddy-yongding-tdd/roles/**
+    - examples/agent-excon/workbuddy-yongding-tdd/schemas/**
+    - examples/agent-excon/workbuddy-yongding-tdd/scripts/**
+    - examples/agent-excon/workbuddy-yongding-tdd/showcase/schemas/**
+    - examples/agent-excon/workbuddy-yongding-tdd/showcase/scripts/**
+    - examples/agent-excon/workbuddy-yongding-tdd/showcase/showcase.yaml
 freshness:
   warn_after_commits: 50
   warn_after_days: 90
@@ -172,8 +173,8 @@ routing:
         - infrastructure/data-foundation/**
     scenario-workflows:
       paths:
-        - scenarios/**
-        - cookbooks/**
+        - packages/excon-scenarios/**
+        - examples/agent-excon/**
         - apps/docs/src/content/docs/*/scenarios/**
 docInventory:
   include:
@@ -201,10 +202,10 @@ docInventory:
     - apps/docs/src/content/docs/*/protocols/data-mcp.md
     - apps/docs/src/content/docs/*/quick-start.md
     - apps/docs/src/content/docs/*/scenarios/yongding-river-dispatch.md
-    - cookbooks/workbuddy-yongding-tdd/README.md
-    - cookbooks/workbuddy-yongding-tdd/architecture.md
-    - cookbooks/workbuddy-yongding-tdd/showcase/README.md
-    - scenarios/jjj-yongding-replenishment-2023/PROVENANCE.md
+    - examples/agent-excon/workbuddy-yongding-tdd/README.md
+    - examples/agent-excon/workbuddy-yongding-tdd/architecture.md
+    - examples/agent-excon/workbuddy-yongding-tdd/showcase/README.md
+    - packages/excon-scenarios/scenarios/jjj-yongding-replenishment-2023/PROVENANCE.md
 repo:
   id: wiser
   owner: wiser
@@ -612,55 +613,57 @@ rules:
     scope: repo
     repo: wiser
     triggers:
-      - path: scenarios/**/facts/**
+      - path: packages/excon-scenarios/src/**
+        kind: code
+      - path: packages/excon-scenarios/scenarios/**/facts/**
         kind: scenario
-      - path: scenarios/**/fixture/**
+      - path: packages/excon-scenarios/scenarios/**/fixture/**
         kind: scenario
-      - path: scenarios/**/manifest.json
+      - path: packages/excon-scenarios/scenarios/**/manifest.json
         kind: scenario
-      - path: scenarios/**/provenance/**
+      - path: packages/excon-scenarios/scenarios/**/provenance/**
         kind: scenario
-      - path: scenarios/**/v2/**
+      - path: packages/excon-scenarios/scenarios/**/v2/**
         kind: scenario
     requiredDocs:
-      - path: scenarios/jjj-yongding-replenishment-2023/PROVENANCE.md
+      - path: packages/excon-scenarios/scenarios/jjj-yongding-replenishment-2023/PROVENANCE.md
         mode: review_or_update
       - path: apps/docs/src/content/docs/zh-CN/scenarios/yongding-river-dispatch.md
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/scenarios/yongding-river-dispatch.md
         mode: review_or_update
-    reason: Scenario facts, fixtures, and provenance must stay synchronized with the public scenario guide.
+    reason: Scenario loaders, facts, fixtures, and provenance must stay synchronized with the public scenario guide.
   - id: workbuddy-cookbook-runtime
     scope: repo
     repo: wiser
     triggers:
-      - path: cookbooks/workbuddy-yongding-tdd/cookbook.yaml
+      - path: examples/agent-excon/workbuddy-yongding-tdd/cookbook.yaml
         kind: agent-workflow
-      - path: cookbooks/workbuddy-yongding-tdd/failure-injection.md
+      - path: examples/agent-excon/workbuddy-yongding-tdd/failure-injection.md
         kind: agent-workflow
-      - path: cookbooks/workbuddy-yongding-tdd/roles/**
+      - path: examples/agent-excon/workbuddy-yongding-tdd/roles/**
         kind: agent-workflow
-      - path: cookbooks/workbuddy-yongding-tdd/schemas/**
+      - path: examples/agent-excon/workbuddy-yongding-tdd/schemas/**
         kind: agent-workflow
-      - path: cookbooks/workbuddy-yongding-tdd/scripts/**
+      - path: examples/agent-excon/workbuddy-yongding-tdd/scripts/**
         kind: agent-workflow
     requiredDocs:
-      - path: cookbooks/workbuddy-yongding-tdd/README.md
+      - path: examples/agent-excon/workbuddy-yongding-tdd/README.md
         mode: review_or_update
-      - path: cookbooks/workbuddy-yongding-tdd/architecture.md
+      - path: examples/agent-excon/workbuddy-yongding-tdd/architecture.md
         mode: review_or_update
     reason: Cookbook runtime, roles, schemas, and failure paths must keep the executable runbook and trust boundary current.
   - id: workbuddy-showcase
     scope: repo
     repo: wiser
     triggers:
-      - path: cookbooks/workbuddy-yongding-tdd/showcase/schemas/**
+      - path: examples/agent-excon/workbuddy-yongding-tdd/showcase/schemas/**
         kind: agent-workflow
-      - path: cookbooks/workbuddy-yongding-tdd/showcase/scripts/**
+      - path: examples/agent-excon/workbuddy-yongding-tdd/showcase/scripts/**
         kind: agent-workflow
-      - path: cookbooks/workbuddy-yongding-tdd/showcase/showcase.yaml
+      - path: examples/agent-excon/workbuddy-yongding-tdd/showcase/showcase.yaml
         kind: agent-workflow
     requiredDocs:
-      - path: cookbooks/workbuddy-yongding-tdd/showcase/README.md
+      - path: examples/agent-excon/workbuddy-yongding-tdd/showcase/README.md
         mode: review_or_update
     reason: Showcase automation must keep the operator-facing GUI workflow current.

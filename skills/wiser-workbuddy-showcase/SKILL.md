@@ -35,7 +35,7 @@ and state that no GUI operation occurred.
 3. Run `pnpm showcase:preflight`. Stop if it does not pass.
 4. Use Computer Use to open WorkBuddy, create one Lead task in this repository,
    and send the profile-specific instructions from
-   `cookbooks/workbuddy-yongding-tdd/showcase/WORKBUDDY_LEAD_SHOWCASE_TASK.md`.
+   `examples/agent-excon/workbuddy-yongding-tdd/showcase/WORKBUDDY_LEAD_SHOWCASE_TASK.md`.
 5. Use `pnpm showcase:status` only to reconcile the redacted session state.
    Read neither credential files nor role MCP configurations.
 6. Use the browser to open the session's WISER `/collaboration` URL. Present

@@ -1,6 +1,6 @@
-import { readFile } from 'node:fs/promises';
-
 import { describe, expect, it } from 'vitest';
+
+import { loadYongdingStageFixture } from '@agent-excon/scenarios/testing';
 
 import { AllocationPlanSubmissionSchema } from '../../packages/contracts/src/index.js';
 import { evaluateWaterAllocationPlan } from '../../packages/core/src/index.js';
@@ -16,19 +16,15 @@ interface StageFixture {
   readonly canonicalPlan: unknown;
 }
 
-async function readFixture(stage: 1 | 2): Promise<StageFixture> {
-  const url = new URL(
-    `../../scenarios/jjj-yongding-replenishment-2023/fixture/stage-${String(stage)}.json`,
-    import.meta.url,
-  );
-  return JSON.parse(await readFile(url, 'utf8')) as StageFixture;
+function readFixture(stage: 1 | 2): StageFixture {
+  return loadYongdingStageFixture(stage);
 }
 
 describe('Yongding River scenario fixtures', () => {
   it.each([1, 2] as const)(
     'keeps stage %i synthetic, non-operational, valid, and reproducible',
-    async (stage) => {
-      const fixture = await readFixture(stage);
+    (stage) => {
+      const fixture = readFixture(stage);
       const plan = AllocationPlanSubmissionSchema.parse(fixture.canonicalPlan);
       const evidenceTimestamps = plan.sourceReleases.flatMap(
         ({ evidenceRefs }) =>

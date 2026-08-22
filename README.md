@@ -13,10 +13,11 @@ whenToUpdate:
 checkPaths:
   - apps/**
   - packages/**
+  - examples/**
   - compose.yaml
   - docs/roadmap.md
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 574446ae6c540c2e1d365473f6b0d81469ec9367
+lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 ---
 
 # WISER · 水地图
@@ -41,11 +42,11 @@ WISER 已从单一智能体演练场重构为可继续扩展的多系统平台�
 
 ```text
 apps/           共享 API、Web、MCP、文档，以及各系统 Worker
-packages/       平台 contracts/auth 与各系统 contracts/core/infra
+packages/       平台/系统代码，以及含 @agent-excon/scenarios 的版本化运行时领域资产
+examples/       Agent EXCON 等系统的可执行教程、Lab 与 Showcase
 infrastructure/ 精确镜像、Data Foundation、Docker 与可观测性配置
 skills/         可独立加载的 Agent EXCON 与 Data Foundation Skills
 supabase/       统一 Auth、控制面、EXCON schema、迁移、种子与 pgTAP
-scenarios/      版本化演练场景及来源清单
 tests/          跨边界 fixture 与验收测试
 ```
 

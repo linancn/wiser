@@ -16,8 +16,10 @@ checkPaths:
   - compose.yaml
   - .env.example
   - scripts/data-foundation/**
+  - packages/excon-scenarios/**
+  - examples/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 574446ae6c540c2e1d365473f6b0d81469ec9367
+lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 ---
 
 ## 先认识当前边界
@@ -25,6 +27,7 @@ lastReviewedCommit: 574446ae6c540c2e1d365473f6b0d81469ec9367
 完整本机栈共享一套 Supabase Auth、Fastify API、Next.js Web、MCP 和 Fumadocs：
 
 - Agent EXCON v2 的 19 个 mutation 写入 Supabase PostgreSQL 中的 append-only command journal，服务重启时以生成值 tape 和结果哈希做确定性重放；只允许一个非超级用户 writer。v1 Episode 是显式、内存兼容协议。
+- 内置永定河场景由 `@agent-excon/scenarios` 提供已校验的运行时 public exports；可执行四智能体 Cookbook 与 Showcase 位于 `examples/agent-excon/`，不是 API 的资产读取路径。
 - Data Foundation 的 22 项 Capability 已接入独立 data-postgres、SeaweedFS、具体入库 Worker、五类投影、REST、GraphQL、MCP、Skill 和统一 Web 查询界面。
 - Data Web 需要真实 Supabase Session，并由 server-only DAL 把 Access Token 转发给 API；浏览器不获得数据库、S3 或投影凭据。
 - 中文 `zh-CN` 为默认语言，英文页面同构；两个系统共享浅色/深色主题、语义 token、键盘和响应式行为。
