@@ -781,7 +781,7 @@ export function createDataFoundationGraphqlModule(
         };
         try {
           const result = await Promise.race([
-            app.graphql(query, graphqlContext, variables, operationName),
+            reply.graphql(query, graphqlContext, variables, operationName),
             new Promise<never>((_, reject) =>
               controller.signal.addEventListener(
                 'abort',
