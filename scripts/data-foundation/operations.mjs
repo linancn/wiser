@@ -25,6 +25,7 @@ export const DATA_SERVICES = Object.freeze([
 
 export const DATA_ALL_SERVICES = Object.freeze([
   'data-migrate',
+  'data-object-store-init',
   'data-runtime-provision',
   'pgstac-migrate',
   'opensearch-icu-init',

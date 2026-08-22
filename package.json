@@ -32,7 +32,7 @@
     "compose:config": "docker compose config --quiet",
     "compose:up": "docker compose up --build --wait",
     "compose:down": "docker compose down",
-    "data:up": "docker compose --profile data-foundation up -d --build --wait",
+    "data:up": "node scripts/data-foundation/up.mjs --profile data-foundation",
     "data:down": "node scripts/data-foundation/down.mjs",
     "data:reset": "node scripts/data-foundation/reset.mjs --volumes",
     "data:logs": "node scripts/data-foundation/logs.mjs",

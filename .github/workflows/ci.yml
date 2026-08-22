@@ -136,7 +136,7 @@ jobs:
         run: pnpm supabase:start && pnpm supabase:reset
 
       - name: Start pinned Data Foundation profile
-        run: docker compose --profile data-foundation up -d --build --wait
+        run: pnpm data:up
 
       - name: Apply checksum-verified authority migrations
         run: pnpm data:migrate

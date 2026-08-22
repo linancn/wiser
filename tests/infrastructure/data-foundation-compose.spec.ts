@@ -221,9 +221,7 @@ describe('Data Foundation operations contract', () => {
     expect(workflow).toMatch(/\n {2}data-foundation:\n/);
     const job = workflow.slice(workflow.indexOf('\n  data-foundation:\n'));
     expect(job).toContain('pnpm install --frozen-lockfile');
-    expect(job).toContain(
-      'docker compose --profile data-foundation up -d --build --wait',
-    );
+    expect(job).toContain('pnpm data:up');
     expect(job).toContain('pnpm data:migrate');
     expect(job).toContain('pnpm data:smoke');
     expect(job).toContain('if: failure()');

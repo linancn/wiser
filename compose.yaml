@@ -48,6 +48,40 @@ services:
       API_HOST: 0.0.0.0
       API_PORT: 3001
       AI_PROVIDER: fake
+      WISER_AUTH_MODE: ${WISER_AUTH_MODE:-off}
+      SUPABASE_URL: ${SUPABASE_URL:-http://host.docker.internal:56321}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:56322/postgres}
+      WISER_DELEGATED_CREDENTIAL_HMAC_KEYS: ${WISER_DELEGATED_CREDENTIAL_HMAC_KEYS:-}
+      EXCON_V2_MODE: ${EXCON_V2_MODE:-memory}
+      EXCON_JOURNAL_DATABASE_URL: ${EXCON_JOURNAL_DATABASE_URL:-}
+      EXCON_LEASE_HMAC_KEYS: ${EXCON_LEASE_HMAC_KEYS:-}
+      EXCON_TENANT_ID: ${EXCON_TENANT_ID:-b1000000-0000-4000-8000-000000000001}
+      EXCON_PROJECT_ID: ${EXCON_PROJECT_ID:-b2000000-0000-4000-8000-000000000001}
+      EXCON_PURPOSE: ${EXCON_PURPOSE:-excon-api}
+      DATA_FOUNDATION_MODE: ${DATA_FOUNDATION_MODE:-off}
+      DATA_DATABASE_URL: postgresql://wiser_data_api:${DATA_API_DATABASE_PASSWORD:-wiser-local-api-runtime-8ac431d9}@data-postgres:5432/wiser_data
+      DATA_S3_ENDPOINT: http://seaweedfs:8333
+      DATA_S3_PUBLIC_ENDPOINT: http://127.0.0.1:18333
+      DATA_S3_REGION: ${DATA_S3_REGION:-us-east-1}
+      DATA_S3_BUCKET: ${DATA_S3_BUCKET:-wiser-authority}
+      DATA_S3_ACCESS_KEY_ID: ${DATA_S3_ACCESS_KEY_ID:-wiser-data-local-access}
+      DATA_S3_SECRET_ACCESS_KEY: ${DATA_S3_SECRET_ACCESS_KEY:-wiser-local-s3-8c492a72f6d84e2e}
+      DATA_WORKER_URL: http://data-worker:3003
+      DATA_WEAVIATE_URL: http://weaviate:8080
+      DATA_WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-wiser-local-weaviate-89455c5a}
+      DATA_OPENSEARCH_URL: https://opensearch:9200
+      DATA_OPENSEARCH_USERNAME: admin
+      DATA_OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-WiserLocalOpenSearch-4f83c21d}
+      DATA_NEO4J_URL: http://neo4j:7474
+      DATA_NEO4J_DATABASE: neo4j
+      DATA_NEO4J_USERNAME: neo4j
+      DATA_NEO4J_PASSWORD: ${NEO4J_PASSWORD:-WiserLocalNeo4j-5d6f13b9}
+      DATA_STAC_API_URL: http://stac-api:8080
+      DATA_STAC_API_BEARER_TOKEN: ${STAC_API_BEARER_TOKEN:-wiser-local-stac-bearer-2cc4d01f}
+      DATA_PUBLIC_API_ORIGIN: http://127.0.0.1:3001
+      DATA_FAKE_EMBEDDING_DIMENSIONS: '32'
+      NODE_EXTRA_CA_CERTS: /etc/wiser/opensearch/root-ca.pem
       AGENT_EXCON_PARTICIPANT_TOKEN: ${AGENT_EXCON_PARTICIPANT_TOKEN:-local-demo-participant-token}
       AGENT_EXCON_OPERATOR_TOKEN: ${AGENT_EXCON_OPERATOR_TOKEN:-local-demo-operator-token}
     ports:
@@ -55,6 +89,11 @@ services:
     networks:
       - excon
       - data-foundation
+    volumes:
+      - type: volume
+        source: opensearch-ca
+        target: /etc/wiser/opensearch
+        read_only: true
     healthcheck:
       test:
         - CMD
@@ -73,6 +112,16 @@ services:
       AGENT_EXCON_API_INTERNAL_URL: http://api:3001
       AGENT_EXCON_WEB_DATA_MODE: ${AGENT_EXCON_WEB_DATA_MODE:-live}
       WISER_WEB_OPERATOR_TOKEN: ${WISER_WEB_OPERATOR_TOKEN:-local-demo-operator-token}
+      WISER_AUTH_MODE: ${WISER_AUTH_MODE:-off}
+      SUPABASE_URL: ${SUPABASE_URL:-http://host.docker.internal:56321}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-http://127.0.0.1:56321}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}
+      WISER_DATA_API_INTERNAL_URL: http://api:3001
+      WISER_DATA_TENANT_ID: ${DATA_TENANT_ID:-b1000000-0000-4000-8000-000000000001}
+      WISER_DATA_PROJECT_ID: ${DATA_PROJECT_ID:-b2000000-0000-4000-8000-000000000001}
+      WISER_DATA_PURPOSE: data-steward-console
+      WISER_DATA_REQUEST_TIMEOUT_MS: '8000'
+      WISER_DATA_RESPONSE_LIMIT_BYTES: '4194304'
     ports:
       - 127.0.0.1:3000:3000
     networks:
@@ -280,6 +329,26 @@ services:
       resources: *data-resources
     logging: *data-logging
 
+  data-object-store-init:
+    <<: *app
+    profiles: [data-foundation]
+    command: pnpm --filter @wiser/data-infra init-object-store
+    restart: 'no'
+    environment:
+      DATA_S3_ENDPOINT: http://seaweedfs:8333
+      DATA_S3_REGION: ${DATA_S3_REGION:-us-east-1}
+      DATA_S3_BUCKET: ${DATA_S3_BUCKET:-wiser-authority}
+      DATA_S3_ACCESS_KEY_ID: ${DATA_S3_ACCESS_KEY_ID:-wiser-data-local-access}
+      DATA_S3_SECRET_ACCESS_KEY: ${DATA_S3_SECRET_ACCESS_KEY:-wiser-local-s3-8c492a72f6d84e2e}
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    networks:
+      - data-foundation
+    deploy:
+      resources: *data-resources
+    logging: *data-logging
+
   weaviate:
     <<: *data-service
     profiles: [data-foundation]
@@ -329,6 +398,8 @@ services:
     command:
       - |
         readonly checksum=3615266c495175f38dfabebe30d2fa9f5aa1ecdbd5800737ffa787bb3c2a1e78828ce48eb4ef1e713c5273ae1f8738dc4bf8d9b51c6840103bdc1dba08b61b8e
+        /usr/share/opensearch/plugins/opensearch-security/tools/install_demo_configuration.sh -y >/dev/null
+        install -m 0444 /usr/share/opensearch/config/root-ca.pem /ca-out/root-ca.pem
         if test -f /plugin-out/.wiser-sha512; then
           grep -qx "$${checksum}" /plugin-out/.wiser-sha512
           test -f /plugin-out/plugin-descriptor.properties
@@ -343,10 +414,15 @@ services:
         cp -a /usr/share/opensearch/plugins/analysis-icu/. /plugin-out/
         printf '%s\n' "$${checksum}" >/plugin-out/.wiser-sha512
     restart: 'no'
+    environment:
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_PASSWORD:-WiserLocalOpenSearch-4f83c21d}
     volumes:
       - type: volume
         source: opensearch-icu-plugin
         target: /plugin-out
+      - type: volume
+        source: opensearch-ca
+        target: /ca-out
     deploy:
       resources: *data-resources
     logging: *data-logging
@@ -647,26 +723,75 @@ services:
     profiles: [data-foundation]
     command: pnpm --filter @wiser/data-worker dev
     restart: unless-stopped
+    stop_grace_period: 45s
     environment:
       DATA_DATABASE_URL: postgresql://wiser_data_worker:${DATA_WORKER_DATABASE_PASSWORD:-wiser-local-worker-runtime-35b90c72}@data-postgres:5432/wiser_data
-      DATA_TENANT_ID: ${DATA_TENANT_ID:-11111111-1111-4111-8111-111111111111}
-      DATA_PROJECT_ID: ${DATA_PROJECT_ID:-22222222-2222-4222-8222-222222222222}
+      DATA_TENANT_ID: ${DATA_TENANT_ID:-b1000000-0000-4000-8000-000000000001}
+      DATA_PROJECT_ID: ${DATA_PROJECT_ID:-b2000000-0000-4000-8000-000000000001}
       DATA_MAX_SECURITY_LEVEL: ${DATA_MAX_SECURITY_LEVEL:-L3_CONFIDENTIAL}
       DATA_POLICY_VERSION: ${DATA_POLICY_VERSION:-1}
       DATA_WORKER_ID: ${DATA_WORKER_ID:-compose-data-worker-1}
+      DATA_WORKER_ACTOR_ID: ${DATA_WORKER_ACTOR_ID:-b6000000-0000-4000-8000-000000000001}
       DATA_WORKER_CLAIM_LIMIT: ${DATA_WORKER_CLAIM_LIMIT:-8}
       DATA_WORKER_HEALTH_HOST: 0.0.0.0
       DATA_WORKER_HEALTH_PORT: '3003'
       DATA_JOB_LEASE_SECONDS: ${DATA_JOB_LEASE_SECONDS:-120}
       DATA_JOB_HEARTBEAT_SECONDS: ${DATA_JOB_HEARTBEAT_SECONDS:-30}
       DATA_JOB_POLL_INTERVAL_MS: ${DATA_JOB_POLL_INTERVAL_MS:-1000}
+      DATA_S3_ENDPOINT: http://seaweedfs:8333
+      DATA_S3_REGION: ${DATA_S3_REGION:-us-east-1}
+      DATA_S3_BUCKET: ${DATA_S3_BUCKET:-wiser-authority}
+      DATA_S3_ACCESS_KEY_ID: ${DATA_S3_ACCESS_KEY_ID:-wiser-data-local-access}
+      DATA_S3_SECRET_ACCESS_KEY: ${DATA_S3_SECRET_ACCESS_KEY:-wiser-local-s3-8c492a72f6d84e2e}
+      DATA_INGESTION_MAX_OBJECT_BYTES: '16777216'
+      DATA_INGESTION_MIN_QUALITY_SCORE: '0.75'
+      DATA_INGESTION_MIN_AI_CONFIDENCE: '0.8'
+      DATA_CLAMAV_HOST: clamav
+      DATA_CLAMAV_PORT: '3310'
+      DATA_CLAMAV_TIMEOUT_MS: '30000'
+      DATA_CLAMAV_MAX_RESPONSE_BYTES: '4096'
+      DATA_TIKA_ENDPOINT: http://tika:9998
+      DATA_TIKA_TIMEOUT_MS: '30000'
+      DATA_TIKA_MAX_RESPONSE_BYTES: '1048576'
+      DATA_WEAVIATE_URL: http://weaviate:8080
+      DATA_WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-wiser-local-weaviate-89455c5a}
+      DATA_OPENSEARCH_URL: https://opensearch:9200
+      DATA_OPENSEARCH_USERNAME: admin
+      DATA_OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-WiserLocalOpenSearch-4f83c21d}
+      DATA_NEO4J_URL: http://neo4j:7474
+      DATA_NEO4J_DATABASE: neo4j
+      DATA_NEO4J_USERNAME: neo4j
+      DATA_NEO4J_PASSWORD: ${NEO4J_PASSWORD:-WiserLocalNeo4j-5d6f13b9}
+      DATA_STAC_API_URL: http://stac-api:8080
+      DATA_STAC_BEARER_TOKEN: ${STAC_API_BEARER_TOKEN:-wiser-local-stac-bearer-2cc4d01f}
+      DATA_STAC_ASSET_BASE_URL: http://127.0.0.1:3001
+      DATA_PROJECTION_CONSUMER_NAME: data-worker-projection-v1
+      DATA_PROJECTION_BATCH_LIMIT: '8'
+      DATA_PROJECTION_POLL_INTERVAL_MS: '1000'
+      DATA_PROJECTION_HTTP_TIMEOUT_MS: '30000'
+      DATA_PROJECTION_HTTP_MAX_RESPONSE_BYTES: '1048576'
+      DATA_PROJECTION_CACHE_EVENTS: '32'
+      DATA_FAKE_EMBEDDING_DIMENSIONS: '32'
+      DATA_FAKE_EMBEDDING_VERSION: fixture-v1
+      DATA_PUBLICATION_WAIT_TIMEOUT_MS: '90000'
+      DATA_PUBLICATION_WAIT_POLL_MS: '250'
+      NODE_EXTRA_CA_CERTS: /etc/wiser/opensearch/root-ca.pem
     ports:
       - 127.0.0.1:13003:3003
     depends_on:
       data-runtime-provision:
         condition: service_completed_successfully
+      data-object-store-init:
+        condition: service_completed_successfully
+      opensearch:
+        condition: service_healthy
     networks:
       - data-foundation
+    volumes:
+      - type: volume
+        source: opensearch-ca
+        target: /etc/wiser/opensearch
+        read_only: true
     healthcheck:
       test:
         [
@@ -693,6 +818,11 @@ services:
       DATA_MCP_BEARER_TOKEN: ${DATA_MCP_BEARER_TOKEN:-wiser-local-mcp-bearer-74cc91ef}
       DATA_MCP_HOST: 0.0.0.0
       DATA_MCP_PORT: '3004'
+      DATA_API_URL: http://api:3001/api/data/v1/
+      DATA_API_BEARER_TOKEN: ${DATA_API_BEARER_TOKEN:-}
+      DATA_TENANT_ID: ${DATA_TENANT_ID:-b1000000-0000-4000-8000-000000000001}
+      DATA_PROJECT_ID: ${DATA_PROJECT_ID:-b2000000-0000-4000-8000-000000000001}
+      DATA_PURPOSE: data-foundation-smoke
       AGENT_EXCON_API_URL: http://api:3001/api/v2
       AGENT_EXCON_API_KEY: ${AGENT_EXCON_PARTICIPANT_TOKEN:-local-demo-participant-token}
       AGENT_EXCON_PROTOCOL_VERSION: v2
@@ -867,6 +997,7 @@ volumes:
   neo4j-data:
   opensearch-data:
   opensearch-dashboards-data:
+  opensearch-ca:
   opensearch-icu-plugin:
   prometheus-data:
   seaweedfs-data:

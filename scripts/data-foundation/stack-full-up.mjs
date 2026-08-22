@@ -1,8 +1,9 @@
-import { isDirectExecution, runCommand, runCompose } from './operations.mjs';
+import { isDirectExecution, runCommand } from './operations.mjs';
+import { startDataFoundation } from './up.mjs';
 
 export async function startFullWiserStack() {
   await runCommand('pnpm', ['supabase:start'], { capture: false });
-  await runCompose(['up', '-d', '--build', '--wait'], { capture: false });
+  await startDataFoundation();
   await runCommand('node', ['scripts/data-foundation/migrate.mjs'], {
     capture: false,
   });

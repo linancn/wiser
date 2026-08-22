@@ -27,6 +27,8 @@ export async function verifyDataFoundation() {
       '--test',
       'scripts/data-foundation/operations.test.mjs',
       'scripts/data-foundation/runtime-role.test.mjs',
+      'scripts/data-foundation/supabase-runtime.test.mjs',
+      'scripts/data-foundation/vertical-smoke.test.mjs',
     ],
     { capture: false },
   );
