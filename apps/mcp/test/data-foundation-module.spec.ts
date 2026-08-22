@@ -12,6 +12,7 @@ import {
   type DataFoundationHttpClient,
   type DataFoundationHttpRequest,
 } from '../src/data-foundation/module.js';
+import { DataFoundationApiError } from '../src/data-foundation/http-client.js';
 import { createAgentExconMcpServer } from '../src/server.js';
 
 const TENANT_ID = 'a1000000-0000-4000-8000-000000000001';
@@ -257,5 +258,60 @@ describe('Data Foundation MCP module', () => {
     expect(JSON.stringify(result)).not.toContain('postgresql');
     expect(JSON.stringify(result)).not.toContain('secret');
     expect(JSON.stringify(result)).not.toContain('row dump');
+  });
+
+  it.each([
+    [401, 'NOT_AUTHENTICATED'],
+    [403, 'NOT_AUTHORIZED'],
+  ] as const)(
+    'preserves safe HTTP %i identity semantics without forwarding details',
+    async (status, code) => {
+      const http = new RecordingDataHttpClient();
+      http.failure = new DataFoundationApiError('REQUEST_FAILED', status);
+      const client = await connect(http);
+
+      const result = await client.callTool({
+        name: 'data_catalog_get',
+        arguments: { dataItemId: DATA_ITEM_ID },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.structuredContent).toMatchObject({
+        ok: false,
+        error: { code },
+      });
+      expect(JSON.stringify(result)).not.toContain('Bearer');
+      expect(JSON.stringify(result)).not.toContain('details');
+    },
+  );
+
+  it('projects an Operation Resource URI from nested or top-level operation output', async () => {
+    const http = new RecordingDataHttpClient();
+    const operationId = 'a1000000-0000-4000-8000-000000000009';
+    http.next = { operation: { operationId, status: 'PENDING' } };
+    const client = await connect(http);
+
+    const nested = await client.callTool({
+      name: 'data_ingestion_submit',
+      arguments: {
+        ingestionId: INGESTION_ID,
+        expectedVersion: 4,
+        idempotencyKey: IDEMPOTENCY_KEY,
+      },
+    });
+    expect(nested.structuredContent).toMatchObject({
+      ok: true,
+      resource: `operation://${operationId}`,
+    });
+
+    http.next = { operationId, status: 'PENDING' };
+    const direct = await client.callTool({
+      name: 'data_operation_get',
+      arguments: { operationId },
+    });
+    expect(direct.structuredContent).toMatchObject({
+      ok: true,
+      resource: `operation://${operationId}`,
+    });
   });
 });
