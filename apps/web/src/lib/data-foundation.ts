@@ -98,6 +98,12 @@ const OPERATION_EVENT_TYPES = [
   'FAILED',
   'CANCELLED',
 ] as const;
+const PROJECTION_STATUSES = [
+  'PENDING',
+  'RUNNING',
+  'SUCCEEDED',
+  'FAILED',
+] as const;
 const GEOMETRY_TYPES = [
   'Point',
   'MultiPoint',
@@ -115,6 +121,7 @@ export type PublicationStatus = (typeof PUBLICATION_STATUSES)[number];
 type GenerationMethod = (typeof GENERATION_METHODS)[number];
 export type IngestionState = (typeof INGESTION_STATES)[number];
 export type OperationStatus = (typeof OPERATION_STATUSES)[number];
+export type ProjectionStatus = (typeof PROJECTION_STATUSES)[number];
 export type GeometryType = (typeof GEOMETRY_TYPES)[number];
 
 const REQUIRED_INGESTION_PREFIX = [
@@ -227,6 +234,41 @@ export interface IngestionDto {
   readonly operationId?: string;
   readonly version: number;
   readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly qualityIssues?: readonly QualityIssueSummaryDto[];
+  readonly agentRuns?: readonly AgentRunSummaryDto[];
+  readonly projectionStatuses?: readonly ProjectionStatusSummaryDto[];
+}
+
+export interface QualityIssueSummaryDto {
+  readonly issueId: string;
+  readonly severity: string;
+  readonly status: string;
+  readonly fieldPath?: string;
+  readonly message: string;
+  readonly createdAt: string;
+}
+
+export interface AgentRunSummaryDto {
+  readonly agentRunId: string;
+  readonly agentKind: string;
+  readonly provider: string;
+  readonly model: string;
+  readonly deterministic: boolean;
+  readonly inputHash: string;
+  readonly outputHash?: string;
+  readonly status: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface ProjectionStatusSummaryDto {
+  readonly dataItemId: string;
+  readonly versionId: string;
+  readonly projectionKind: string;
+  readonly status: ProjectionStatus;
+  readonly attemptCount: number;
+  readonly projectedAt?: string;
   readonly updatedAt: string;
 }
 
@@ -399,6 +441,17 @@ function uuid(value: unknown, contract: string): string {
   return candidate;
 }
 
+function sha256(value: unknown, contract: string): string {
+  const candidate = string(value, contract, 64, 64);
+  if (!/^[a-f0-9]{64}$/.test(candidate)) fail(contract);
+  return candidate;
+}
+
+function boolean(value: unknown, contract: string): boolean {
+  if (typeof value !== 'boolean') fail(contract);
+  return value;
+}
+
 function date(value: unknown, contract: string): string {
   const candidate = string(value, contract, 1, DATE_LIMIT);
   if (!Number.isFinite(Date.parse(candidate))) fail(contract);
@@ -472,6 +525,16 @@ function optionalCursor(value: unknown, contract: string): string | undefined {
   const cursor = string(value, contract, 1, 2_048);
   if (!/^[A-Za-z0-9_-]+$/.test(cursor)) fail(contract);
   return cursor;
+}
+
+function optionalArray<Result>(
+  value: unknown,
+  contract: string,
+  parser: (entry: unknown, contract: string) => Result,
+): readonly Result[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length > 200) fail(contract);
+  return value.map((entry) => parser(entry, contract));
 }
 
 function validateRequiredDataItemShape(
@@ -650,6 +713,17 @@ export function parseIngestion(value: unknown): IngestionDto {
   uuid(row.tenantId, contract);
   const operationId =
     row.operationId === undefined ? undefined : uuid(row.operationId, contract);
+  const qualityIssues = optionalArray(
+    envelope.qualityIssues,
+    contract,
+    parseQualityIssue,
+  );
+  const agentRuns = optionalArray(envelope.agentRuns, contract, parseAgentRun);
+  const projectionStatuses = optionalArray(
+    envelope.projectionStatuses,
+    contract,
+    parseProjectionStatus,
+  );
   return {
     ingestionId: uuid(row.ingestionId, contract),
     projectId: uuid(row.projectId, contract),
@@ -664,6 +738,61 @@ export function parseIngestion(value: unknown): IngestionDto {
     ...(operationId === undefined ? {} : { operationId }),
     version: integer(row.version, contract, 1),
     createdAt: date(row.createdAt, contract),
+    updatedAt: date(row.updatedAt, contract),
+    ...(qualityIssues === undefined ? {} : { qualityIssues }),
+    ...(agentRuns === undefined ? {} : { agentRuns }),
+    ...(projectionStatuses === undefined ? {} : { projectionStatuses }),
+  };
+}
+
+function parseQualityIssue(
+  value: unknown,
+  contract: string,
+): QualityIssueSummaryDto {
+  const row = object(value, contract);
+  const fieldPath = optionalString(row.fieldPath, contract, 512);
+  return {
+    issueId: uuid(row.issueId, contract),
+    severity: string(row.severity, contract, 1, 64),
+    status: string(row.status, contract, 1, 64),
+    ...(fieldPath === undefined ? {} : { fieldPath }),
+    message: string(row.message, contract, 1, 4_096),
+    createdAt: date(row.createdAt, contract),
+  };
+}
+
+function parseAgentRun(value: unknown, contract: string): AgentRunSummaryDto {
+  const row = object(value, contract);
+  const outputHash =
+    row.outputHash === undefined ? undefined : sha256(row.outputHash, contract);
+  return {
+    agentRunId: uuid(row.agentRunId, contract),
+    agentKind: string(row.agentKind, contract, 1, 128),
+    provider: string(row.provider, contract, 1, 128),
+    model: string(row.model, contract, 1, 256),
+    deterministic: boolean(row.deterministic, contract),
+    inputHash: sha256(row.inputHash, contract),
+    ...(outputHash === undefined ? {} : { outputHash }),
+    status: string(row.status, contract, 1, 64),
+    createdAt: date(row.createdAt, contract),
+    updatedAt: date(row.updatedAt, contract),
+  };
+}
+
+function parseProjectionStatus(
+  value: unknown,
+  contract: string,
+): ProjectionStatusSummaryDto {
+  const row = object(value, contract);
+  const projectedAt =
+    row.projectedAt === undefined ? undefined : date(row.projectedAt, contract);
+  return {
+    dataItemId: uuid(row.dataItemId, contract),
+    versionId: uuid(row.versionId, contract),
+    projectionKind: string(row.projectionKind, contract, 1, 128),
+    status: oneOf(row.status, PROJECTION_STATUSES, contract),
+    attemptCount: integer(row.attemptCount, contract),
+    ...(projectedAt === undefined ? {} : { projectedAt }),
     updatedAt: date(row.updatedAt, contract),
   };
 }

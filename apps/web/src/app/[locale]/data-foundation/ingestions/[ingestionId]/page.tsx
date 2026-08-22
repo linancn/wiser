@@ -3,14 +3,13 @@ import { notFound } from 'next/navigation';
 
 import {
   AuthorityFlag,
-  CoverageGap,
   DataFailureState,
   DataPageHeader,
   DataPageMain,
   DataSection,
   FieldGrid,
+  IngestionRuntimeSummaries,
   IngestionStateRail,
-  PanelGrid,
   ProtocolValue,
   SectionHeading,
   StatusBadge,
@@ -134,21 +133,8 @@ export default async function IngestionPage({ params }: IngestionPageProps) {
             <IngestionStateRail locale={locale} state={ingestion.state} />
           </DataSection>
           <DataSection>
-            <SectionHeading title={copy.common.apiCoverage} />
-            <PanelGrid>
-              <CoverageGap
-                title={copy.ingestionPage.issuesTitle}
-                copy={copy.ingestionPage.notExposedCopy}
-              />
-              <CoverageGap
-                title={copy.ingestionPage.agentRunsTitle}
-                copy={copy.ingestionPage.notExposedCopy}
-              />
-              <CoverageGap
-                title={copy.ingestionPage.projectionTitle}
-                copy={copy.ingestionPage.notExposedCopy}
-              />
-            </PanelGrid>
+            <SectionHeading title={copy.ingestionPage.runtimeTitle} />
+            <IngestionRuntimeSummaries ingestion={ingestion} locale={locale} />
           </DataSection>
         </>
       )}

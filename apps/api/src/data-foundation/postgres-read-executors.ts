@@ -2,12 +2,15 @@ import { createHash } from 'node:crypto';
 
 import {
   DATA_CAPABILITY_REGISTRY,
+  type AgentRunSummaryDto,
   type DataCapabilityId,
   type DataItemDto,
   type DataItemVersionDto,
   type IngestionDto,
   type OperationDto,
   type OperationEventDto,
+  type ProjectionStatusSummaryDto,
+  type QualityIssueSummaryDto,
   type SecurityLevel,
 } from '@wiser/data-contracts';
 
@@ -117,6 +120,63 @@ left join ingestion.input_asset as input
  and input.ingestion_id = session.ingestion_id
 where session.ingestion_id = $1::uuid
 group by session.ingestion_id
+`;
+
+const INGESTION_QUALITY_ISSUES_SQL = `
+/* data.ingestion.quality-issues */
+select issue.issue_id, issue.severity, issue.status, issue.field_path,
+  issue.message, issue.created_at
+from quality.issue as issue
+join quality.check_run as check_run
+  on check_run.tenant_id = issue.tenant_id
+ and check_run.project_id = issue.project_id
+ and check_run.check_run_id = issue.check_run_id
+where check_run.ingestion_id = $1::uuid
+order by issue.created_at desc, issue.issue_id desc
+limit 200
+`;
+
+const INGESTION_AGENT_RUNS_SQL = `
+/* data.ingestion.agent-runs */
+select agent_run_id, agent_kind, provider, model, deterministic,
+  encode(input_hash, 'hex') as input_hash,
+  encode(output_hash, 'hex') as output_hash,
+  status, created_at, updated_at
+from ingestion.agent_run
+where ingestion_id = $1::uuid
+order by created_at desc, agent_run_id desc
+limit 200
+`;
+
+const INGESTION_LINKED_ITEMS_SQL = `
+/* data.ingestion.linked-items */
+select distinct version.data_item_id, version.version_id
+from ingestion.input_asset as input
+join catalog.asset as asset
+  on asset.tenant_id = input.tenant_id
+ and asset.project_id = input.project_id
+ and asset.asset_id = input.asset_id
+join catalog.data_item_version as version
+  on version.tenant_id = asset.tenant_id
+ and version.project_id = asset.project_id
+ and version.version_id = asset.version_id
+where input.ingestion_id = $1::uuid
+order by version.data_item_id, version.version_id
+limit 200
+`;
+
+const INGESTION_PROJECTION_STATUSES_SQL = `
+/* data.ingestion.projection-statuses */
+select projection.data_item_id, projection.version_id,
+  projection.projection_kind, projection.status, projection.attempt_count,
+  projection.projected_at, projection.updated_at
+from service.projection_status as projection
+join unnest($1::uuid[], $2::uuid[]) as linked(data_item_id, version_id)
+  on linked.data_item_id = projection.data_item_id
+ and linked.version_id = projection.version_id
+order by projection.updated_at desc, projection.projection_kind,
+  projection.projection_status_id
+limit 200
 `;
 
 const OPERATION_SQL = `
@@ -341,6 +401,13 @@ function integer(row: Record<string, unknown>, key: string): number {
   return parsed;
 }
 
+function boolean(row: Record<string, unknown>, key: string): boolean {
+  const value = row[key];
+  if (typeof value !== 'boolean')
+    throw new TypeError(`Invalid database field ${key}.`);
+  return value;
+}
+
 function strings(row: Record<string, unknown>, key: string): string[] {
   const value = row[key];
   if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
@@ -501,6 +568,52 @@ function ingestion(row: Record<string, unknown>): IngestionDto {
       : { operationId: optionalText(row, 'operation_id')! }),
     version: integer(row, 'row_version'),
     createdAt: text(row, 'created_at'),
+    updatedAt: text(row, 'updated_at'),
+  };
+}
+
+function qualityIssue(row: Record<string, unknown>): QualityIssueSummaryDto {
+  return {
+    issueId: text(row, 'issue_id'),
+    severity: text(row, 'severity'),
+    status: text(row, 'status'),
+    ...(optionalText(row, 'field_path') === undefined
+      ? {}
+      : { fieldPath: optionalText(row, 'field_path')! }),
+    message: text(row, 'message'),
+    createdAt: text(row, 'created_at'),
+  };
+}
+
+function agentRun(row: Record<string, unknown>): AgentRunSummaryDto {
+  return {
+    agentRunId: text(row, 'agent_run_id'),
+    agentKind: text(row, 'agent_kind'),
+    provider: text(row, 'provider'),
+    model: text(row, 'model'),
+    deterministic: boolean(row, 'deterministic'),
+    inputHash: text(row, 'input_hash'),
+    ...(optionalText(row, 'output_hash') === undefined
+      ? {}
+      : { outputHash: optionalText(row, 'output_hash')! }),
+    status: text(row, 'status'),
+    createdAt: text(row, 'created_at'),
+    updatedAt: text(row, 'updated_at'),
+  };
+}
+
+function projectionStatus(
+  row: Record<string, unknown>,
+): ProjectionStatusSummaryDto {
+  return {
+    dataItemId: text(row, 'data_item_id'),
+    versionId: text(row, 'version_id'),
+    projectionKind: text(row, 'projection_kind'),
+    status: text(row, 'status') as ProjectionStatusSummaryDto['status'],
+    attemptCount: integer(row, 'attempt_count'),
+    ...(optionalText(row, 'projected_at') === undefined
+      ? {}
+      : { projectedAt: optionalText(row, 'projected_at')! }),
     updatedAt: text(row, 'updated_at'),
   };
 }
@@ -823,13 +936,44 @@ export function createPostgresDataReadRuntime(
     }),
     define('data.ingestion.get', async (raw, context) => {
       const input = parsedInput('data.ingestion.get', raw);
-      return transactions.run(context, async (client) => ({
-        ingestion: ingestion(
-          requireRow(
-            (await client.query(INGESTION_SQL, [input.ingestionId])).rows,
-          ),
-        ),
-      }));
+      return transactions.run(context, async (client) => {
+        const ingestionId = input.ingestionId;
+        const ingestionResult = await client.query(INGESTION_SQL, [
+          ingestionId,
+        ]);
+        const ingestionDetail = ingestion(requireRow(ingestionResult.rows));
+        const qualityIssuesResult = await client.query(
+          INGESTION_QUALITY_ISSUES_SQL,
+          [ingestionId],
+        );
+        const agentRunsResult = await client.query(INGESTION_AGENT_RUNS_SQL, [
+          ingestionId,
+        ]);
+        const linkedItemsResult = await client.query(
+          INGESTION_LINKED_ITEMS_SQL,
+          [ingestionId],
+        );
+        const dataItemIds = linkedItemsResult.rows.map((row) =>
+          text(row, 'data_item_id'),
+        );
+        const versionIds = linkedItemsResult.rows.map((row) =>
+          text(row, 'version_id'),
+        );
+        const projectionStatusesResult =
+          dataItemIds.length === 0
+            ? { rows: [] as readonly Record<string, unknown>[] }
+            : await client.query(INGESTION_PROJECTION_STATUSES_SQL, [
+                dataItemIds,
+                versionIds,
+              ]);
+        return {
+          ingestion: ingestionDetail,
+          qualityIssues: qualityIssuesResult.rows.map(qualityIssue),
+          agentRuns: agentRunsResult.rows.map(agentRun),
+          projectionStatuses:
+            projectionStatusesResult.rows.map(projectionStatus),
+        };
+      });
     }),
     define('data.operation.get', async (raw, context) => {
       const input = parsedInput('data.operation.get', raw);

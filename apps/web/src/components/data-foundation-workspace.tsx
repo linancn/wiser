@@ -7,6 +7,7 @@ import type {
   DataItemVersionDto,
   GeoFeatureDto,
   GraphResultDto,
+  IngestionDto,
   IngestionState,
   OperationEventDto,
   PublicationStatus,
@@ -538,6 +539,160 @@ export function IngestionStateRail({
         );
       })}
     </ol>
+  );
+}
+
+export function IngestionRuntimeSummaries({
+  ingestion,
+  locale,
+}: {
+  readonly ingestion: IngestionDto;
+  readonly locale: Locale;
+}) {
+  const copy = getDictionary(locale).dataFoundation;
+  const qualityIssues = ingestion.qualityIssues ?? [];
+  const agentRuns = ingestion.agentRuns ?? [];
+  const projectionStatuses = ingestion.projectionStatuses ?? [];
+  return (
+    <div className={styles.runtimeSummaryGrid}>
+      <article className={styles.runtimePanel}>
+        <header>
+          <h3>{copy.ingestionPage.issuesTitle}</h3>
+          <ProtocolValue>{qualityIssues.length}</ProtocolValue>
+        </header>
+        {qualityIssues.length === 0 ? (
+          <DataEmpty
+            title={copy.ingestionPage.issuesTitle}
+            copy={copy.ingestionPage.emptyIssues}
+          />
+        ) : (
+          <ol className={styles.runtimeSummaryList}>
+            {qualityIssues.map((issue) => (
+              <li key={issue.issueId}>
+                <div className={styles.badgeRow}>
+                  <StatusBadge code={issue.severity} label={issue.severity} />
+                  <StatusBadge code={issue.status} label={issue.status} />
+                </div>
+                <p>{issue.message}</p>
+                <dl className={styles.compactFacts}>
+                  <div>
+                    <dt>{copy.ingestionPage.fieldPath}</dt>
+                    <dd>{issue.fieldPath ?? copy.common.notProvided}</dd>
+                  </div>
+                  <div>
+                    <dt>{copy.common.createdAt}</dt>
+                    <dd>{formatDataDate(issue.createdAt, locale)}</dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ol>
+        )}
+      </article>
+
+      <article className={styles.runtimePanel}>
+        <header>
+          <h3>{copy.ingestionPage.agentRunsTitle}</h3>
+          <ProtocolValue>{agentRuns.length}</ProtocolValue>
+        </header>
+        {agentRuns.length === 0 ? (
+          <DataEmpty
+            title={copy.ingestionPage.agentRunsTitle}
+            copy={copy.ingestionPage.emptyAgentRuns}
+          />
+        ) : (
+          <ol className={styles.runtimeSummaryList}>
+            {agentRuns.map((run) => (
+              <li key={run.agentRunId}>
+                <div className={styles.runtimeRecordHeader}>
+                  <strong>{run.agentKind}</strong>
+                  <StatusBadge code={run.status} label={run.status} />
+                </div>
+                <p>
+                  {run.provider} · {run.model}
+                </p>
+                <dl className={styles.compactFacts}>
+                  <div>
+                    <dt>{copy.ingestionPage.deterministic}</dt>
+                    <dd>
+                      {run.deterministic
+                        ? copy.ingestionPage.yes
+                        : copy.ingestionPage.no}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{copy.ingestionPage.inputHash}</dt>
+                    <dd>
+                      <ProtocolValue>{run.inputHash}</ProtocolValue>
+                    </dd>
+                  </div>
+                  {run.outputHash === undefined ? null : (
+                    <div>
+                      <dt>{copy.ingestionPage.outputHash}</dt>
+                      <dd>
+                        <ProtocolValue>{run.outputHash}</ProtocolValue>
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt>{copy.common.updatedAt}</dt>
+                    <dd>{formatDataDate(run.updatedAt, locale)}</dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ol>
+        )}
+      </article>
+
+      <article className={styles.runtimePanel}>
+        <header>
+          <h3>{copy.ingestionPage.projectionTitle}</h3>
+          <ProtocolValue>{projectionStatuses.length}</ProtocolValue>
+        </header>
+        {projectionStatuses.length === 0 ? (
+          <DataEmpty
+            title={copy.ingestionPage.projectionTitle}
+            copy={copy.ingestionPage.emptyProjections}
+          />
+        ) : (
+          <ol className={styles.runtimeSummaryList}>
+            {projectionStatuses.map((projection) => (
+              <li key={`${projection.versionId}:${projection.projectionKind}`}>
+                <div className={styles.runtimeRecordHeader}>
+                  <strong>{projection.projectionKind}</strong>
+                  <StatusBadge
+                    code={projection.status}
+                    label={projection.status}
+                  />
+                </div>
+                <ProtocolValue>{projection.dataItemId}</ProtocolValue>
+                <dl className={styles.compactFacts}>
+                  <div>
+                    <dt>{copy.common.versionId}</dt>
+                    <dd>
+                      <ProtocolValue>{projection.versionId}</ProtocolValue>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{copy.ingestionPage.attemptCount}</dt>
+                    <dd>{projection.attemptCount}</dd>
+                  </div>
+                  <div>
+                    <dt>{copy.ingestionPage.projectedAt}</dt>
+                    <dd>
+                      {projection.projectedAt === undefined
+                        ? copy.common.notProvided
+                        : formatDataDate(projection.projectedAt, locale)}
+                    </dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ol>
+        )}
+      </article>
+    </div>
   );
 }
 
