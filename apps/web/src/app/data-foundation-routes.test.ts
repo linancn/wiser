@@ -72,7 +72,32 @@ describe('Data Foundation management routes', () => {
     );
     expect(source).toContain('DataFoundationMap');
     expect(source).toContain('getDataFoundationDal');
+    expect(source).toContain('stacItems');
+    expect(source).toContain('vectorTileUrl');
+    expect(source).toContain('rasterTileUrl');
+    expect(source).not.toContain('baseLayerGap');
     expect(source).not.toMatch(/fixture|mock|sample/i);
+  });
+
+  it('round-trips immutable DataItem version selection through the API', async () => {
+    const source = await readFile(
+      new URL(
+        '[locale]/data-foundation/catalog/[dataItemId]/page.tsx',
+        new URL('./', import.meta.url),
+      ),
+      'utf8',
+    );
+    expect(source).toContain('searchParams');
+    expect(source).toContain('search.version');
+    expect(source).toContain('dal.dataItem(dataItemId, versionId)');
+    expect(source).toContain('detail.selectedVersion');
+    expect(source).toContain('selectedVersionId');
+    await access(
+      new URL(
+        'api/data-foundation/geo/[...path]/route.ts',
+        new URL('./', import.meta.url),
+      ),
+    );
   });
 
   it('renders ingestion runtime summaries instead of API coverage placeholders', async () => {

@@ -8,6 +8,7 @@ import {
   parseDataRouteUuid,
   parseGeoQuery,
   parseIngestion,
+  parseStacFeatureCollection,
   parseSearchQuery,
 } from './data-foundation';
 
@@ -139,6 +140,49 @@ describe('Data Foundation browser-safe contracts', () => {
         ],
       }),
     ).toThrow(/geo response/i);
+  });
+
+  it('projects only bounded STAC extents and immutable version anchors', () => {
+    expect(
+      parseStacFeatureCollection({
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            id: `wiser-${'a'.repeat(48)}`,
+            collection: `wiser-${'b'.repeat(32)}`,
+            bbox: [116.1, 39.7, 116.7, 40.1],
+            geometry: { type: 'Point', coordinates: [116.4, 39.9] },
+            properties: {
+              versionId: '22222222-2222-4222-8222-222222222222',
+              dataItemId: UUID,
+            },
+          },
+        ],
+      }),
+    ).toEqual({
+      extents: [
+        {
+          itemId: `wiser-${'a'.repeat(48)}`,
+          versionId: '22222222-2222-4222-8222-222222222222',
+          dataItemId: UUID,
+          bbox: [116.1, 39.7, 116.7, 40.1],
+        },
+      ],
+    });
+    expect(() =>
+      parseStacFeatureCollection({
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            id: 'not-governed',
+            bbox: [116.1, 39.7, Number.POSITIVE_INFINITY, 40.1],
+            properties: { versionId: UUID, databasePassword: 'leak' },
+          },
+        ],
+      }),
+    ).toThrow(/stac/i);
   });
 
   it('does not invent a linear history across ingestion terminal branches', () => {

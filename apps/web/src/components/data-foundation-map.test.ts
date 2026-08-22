@@ -14,6 +14,13 @@ describe('MapLibre client boundary', () => {
     expect(source).toMatch(/return\s*\(\)\s*=>\s*map\.remove\(\)/);
     expect(source).toContain('MutationObserver');
     expect(source).toContain('setPaintProperty');
+    expect(source).toContain("type: 'vector'");
+    expect(source).toContain("type: 'raster'");
+    expect(source).toContain("source-layer': 'authority'");
+    expect(source).toContain('stac-extents');
+    expect(source).toContain('layerControls');
+    expect(source).toContain('selectedVersion');
+    expect(source).toContain('displayCrs');
     expect(source).not.toMatch(/access[_-]?token|secret|password/i);
   });
 });
