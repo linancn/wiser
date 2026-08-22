@@ -26,6 +26,14 @@ function markdownFiles(path: string): string[] {
   });
 }
 
+function docpactRule(config: string, id: string): string {
+  const marker = `  - id: ${id}\n`;
+  const start = config.indexOf(marker);
+  if (start === -1) return '';
+  const next = config.indexOf('\n  - id: ', start + marker.length);
+  return config.slice(start, next === -1 ? undefined : next);
+}
+
 describe('human documentation entrypoints', () => {
   it('makes the root README a current system and runtime directory', () => {
     const chinese = read('README.md');
@@ -209,5 +217,81 @@ describe('developer handbook and current-state architecture', () => {
     ]) {
       expect(corpus).not.toContain(historicalNarrative);
     }
+  });
+});
+
+describe('canonical human documentation governance', () => {
+  it('routes current architecture and developer documents without historical authorities', () => {
+    const config = read('.docpact/config.yaml');
+
+    for (const removed of [
+      'docs/roadmap.md',
+      'docs/design/v2-multi-scenario-multi-agent-observability.md',
+      'architecture/overview.md',
+      'architecture/migration-tdd.md',
+    ]) {
+      expect(config).not.toContain(removed);
+    }
+
+    for (const current of [
+      'apps/docs/src/content/docs/*/index.mdx',
+      'apps/docs/src/content/docs/*/development/*.md',
+      'apps/docs/src/content/docs/*/architecture/agent-excon.md',
+      'apps/docs/src/content/docs/*/architecture/wiser-platform.md',
+    ]) {
+      expect(config, current).toContain(current);
+    }
+
+    const domain = docpactRule(config, 'domain-contracts');
+    expect(domain).toContain(
+      'apps/docs/src/content/docs/zh-CN/architecture/agent-excon.md',
+    );
+    expect(domain).toContain(
+      'apps/docs/src/content/docs/en/architecture/agent-excon.md',
+    );
+
+    const evaluation = docpactRule(config, 'evaluation-runtime');
+    expect(evaluation).toContain(
+      'apps/docs/src/content/docs/zh-CN/development/testing.md',
+    );
+    expect(evaluation).toContain(
+      'apps/docs/src/content/docs/en/development/testing.md',
+    );
+
+    const database = docpactRule(config, 'database-schema');
+    expect(database).toContain(
+      'apps/docs/src/content/docs/zh-CN/development/databases.md',
+    );
+    expect(database).toContain(
+      'apps/docs/src/content/docs/en/development/databases.md',
+    );
+  });
+
+  it('separates shared hosts from system-specific documentation rules', () => {
+    const config = read('.docpact/config.yaml');
+
+    expect(docpactRule(config, 'http-api')).not.toContain(
+      '- path: apps/api/src/**',
+    );
+    expect(docpactRule(config, 'mcp-adapter')).not.toContain(
+      '- path: apps/mcp/src/**',
+    );
+    expect(docpactRule(config, 'product-observatory')).not.toContain(
+      '- path: apps/web/src/**',
+    );
+
+    const navigation = docpactRule(config, 'documentation-navigation');
+    expect(navigation).toContain(
+      '- path: apps/docs/src/content/docs/*/meta.json',
+    );
+    expect(navigation).toContain(
+      '- path: apps/docs/src/content/docs/*/*/meta.json',
+    );
+    expect(navigation).toContain(
+      '- path: apps/docs/src/content/docs/zh-CN/development/documentation.md',
+    );
+    expect(navigation).toContain(
+      '- path: apps/docs/src/content/docs/en/development/documentation.md',
+    );
   });
 });
