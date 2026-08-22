@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
+lastReviewedCommit: 8169cc9c274ec3622b9c0ddd8d544eb8afe06f27
 ---
 
 ## Protocol boundary
@@ -54,6 +54,8 @@ A ready response has this core shape:
 Shared `GET /openapi.json` returns OpenAPI 3.1 with the fixed title **WISER Platform API**, covering Platform, Agent EXCON, and Data Foundation. The 22 Data Capabilities do not maintain another handwritten schema. At route registration, Fastify converts Registry Zod 4 input/output into draft-7 JSON Schema and projects it into path, query, body, and required-header OpenAPI operations.
 
 Every Data operation has the `data-foundation` tag, a stable `operationId`, `bearerAuth`, its successful response Schema, plus `Idempotency-Key` for commands and `If-Match` for versioned commands. Fastify schema compilers serve the OpenAPI projection here; the single runtime behavior gate remains strict Zod input/output validation in the shared `DataCapabilityHandler`. Generated documentation never becomes a second behavior source.
+
+Governed OGC/STAC/vector/raster proxies are not Capability Registry entries, so they use explicit route-specific Fastify OpenAPI Schemas. Identity headers, path/query allowlists, binary/content types, and stable 401/403/404/413/422/502/503 errors appear in the same document. POST/PUT/PATCH/DELETE 405 guards remain hidden rather than pretending to be business operations.
 
 ## Identity and context headers
 
@@ -125,6 +127,25 @@ Structured query accepts only allowlisted fields and operators:
 
 SearchOrchestrator pushes authorization and publication filters into backends, applies fixed `RRF k=60`, deduplicates by DataItem+Version, and reauthorizes every hit.
 
+## Governed GIS proxy
+
+GeoServer, STAC API, TiTiler, and Martin publish no host ports. Browsers, Agents, and external clients use only these Fastify GET/HEAD surfaces:
+
+| Surface      | Governed route                                                                               |
+| ------------ | -------------------------------------------------------------------------------------------- |
+| OGC          | `/api/data/v1/geo/ogc/{wms                                                                   | wfs | wcs    | wmts}` |
+| STAC         | `/api/data/v1/geo/stac`, `/conformance`, `/search`, `/collections/current[/items[/wiser-…]]` |
+| Vector tiles | `/api/data/v1/geo/tiles/vector/versions/{versionId}/{z}/{x}/{y}.pbf`                         |
+| Raster tiles | `/api/data/v1/geo/tiles/raster/versions/{versionId}/WebMercatorQuad/{z}/{x}/{y}.{png         | jpg | webp}` |
+
+Every call requires the unified Bearer, Tenant, Project, Purpose, and `data.geo.read`; every other HTTP method returns `405`. OGC accepts only each service's read request/query allowlist. Except for GetCapabilities, callers supply an authorized `versionId`, while API fixes layer/type and Tenant/Project/Version filters. STAC `current` becomes the current Tenant/Project's deterministic collection; a cross-scope collection returns safe `404`.
+
+Vector tiles first verify an RLS-visible Version with a spatial extent, then call Martin's sole `service.wiser_spatial_extent_mvt` source with server-injected Tenant, Project, Version, security ceiling, and policy version. Raster tiles select only a visible TIFF/GeoTIFF COG from authoritative RAW assets, validate its content-addressed key, and generate a constrained `s3://` source server-side for TiTiler. A client-supplied `url`/source fails with `422` before upstream I/O.
+
+All four upstream origins come from startup-validated internal configuration; userinfo/query/fragment, redirects, and dynamic hosts are forbidden. Query, coordinates, TMS, format, and response content type use strict allowlists. Default timeout is 5 seconds, response cap is 8 MiB, and only safe ETag/Last-Modified pass through. Every contextual ALLOWED/DENIED/FAILED request records `data.geo.read`, target, and route hash. An unauthenticated denial emits only a redacted platform log because no actor audit may be fabricated.
+
+MapLibre never embeds the API Bearer in a tile URL. An authenticated browser requests only same-origin `/api/data-foundation/geo/...`; the Next Route Handler revalidates the Supabase Session and forwards to these Fastify routes with a server-only access token and fixed Tenant/Project/Purpose while bounding path, query, content, and response size again. This Web path is not another GIS business implementation.
+
 ## Upload and ingestion
 
 Recommended sequence:
@@ -144,6 +165,8 @@ URLs live for 60–900 seconds and callers cannot alter keys. API HEAD-verifies 
 `GET /operations/:operationId/events?after=<cursor>&first=<n>` returns a bounded `text/event-stream` snapshot rather than holding an unbounded connection. Every event has stable `id`, `event`, and JSON `data` lines. A response with more data carries `X-Next-Cursor`.
 
 Reconnect with the last confirmed cursor. Never synthesize events from wall time or progress percentages, and do not treat a repeated event as a new transition.
+
+Publication consumer respects terminal Operations. Even after all five projections are `SUCCEEDED`, an already `FAILED`/`CANCELLED` Operation is neither rewritten to success nor allowed to publish the version. Consumer records `PUBLICATION_OPERATION_TERMINAL` on its checkpoint and advances past the poison event; a later successful event clears the summary. Original Operation events, Job, and projection evidence are never overwritten.
 
 ## Evidence and STAC Resource reads
 
@@ -207,6 +230,7 @@ Data REST uses a flat safe envelope:
 | `401` | Missing/invalid bearer or Tenant/Project/Purpose context              |
 | `403` | Known identity lacks scope, security ceiling, or resource permission  |
 | `404` | Resource absent or its existence cannot be disclosed                  |
+| `405` | GIS proxy received a method other than GET/HEAD                       |
 | `413` | Governed Resource exceeds the 256 KiB response limit                  |
 | `409` | State, version, immutability, or idempotency conflict                 |
 | `422` | Strict schema, header, or domain precondition failed                  |

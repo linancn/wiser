@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
+lastReviewedCommit: 8169cc9c274ec3622b9c0ddd8d544eb8afe06f27
 ---
 
 ## Delivered boundary
@@ -40,7 +40,7 @@ Supabase principal + Tenant/Project/Purpose
   → REST / GraphQL / MCP / authenticated Web readback
 ```
 
-GeoServer, TiTiler, and Martin run as GIS support services in the same exactly pinned profile. The authority Outbox has exactly five completion targets today: PostGIS, Weaviate, OpenSearch, Neo4j, and STAC. Every projection is disposable and rebuildable; none is identity, authorization, acceptance, or publication authority.
+GeoServer, TiTiler, and Martin run as Compose-internal GIS services in the same exactly pinned profile without host-published ports; external access traverses the unified-Auth Fastify GIS proxy. The authority Outbox has exactly five completion targets today: PostGIS, Weaviate, OpenSearch, Neo4j, and STAC. Every projection is disposable and rebuildable; none is identity, authorization, acceptance, or publication authority.
 
 ## Packages and dependency direction
 
@@ -93,10 +93,15 @@ Data SQL never enters the Supabase migration history. `infrastructure/data-found
 | `0005_content_blob_model.sql`            | separate content and asset identity, backfill, immutable storage references               |
 | `0006_content_lifecycle_constraints.sql` | structural `QUARANTINED → FINGERPRINTED → RAW` lifecycle                                  |
 | `0007_version_publication_lifecycle.sql` | the sole one-time `UNPUBLISHED → PUBLISHED` change with content fixed                     |
+| `0008_governed_gis_tiles.sql`            | one Martin-discoverable governed MVT function with five fixed scope parameters            |
 
 The TS7 runner sorts four-digit versions, runs each file transactionally under one session advisory lock, and records filename plus SHA-256. Missing, renamed, modified, or non-prefix applied history fails closed. pgSTAC uses official pyPgSTAC 0.9.12 migrations rather than pretending to be a PostgreSQL extension.
 
 There are 36 business tables, every one with `ENABLE` and `FORCE ROW LEVEL SECURITY`, plus a separate `schema_migrations` ledger. API and Worker use distinct non-superuser roles created by deployment provisioning; migrations do not grant runtime implicitly. Every transaction sets validated Tenant, Project, maximum security level, and policy version. Missing context returns no rows or fails.
+
+Martin uses an isolated `wiser_data_gis` login: `NOSUPERUSER`, `NOBYPASSRLS`, no generic runtime-role inheritance, no business-table privileges, and execute-only access to `service.wiser_spatial_extent_mvt`. That security-definer function accepts exactly five `tenantId/projectId/versionId/maxSecurityLevel/policyVersion` query values and repeats Version/spatial-extent filtering inside SQL.
+
+API vector tiles RLS-authorize the Version/spatial extent before injecting those five values into the function. Raster tiles select only a visible RAW TIFF/GeoTIFF COG, validate its `tenants/.../versions/{versionId}/sha256/{hash}` content-addressed key, and only then construct the internal S3 URI for TiTiler server-side. Browsers cannot select an object or upstream.
 
 Triggers reject invalid UPDATE/DELETE on Operation, Audit, Outbox, content, and version history. Complex transitions use explicit transactions, row locks or optimistic versions, unique constraints, and append-only facts.
 
@@ -150,6 +155,8 @@ Worker uses PostgreSQL `FOR UPDATE SKIP LOCKED`, lease owner/expiry, heartbeat, 
 
 `ProjectionOutboxConsumer` reads after a monotonic checkpoint. Per-target `PENDING/RUNNING/SUCCEEDED/FAILED` ledger survives crashes; an external write that completed before ledger update can be retried safely, while a succeeded target is skipped. Projection identity derives from authoritative DataItem/Version/Evidence IDs:
 
+If all five projections succeeded but the matching Operation is already `FAILED` or `CANCELLED`, that publication poison event may neither rewrite the terminal Operation nor publish the authoritative version. Consumer writes `PUBLICATION_OPERATION_TERMINAL` to `consumer_checkpoint.last_error` and advances past the event so it cannot block the queue head; a later successful event clears the summary. Original Job, Operation, projection ledger, and version evidence remain intact.
+
 - PostGIS retains source geometry plus CGCS2000 and Web Mercator derivatives;
 - Weaviate uses Worker-provided versioned vectors and an authenticated tenant;
 - OpenSearch uses a governed ICU index;
@@ -160,13 +167,15 @@ Matching query adapters push down Tenant, Project, Version, security, policy ver
 
 ## Protocol and product surfaces
 
-- REST: `/api/data/v1` discovery, 22 Capabilities, Operation SSE, Evidence/STAC Resources, and authorized asset redirects. Fastify OpenAPI for all 22 Capabilities is projected directly from the Zod 4 Registry under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
+- REST: `/api/data/v1` discovery, 22 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 22 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
 - GraphQL: `POST /graphql`, 22 schema-first fields sharing the same Handler; see [Data GraphQL](/en/protocols/data-graphql/).
 - MCP: stdio/stateless Streamable HTTP, 22 Tools and governed Resources that call HTTP only; see [Data MCP](/en/protocols/data-mcp/).
 - Skill: `skills/wiser-data-foundation` documents discovery, query, upload, ingestion, Operation, and security workflows.
-- Web: 14 Data routes in the existing Next.js app with server-only DAL, real Supabase session, both locales/themes, truthful state/error branches, and MapLibre GeoJSON preview.
+- Web: 14 Data routes in the existing Next.js app with server-only DAL, real Supabase session, both locales/themes, immutable-version selection, and four MapLibre layers: PostGIS authority GeoJSON, STAC extents, governed vector MVT, and raster.
 
-Web currently governs and queries; it never performs file parsing, vectorization, GIS transformation, or projection in a Server Action or Route Handler. Mutations enter through REST, GraphQL, MCP, or the Skill.
+DataItem detail `?version=<uuid>` sends the requested version to API and verifies `selectedVersion`; version links use `aria-current` and can open the governed map. Map query is `?bbox=minx,miny,maxx,maxy&version=<uuid>&crs=EPSG:4326|EPSG:4490`, with independent layer controls plus pinned Version and `source CRS → EPSG:3857`. The browser calls only same-origin `/api/data-foundation/geo/...`; Next server uses the freshly verified short-lived Supabase Session and adds Tenant/Project/Purpose before forwarding to Fastify. Bearers and internal GIS origins never reach the client.
+
+Web governs and queries; it never performs file parsing, vectorization, GIS transformation, or projection in a Server Action or Route Handler. Its same-origin GIS Route Handler is only a bounded authenticated proxy. Mutations enter through REST, GraphQL, MCP, or the Skill.
 
 ## Exact application dependencies and compatibility exceptions
 
@@ -180,7 +189,7 @@ Two “latest compatible” exceptions deliberately retain a runtime major. Grap
 
 Compose uses PostgreSQL/PostGIS `18-3.6`, pyPgSTAC `0.9.12`, SeaweedFS `4.43`, Weaviate `1.39.0`, OpenSearch/Dashboards `3.8.0`, Neo4j `2026.07.1`, GeoServer `3.0.1`, STAC API `6.3.1`, TiTiler `2.2.1`, Martin `1.14.0`, Tika `3.3.1.0`, and ClamAV `1.5.4`. Compose and `versions.env` both pin every image by tag+digest.
 
-The repeatable OpenSearch initializer verifies the official ICU artifact SHA-512. Every host port binds to `127.0.0.1`. Services drop Linux capabilities, enable `no-new-privileges`, resource bounds, and log rotation; only entrypoints that truly initialize a volume or lower UID/GID add back a minimal capability set. Official PostGIS and GeoServer images are currently amd64-only and Compose explicitly emulates them on Apple Silicon.
+The repeatable OpenSearch initializer verifies the official ICU artifact SHA-512. Every published host port binds to `127.0.0.1`; GeoServer, STAC API, TiTiler, and Martin are Compose-network-only `expose` services and cannot be reached directly from the host. Services drop Linux capabilities, enable `no-new-privileges`, resource bounds, and log rotation; only entrypoints that truly initialize a volume or lower UID/GID add back a minimal capability set. Official PostGIS and GeoServer images are currently amd64-only and Compose explicitly emulates them on Apple Silicon.
 
 ## Executable completion evidence
 

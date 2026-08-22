@@ -16,7 +16,7 @@ checkPaths:
   - packages/contracts/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
+lastReviewedCommit: 8169cc9c274ec3622b9c0ddd8d544eb8afe06f27
 ---
 
 ## 默认协议与实现状态
@@ -49,6 +49,12 @@ Fastify 是 WISER 的共享 HTTP 组合宿主。每个系统以静态导入的 `
 `GET /api/data/v1/health` 是不可缓存的 data-postgres、对象存储与 Data Worker readiness 聚合；任一权威依赖不可用返回 503。`GET /api/data/v1/capabilities` 返回有序 22 项 Registry、draft-7 输入/输出 JSON Schema 与精确 REST/GraphQL/MCP/Skill mapping。默认 Data runtime 已组合全部 22 个 read/command/specialized-query executor，并注册 REST 与 schema-first GraphQL；启动时 executor 缺失、重复或多余都会失败。共享 `/openapi.json` 标题为 **WISER Platform API**，22 个 Data REST operation 直接从同一 Zod 4 Registry 投影 path/query/body/Header、响应与 bearer security，不维护第二份协议 Schema。
 
 REST 解析统一 WISER principal，无碰撞组合 path/query/body，强制 command UUID 幂等键与版本化 command 的强 `If-Match: "vN"`，输出 ETag/no-store，并把 Operation event page 映射为有界 SSE snapshot。`GET /api/data/v1/evidence/fragments/:evidenceId` 与 `GET /api/data/v1/stac/collections/:collectionId/items/:itemId` 分别要求 `data.knowledge.read`/`data.geo.read`，经 RLS、权威复核、256 KiB 上限和 hash-only audit 支撑 MCP Resource；STAC source href 只能指向受控版本资产路由，后者重新授权后返回短期 `303` signed redirect。完整 Data 协议见 [Data REST](/protocols/data-rest/) 与 [Data GraphQL](/protocols/data-graphql/)。
+
+GeoServer、STAC API、TiTiler 与 Martin 不发布 host port。外部 GIS 只经 `/api/data/v1/geo/ogc/{wms|wfs|wcs|wmts}`、受控 `/geo/stac`，以及按不可变 `versionId` 固定的 `/geo/tiles/vector|raster` GET/HEAD。API 强制 `data.geo.read`、固定 origin、严格 query/content/size/timeout、RLS 版本授权与 `data.geo.read` audit；调用方不能提交 upstream URL、layer、Tenant/Project filter 或数据库上下文。
+
+这四类 GIS GET 通过显式 Fastify route Schema 进入同一 OpenAPI，公开身份 Header、safe path/query、binary/content type 和稳定错误；隐藏的 mutation guard 只返回 `405`，不宣称存在 GIS 写能力。
+
+Web MapLibre 的 tile/STAC 请求只指向同源 `/api/data-foundation/geo/...`；Next server 用刚验证的 Supabase Session 转发到上述 Fastify API，不把 Bearer 或内部 origin 发送到浏览器。
 
 ## 公共场景目录
 

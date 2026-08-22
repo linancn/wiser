@@ -15,7 +15,7 @@ checkPaths:
   - apps/web/src/**
   - apps/docs/src/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 574446ae6c540c2e1d365473f6b0d81469ec9367
 ---
 
 ## 设计方向
@@ -84,6 +84,8 @@ WISER 面向水系统专家、导调人员和数据治理人员。界面的单�
 - Data Foundation 的签名对象是 DataItem、Version、Ingestion、Operation、Lineage 和地图图层。
 - 两者共享 Shell、Token 和组件，但不伪装领域术语：同一种视觉状态可以承载不同领域对象。
 - 地图、Trace、血缘图等高复杂度视图可以拥有专用画布，但主题、焦点、面板、图例和状态语义仍来自共享系统。
+
+Data 地图把这一合同落实为可访问控件，而不是只靠画布颜色：DataItem 版本链接使用 `aria-current`，地图表单同时固定 bbox、不可变 Version 与 EPSG:4326/4490 source CRS；PostGIS authority、STAC extent、vector MVT、raster 四图层都用带文字的 checkbox，缺失图层保持 disabled。控制区持续显示 selectedVersion 与 `source CRS → EPSG:3857`，图层颜色从当前主题 token 读取，深浅色切换不改变权威层级。浏览器瓦片使用同源 Web 路径，服务器身份与内部 GIS origin 不出现在 UI。
 
 ## 验收
 

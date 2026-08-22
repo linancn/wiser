@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
+lastReviewedCommit: 574446ae6c540c2e1d365473f6b0d81469ec9367
 ---
 
 ## Current runtime boundary
@@ -100,7 +100,7 @@ pnpm data:seed
 pnpm data:smoke
 ```
 
-`data:migrate` verifies `0001`–`0007` filenames and SHA-256 under a session advisory lock. `data:seed` is repeatable. `data:up` is also repeatable: OpenSearch ICU initialization, object-store bucket creation, and runtime-role provisioning converge from existing state.
+`data:migrate` verifies `0001`–`0008` filenames and SHA-256 under a session advisory lock. `data:seed` is repeatable. `data:up` is also repeatable: OpenSearch ICU initialization, object-store bucket creation, and API/Worker/GIS runtime-role provisioning converge from existing state.
 
 ## Real 18-step smoke
 
@@ -129,25 +129,25 @@ On failure, the script prints recent Data service, API, and Web logs. It does no
 
 ## Local entrypoints
 
-| Service                 | Address                                                       |
-| ----------------------- | ------------------------------------------------------------- |
-| Web / Data Foundation   | `http://127.0.0.1:3000/zh-CN/data-foundation`                 |
-| API / Data REST         | `http://127.0.0.1:3001` / `/api/data/v1`                      |
-| GraphQL                 | `http://127.0.0.1:3001/graphql`                               |
-| Fumadocs                | `http://127.0.0.1:4321`                                       |
-| Supabase Studio         | `http://127.0.0.1:56323`                                      |
-| data-postgres           | `127.0.0.1:55432`                                             |
-| SeaweedFS S3            | `http://127.0.0.1:18333`                                      |
-| Weaviate                | `http://127.0.0.1:18080`                                      |
-| OpenSearch / Dashboards | `https://127.0.0.1:19200` / `http://127.0.0.1:15601`          |
-| Neo4j HTTP              | `http://127.0.0.1:17474`                                      |
-| GeoServer / STAC API    | `http://127.0.0.1:18081/geoserver` / `http://127.0.0.1:18082` |
-| TiTiler / Martin        | `http://127.0.0.1:18000` / `http://127.0.0.1:13000`           |
-| Tika / ClamAV           | `http://127.0.0.1:19998` / `127.0.0.1:13310`                  |
-| Data Worker             | `http://127.0.0.1:13003/health/ready`                         |
-| MCP Streamable HTTP     | `http://127.0.0.1:13004/mcp`                                  |
+| Service                 | Address                                                           |
+| ----------------------- | ----------------------------------------------------------------- |
+| Web / Data Foundation   | `http://127.0.0.1:3000/zh-CN/data-foundation`                     |
+| API / Data REST         | `http://127.0.0.1:3001` / `/api/data/v1`                          |
+| GraphQL                 | `http://127.0.0.1:3001/graphql`                                   |
+| Fumadocs                | `http://127.0.0.1:4321`                                           |
+| Supabase Studio         | `http://127.0.0.1:56323`                                          |
+| data-postgres           | `127.0.0.1:55432`                                                 |
+| SeaweedFS S3            | `http://127.0.0.1:18333`                                          |
+| Weaviate                | `http://127.0.0.1:18080`                                          |
+| OpenSearch / Dashboards | `https://127.0.0.1:19200` / `http://127.0.0.1:15601`              |
+| Neo4j HTTP              | `http://127.0.0.1:17474`                                          |
+| Governed OGC / STAC     | `http://127.0.0.1:3001/api/data/v1/geo/ogc/...` / `/geo/stac/...` |
+| Governed vector/raster  | `http://127.0.0.1:3001/api/data/v1/geo/tiles/...`                 |
+| Tika / ClamAV           | `http://127.0.0.1:19998` / `127.0.0.1:13310`                      |
+| Data Worker             | `http://127.0.0.1:13003/health/ready`                             |
+| MCP Streamable HTTP     | `http://127.0.0.1:13004/mcp`                                      |
 
-Every host port binds to loopback. Database and projection administration credentials are never given to an external Agent.
+Every published host port binds to loopback. GeoServer, STAC API, TiTiler, and Martin publish no host port and are reachable only by Fastify after unified Auth, `data.geo.read`, RLS/version checks, and audit. Database/projection administration endpoints and credentials are never given to a browser or external Agent.
 
 ## Local sign-in and query workspace
 
@@ -158,7 +158,7 @@ operator@agent-excon.test
 WiserLocalOperator-2026!
 ```
 
-Sign in at `http://127.0.0.1:3000/zh-CN/login`. The Data workspace displays catalog items, versions, provenance/authorization, security, quality/acceptance, ingestion state, issues, Agent runs, Operation events, projection status, lineage, search, graph, and map views. Invoke writes through [Data REST](/en/protocols/data-rest/), [Data GraphQL](/en/protocols/data-graphql/), [Data MCP](/en/protocols/data-mcp/), or `skills/wiser-data-foundation`.
+Sign in at `http://127.0.0.1:3000/zh-CN/login`. The Data workspace displays catalog items, versions, provenance/authorization, security, quality/acceptance, ingestion state, issues, Agent runs, Operation events, projection status, lineage, search, graph, and map views. DataItem detail switches immutable versions with `?version=<uuid>` and opens them on the map. The map accepts bbox, Version, and EPSG:4326/4490, with accessible controls for PostGIS authority, STAC extent, vector MVT, and raster layers. The browser reaches only a same-origin proxy; short-lived server Session and internal GIS addresses never enter the page. Invoke writes through [Data REST](/en/protocols/data-rest/), [Data GraphQL](/en/protocols/data-graphql/), [Data MCP](/en/protocols/data-mcp/), or `skills/wiser-data-foundation`.
 
 ## Use MCP separately
 

@@ -16,7 +16,7 @@ checkPaths:
   - compose.yaml
   - docs/roadmap.md
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
+lastReviewedCommit: 574446ae6c540c2e1d365473f6b0d81469ec9367
 ---
 
 # WISER · Water Intelligence System & Engine for Reconfiguration
@@ -31,8 +31,8 @@ WISER has evolved from a single agent exercise control application into an exten
 
 - **Unified platform**: Supabase Auth is the sole authority for users, sessions, tenants, projects, memberships, roles, scopes, and delegated identities. Web uses the same SSR session, and API requests re-resolve live authorization context.
 - **Agent EXCON**: the v2 multi-scenario/multi-RunAgent protocol, 18 MCP Tools, deterministic evaluation, Receipt replay, and observatory remain intact. The full stack journals all 19 v2 mutations in append-only PostgreSQL tables through a non-superuser role and verifies deterministic replay at startup. v1 Episodes remain an explicit, non-durable compatibility protocol.
-- **Data Foundation**: REST, schema-first GraphQL, MCP, and the file-based Skill share one Zod contract and Handler for 22 Capabilities. Independent data-postgres/PostGIS, SeaweedFS S3, a durable Worker, Transactional Outbox, five PostGIS/Weaviate/OpenSearch/Neo4j/STAC projections, and governed query adapters are wired into the default Data runtime.
-- **Unified product UI**: Data Foundation catalog, versions, ingestion, quality, lineage, knowledge, graph, GIS, map, Operation, and Capability views live in the existing Next.js app. Every visible message exists in `zh-CN` and `en`, Chinese is the default, and the Agent EXCON light/dark responsive shell is reused.
+- **Data Foundation**: REST, schema-first GraphQL, MCP, and the file-based Skill share one Zod contract and Handler for 22 Capabilities. Independent data-postgres/PostGIS, SeaweedFS S3, a durable Worker, Transactional Outbox, five PostGIS/Weaviate/OpenSearch/Neo4j/STAC projections, and governed query adapters are wired into the default Data runtime. OGC/STAC/vector/raster data is exposed only through the unified-Auth Fastify proxy; all four GIS backends have no host port.
+- **Unified product UI**: Data Foundation catalog, immutable-version selection, ingestion, quality, lineage, knowledge, graph, GIS, Operation, and Capability views live in the existing Next.js app. Its map combines PostGIS authority, STAC extent, vector MVT, and raster through a same-origin Session proxy. Every visible message exists in `zh-CN` and `en`, Chinese is the default, and the Agent EXCON light/dark responsive shell is reused.
 - **Unified documentation**: bilingual architecture, quick start, and Agent EXCON/Data REST, GraphQL, and MCP references are published by one Fumadocs app and governed by Docpact.
 
 ## Repository boundaries

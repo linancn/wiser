@@ -16,7 +16,7 @@ checkPaths:
   - packages/contracts/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
+lastReviewedCommit: 8169cc9c274ec3622b9c0ddd8d544eb8afe06f27
 ---
 
 ## Default protocol and implementation status
@@ -49,6 +49,12 @@ Commands require a UUID `Idempotency-Key`; all routes require Bearer, Tenant, Pr
 `GET /api/data/v1/health` is a non-cacheable aggregate of data-postgres, object-store, and Data Worker readiness; it returns 503 when any authority dependency is unavailable. `GET /api/data/v1/capabilities` returns the ordered 22-item Registry, draft-7 I/O JSON Schemas, and exact REST/GraphQL/MCP/Skill mappings. The default Data runtime composes all 22 read/command/specialized-query executors and registers both REST and schema-first GraphQL; a missing, duplicate, or extra executor fails startup. Shared `/openapi.json` is titled **WISER Platform API** and projects all 22 Data REST operations—path/query/body/headers, responses, and bearer security—directly from the same Zod 4 Registry rather than maintaining another protocol Schema.
 
 REST resolves the unified WISER principal, composes path/query/body fields without collisions, enforces UUID idempotency and strong `If-Match: "vN"` on versioned commands, emits ETags/no-store, and maps Operation events to bounded SSE snapshots. `GET /api/data/v1/evidence/fragments/:evidenceId` and `GET /api/data/v1/stac/collections/:collectionId/items/:itemId` require `data.knowledge.read`/`data.geo.read`, then apply RLS, authority reconciliation, a 256 KiB cap, and hash-only audit for MCP Resources. A STAC source href can target only the governed version-asset route, which reauthorizes before returning a short-lived `303` signed redirect. See [Data REST](/en/protocols/data-rest/) and [Data GraphQL](/en/protocols/data-graphql/) for the complete protocol.
+
+GeoServer, STAC API, TiTiler, and Martin publish no host ports. External GIS uses only `/api/data/v1/geo/ogc/{wms|wfs|wcs|wmts}`, governed `/geo/stac`, and immutable-`versionId` `/geo/tiles/vector|raster` GET/HEAD routes. API enforces `data.geo.read`, fixed origins, strict query/content/size/timeout, RLS version authorization, and `data.geo.read` audit. Callers cannot supply an upstream URL, layer, Tenant/Project filter, or database context.
+
+These four GIS GET surfaces enter the same OpenAPI through explicit Fastify route Schemas covering identity headers, safe path/query, binary/content types, and stable errors. Hidden mutation guards return only `405` and do not advertise GIS write capability.
+
+Web MapLibre tile/STAC requests target only same-origin `/api/data-foundation/geo/...`; Next server forwards with a freshly verified Supabase Session and never sends a Bearer or internal origin to the browser.
 
 ## Public scenario catalog
 

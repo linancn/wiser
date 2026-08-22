@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
+lastReviewedCommit: 574446ae6c540c2e1d365473f6b0d81469ec9367
 ---
 
 ## 先认识当前边界
@@ -100,7 +100,7 @@ pnpm data:seed
 pnpm data:smoke
 ```
 
-`data:migrate` 在 session advisory lock 下校验 `0001`–`0007` 文件名与 SHA-256。`data:seed` 可重复执行。`data:up` 可重复运行；OpenSearch ICU initializer、对象存储 bucket 初始化和 runtime role provisioning 都按现有状态安全收敛。
+`data:migrate` 在 session advisory lock 下校验 `0001`–`0008` 文件名与 SHA-256。`data:seed` 可重复执行。`data:up` 可重复运行；OpenSearch ICU initializer、对象存储 bucket 初始化和 API/Worker/GIS runtime role provisioning 都按现有状态安全收敛。
 
 ## 18 步真实 smoke
 
@@ -129,25 +129,25 @@ pnpm data:smoke
 
 ## 本机入口
 
-| 服务                    | 地址                                                          |
-| ----------------------- | ------------------------------------------------------------- |
-| Web / Data Foundation   | `http://127.0.0.1:3000/zh-CN/data-foundation`                 |
-| API / Data REST         | `http://127.0.0.1:3001` / `/api/data/v1`                      |
-| GraphQL                 | `http://127.0.0.1:3001/graphql`                               |
-| Fumadocs                | `http://127.0.0.1:4321`                                       |
-| Supabase Studio         | `http://127.0.0.1:56323`                                      |
-| data-postgres           | `127.0.0.1:55432`                                             |
-| SeaweedFS S3            | `http://127.0.0.1:18333`                                      |
-| Weaviate                | `http://127.0.0.1:18080`                                      |
-| OpenSearch / Dashboards | `https://127.0.0.1:19200` / `http://127.0.0.1:15601`          |
-| Neo4j HTTP              | `http://127.0.0.1:17474`                                      |
-| GeoServer / STAC API    | `http://127.0.0.1:18081/geoserver` / `http://127.0.0.1:18082` |
-| TiTiler / Martin        | `http://127.0.0.1:18000` / `http://127.0.0.1:13000`           |
-| Tika / ClamAV           | `http://127.0.0.1:19998` / `127.0.0.1:13310`                  |
-| Data Worker             | `http://127.0.0.1:13003/health/ready`                         |
-| MCP Streamable HTTP     | `http://127.0.0.1:13004/mcp`                                  |
+| 服务                    | 地址                                                              |
+| ----------------------- | ----------------------------------------------------------------- |
+| Web / Data Foundation   | `http://127.0.0.1:3000/zh-CN/data-foundation`                     |
+| API / Data REST         | `http://127.0.0.1:3001` / `/api/data/v1`                          |
+| GraphQL                 | `http://127.0.0.1:3001/graphql`                                   |
+| Fumadocs                | `http://127.0.0.1:4321`                                           |
+| Supabase Studio         | `http://127.0.0.1:56323`                                          |
+| data-postgres           | `127.0.0.1:55432`                                                 |
+| SeaweedFS S3            | `http://127.0.0.1:18333`                                          |
+| Weaviate                | `http://127.0.0.1:18080`                                          |
+| OpenSearch / Dashboards | `https://127.0.0.1:19200` / `http://127.0.0.1:15601`              |
+| Neo4j HTTP              | `http://127.0.0.1:17474`                                          |
+| 受控 OGC / STAC         | `http://127.0.0.1:3001/api/data/v1/geo/ogc/...` / `/geo/stac/...` |
+| 受控矢量 / 栅格瓦片     | `http://127.0.0.1:3001/api/data/v1/geo/tiles/...`                 |
+| Tika / ClamAV           | `http://127.0.0.1:19998` / `127.0.0.1:13310`                      |
+| Data Worker             | `http://127.0.0.1:13003/health/ready`                             |
+| MCP Streamable HTTP     | `http://127.0.0.1:13004/mcp`                                      |
 
-这些端口都只绑定回环地址。数据库、投影管理口与凭据不提供给外部 Agent。
+所有已发布端口都只绑定回环地址。GeoServer、STAC API、TiTiler 和 Martin 完全不发布 host port，只能由 Fastify 在统一 Auth、`data.geo.read`、RLS/version 检查和 audit 后访问；数据库、投影管理口与凭据不提供给浏览器或外部 Agent。
 
 ## 本机登录与查询
 
@@ -158,7 +158,7 @@ operator@agent-excon.test
 WiserLocalOperator-2026!
 ```
 
-从 `http://127.0.0.1:3000/zh-CN/login` 登录后进入数据基座。Web 展示目录、版本、来源/授权、安全等级、质量/验收状态、入库状态机、问题、Agent run、Operation event、投影状态、血缘、检索、图谱和地图。写操作通过 [Data REST](/protocols/data-rest/)、[Data GraphQL](/protocols/data-graphql/)、[Data MCP](/protocols/data-mcp/) 或 `skills/wiser-data-foundation` 执行。
+从 `http://127.0.0.1:3000/zh-CN/login` 登录后进入数据基座。Web 展示目录、版本、来源/授权、安全等级、质量/验收状态、入库状态机、问题、Agent run、Operation event、投影状态、血缘、检索、图谱和地图。DataItem detail 可用 `?version=<uuid>` 切换不可变版本并打开地图；地图接受 bbox、Version、EPSG:4326/4490，提供 PostGIS authority、STAC extent、vector MVT、raster 四个可访问图层开关。浏览器只访问同源代理，服务器短期 Session 与内部 GIS 地址不进入页面。写操作通过 [Data REST](/protocols/data-rest/)、[Data GraphQL](/protocols/data-graphql/)、[Data MCP](/protocols/data-mcp/) 或 `skills/wiser-data-foundation` 执行。
 
 ## 单独使用 MCP
 

@@ -16,14 +16,14 @@ checkPaths:
   - packages/infra/**
   - supabase/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 7342633bf47c452ad443890c92398b4051234648
 ---
 
 ## 迁移原则
 
 v1 walking skeleton 继续作为兼容协议，但事实写入逐步统一到 v2。不能长期双写 Episode 和 Run 两套表，否则 Event、Receipt 与状态无法保持原子一致。
 
-Supabase 管理 Auth、平台控制面和 EXCON 数据，其 migration、declarative schema、seed 与 pgTAP 必须同步。已运行的独立 Data Foundation `data-postgres` 使用自己的 checksum SQL runner、advisory lock 与 `0001`–`0007` migration 历史；两套数据库不得混用迁移目录或伪造跨库事务。
+Supabase 管理 Auth、平台控制面和 EXCON 数据，其 migration、declarative schema、seed 与 pgTAP 必须同步。已运行的独立 Data Foundation `data-postgres` 使用自己的 checksum SQL runner、advisory lock 与 `0001`–`0008` migration 历史；两套数据库不得混用迁移目录或伪造跨库事务。
 
 完整栈中的 v2 已通过单 writer append-only command journal 跨重启恢复全部 19 个 mutation；这不等于 v1 facade 或规范化 v2 aggregate adapter 已完成。下述在线切换顺序仍是未来把 v1 Episode 事实统一到 v2 Event/Receipt 模型的约束。
 

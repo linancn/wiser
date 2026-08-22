@@ -16,7 +16,7 @@ checkPaths:
   - compose.yaml
   - docs/roadmap.md
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
+lastReviewedCommit: 574446ae6c540c2e1d365473f6b0d81469ec9367
 ---
 
 # WISER · 水地图
@@ -33,8 +33,8 @@ WISER 已从单一智能体演练场重构为可继续扩展的多系统平台�
 
 - **统一平台**：Supabase Auth 是用户、Session、Tenant、Project、Membership、Role、Scope 与委托身份的唯一权威；Web 使用同一套 SSR Session，API 对每次请求重新验证实时授权上下文。
 - **Agent EXCON**：v2 多场景、多 RunAgent 协作协议、18 个 MCP Tool、确定性评价、Receipt 回放和观测界面均保留。完整栈使用非超级用户 PostgreSQL append-only command journal 持久化 19 个 v2 mutation，并在启动时校验重放；v1 Episode 仍是显式、非持久化兼容协议。
-- **Data Foundation**：22 项 Capability 的 REST、schema-first GraphQL、MCP 与文件化 Skill 共享同一 Zod 契约和 Handler。独立 data-postgres/PostGIS、SeaweedFS S3、持久任务 Worker、Transactional Outbox、PostGIS/Weaviate/OpenSearch/Neo4j/STAC 五类投影和受治理查询已接入默认 Data runtime。
-- **统一产品界面**：Data Foundation 在现有 Next.js 应用中提供目录、版本、入库、质量、血缘、知识、图谱、GIS、地图、Operation 和 Capability 页面。所有可见文案都有 `zh-CN`/`en`，中文默认，并复用 Agent EXCON 的浅色/深色主题和响应式 Shell。
+- **Data Foundation**：22 项 Capability 的 REST、schema-first GraphQL、MCP 与文件化 Skill 共享同一 Zod 契约和 Handler。独立 data-postgres/PostGIS、SeaweedFS S3、持久任务 Worker、Transactional Outbox、PostGIS/Weaviate/OpenSearch/Neo4j/STAC 五类投影和受治理查询已接入默认 Data runtime；OGC/STAC/矢量/栅格只经统一 Auth 的 Fastify 代理暴露，四个 GIS 后端没有 host port。
+- **统一产品界面**：Data Foundation 在现有 Next.js 应用中提供目录、不可变版本选择、入库、质量、血缘、知识、图谱、GIS、Operation 和 Capability 页面。地图通过同源 Session 代理组合 PostGIS authority、STAC extent、vector MVT、raster 四图层；所有可见文案都有 `zh-CN`/`en`，中文默认，并复用 Agent EXCON 的浅色/深色主题和响应式 Shell。
 - **统一文档**：中英文架构、快速开始及 Agent EXCON/Data REST、GraphQL、MCP 协议都由同一个 Fumadocs 应用发布并受 Docpact 治理。
 
 ## 仓库边界

@@ -15,7 +15,7 @@ checkPaths:
   - apps/web/src/**
   - apps/docs/src/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 574446ae6c540c2e1d365473f6b0d81469ec9367
 ---
 
 ## Design direction
@@ -84,6 +84,8 @@ Shared components include AppShell, SystemSwitcher, ProjectSwitcher, PageHeader,
 - Data Foundation's signature objects are DataItems, Versions, Ingestions, Operations, Lineage, and map layers.
 - Both share the shell, tokens, and components without erasing domain vocabulary: one visual state may represent different domain objects.
 - Maps, traces, and lineage graphs may use specialized canvases, but their themes, focus, panels, legends, and state semantics still come from the shared system.
+
+The Data map implements this contract through accessible controls rather than canvas color alone. DataItem version links use `aria-current`; the map form pins bbox, immutable Version, and EPSG:4326/4490 source CRS. PostGIS authority, STAC extent, vector MVT, and raster layers each have a text-labeled checkbox, with unavailable layers disabled. Controls continuously show selectedVersion and `source CRS → EPSG:3857`; layer colors read current theme tokens, so light/dark changes never alter authority hierarchy. Browser tiles use same-origin Web paths, keeping server identity and internal GIS origins out of the UI.
 
 ## Acceptance
 

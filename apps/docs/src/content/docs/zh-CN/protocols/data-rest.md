@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
+lastReviewedCommit: 8169cc9c274ec3622b9c0ddd8d544eb8afe06f27
 ---
 
 ## 协议边界
@@ -54,6 +54,8 @@ MCP、Skill 和 Web 的服务端 DAL 都通过这个 HTTP 边界工作。任何�
 共享 `GET /openapi.json` 返回 OpenAPI 3.1 文档，标题固定为 **WISER Platform API**，同时覆盖 Platform、Agent EXCON 与 Data Foundation。Data 的 22 项 Capability 不维护第二份手写 Schema：Fastify 在注册路由时直接把 Registry 的 Zod 4 输入/输出转换成 draft-7 JSON Schema，再按 path、query、body 与 required Header 投影为 OpenAPI operation。
 
 每个 Data operation 都带 `data-foundation` tag、稳定 `operationId`、`bearerAuth`、成功状态的响应 Schema，以及 command 的 `Idempotency-Key` 和版本化 command 的 `If-Match`。Fastify 的 schema compiler 在这里服务于 OpenAPI 投影；运行时唯一业务门禁仍是同一 `DataCapabilityHandler` 的 strict Zod 输入/输出校验，不能让生成文档变成第二个行为来源。
+
+受控 OGC/STAC/vector/raster 代理不是 Capability Registry 条目，因此使用显式、路由专属的 Fastify OpenAPI Schema：身份 Header、path/query allowlist、binary/content type 与稳定 401/403/404/413/422/502/503 error 都进入同一文档；POST/PUT/PATCH/DELETE 的 405 guard 隐藏，不伪装成业务操作。
 
 ## 身份与上下文 Header
 
@@ -125,6 +127,25 @@ If-Match: "v3"
 
 SearchOrchestrator 在后端下推权限与发布过滤，固定 `RRF k=60`，按 DataItem+Version 去重，再逐条重新授权。
 
+## 受控 GIS 代理
+
+GeoServer、STAC API、TiTiler 与 Martin 没有宿主 published port；浏览器、Agent 和外部客户端唯一允许的 GIS 入口是下列 Fastify GET/HEAD：
+
+| 表面     | 受控路由                                                                                     |
+| -------- | -------------------------------------------------------------------------------------------- |
+| OGC      | `/api/data/v1/geo/ogc/{wms                                                                   | wfs | wcs    | wmts}` |
+| STAC     | `/api/data/v1/geo/stac`、`/conformance`、`/search`、`/collections/current[/items[/wiser-…]]` |
+| 矢量瓦片 | `/api/data/v1/geo/tiles/vector/versions/{versionId}/{z}/{x}/{y}.pbf`                         |
+| 栅格瓦片 | `/api/data/v1/geo/tiles/raster/versions/{versionId}/WebMercatorQuad/{z}/{x}/{y}.{png         | jpg | webp}` |
+
+每次调用都要求统一 Bearer、Tenant、Project、Purpose 与 `data.geo.read`；其他 HTTP 方法返回 `405`。OGC 只接受每个 service 的只读 request/query allowlist；除 GetCapabilities 外，调用方必须给出授权的 `versionId`，API 固定 layer/type 与 Tenant/Project/Version filter。STAC 的 `current` 自动替换为当前 Tenant/Project 的确定性 collection，跨 scope collection 返回安全 `404`。
+
+矢量瓦片先在 data-postgres RLS 下确认该 Version 有可见 spatial extent，再调用 Martin 的唯一 `service.wiser_spatial_extent_mvt` source；Tenant、Project、Version、安全 ceiling 与 policy version 均由服务端注入。栅格瓦片只从权威表的可见 RAW asset 中选择 TIFF/GeoTIFF COG，再由服务端验证内容寻址 key 并生成受限 `s3://` source 给 TiTiler；客户端提交 `url`/source 会在任何上游 I/O 前返回 `422`。
+
+四个上游 origin 来自启动时校验的内部配置，禁止 userinfo/query/fragment、redirect 与动态 host。代理 query、tile coordinate、TMS、format、content type 均为严格 allowlist；默认 timeout 5 秒、响应上限 8 MiB，并只转发安全 ETag/Last-Modified。每次 ALLOWED/DENIED/FAILED 记录 `data.geo.read`、目标与 route hash；未认证拒绝只记录脱敏平台日志，不能伪造 actor audit。
+
+MapLibre 不把 API Bearer 放进 tile URL。登录后的浏览器只请求同源 `/api/data-foundation/geo/...`；Next Route Handler 重新验证 Supabase Session，以 server-only access token 和固定 Tenant/Project/Purpose 转发上述 Fastify 路由，同时再次限制 path/query/content/response size。该 Web 路径不是第二套 GIS 业务逻辑。
+
 ## 上传与入库
 
 推荐流程：
@@ -144,6 +165,8 @@ URL 的 TTL 是 60–900 秒；调用方不能改 key。API 在完成前通过 H
 `GET /operations/:operationId/events?after=<cursor>&first=<n>` 返回一个有界 `text/event-stream` snapshot，而不是无限保持的连接。每个 event 有稳定 `id`、`event` 和 JSON `data` 行；更多数据时响应 Header 包含 `X-Next-Cursor`。
 
 断线后使用最后确认的 cursor 重新请求。不要用 wall-clock 或进度百分比合成事件，也不要把重复 event 当作新的状态转换。
+
+Publication consumer 尊重 Operation 终态：即使五类投影已经 `SUCCEEDED`，若 Operation 已是 `FAILED`/`CANCELLED`，也不会改回成功或发布版本；它记录 `PUBLICATION_OPERATION_TERMINAL` 到 consumer checkpoint 并推进 poison event，后续成功 event 再清除摘要。原 Operation event、Job 与 projection 证据不被覆盖。
 
 ## Evidence 与 STAC Resource 读取
 
@@ -207,6 +230,7 @@ Data REST 错误是扁平安全 envelope：
 | `401` | bearer 或 Tenant/Project/Purpose 上下文缺失/无效    |
 | `403` | 已知身份缺少 Scope、security ceiling 或资源权限     |
 | `404` | 资源不存在或调用方无权知道其存在                    |
+| `405` | GIS 代理收到非 GET/HEAD 方法                        |
 | `413` | 受控 Resource 超过 256 KiB 响应上限                 |
 | `409` | 状态、版本、内容不可变或幂等冲突                    |
 | `422` | strict schema、Header 或领域前置条件失败            |

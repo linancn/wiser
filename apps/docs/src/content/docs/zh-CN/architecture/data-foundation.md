@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
+lastReviewedCommit: 8169cc9c274ec3622b9c0ddd8d544eb8afe06f27
 ---
 
 ## 已交付边界
@@ -40,7 +40,7 @@ Supabase principal + Tenant/Project/Purpose
   → REST / GraphQL / MCP / authenticated Web readback
 ```
 
-GeoServer、TiTiler 和 Martin 作为本机 GIS 服务存在于同一个精确锁定 profile；当前权威 Outbox 的五个完成目标是 PostGIS、Weaviate、OpenSearch、Neo4j 与 STAC。任何投影都可清空重建，不承担身份、授权、验收或发布权威。
+GeoServer、TiTiler 和 Martin 作为 Compose-internal GIS 服务存在于同一个精确锁定 profile，不发布 host port；外部只经过统一 Auth 的 Fastify GIS 代理。当前权威 Outbox 的五个完成目标是 PostGIS、Weaviate、OpenSearch、Neo4j 与 STAC。任何投影都可清空重建，不承担身份、授权、验收或发布权威。
 
 ## 包与依赖方向
 
@@ -93,10 +93,15 @@ Data Foundation 不把 SQL 放进 Supabase migration。`infrastructure/data-foun
 | `0005_content_blob_model.sql`            | 内容 blob 与资产身份分离、已存在数据回填、不可变存储引用                     |
 | `0006_content_lifecycle_constraints.sql` | `QUARANTINED → FINGERPRINTED → RAW` 结构约束                                 |
 | `0007_version_publication_lifecycle.sql` | 内容不可变前提下唯一允许一次 `UNPUBLISHED → PUBLISHED`                       |
+| `0008_governed_gis_tiles.sql`            | Martin 可发现的单一受控 MVT function；五个 scope 参数固定且不创建第二套身份  |
 
 TS7 runner 按四位版本排序，在 session advisory lock 下逐文件事务执行，并记录文件名和 SHA-256。已执行文件缺失、改名、内容漂移或非前缀历史会失败关闭。pgSTAC 使用官方 pyPgSTAC 0.9.12 migration，不伪造成 PostgreSQL extension。
 
 业务模型共有 36 张表，全部 `ENABLE` 且 `FORCE ROW LEVEL SECURITY`；另有独立 `schema_migrations` ledger。API 和 Worker 通过部署脚本创建的不同非超级用户 role 访问，migration 不隐式授予 runtime。每个事务必须设置并验证 Tenant、Project、最高安全等级和 policy version；缺任一上下文返回零行或失败。
+
+Martin 使用隔离的 `wiser_data_gis` 登录：`NOSUPERUSER`、`NOBYPASSRLS`，不继承通用 runtime role、没有业务表权限，只能执行 `service.wiser_spatial_extent_mvt`。该 security-definer function 严格接收 `tenantId/projectId/versionId/maxSecurityLevel/policyVersion` 五项 query 参数，在 SQL 内再次过滤 Version 与 spatial extent。
+
+API 矢量瓦片先对 Version/spatial extent 做 RLS 授权，再给该 function 注入五项上下文。栅格瓦片只从可见 RAW asset 中选择 TIFF/GeoTIFF COG，验证 `tenants/.../versions/{versionId}/sha256/{hash}` 内容寻址 key 后，才在服务端生成 TiTiler 使用的内部 S3 URI；浏览器不能选择对象或 upstream。
 
 Operation event、Audit event、Outbox、content/version 历史由 trigger 拒绝不合法的 UPDATE/DELETE。复杂转换使用显式事务、行锁/乐观版本、唯一约束与 append-only 事实。
 
@@ -150,6 +155,8 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 
 `ProjectionOutboxConsumer` 读取单调 checkpoint。每个 target 的 `PENDING/RUNNING/SUCCEEDED/FAILED` ledger 跨崩溃保留；外部写成功但 ledger 尚未更新时可安全重试，已成功 target 会跳过。投影 identity 由 DataItem/Version/Evidence 等权威 ID 派生：
 
+若五类投影已经成功，但对应 Operation 已进入 `FAILED` 或 `CANCELLED`，该 publication poison event 不得改写 Operation 终态，也不得发布权威版本。Consumer 以 `PUBLICATION_OPERATION_TERMINAL` 写入 `consumer_checkpoint.last_error` 并推进该 event，避免队首永久阻塞；后续成功 event 清除摘要。原 Job、Operation、projection ledger 与版本证据全部保留。
+
 - PostGIS 保留 source geometry，并存 CGCS2000 与 Web Mercator 派生形状；
 - Weaviate 使用 Worker 提供的固定版本向量与受认证 tenant；
 - OpenSearch 使用受治理 ICU 索引；
@@ -160,13 +167,15 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 
 ## 协议与产品面
 
-- REST：`/api/data/v1` 的 discovery、22 项 Capability、Operation SSE、Evidence/STAC Resource 与授权资产重定向；22 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
+- REST：`/api/data/v1` 的 discovery、22 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；22 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
 - GraphQL：`POST /graphql`，22 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
 - MCP：stdio/无状态 Streamable HTTP，22 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
 - Skill：`skills/wiser-data-foundation` 定义发现、查询、上传、入库、Operation 与安全解释流程。
-- Web：现有 Next.js 应用中的 14 个 Data route，server-only DAL、真实 Supabase Session、双语、主题、状态/错误分支和 MapLibre GeoJSON 地图。
+- Web：现有 Next.js 应用中的 14 个 Data route，server-only DAL、真实 Supabase Session、双语/主题、不可变版本选择，以及 MapLibre 的 PostGIS authority GeoJSON、STAC extent、受控 vector MVT 与 raster 四图层。
 
-Web 当前负责治理与查询，不在 Server Action 或 Route Handler 执行文件解析、向量化、GIS 转换或投影。mutation 由 REST、GraphQL、MCP 或 Skill 发起。
+DataItem detail 的 `?version=<uuid>` 会把指定版本送入 API 并核对 `selectedVersion`，版本列表以 `aria-current` 切换并可打开受控地图。地图查询为 `?bbox=minx,miny,maxx,maxy&version=<uuid>&crs=EPSG:4326|EPSG:4490`，可分别切换四图层，显示固定 Version 与 `source CRS → EPSG:3857`。浏览器只请求同源 `/api/data-foundation/geo/...`；Next server 使用刚验证的 Supabase 短期 Session 追加 Tenant/Project/Purpose 后转发 Fastify，Bearer 和内部 GIS origin 永不进入客户端。
+
+Web 负责治理与查询，不在 Server Action 或 Route Handler 执行文件解析、向量化、GIS 转换或投影。其同源 GIS Route Handler 只是有界认证代理；mutation 由 REST、GraphQL、MCP 或 Skill 发起。
 
 ## 精确应用依赖与兼容例外
 
@@ -180,7 +189,7 @@ pnpm 11 的 `minimumReleaseAge: 1440` 对其他生态仍保持 24 小时供应�
 
 Compose 使用 PostgreSQL/PostGIS `18-3.6`、pyPgSTAC `0.9.12`、SeaweedFS `4.43`、Weaviate `1.39.0`、OpenSearch/Dashboards `3.8.0`、Neo4j `2026.07.1`、GeoServer `3.0.1`、STAC API `6.3.1`、TiTiler `2.2.1`、Martin `1.14.0`、Tika `3.3.1.0` 与 ClamAV `1.5.4`。每个镜像在 Compose 和 `versions.env` 同时固定 tag+digest。
 
-OpenSearch initializer 验证官方 ICU artifact SHA-512 并可重复执行。所有宿主端口绑定 `127.0.0.1`；服务默认 drop Linux capabilities、启用 `no-new-privileges`、资源上限与日志轮转，只给确实需要初始化卷/降权的入口加回最小 capability。PostGIS 与 GeoServer 当前官方镜像仅提供 amd64，Apple Silicon 由 Compose 显式模拟。
+OpenSearch initializer 验证官方 ICU artifact SHA-512 并可重复执行。所有已发布宿主端口绑定 `127.0.0.1`；GeoServer、STAC API、TiTiler、Martin 仅在 Compose network `expose`，不能从 host 直连。服务默认 drop Linux capabilities、启用 `no-new-privileges`、资源上限与日志轮转，只给确实需要初始化卷/降权的入口加回最小 capability。PostGIS 与 GeoServer 当前官方镜像仅提供 amd64，Apple Silicon 由 Compose 显式模拟。
 
 ## 可执行完成证明
 

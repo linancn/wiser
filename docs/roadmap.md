@@ -16,7 +16,7 @@ checkPaths:
   - supabase/**
   - docs/design/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
+lastReviewedCommit: 574446ae6c540c2e1d365473f6b0d81469ec9367
 ---
 
 # WISER Agent EXCON roadmap / 路线图
@@ -83,9 +83,9 @@ The authoritative design is [WISER Agent EXCON v2](design/v2-multi-scenario-mult
 
 ## Data Foundation delivery / 数据基座交付
 
-The Data Foundation initialization slice is implemented in the same monorepo: 22 shared Capabilities, seven checksum migrations, 36 FORCE-RLS authority tables, SeaweedFS content authority, concrete ClamAV/Tika/fake-Agent/deterministic-transform Worker, Transactional Outbox, five PostGIS/Weaviate/OpenSearch/Neo4j/STAC projections, REST, GraphQL, MCP, Skill, and bilingual themed Web. `pnpm data:smoke` is the executable 18-step gate and replays one Outbox event to prove projection idempotency.
+The Data Foundation initialization slice is implemented in the same monorepo: 22 shared Capabilities, eight checksum migrations, 36 FORCE-RLS authority tables, SeaweedFS content authority, concrete ClamAV/Tika/fake-Agent/deterministic-transform Worker, Transactional Outbox, five PostGIS/Weaviate/OpenSearch/Neo4j/STAC projections, REST, GraphQL, MCP, Skill, and bilingual themed Web. Governed OGC/STAC/vector/raster proxy routes are the sole external GIS surface; their four backends have no host ports. Web now pins immutable versions and layers PostGIS authority GeoJSON, STAC extents, vector MVT, and raster through a same-origin authenticated proxy. `pnpm data:smoke` is the executable 18-step gate and replays one Outbox event to prove projection idempotency.
 
-数据基座已在同一 monorepo 完成初始化纵切：22 项共享 Capability、7 个 checksum migration、36 张 FORCE RLS 权威表、SeaweedFS 内容权威、具体 ClamAV/Tika/fake Agent/确定性转换 Worker、Transactional Outbox、PostGIS/Weaviate/OpenSearch/Neo4j/STAC 五类投影，以及 REST、GraphQL、MCP、Skill 和双语主题 Web。`pnpm data:smoke` 是真实 18 步门禁，并通过重放同一 Outbox event 证明投影幂等。
+数据基座已在同一 monorepo 完成初始化纵切：22 项共享 Capability、8 个 checksum migration、36 张 FORCE RLS 权威表、SeaweedFS 内容权威、具体 ClamAV/Tika/fake Agent/确定性转换 Worker、Transactional Outbox、PostGIS/Weaviate/OpenSearch/Neo4j/STAC 五类投影，以及 REST、GraphQL、MCP、Skill 和双语主题 Web。受控 OGC/STAC/矢量/栅格代理是唯一外部 GIS 表面，四个后端没有 host port；Web 固定不可变版本，经同源认证代理叠加 PostGIS authority GeoJSON、STAC extent、vector MVT 与 raster。`pnpm data:smoke` 是真实 18 步门禁，并通过重放同一 Outbox event 证明投影幂等。
 
 ## Next delivery gates / 下一交付关口
 
