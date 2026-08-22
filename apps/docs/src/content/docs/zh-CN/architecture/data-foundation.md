@@ -1,6 +1,6 @@
 ---
 title: 数据基座领域架构
-description: Data Foundation 已交付的权威边界、入库纵切、投影、协议与验证合同。
+description: Data Foundation 的权威边界、入库纵切、投影、协议与验证合同。
 docType: architecture
 scope: data-foundation
 status: active
@@ -23,11 +23,11 @@ lastReviewedAt: 2026-08-22
 lastReviewedCommit: 8169cc9c274ec3622b9c0ddd8d544eb8afe06f27
 ---
 
-## 已交付边界
+## 权威边界
 
 Data Foundation 是与 Agent EXCON 平级的 WISER 业务系统。它拥有 DataItem、不可变版本、资产、入库、质量、血缘、知识、检索、GIS、Operation 与投影事实；它不拥有用户 Session、Tenant、Project、Membership、Role 或 Token。Supabase Auth/PostgreSQL 是统一身份与控制面，独立 data-postgres/PostGIS 与 S3 兼容对象存储构成 Data 权威面。
 
-当前默认 Data runtime 已组合：
+默认 Data runtime 组合：
 
 ```text
 Supabase principal + Tenant/Project/Purpose
@@ -177,22 +177,8 @@ DataItem detail 的 `?version=<uuid>` 会把指定版本送入 API 并核对 `se
 
 Web 负责治理与查询，不在 Server Action 或 Route Handler 执行文件解析、向量化、GIS 转换或投影。其同源 GIS Route Handler 只是有界认证代理；mutation 由 REST、GraphQL、MCP 或 Skill 发起。
 
-## 精确应用依赖与兼容例外
+## 依赖与可执行验证
 
-本轮实际在 Node 24 + TypeScript 7 上通过 typecheck/build 的关键精确版本为：AWS S3 SDK/client presigner `3.1116.0`，Next.js `16.3.2`，Fumadocs core/UI `16.15.0`、MDX `15.3.1`，MapLibre GL JS `6.5.0`。根 `pnpm-lock.yaml` 固定全部传递版本和 integrity。
+npm 的精确版本由对应 `package.json` 与根 `pnpm-lock.yaml` 定义；Data 容器的稳定 tag、digest 与兼容注记由 `compose.yaml` 和 `infrastructure/data-foundation/versions.env` 定义。架构文档不复制这些会频繁变化的清单。
 
-pnpm 11 的 `minimumReleaseAge: 1440` 对其他生态仍保持 24 小时供应链冷却；只对本轮明确核验且立即采用的新稳定版本做窄 allowlist：`@aws-sdk/*`、`@smithy/*`、`@next/*`/`next`、三个 Fumadocs 包和 `maplibre-gl`。这不是通用跳过，依赖仍使用精确版本与冻结 lockfile。
-
-两个“最新兼容”例外按运行边界固定 major：GraphQL `16.14.2` 与 Mercurius `16.10.0` 是当前验证的 Fastify 5/TS7 组合，GraphQL 17 不在本轮受支持 peer/runtime 范围；`@types/node` `24.13.3` 对齐 Node 24，引入更新的类型 major 会描述不同 runtime。
-
-## 精确锁定的本机 profile
-
-Compose 使用 PostgreSQL/PostGIS `18-3.6`、pyPgSTAC `0.9.12`、SeaweedFS `4.43`、Weaviate `1.39.0`、OpenSearch/Dashboards `3.8.0`、Neo4j `2026.07.1`、GeoServer `3.0.1`、STAC API `6.3.1`、TiTiler `2.2.1`、Martin `1.14.0`、Tika `3.3.1.0` 与 ClamAV `1.5.4`。每个镜像在 Compose 和 `versions.env` 同时固定 tag+digest。
-
-OpenSearch initializer 验证官方 ICU artifact SHA-512 并可重复执行。所有已发布宿主端口绑定 `127.0.0.1`；GeoServer、STAC API、TiTiler、Martin 仅在 Compose network `expose`，不能从 host 直连。服务默认 drop Linux capabilities、启用 `no-new-privileges`、资源上限与日志轮转，只给确实需要初始化卷/降权的入口加回最小 capability。PostGIS 与 GeoServer 当前官方镜像仅提供 amd64，Apple Silicon 由 Compose 显式模拟。
-
-## 可执行完成证明
-
-`pnpm data:smoke` 的 18 个固定 step ID 真实贯穿：上传 Session、两个 fixture、ClamAV、SHA-256、解析、fake Agent、确定性转换、质量/人工审核、权威提交、raw 内容、Outbox、五类投影、projection ledger、REST、GraphQL、MCP 和登录后的 Web。随后回退 consumer checkpoint 重放同一 Outbox event，验证版本、对象、节点和投影不重复。
-
-该 smoke 与 `pnpm verify`、`pnpm supabase:verify`、`pnpm data:verify`、Docpact、Compose config 一起构成当前交付门禁。
+`pnpm data:smoke` 从上传、扫描、解析、受控 Agent 计划、确定性转换、质量/人工门禁、权威提交与 Outbox 一直验证到全部投影，并通过 REST、GraphQL、MCP 和登录后的 Web 回读；重复消费同一 Outbox event 不得创建重复权威或投影对象。完整命令矩阵见[测试与验证](/development/testing/)，数据库重置与迁移纪律见[数据库与迁移](/development/databases/)。

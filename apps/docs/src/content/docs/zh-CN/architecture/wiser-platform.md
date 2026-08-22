@@ -1,6 +1,6 @@
 ---
 title: WISER 多系统平台
-description: WISER、Agent EXCON、Data Foundation 与共享宿主的长期边界和一次性重构合同。
+description: WISER、Agent EXCON、Data Foundation 与共享宿主的长期系统边界。
 docType: architecture
 scope: wiser-platform
 status: active
@@ -25,9 +25,7 @@ lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 
 WISER 是产品与平台总上下文。Agent EXCON 与 Data Foundation 是平级的业务系统，不是彼此内部的功能目录。它们复用同一套 Fastify、Next.js、MCP、Fumadocs、Supabase Auth 和可观测性入口，同时保留各自的领域模型、应用用例、Worker 与权威事实。
 
-本次重构是一个连续交付目标。内部可以按 Red → Green → Refactor 分阶段并频繁提交，但中间阶段不能被描述为完整交付；只有 Agent EXCON 回归、Data Foundation 全纵切、统一 UI、双语文档、深浅主题、Compose、CI 和安全门禁全部通过后才完成。
-
-当前组合根已接入统一 Supabase Auth、平台身份/委托模块、持久化 EXCON v2 command journal、Data 的 22 个 Capability executor、REST、GraphQL、MCP/Skill、具体入库 Worker、五类投影和双语 Web。`pnpm stack:full:up` 使用同一 Auth 启动完整栈并执行 Data 的 18 步 smoke；v1 Episode 保留为显式内存 compatibility，不代表统一平台的持久化路径。
+组合根接入统一 Supabase Auth、平台身份/委托模块、持久化 EXCON v2 command journal、Data Capability、REST、GraphQL、MCP/Skill、系统 Worker、投影和双语 Web。`pnpm stack:full:up` 在同一平台身份边界下启动默认完整栈并执行 Data smoke；v1 Episode 是显式内存 compatibility，不代表统一平台的持久化路径。
 
 ## 系统边界
 
@@ -85,7 +83,7 @@ transport adapters ──────┘
 
 Core 必须纯净确定性；Application 承担用例、Ports 和 Capability Handler；Infra 实现数据库、对象存储、AI、搜索与 GIS 适配器；Apps 只负责组合与传输。
 
-## 全局交付约束
+## 平台级合同
 
 - 中文为默认语言，英文路由、状态和能力同构。
 - 所有系统共享 WISER Design System，并支持持久化的浅色/深色主题。
@@ -94,6 +92,6 @@ Core 必须纯净确定性；Application 承担用例、Ports 和 Capability Han
 - 每个行为先提交能以预期原因失败的测试，再提交最小实现；每个 Green 里程碑运行 `pnpm verify`。
 - 已执行的数据库迁移保持不可变，只允许前向修复。
 
-## 完成边界
+## 验证边界
 
-该边界通过可执行命令持续证明，而不是靠文档宣称：原 EXCON 回归、统一 Supabase Auth、Data Foundation 上传/扫描/解释/确定性转换/质量/权威提交/五类投影/REST/GraphQL/MCP/Web、统一 UI/主题/双语文档与 CI 必须同时通过。对应门禁是 `pnpm verify`、`pnpm supabase:verify`、`pnpm data:verify`、`pnpm data:smoke`、Compose config 与 Docpact。
+平台边界通过可执行命令证明，而不是靠文档宣称。`pnpm verify` 覆盖格式、lint、类型、单元/组件测试、build 与 Compose config；Supabase、Data、浏览器、可观测性和文档治理还有各自的聚焦门禁。完整矩阵见[测试与验证](/development/testing/)。

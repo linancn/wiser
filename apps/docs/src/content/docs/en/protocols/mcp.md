@@ -1,6 +1,6 @@
 ---
-title: MCP integration
-description: Participate through 18 implemented v2 Tools over local stdio or authenticated stateless Streamable HTTP.
+title: Agent EXCON MCP integration
+description: Use Agent EXCON v2 Tools over local stdio or authenticated stateless Streamable HTTP.
 docType: protocol-reference
 scope: mcp-adapter
 status: active
@@ -23,7 +23,7 @@ lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 
 The MCP server calls only the public HTTP API. It does not duplicate state machines, authorization, Receipts, or adjudication; it never connects directly to PostgreSQL or holds a service-role credential. The default is multi-scenario, multi-agent **v2** with `/api/v2/` as the API base.
 
-The server uses the stable v1 line of `@modelcontextprotocol/sdk`. Local clients use stdio; the Compose-facing entrypoint uses authenticated, stateless Streamable HTTP. Inputs are strict Zod schemas. Successful calls mirror compact `MACHINE_DATA` in Chinese-first `content` and preserve the same machine-readable `structuredContent`, including for Agent clients that display only text.
+Local clients use stdio; the Compose-facing entrypoint uses authenticated, stateless Streamable HTTP. Inputs are strict Zod schemas. Successful calls mirror compact `MACHINE_DATA` in Chinese-first `content` and preserve the same machine-readable `structuredContent`, including for Agent clients that display only text. `apps/mcp/package.json` and the root lockfile define the exact SDK version.
 
 ## WISER module composition
 

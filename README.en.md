@@ -86,7 +86,13 @@ See [Quick start](./apps/docs/src/content/docs/en/quick-start.md) for staged sta
 
 ## Develop and verify
 
-API, Web, and docs can run independently when the complete infrastructure is unnecessary. The [development guide](./apps/docs/src/content/docs/en/development/index.md) defines exact commands and capability boundaries for each mode. The primary pre-commit gate is:
+Run API, Web, and docs together with local compatibility configuration when complete infrastructure is unnecessary:
+
+```bash
+pnpm dev
+```
+
+This mode does not enable unified Auth, the EXCON PostgreSQL journal, or Data Foundation. The [development guide](./apps/docs/src/content/docs/en/development/index.md) defines the exact boundary. The primary pre-commit gate is:
 
 ```bash
 pnpm verify

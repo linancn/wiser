@@ -1,13 +1,12 @@
 {
-  "title": "设计边界",
+  "title": "系统与架构",
   "pages": [
     "wiser-platform",
+    "agent-excon",
     "data-foundation",
     "design-system",
     "unified-auth",
-    "overview",
     "multi-agent-observability",
-    "migration-tdd",
     "security"
   ]
 }

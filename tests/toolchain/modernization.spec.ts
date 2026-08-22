@@ -282,10 +282,10 @@ describe('Docpact documentation governance', () => {
         'packages/contracts/src/**',
         'packages/contracts/**',
       ],
-      ['http-api', 'apps/api/src/**', 'apps/api/**'],
-      ['mcp-adapter', 'apps/mcp/src/**', 'apps/mcp/**'],
+      ['http-api', 'apps/api/src/v2-*', 'apps/api/src/**'],
+      ['mcp-adapter', 'apps/mcp/src/server.ts', 'apps/mcp/src/**'],
       ['evaluation-runtime', 'apps/worker/src/**', 'apps/worker/**'],
-      ['product-observatory', 'apps/web/src/**', 'apps/web/**'],
+      ['product-observatory', 'apps/web/src/app/*/runs/**', 'apps/web/src/**'],
       [
         'telemetry-stack',
         'apps/telemetry-ingress/src/**',
@@ -330,6 +330,9 @@ describe('Docpact documentation governance', () => {
     expect(databaseRule).toContain('- path: supabase/migrations/**');
     expect(databaseRule).toContain('- path: supabase/schemas/**');
     expect(databaseRule).not.toContain('- path: supabase/**');
+    expect(databaseRule).toContain(
+      '- path: apps/docs/src/content/docs/zh-CN/development/databases.md',
+    );
     expect(docpactRule(config, 'product-observatory')).not.toContain(
       '- path: README.md',
     );
@@ -346,7 +349,7 @@ describe('Docpact documentation governance', () => {
       expect(platformAuthRule).toContain(`- path: ${apiAuthPath}`);
     }
     for (const webAuthPath of [
-      'apps/web/src/lib/auth.ts',
+      'apps/web/src/lib/auth*',
       'apps/web/src/app/*/auth/**',
       'apps/web/src/app/*/login/**',
       'apps/web/src/components/current-user-control.tsx',
@@ -372,6 +375,14 @@ describe('Docpact documentation governance', () => {
     }
 
     for (const ruleId of ['workbuddy-cookbook-runtime', 'workbuddy-showcase']) {
+      expect(docpactRule(config, ruleId), ruleId).not.toBe('');
+    }
+    for (const ruleId of [
+      'mcp-host',
+      'wiser-web-host',
+      'documentation-navigation',
+      'data-foundation-database',
+    ]) {
       expect(docpactRule(config, ruleId), ruleId).not.toBe('');
     }
     const scenarioRule = docpactRule(config, 'scenario-pack');

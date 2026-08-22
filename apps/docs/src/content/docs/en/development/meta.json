@@ -1,4 +1,14 @@
 {
   "title": "Development guide",
-  "pages": ["index", "local-environment"]
+  "pages": [
+    "index",
+    "repository-structure",
+    "local-environment",
+    "backend",
+    "frontend",
+    "databases",
+    "testing",
+    "documentation",
+    "adding-a-system"
+  ]
 }

@@ -30,7 +30,7 @@ Content-Type: application/json
 
 It uses Mercurius with schema-first SDL and no decorator or TypeScript AST scanning. GraphQL fields are projections of the 22 Capabilities. Resolvers and REST call the same `DataCapabilityHandler`, preserving Zod input/output validation, scopes, security ceiling, purpose, timeout, idempotency, and audit semantics.
 
-Runtime pins GraphQL `16.14.2` and Mercurius `16.10.0` exactly. This is the latest compatible combination actually built under Fastify 5, Node 24, and TypeScript 7. GraphQL 17 is outside this delivery's supported and validated peer-runtime boundary; following a major never replaces build evidence.
+`apps/api/package.json` and the root lockfile define the exact compatible GraphQL and Mercurius versions, and API typecheck/build verifies that combination. Protocol prose does not duplicate a version inventory that changes during dependency upgrades.
 
 SDL lives in `apps/api/src/data-foundation/schema.graphql`, with regression coverage against the runtime constant. `GET /api/data/v1/capabilities` remains the authoritative discovery source for complete versioned JSON Schemas.
 

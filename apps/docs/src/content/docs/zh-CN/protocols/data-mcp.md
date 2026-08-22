@@ -41,6 +41,16 @@ export DATA_PURPOSE=data-steward-console
 
 `DATA_API_URL` 必须是 `http/https`、无 userinfo/query/fragment，并以 `/api/data/v1/` 结束。Bearer 长度为 16–8192 字符且不能包含控制字符。Tenant/Project 必须是 UUID，Purpose 必须是有界安全标识。
 
+共享 Gateway 进程会先初始化 Agent EXCON HTTP client，所以即使调用方只使用 Data Tools，当前独立进程也必须提供有效的 EXCON API 配置：
+
+```bash
+export AGENT_EXCON_PROTOCOL_VERSION=v2
+export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
+export AGENT_EXCON_API_KEY=<credential-bound-to-one-run-agent>
+```
+
+`AGENT_EXCON_API_KEY` 与 `DATA_API_BEARER_TOKEN` 是两个不同系统的身份，不能互相替代。Compose 的本机占位 token 可以让进程完成配置解析，但在统一 Auth 下不代表 EXCON Tool 已可调用。
+
 本地 stdio：
 
 ```bash
@@ -48,11 +58,11 @@ pnpm --filter @wiser/mcp build
 pnpm --filter @wiser/mcp start
 ```
 
-同一 Gateway 可以同时注册 EXCON 与 Data 模块；二者使用各自的 API bearer 和身份绑定，不能互相替代。
+同一 Gateway 注册 EXCON 与 Data 模块；二者使用各自的 API bearer 和身份绑定。
 
 ## Streamable HTTP
 
-Compose 在 `http://127.0.0.1:13004/mcp` 运行无状态入口。独立启动：
+Compose 在 `http://127.0.0.1:13004/mcp` 运行无状态入口。独立启动时保留上面的 EXCON/Data API 配置，并追加：
 
 ```bash
 export DATA_MCP_BEARER_TOKEN=<random-secret-at-least-16-characters>

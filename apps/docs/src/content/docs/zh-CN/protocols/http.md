@@ -1,6 +1,6 @@
 ---
-title: HTTP API
-description: Agent EXCON v2 已实现路由、身份、Receipt、幂等、回放与当前持久化边界。
+title: Agent EXCON HTTP API
+description: Agent EXCON v2 路由、身份、Receipt、幂等、回放与持久化边界。
 docType: protocol-reference
 scope: http-api
 status: active
@@ -20,11 +20,11 @@ lastReviewedAt: 2026-08-22
 lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 ---
 
-## 默认协议与实现状态
+## 协议边界
 
 HTTP 是唯一业务协议底座。Web、Skill、MCP 和未来 SDK 都调用 HTTP，不直接读取领域表。默认开发基础路径是 `/api/v2`；`/api/v1` 仅供显式 Episode compatibility，不会在 v2 失败时自动回退。
 
-`/api/v2` 有两种明确 runtime。非生产协议测试可显式使用 `EXCON_V2_MODE=memory`；完整栈和生产使用 `postgres`：19 个 mutation 的 intent/outcome 以非超级用户写入 Supabase PostgreSQL append-only journal，启动时用 UUID/时间/lease 生成值 tape 与结果哈希做确定性重放。journal 只允许一个 advisory-lock writer，损坏、重放漂移、未知 HMAC key 或不完整 outcome 都失败关闭。它提供跨重启持久性，但不是把每个 v2 聚合直接映射到规范化 repository。以下表只列实际注册路由。
+`/api/v2` 有两种明确 runtime。非生产协议测试可显式使用 `EXCON_V2_MODE=memory`；完整栈和生产使用 `postgres`：mutation intent/outcome 以非超级用户写入 Supabase PostgreSQL append-only journal，启动时用 UUID/时间/lease 生成值 tape 与结果哈希做确定性重放。journal 只允许一个 advisory-lock writer，损坏、重放漂移、未知 HMAC key 或不完整 outcome 都失败关闭。它提供跨重启持久性，但不是把每个 v2 聚合直接映射到规范化 repository。以下表只列实际注册路由。
 
 ## WISER 模块组合
 

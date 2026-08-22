@@ -35,6 +35,15 @@ test('serves Chinese by default and preserves the English corpus', async ({
     page.getByRole('heading', { name: 'Quick start' }),
   ).toBeVisible();
   await expect(page.locator('main')).not.toContainText(/[\u3400-\u9fff]/);
+
+  await page.goto('/development/');
+  await expect(page.getByRole('heading', { name: '开发手册' })).toBeVisible();
+  await page.getByRole('button', { name: '选择文档语言' }).click();
+  await page.getByRole('button', { name: 'English', exact: true }).click();
+  await expect(page).toHaveURL(/\/en\/development\/$/);
+  await expect(
+    page.getByRole('heading', { name: 'Development guide' }),
+  ).toBeVisible();
 });
 
 test('keeps the migrated document routes and built-in search available', async ({
@@ -49,7 +58,9 @@ test('keeps the migrated document routes and built-in search available', async (
   await searchButton.click();
   const searchDialog = page.getByRole('dialog', { name: '搜索文档' });
   await searchDialog.getByRole('textbox').fill('OpenTelemetry');
-  await expect(searchDialog).toContainText(/总体架构|多智能体导调与可观测性/);
+  await expect(searchDialog).toContainText(
+    /Agent EXCON 架构|多智能体导调与可观测性/,
+  );
   await page.keyboard.press('Escape');
   await expect(searchDialog).toBeHidden();
   await expect(
@@ -57,7 +68,9 @@ test('keeps the migrated document routes and built-in search available', async (
   ).toHaveAttribute('href', /github\.com\/linancn\/wiser/);
 
   await page.goto('/protocols/mcp/');
-  await expect(page.getByRole('heading', { name: 'MCP 接入' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Agent EXCON MCP 接入' }),
+  ).toBeVisible();
 });
 
 test('renders the documentation without overflow or browser errors', async ({
@@ -82,6 +95,7 @@ test('renders the documentation without overflow or browser errors', async ({
       for (const route of [
         { name: 'home', path: '/' },
         { name: 'quick-start', path: '/quick-start/' },
+        { name: 'development', path: '/development/' },
       ]) {
         await page.goto(route.path);
         await page.waitForLoadState('networkidle');

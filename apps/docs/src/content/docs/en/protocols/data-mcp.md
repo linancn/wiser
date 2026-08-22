@@ -41,6 +41,16 @@ export DATA_PURPOSE=data-steward-console
 
 `DATA_API_URL` must be HTTP(S), have no userinfo/query/fragment, and end in `/api/data/v1/`. Bearer length is 16–8192 characters with no control characters. Tenant/Project are UUIDs, and Purpose is a bounded safe identifier.
 
+The shared Gateway process initializes its Agent EXCON HTTP client first. Even when a caller uses only Data Tools, the current standalone process therefore needs valid EXCON API configuration:
+
+```bash
+export AGENT_EXCON_PROTOCOL_VERSION=v2
+export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
+export AGENT_EXCON_API_KEY=<credential-bound-to-one-run-agent>
+```
+
+`AGENT_EXCON_API_KEY` and `DATA_API_BEARER_TOKEN` identify callers in different systems and cannot substitute for each other. A local Compose placeholder can satisfy process configuration, but it does not make EXCON Tools callable under unified Auth.
+
 Local stdio:
 
 ```bash
@@ -48,11 +58,11 @@ pnpm --filter @wiser/mcp build
 pnpm --filter @wiser/mcp start
 ```
 
-One Gateway can register EXCON and Data modules together. Their API bearers and identity bindings remain separate and cannot substitute for each other.
+One Gateway registers EXCON and Data modules together. Their API bearers and identity bindings remain separate.
 
 ## Streamable HTTP
 
-Compose exposes the stateless endpoint at `http://127.0.0.1:13004/mcp`. To start it separately:
+Compose exposes the stateless endpoint at `http://127.0.0.1:13004/mcp`. For a standalone start, keep the EXCON/Data API configuration above and add:
 
 ```bash
 export DATA_MCP_BEARER_TOKEN=<random-secret-at-least-16-characters>

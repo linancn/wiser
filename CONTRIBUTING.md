@@ -17,12 +17,14 @@ checkPaths:
   - .docpact/config.yaml
   - .github/workflows/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
+lastReviewedCommit: 9b08f11b30895f78063d42881a16e62bb3ffc054
 ---
 
 # Contributing / 贡献指南
 
 中文为项目默认语言；Issue、PR 和提交信息也可以使用英文。协议字段、错误码和代码标识符使用英文，界面文案通过 locale 字典提供中英文版本。
+
+详细开发入口见文档站的[开发手册](./apps/docs/src/content/docs/zh-CN/development/index.md)：[前端](./apps/docs/src/content/docs/zh-CN/development/frontend.md)、[后端](./apps/docs/src/content/docs/zh-CN/development/backend.md)、[数据库](./apps/docs/src/content/docs/zh-CN/development/databases.md)、[测试](./apps/docs/src/content/docs/zh-CN/development/testing.md)与[文档治理](./apps/docs/src/content/docs/zh-CN/development/documentation.md)。本文件只保留仓库级贡献合同。
 
 ## TDD 工作流
 
@@ -36,7 +38,7 @@ lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 
 测试应优先验证可观察行为，而不是内部调用次数。生产缺陷必须先由回归测试复现。确定性规则和隐藏 outcome 不得由 LLM mock 代替。
 
-Docpact 需要本机安装 `docpact` 0.1.9（`cargo install docpact --version 0.1.9`）。规则位于 `.docpact/config.yaml`；规则或 CI 变更还应运行 `pnpm docpact:validate`。Baseline 和 waiver 只用于明确的阶段性债务或临时例外，不作为常规跳过手段。
+Docpact 需要本机安装 `docpact` 0.1.9（`cargo install docpact --version 0.1.9 --locked`），并把 `~/.cargo/bin` 加入 `PATH`。规则位于 `.docpact/config.yaml`；规则或 CI 变更还应运行 `pnpm docpact:validate`。Baseline 和 waiver 只用于明确的阶段性债务或临时例外，不作为常规跳过手段。
 
 ## 提交
 

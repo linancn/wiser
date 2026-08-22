@@ -86,7 +86,13 @@ pnpm stack:down
 
 ## 开发与验证
 
-不启动完整基础设施时，可分别运行 API、Web 与文档应用；准确命令和各模式的能力边界见[开发手册](./apps/docs/src/content/docs/zh-CN/development/index.md)。提交前的主验证入口是：
+不启动完整基础设施时，使用本机兼容配置并行运行 API、Web 与文档：
+
+```bash
+pnpm dev
+```
+
+该模式不启用统一 Auth、EXCON PostgreSQL journal 或 Data Foundation；准确边界见[开发手册](./apps/docs/src/content/docs/zh-CN/development/index.md)。提交前的主验证入口是：
 
 ```bash
 pnpm verify

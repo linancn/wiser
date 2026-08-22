@@ -1,6 +1,23 @@
 ---
 title: WISER documentation
 description: Unified product and development documentation for WISER Platform, Agent EXCON, and Data Foundation.
+docType: overview
+scope: documentation-home
+status: active
+authoritative: true
+owner: wiser
+language: en
+whenToUse:
+  - when choosing a system, development, protocol, or example reading path from the docs site
+whenToUpdate:
+  - when the system catalog, primary reader tasks, or documentation navigation changes
+checkPaths:
+  - apps/docs/src/content/docs/en/meta.json
+  - apps/docs/src/content/docs/en/*/meta.json
+  - apps/docs/src/components/home-hero.tsx
+  - apps/docs/src/lib/layout.shared.tsx
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
 ---
 
 <HomeHero locale="en" />
@@ -15,7 +32,7 @@ description: Unified product and development documentation for WISER Platform, A
   />
   <Card
     title="Agent EXCON"
-    href="/en/architecture/overview/"
+    href="/en/architecture/agent-excon/"
     description="Multi-scenario, multi-RunAgent exercises with deterministic adjudication, receipts, replay, and observability."
   />
   <Card

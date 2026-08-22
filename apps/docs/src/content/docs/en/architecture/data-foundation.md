@@ -1,6 +1,6 @@
 ---
 title: Data Foundation domain architecture
-description: Delivered Data Foundation authority, ingestion slice, projections, protocols, and verification contract.
+description: Data Foundation authority, ingestion slice, projections, protocols, and verification contract.
 docType: architecture
 scope: data-foundation
 status: active
@@ -23,11 +23,11 @@ lastReviewedAt: 2026-08-22
 lastReviewedCommit: 8169cc9c274ec3622b9c0ddd8d544eb8afe06f27
 ---
 
-## Delivered boundary
+## Authority boundary
 
 Data Foundation is a WISER business system peer to Agent EXCON. It owns DataItems, immutable versions, assets, ingestion, quality, lineage, knowledge, search, GIS, Operations, and projection facts. It does not own user sessions, tenants, projects, memberships, roles, or tokens. Supabase Auth/PostgreSQL is the unified identity and control plane; independent data-postgres/PostGIS plus S3-compatible object storage form the Data authority.
 
-The default Data runtime now composes:
+The default Data runtime composes:
 
 ```text
 Supabase principal + Tenant/Project/Purpose
@@ -177,22 +177,8 @@ DataItem detail `?version=<uuid>` sends the requested version to API and verifie
 
 Web governs and queries; it never performs file parsing, vectorization, GIS transformation, or projection in a Server Action or Route Handler. Its same-origin GIS Route Handler is only a bounded authenticated proxy. Mutations enter through REST, GraphQL, MCP, or the Skill.
 
-## Exact application dependencies and compatibility exceptions
+## Dependencies and executable verification
 
-Key exact versions actually typechecked and built on Node 24 + TypeScript 7 are AWS S3 SDK/client presigner `3.1116.0`, Next.js `16.3.2`, Fumadocs core/UI `16.15.0`, Fumadocs MDX `15.3.1`, and MapLibre GL JS `6.5.0`. Root `pnpm-lock.yaml` fixes every transitive version and integrity hash.
+Exact npm versions come from the relevant `package.json` files and the root `pnpm-lock.yaml`. Stable Data container tags, digests, and compatibility notes come from `compose.yaml` and `infrastructure/data-foundation/versions.env`. Architecture prose does not duplicate those frequently changing inventories.
 
-pnpm 11 keeps `minimumReleaseAge: 1440`—the 24-hour supply-chain cooldown—for every other ecosystem. Its narrow allowlist contains only just-verified stable packages intentionally adopted in this delivery: `@aws-sdk/*`, `@smithy/*`, `@next/*`/`next`, the three Fumadocs packages, and `maplibre-gl`. It is not a general bypass; exact versions and the frozen lockfile still apply.
-
-Two “latest compatible” exceptions deliberately retain a runtime major. GraphQL `16.14.2` with Mercurius `16.10.0` is the validated Fastify 5/TS7 combination; GraphQL 17 is outside this delivery's supported peer/runtime boundary. `@types/node` `24.13.3` matches Node 24, while a newer type major would describe a different runtime.
-
-## Exactly pinned local profile
-
-Compose uses PostgreSQL/PostGIS `18-3.6`, pyPgSTAC `0.9.12`, SeaweedFS `4.43`, Weaviate `1.39.0`, OpenSearch/Dashboards `3.8.0`, Neo4j `2026.07.1`, GeoServer `3.0.1`, STAC API `6.3.1`, TiTiler `2.2.1`, Martin `1.14.0`, Tika `3.3.1.0`, and ClamAV `1.5.4`. Compose and `versions.env` both pin every image by tag+digest.
-
-The repeatable OpenSearch initializer verifies the official ICU artifact SHA-512. Every published host port binds to `127.0.0.1`; GeoServer, STAC API, TiTiler, and Martin are Compose-network-only `expose` services and cannot be reached directly from the host. Services drop Linux capabilities, enable `no-new-privileges`, resource bounds, and log rotation; only entrypoints that truly initialize a volume or lower UID/GID add back a minimal capability set. Official PostGIS and GeoServer images are currently amd64-only and Compose explicitly emulates them on Apple Silicon.
-
-## Executable completion evidence
-
-`pnpm data:smoke` has 18 fixed step IDs covering upload Session, both fixtures, ClamAV, SHA-256, parsing, fake Agent, deterministic transformation, quality/human review, authority commit, raw content, Outbox, five projections, projection ledger, REST, GraphQL, MCP, and authenticated Web. It then rewinds the consumer checkpoint, replays the same Outbox event, and verifies no duplicate version, object, node, or projection.
-
-This smoke, `pnpm verify`, `pnpm supabase:verify`, `pnpm data:verify`, Docpact, and Compose config form the current delivery gate.
+`pnpm data:smoke` validates upload, scanning, parsing, controlled Agent planning, deterministic transformation, quality/human gates, authority commit, Outbox, and all projections, then reads the result through REST, GraphQL, MCP, and authenticated Web. Reprocessing the same Outbox event must create no duplicate authority or projection object. See [Testing and verification](/en/development/testing/) for the command matrix and [Databases and migrations](/en/development/databases/) for reset and migration discipline.

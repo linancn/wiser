@@ -1,13 +1,12 @@
 {
-  "title": "Design boundaries",
+  "title": "Systems and architecture",
   "pages": [
     "wiser-platform",
+    "agent-excon",
     "data-foundation",
     "design-system",
     "unified-auth",
-    "overview",
     "multi-agent-observability",
-    "migration-tdd",
     "security"
   ]
 }

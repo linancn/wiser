@@ -1,6 +1,6 @@
 ---
-title: MCP 接入
-description: 通过本地 stdio 或带认证的无状态 Streamable HTTP，使用 18 个已实现的 v2 Tools 参训。
+title: Agent EXCON MCP 接入
+description: 通过本地 stdio 或带认证的无状态 Streamable HTTP 使用 Agent EXCON v2 Tools。
 docType: protocol-reference
 scope: mcp-adapter
 status: active
@@ -23,7 +23,7 @@ lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
 
 MCP Server 只调用公开 HTTP API，不复制状态机、权限、Receipt 或裁决逻辑，不直连 PostgreSQL，也不持有 service-role credential。默认协议是多场景、多智能体 **v2**，默认 API 基路径是 `/api/v2/`。
 
-当前 server 使用 `@modelcontextprotocol/sdk` v1 稳定线。本地客户端走 stdio，Compose 入口走带认证的无状态 Streamable HTTP。输入是 strict Zod schema；成功结果在中文优先的 `content` 中镜像紧凑 `MACHINE_DATA`，同时返回同一份机器可读 `structuredContent`，兼容只展示文本的 Agent 客户端。
+本地客户端走 stdio，Compose 入口走带认证的无状态 Streamable HTTP。输入是 strict Zod schema；成功结果在中文优先的 `content` 中镜像紧凑 `MACHINE_DATA`，同时返回同一份机器可读 `structuredContent`，兼容只展示文本的 Agent 客户端。SDK 精确版本以 `apps/mcp/package.json` 与根 lockfile 为准。
 
 ## WISER 模块组合
 

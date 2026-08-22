@@ -1,6 +1,6 @@
 ---
 title: WISER multi-system platform
-description: Long-term boundaries and the single reconstruction contract for WISER, Agent EXCON, Data Foundation, and their shared hosts.
+description: Long-term system boundaries for WISER, Agent EXCON, Data Foundation, and their shared hosts.
 docType: architecture
 scope: wiser-platform
 status: active
@@ -25,9 +25,7 @@ lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 
 WISER is the product and platform context. Agent EXCON and Data Foundation are peer business systems, not feature folders inside each other. They reuse one Fastify, Next.js, MCP, Fumadocs, Supabase Auth, and observability entry surface while retaining separate domains, application use cases, workers, and authoritative facts.
 
-The reconstruction is one continuous delivery objective. Internal Red → Green → Refactor phases and frequent commits provide recovery points, but no intermediate phase represents full delivery. Completion requires Agent EXCON regression, the complete Data Foundation slice, unified UI, bilingual documentation, both color themes, Compose, CI, and security gates.
-
-The current composition root wires unified Supabase Auth, platform identity/delegation, the durable EXCON v2 command journal, all 22 Data Capability executors, REST, GraphQL, MCP/Skill, the concrete ingestion Worker, five projections, and bilingual Web. `pnpm stack:full:up` starts the complete stack under the same Auth and executes the 18-step Data smoke. v1 Episodes remain an explicit in-memory compatibility path, not the unified platform's durable runtime.
+The composition roots wire unified Supabase Auth, platform identity/delegation, the durable EXCON v2 command journal, Data Capabilities, REST, GraphQL, MCP/Skill, system workers, projections, and bilingual Web. `pnpm stack:full:up` starts the default complete stack inside one platform identity boundary and runs the Data smoke. v1 Episodes remain an explicit in-memory compatibility path, not the unified platform's durable runtime.
 
 ## System boundaries
 
@@ -85,7 +83,7 @@ transport adapters ──────┘
 
 Core remains pure and deterministic. Application owns use cases, Ports, and Capability Handlers. Infrastructure implements database, object-store, AI, search, and GIS adapters. Apps only compose and transport.
 
-## Global delivery constraints
+## Platform-wide contracts
 
 - Chinese is the default; English routes, states, and capabilities are isomorphic.
 - Every system uses the WISER Design System and supports persistent light and dark themes.
@@ -94,6 +92,6 @@ Core remains pure and deterministic. Application owns use cases, Ports, and Capa
 - Every behavior starts with a test that fails for the expected reason, followed by the minimal implementation. Every Green milestone runs `pnpm verify`.
 - Applied database migrations are immutable and corrected only by forward migrations.
 
-## Completion boundary
+## Verification boundary
 
-This boundary is continuously proven by executable commands rather than documentation claims. Existing EXCON regressions, unified Supabase Auth, Data Foundation upload/scan/interpretation/deterministic transform/quality/authority commit/five projections/REST/GraphQL/MCP/Web, unified UI/themes/bilingual docs, and CI must pass together. The gates are `pnpm verify`, `pnpm supabase:verify`, `pnpm data:verify`, `pnpm data:smoke`, Compose config, and Docpact.
+Executable commands prove the platform boundary; prose does not. `pnpm verify` covers formatting, lint, types, unit/component tests, builds, and Compose configuration. Supabase, Data, browser, observability, and documentation governance have additional focused gates. See [Testing and verification](/en/development/testing/) for the complete matrix.

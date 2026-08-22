@@ -1,7 +1,7 @@
 version: 1
 layout: repo
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
+lastReviewedCommit: 9b08f11b30895f78063d42881a16e62bb3ffc054
 catalog:
   repos:
     - id: wiser
@@ -14,8 +14,11 @@ catalog:
         - README.en.md
         - apps/docs/src/content/docs/zh-CN/quick-start.md
         - apps/docs/src/content/docs/en/quick-start.md
+        - apps/docs/src/content/docs/zh-CN/development/index.md
+        - apps/docs/src/content/docs/en/development/index.md
       integrationDocs:
-        - docs/design/v2-multi-scenario-multi-agent-observability.md
+        - apps/docs/src/content/docs/zh-CN/architecture/wiser-platform.md
+        - apps/docs/src/content/docs/en/architecture/wiser-platform.md
       workspaceIntegrationRequired: false
 ownership:
   domains:
@@ -88,6 +91,10 @@ coverage:
     - apps/docs/src/components/**
     - apps/docs/src/lib/**
     - apps/docs/src/mdx-components.tsx
+    - apps/docs/src/content/docs/*/index.mdx
+    - apps/docs/src/content/docs/*/meta.json
+    - apps/docs/src/content/docs/*/*/meta.json
+    - apps/docs/e2e/**
     - apps/docs/source.config.ts
     - apps/docs/next.config.ts
     - apps/api/src/platform/**
@@ -105,6 +112,7 @@ coverage:
     - infrastructure/observability/*.yaml
     - infrastructure/observability/smoke.mjs
     - infrastructure/data-foundation/**
+    - scripts/data-foundation/**
     - supabase/config.toml
     - supabase/migrations/**
     - supabase/schemas/**
@@ -139,7 +147,7 @@ routing:
       paths:
         - packages/contracts/**
         - packages/core/**
-        - docs/design/**
+        - apps/docs/src/content/docs/*/architecture/agent-excon.md
     participant-protocol:
       paths:
         - apps/api/**
@@ -182,13 +190,15 @@ docInventory:
     - CONTRIBUTING.md
     - README.md
     - README.en.md
+    - SECURITY.md
     - apps/api/README.md
     - apps/docs/README.md
     - apps/mcp/README.md
+    - apps/web/README.md
     - infrastructure/observability/README.md
-    - docs/design/v2-multi-scenario-multi-agent-observability.md
-    - apps/docs/src/content/docs/*/architecture/overview.md
-    - apps/docs/src/content/docs/*/architecture/migration-tdd.md
+    - apps/docs/src/content/docs/*/index.mdx
+    - apps/docs/src/content/docs/*/development/*.md
+    - apps/docs/src/content/docs/*/architecture/agent-excon.md
     - apps/docs/src/content/docs/*/architecture/security.md
     - apps/docs/src/content/docs/*/architecture/multi-agent-observability.md
     - apps/docs/src/content/docs/*/architecture/wiser-platform.md
@@ -236,11 +246,19 @@ rules:
       - path: tsconfig*.json
         kind: automation
     requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/development/index.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/development/index.md
+        mode: review_or_update
       - path: apps/docs/src/content/docs/zh-CN/quick-start.md
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/quick-start.md
         mode: review_or_update
-    reason: Toolchain changes must keep the bilingual installation and verification workflow accurate.
+      - path: apps/docs/src/content/docs/zh-CN/development/local-environment.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/development/local-environment.md
+        mode: review_or_update
+    reason: Toolchain changes must keep bilingual installation and local development commands accurate.
   - id: wiser-platform-contracts
     scope: repo
     repo: wiser
@@ -249,12 +267,20 @@ rules:
         kind: code
       - path: apps/api/src/platform/**
         kind: code
+      - path: apps/api/src/index.ts
+        kind: code
+      - path: apps/api/src/main.ts
+        kind: code
     requiredDocs:
       - path: apps/docs/src/content/docs/zh-CN/architecture/wiser-platform.md
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/architecture/wiser-platform.md
         mode: review_or_update
-    reason: Shared composition and platform contract changes must preserve the bilingual multi-system boundary.
+      - path: apps/docs/src/content/docs/zh-CN/development/backend.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/development/backend.md
+        mode: review_or_update
+    reason: Shared API composition and platform contracts must preserve the bilingual multi-system host boundary.
   - id: wiser-platform-auth
     scope: repo
     repo: wiser
@@ -273,7 +299,7 @@ rules:
         kind: code
       - path: apps/web/src/lib/supabase/**
         kind: code
-      - path: apps/web/src/lib/auth.ts
+      - path: apps/web/src/lib/auth*
         kind: code
       - path: apps/web/src/app/*/auth/**
         kind: code
@@ -405,6 +431,8 @@ rules:
         kind: code
       - path: apps/web/src/lib/data-foundation*
         kind: code
+      - path: apps/web/src/app/data-foundation-routes.test.ts
+        kind: code
     requiredDocs:
       - path: apps/docs/src/content/docs/zh-CN/architecture/data-foundation.md
         mode: review_or_update
@@ -414,7 +442,7 @@ rules:
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/architecture/design-system.md
         mode: review_or_update
-    reason: Data Foundation Web changes must preserve the delivered authority states and shared bilingual light/dark design contract.
+    reason: Data Foundation Web changes must preserve authority states and the shared bilingual light/dark design contract.
   - id: wiser-design-system
     scope: repo
     repo: wiser
@@ -435,6 +463,32 @@ rules:
       - path: apps/docs/src/content/docs/en/architecture/design-system.md
         mode: review_or_update
     reason: Shared UI token and platform component changes must preserve the bilingual light/dark WISER Design System.
+  - id: wiser-web-host
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: apps/web/src/app/(redirect)/**
+        kind: code
+      - path: apps/web/src/app/[locale]/layout.tsx
+        kind: code
+      - path: apps/web/src/app/[locale]/page.tsx
+        kind: code
+      - path: apps/web/src/lib/i18n*
+        kind: code
+      - path: apps/web/src/lib/platform*
+        kind: code
+    requiredDocs:
+      - path: apps/web/README.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/development/frontend.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/development/frontend.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/architecture/design-system.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/design-system.md
+        mode: review_or_update
+    reason: Shared Web routing, locale, and system navigation changes must preserve the component and bilingual design contracts.
   - id: local-stack-workflow
     scope: repo
     repo: wiser
@@ -445,6 +499,8 @@ rules:
         kind: configuration
       - path: infrastructure/docker/**
         kind: automation
+      - path: scripts/data-foundation/**
+        kind: automation
     requiredDocs:
       - path: README.md
         mode: review_or_update
@@ -454,7 +510,11 @@ rules:
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/quick-start.md
         mode: review_or_update
-    reason: Local stack changes must keep both repository and detailed startup paths accurate.
+      - path: apps/docs/src/content/docs/zh-CN/development/local-environment.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/development/local-environment.md
+        mode: review_or_update
+    reason: Local stack changes must keep repository, first-run, and detailed development paths accurate.
   - id: domain-contracts
     scope: repo
     repo: wiser
@@ -464,18 +524,32 @@ rules:
       - path: packages/core/src/**
         kind: code
     requiredDocs:
-      - path: apps/docs/src/content/docs/zh-CN/architecture/overview.md
+      - path: apps/docs/src/content/docs/zh-CN/architecture/agent-excon.md
         mode: review_or_update
-      - path: apps/docs/src/content/docs/en/architecture/overview.md
+      - path: apps/docs/src/content/docs/en/architecture/agent-excon.md
         mode: review_or_update
-      - path: docs/design/v2-multi-scenario-multi-agent-observability.md
-        mode: review_or_update
-    reason: Contract and deterministic-domain changes can alter the documented v2 architecture.
+    reason: Agent EXCON contract and deterministic-domain changes must stay aligned with the bilingual current architecture.
   - id: http-api
     scope: repo
     repo: wiser
     triggers:
-      - path: apps/api/src/**
+      - path: apps/api/src/app.ts
+        kind: code
+      - path: apps/api/src/auth.ts
+        kind: code
+      - path: apps/api/src/in-memory-service.ts
+        kind: code
+      - path: apps/api/src/local-lab-main.ts
+        kind: code
+      - path: apps/api/src/scenario.ts
+        kind: code
+      - path: apps/api/src/schemas.ts
+        kind: code
+      - path: apps/api/src/types.ts
+        kind: code
+      - path: apps/api/src/v2-*
+        kind: code
+      - path: apps/api/src/yongding-v2-*
         kind: code
     requiredDocs:
       - path: apps/api/README.md
@@ -484,12 +558,16 @@ rules:
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/protocols/http.md
         mode: review_or_update
-    reason: HTTP boundary changes must keep the public participant protocol accurate in both locales.
+    reason: Agent EXCON HTTP implementation changes must keep its participant protocol accurate in both locales.
   - id: mcp-adapter
     scope: repo
     repo: wiser
     triggers:
-      - path: apps/mcp/src/**
+      - path: apps/mcp/src/http-client.ts
+        kind: code
+      - path: apps/mcp/src/scenario-resource.ts
+        kind: code
+      - path: apps/mcp/src/server.ts
         kind: code
     requiredDocs:
       - path: apps/mcp/README.md
@@ -498,7 +576,27 @@ rules:
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/protocols/mcp.md
         mode: review_or_update
-    reason: MCP changes must keep the public adapter contract accurate in both locales.
+    reason: Agent EXCON MCP Tool and Resource changes must keep its bilingual participant adapter contract accurate.
+  - id: mcp-host
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: apps/mcp/src/index.ts
+        kind: code
+      - path: apps/mcp/src/http-main.ts
+        kind: code
+      - path: apps/mcp/src/http-server.ts
+        kind: code
+      - path: apps/mcp/src/platform/**
+        kind: code
+    requiredDocs:
+      - path: apps/mcp/README.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/development/backend.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/development/backend.md
+        mode: review_or_update
+    reason: Shared MCP composition and transport changes must keep the component and backend host runbooks accurate.
   - id: evaluation-runtime
     scope: repo
     repo: wiser
@@ -506,11 +604,15 @@ rules:
       - path: apps/worker/src/**
         kind: code
     requiredDocs:
-      - path: apps/docs/src/content/docs/zh-CN/architecture/migration-tdd.md
+      - path: apps/docs/src/content/docs/zh-CN/architecture/agent-excon.md
         mode: review_or_update
-      - path: apps/docs/src/content/docs/en/architecture/migration-tdd.md
+      - path: apps/docs/src/content/docs/en/architecture/agent-excon.md
         mode: review_or_update
-    reason: Evaluation worker changes can alter deterministic evaluation and migration behavior.
+      - path: apps/docs/src/content/docs/zh-CN/development/testing.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/development/testing.md
+        mode: review_or_update
+    reason: Agent EXCON evaluation worker changes can alter deterministic evaluation, concurrency, and verification behavior.
   - id: ai-infrastructure
     scope: repo
     repo: wiser
@@ -518,6 +620,8 @@ rules:
       - path: packages/infra/src/**
         kind: code
     requiredDocs:
+      - path: SECURITY.md
+        mode: review_or_update
       - path: apps/docs/src/content/docs/zh-CN/architecture/security.md
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/architecture/security.md
@@ -527,7 +631,23 @@ rules:
     scope: repo
     repo: wiser
     triggers:
-      - path: apps/web/src/**
+      - path: apps/web/src/app/*/scenarios/**
+        kind: code
+      - path: apps/web/src/app/*/runs/**
+        kind: code
+      - path: apps/web/src/components/read-model-state.tsx
+        kind: code
+      - path: apps/web/src/components/catalog.module.css
+        kind: code
+      - path: apps/web/src/components/run-*
+        kind: code
+      - path: apps/web/src/components/scenario-*
+        kind: code
+      - path: apps/web/src/lib/read-model-source*
+        kind: code
+      - path: apps/web/src/lib/run-*
+        kind: code
+      - path: apps/web/src/lib/telemetry-trust*
         kind: code
     requiredDocs:
       - path: apps/docs/src/content/docs/zh-CN/architecture/multi-agent-observability.md
@@ -539,6 +659,12 @@ rules:
     scope: repo
     repo: wiser
     triggers:
+      - path: apps/docs/package.json
+        kind: configuration
+      - path: apps/docs/playwright.config.ts
+        kind: configuration
+      - path: apps/docs/e2e/**
+        kind: code
       - path: apps/docs/src/app/**
         kind: code
       - path: apps/docs/src/components/**
@@ -555,6 +681,44 @@ rules:
       - path: apps/docs/README.md
         mode: review_or_update
     reason: Documentation-runtime changes must keep its local development contract current.
+  - id: documentation-navigation
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: apps/docs/src/content/docs/*/index.mdx
+        kind: documentation
+      - path: apps/docs/src/content/docs/*/meta.json
+        kind: documentation
+      - path: apps/docs/src/content/docs/*/*/meta.json
+        kind: documentation
+      - path: apps/docs/src/lib/layout.shared.tsx
+        kind: code
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/development/documentation.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/development/documentation.md
+        mode: review_or_update
+    reason: Documentation entrypoints and navigation must preserve the bilingual information-architecture contract.
+  - id: data-foundation-database
+    scope: repo
+    repo: wiser
+    triggers:
+      - path: infrastructure/data-foundation/postgres/**
+        kind: database
+      - path: packages/data-infra/src/migrations/**
+        kind: code
+      - path: scripts/data-foundation/migrate.mjs
+        kind: automation
+    requiredDocs:
+      - path: apps/docs/src/content/docs/zh-CN/development/databases.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/development/databases.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/zh-CN/architecture/data-foundation.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/architecture/data-foundation.md
+        mode: review_or_update
+    reason: Data Foundation schema and migration-runner changes must preserve the independent checksum history and authority boundary.
   - id: database-schema
     scope: repo
     repo: wiser
@@ -570,11 +734,11 @@ rules:
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/architecture/security.md
         mode: review_or_update
-      - path: apps/docs/src/content/docs/zh-CN/architecture/migration-tdd.md
+      - path: apps/docs/src/content/docs/zh-CN/development/databases.md
         mode: review_or_update
-      - path: apps/docs/src/content/docs/en/architecture/migration-tdd.md
+      - path: apps/docs/src/content/docs/en/development/databases.md
         mode: review_or_update
-    reason: Schema, migration, RLS, and seed changes must keep security and migration guidance current.
+    reason: Supabase schema, migration, RLS, and seed changes must keep security and database guidance current.
   - id: database-runtime-config
     scope: repo
     repo: wiser
@@ -590,7 +754,11 @@ rules:
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/quick-start.md
         mode: review_or_update
-    reason: Supabase runtime configuration changes must keep local setup and security guidance current.
+      - path: apps/docs/src/content/docs/zh-CN/development/local-environment.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/development/local-environment.md
+        mode: review_or_update
+    reason: Supabase runtime configuration changes must keep local setup, ports, and security guidance current.
   - id: telemetry-stack
     scope: repo
     repo: wiser

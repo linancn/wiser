@@ -41,13 +41,15 @@ export function baseOptions(locale: DocsLocale): BaseLayoutProps {
         active: 'nested-url',
       },
       {
-        text: 'HTTP',
-        url: chinese ? '/protocols/http/' : '/en/protocols/http/',
+        text: chinese ? '系统与架构' : 'Systems',
+        url: chinese
+          ? '/architecture/wiser-platform/'
+          : '/en/architecture/wiser-platform/',
         active: 'nested-url',
       },
       {
-        text: 'MCP',
-        url: chinese ? '/protocols/mcp/' : '/en/protocols/mcp/',
+        text: chinese ? '开发手册' : 'Development',
+        url: chinese ? '/development/' : '/en/development/',
         active: 'nested-url',
       },
     ],

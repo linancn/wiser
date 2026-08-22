@@ -33,6 +33,19 @@ lastReviewedCommit: ccd874eda8e16f8fd9169ec2f2769ff17f287c48
 | 修改 Supabase Auth/控制面 | `supabase`、`packages/platform-*`     | `pnpm supabase:verify`              |
 | 修改 MCP                  | `apps/mcp`                            | `pnpm --filter @wiser/mcp test`     |
 
+## 指南目录
+
+| 页面                                                     | 解决的问题                                                        |
+| -------------------------------------------------------- | ----------------------------------------------------------------- |
+| [仓库结构与依赖边界](/development/repository-structure/) | 代码、运行时资产、示例和测试应该放在哪里？                        |
+| [本机开发环境](/development/local-environment/)          | 应选完整栈、基础栈还是单应用？端口、身份与停止方式是什么？        |
+| [后端开发](/development/backend/)                        | API、两个 Worker、MCP 与 Telemetry Ingress 如何运行和验证？       |
+| [前端开发](/development/frontend/)                       | Web 与 Docs 的路由、Session、双语、主题和 Playwright 合同是什么？ |
+| [数据库与迁移](/development/databases/)                  | Supabase 与 data-postgres 的权威、迁移、RLS 和 reset 如何区分？   |
+| [测试与验证](/development/testing/)                      | 一项改动应运行哪些 Red/Green、聚焦、数据库、浏览器与 smoke 门禁？ |
+| [文档开发](/development/documentation/)                  | README、文档站、组件说明、双语与 Docpact 如何维护？               |
+| [新增 WISER 系统](/development/adding-a-system/)         | 如何把第三个业务系统接入共享 Auth、宿主、UI、文档和 CI？          |
+
 ## 共同约束
 
 - 先运行 `pnpm docpact:route --paths '<实际路径>'` 并阅读返回的权威文档。
@@ -42,4 +55,4 @@ lastReviewedCommit: ccd874eda8e16f8fd9169ec2f2769ff17f287c48
 - 所有产品界面保持中英文同构、中文默认、深浅色主题、键盘可达和响应式。
 - 提交前运行 `pnpm verify`；数据库和浏览器改动追加对应集成测试。
 
-完整本机模式、端口和环境变量见[本机开发环境](/development/local-environment/)。提交与文档治理规则见仓库 `CONTRIBUTING.md`。
+提交规则见仓库 `CONTRIBUTING.md`；面向 Agent 的不可变交付合同见根 `AGENTS.md`。

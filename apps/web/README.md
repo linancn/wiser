@@ -1,39 +1,67 @@
-# WISER Web
+---
+title: WISER Web component guide
+docType: component-guide
+scope: apps/web
+status: active
+authoritative: true
+owner: wiser
+language: bilingual
+whenToUse:
+  - when running or changing the shared WISER product frontend
+whenToUpdate:
+  - when Web routes, identity, read models, locales, themes, or verification changes
+checkPaths:
+  - apps/web/**
+  - apps/api/src/platform/**
+  - apps/api/src/v2-*
+  - apps/api/src/data-foundation/**
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: 9b08f11b30895f78063d42881a16e62bb3ffc054
+---
 
-The shared WISER shell uses `@supabase/ssr` when `WISER_AUTH_MODE=supabase`. Next.js 16 `proxy.ts` calls `getClaims()` before rendering and propagates refreshed cookies to both the request and response with `Cache-Control: private, no-store`. Server Components use the cookie-backed server client; browser code receives only `NEXT_PUBLIC_SUPABASE_URL` and the publishable key.
+# WISER Web / 产品前端
 
-Read-only bilingual exercise observability UI built with Next.js 16 and React 19. Chinese is served at `/zh-CN`, English at `/en`, and `/` redirects to Chinese. Agents do not exercise from this UI: they participate through the versioned Skill over HTTP or MCP.
+`apps/web` is the shared Next.js product UI for WISER Platform, Agent EXCON, and Data Foundation. Chinese is the default at `/zh-CN`; English uses `/en`, and `/` redirects to the Chinese Agent EXCON scenario catalog. / `apps/web` 是三个系统共用的 Next.js 产品界面，中文默认，英文路由同构。
 
-The Web has two explicit data modes:
+## Routes / 路由
 
-| Mode        | Purpose                                                                 | Failure behavior                                               |
-| ----------- | ----------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `reference` | Default for deterministic builds and E2E; committed WISER design sample | Clearly labeled **Design preview**                             |
-| `live`      | Server Components read the v2 operator projection with `cache:no-store` | Shows an actionable unavailable/error state; never uses sample |
+| System                | Chinese entry            | English entry         |
+| --------------------- | ------------------------ | --------------------- |
+| Platform sign-in      | `/zh-CN/login`           | `/en/login`           |
+| Agent EXCON scenarios | `/zh-CN/scenarios`       | `/en/scenarios`       |
+| Agent EXCON runs      | `/zh-CN/runs`            | `/en/runs`            |
+| Data Foundation       | `/zh-CN/data-foundation` | `/en/data-foundation` |
+
+Run pages include overview, collaboration, replay, trace, and diagnostics. Data routes include catalog, ingestion, quality, lineage, search, knowledge, graph, GIS/map, operations, and capabilities.
+
+## Identity and data boundary / 身份与数据边界
+
+- Supabase SSR handles login, cookie refresh, sign-out, and Data Foundation's authenticated server-only DAL.
+- Data pages forward the current short-lived Session token from the Next.js server; browsers never receive database, S3, projection, or internal GIS credentials.
+- Agent EXCON `reference` mode renders the committed regression preview. `live` mode reads safe v2 operator DTOs server-side with `WISER_WEB_OPERATOR_TOKEN` and `cache: no-store`.
+- The complete stack's local Data operator Session does not automatically become the EXCON live operator credential. Missing/invalid EXCON identity produces an explicit unavailable state and never falls back to reference data.
+
+## Run / 运行
+
+The application has a fixed local development port:
 
 ```bash
-# Default: committed design reference
-AGENT_EXCON_WEB_DATA_MODE=reference pnpm --filter @wiser/web dev
-
-# Live: values are read only by the Next.js server
-AGENT_EXCON_WEB_DATA_MODE=live \
-AGENT_EXCON_API_INTERNAL_URL=http://127.0.0.1:3001 \
-WISER_WEB_OPERATOR_TOKEN=replace-with-a-dedicated-operator-token \
 pnpm --filter @wiser/web dev
 ```
 
-`AGENT_EXCON_API_INTERNAL_URL` must be a plain API origin, without `/api/v1` or `/api/v2`. `WISER_WEB_OPERATOR_TOKEN` must be a dedicated operator credential and must not use a `NEXT_PUBLIC_` prefix. It is attached only to server-side v2 requests and is never added by the Next rewrite or serialized into client props. Check API readiness at `/health/ready`.
+Standalone EXCON preview needs no API:
 
-Live reads use:
+```bash
+AGENT_EXCON_WEB_DATA_MODE=reference pnpm --filter @wiser/web dev
+```
 
-- public scenario catalog/detail/version endpoints under `/api/v2/scenarios`;
-- operator `GET /api/v2/runs` and `GET /api/v2/runs/{runId}/agents`;
-- operator `GET /api/v2/runs/{runId}/replay?perspective=operator`;
-- operator `GET /api/v2/runs/{runId}/traces`.
+Use `pnpm stack:full:up` for unified Auth and Data Foundation integration. Use the server-only `AGENT_EXCON_API_INTERNAL_URL` plus a real least-scope `WISER_WEB_OPERATOR_TOKEN` when testing EXCON `live` mode.
 
-The UI renders explicit coverage gaps when the current DTO cannot support a panel. It does not backfill scenario checkpoints or water topology from the reference sample, infer Agent identity/model/tool metadata from a RunAgent, fabricate span-level waterfalls from Trace summaries, or reconstruct participant replay perspectives from operator events.
+## UI contract / 界面合同
 
-The optional same-origin rewrites forward both `/api/v1/*` and `/api/v2/*` to the configured origin without injecting credentials. The current Web read source calls the v2 origin directly from Server Components; the v1 rewrite exists only for explicit compatibility clients.
+All visible copy lives in both locale dictionaries. The shared AppShell, semantic tokens, persistent light/dark themes, keyboard focus, loading/empty/error states, and responsive behavior apply to every system. A missing API field or unavailable service is shown as a coverage/error state; the UI never fabricates domain or telemetry data.
+
+## Verify / 验证
 
 ```bash
 pnpm --filter @wiser/web test
@@ -41,3 +69,5 @@ pnpm --filter @wiser/web typecheck
 pnpm --filter @wiser/web build
 pnpm --filter @wiser/web test:e2e
 ```
+
+See [Frontend development](../docs/src/content/docs/en/development/frontend.md) / [前端开发](../docs/src/content/docs/zh-CN/development/frontend.md) for route, Auth, i18n, theme, and Playwright details.

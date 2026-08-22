@@ -18,7 +18,7 @@ checkPaths:
   - .github/workflows/**
   - package.json
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
+lastReviewedCommit: 9b08f11b30895f78063d42881a16e62bb3ffc054
 ---
 
 # WISER repository instructions
@@ -33,6 +33,7 @@ lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 - AI never produces deterministic scores or verdicts. Tests and CI use the fake provider; trusted host-only development may use the local Codex CLI provider.
 - Every product surface follows the WISER Design System established by Agent EXCON, including shared semantic tokens, components, light/dark themes, keyboard access, and responsive behavior.
 - Every visible UI message belongs in both locale dictionaries. Chinese (`zh-CN`) is the default, and English preserves the same routes, states, and actions.
+- `apps/docs` is the human-facing source of truth for current architecture, protocols, and development workflows. Root READMEs orient first-time readers; component READMEs stay scoped to one process. Superseded plans and milestone narratives belong in Git history or issue tracking, not active runbooks.
 - Before adding or upgrading an npm package or Docker image, verify the latest compatible stable version from current primary sources. Pin npm packages exactly, commit the lockfile, and pin container images by stable tag and digest; never use `latest`.
 
 ## Database and security
