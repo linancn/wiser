@@ -70,7 +70,7 @@ services:
       DATA_WORKER_URL: http://data-worker:3003
       DATA_WEAVIATE_URL: http://weaviate:8080
       DATA_WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-wiser-local-weaviate-89455c5a}
-      DATA_OPENSEARCH_URL: https://opensearch:9200
+      DATA_OPENSEARCH_URL: https://node-0.example.com:9200
       DATA_OPENSEARCH_USERNAME: admin
       DATA_OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-WiserLocalOpenSearch-4f83c21d}
       DATA_NEO4J_URL: http://neo4j:7474
@@ -446,6 +446,10 @@ services:
         hard: 65536
     ports:
       - 127.0.0.1:19200:9200
+    networks:
+      data-foundation:
+        aliases:
+          - node-0.example.com
     volumes:
       - type: volume
         source: opensearch-data
@@ -755,7 +759,7 @@ services:
       DATA_TIKA_MAX_RESPONSE_BYTES: '1048576'
       DATA_WEAVIATE_URL: http://weaviate:8080
       DATA_WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-wiser-local-weaviate-89455c5a}
-      DATA_OPENSEARCH_URL: https://opensearch:9200
+      DATA_OPENSEARCH_URL: https://node-0.example.com:9200
       DATA_OPENSEARCH_USERNAME: admin
       DATA_OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-WiserLocalOpenSearch-4f83c21d}
       DATA_NEO4J_URL: http://neo4j:7474
