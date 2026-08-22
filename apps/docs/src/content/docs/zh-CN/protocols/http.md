@@ -16,14 +16,14 @@ checkPaths:
   - packages/contracts/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: bf610e20dfca64f3a28f201241788430cebe2a82
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 ## 默认协议与实现状态
 
 HTTP 是唯一业务协议底座。Web、Skill、MCP 和未来 SDK 都调用 HTTP，不直接读取领域表。默认开发基础路径是 `/api/v2`；`/api/v1` 仅供显式 Episode compatibility，不会在 v2 失败时自动回退。
 
-当前 `/api/v2` 路由和契约已经可执行并有测试覆盖，但 Fastify 使用**内存协议适配器**。Supabase v2 schema/RLS 已存在，尚无 PostgreSQL API adapter；因此当前响应、Event、Receipt 和幂等记录在进程重启后不会保留。以下表只列实际注册的路由，不把 ADR 中的未来端点写成现有能力。
+`/api/v2` 有两种明确 runtime。非生产协议测试可显式使用 `EXCON_V2_MODE=memory`；完整栈和生产使用 `postgres`：19 个 mutation 的 intent/outcome 以非超级用户写入 Supabase PostgreSQL append-only journal，启动时用 UUID/时间/lease 生成值 tape 与结果哈希做确定性重放。journal 只允许一个 advisory-lock writer，损坏、重放漂移、未知 HMAC key 或不完整 outcome 都失败关闭。它提供跨重启持久性，但不是把每个 v2 聚合直接映射到规范化 repository。以下表只列实际注册路由。
 
 ## WISER 模块组合
 
@@ -46,9 +46,9 @@ Fastify 是 WISER 的共享 HTTP 组合宿主。每个系统以静态导入的 `
 
 ## Data Foundation 发现接口
 
-`GET /api/data/v1/health` 是不可缓存的 data-postgres、对象存储与 Data Worker readiness 聚合；任何必需权威依赖不可用时返回 503。`GET /api/data/v1/capabilities` 返回完整有序 Registry，包括 draft-7 输入/输出 JSON Schema 与精确 REST、GraphQL、MCP、Skill mapping。这两个发现接口由可注入的 `data.foundation` 模块实现。共享 `DataCapabilityHandler` 现要求 22 项静态 Capability 各有且仅有一个 executor，以 Registry Zod schema 同时校验输入/输出，执行实时 Scope、安全等级上限、command 幂等和声明 timeout，并只把 payload hash 写入 audit port。具体业务 executor 尚未完整；REST/GraphQL 共用该 Handler，MCP/Skill 只能通过 HTTP 到达它。
+`GET /api/data/v1/health` 是不可缓存的 data-postgres、对象存储与 Data Worker readiness 聚合；任一权威依赖不可用返回 503。`GET /api/data/v1/capabilities` 返回有序 22 项 Registry、draft-7 输入/输出 JSON Schema 与精确 REST/GraphQL/MCP/Skill mapping。默认 Data runtime 已组合全部 22 个 read/command/specialized-query executor，并注册 REST 与 schema-first GraphQL；启动时 executor 缺失、重复或多余都会失败。
 
-可注入的 `data.foundation.rest` 模块现已注册全部 22 项 Registry REST mapping，且不重复发现路由。它解析统一 WISER principal，无碰撞组合 path/query/body，强制 command UUID 幂等键与版本化命令的强 `If-Match: "vN"`，输出 ETag/no-store，并把 Operation event page 映射为有界 SSE snapshot。Transport 本身已完成并受测；runtime 仍需接齐其余业务 executor，全部路由才能访问权威数据成功。
+REST 解析统一 WISER principal，无碰撞组合 path/query/body，强制 command UUID 幂等键与版本化 command 的强 `If-Match: "vN"`，输出 ETag/no-store，并把 Operation event page 映射为有界 SSE snapshot。受控版本资产路由在 Supabase 授权和 data-postgres RLS/audit 后返回短期 `303` signed redirect。完整 Data 协议见 [Data REST](/protocols/data-rest/) 与 [Data GraphQL](/protocols/data-graphql/)。
 
 ## 公共场景目录
 
@@ -152,7 +152,7 @@ Accept: application/json
 - Artifact 更新以精确 `baseVersionId` 检测冲突，不覆盖并发版本。
 - 背书必须消费匹配 actor、Task、Submission 修订、action、scope、期限和次数的 ActionGrant。
 
-本机内存 profile 已交付不可变提交、背书、ActionGrant 与完整 evaluator → `EVALUATING` → `REWORK`/`ACCEPTED` → revision/resubmit 编排；该闭环尚未接入 PostgreSQL 持久化 adapter。
+不可变提交、背书、ActionGrant 与完整 evaluator → `EVALUATING` → `REWORK`/`ACCEPTED` → revision/resubmit 编排均经过同一 v2 service。完整栈的每条 mutation 先写 journal intent，再写可验证 outcome；重启后按顺序重放并恢复 Event、Receipt 与幂等结果。lease token 只以带 key-id 的 HMAC secret reference 固化，明文不进入 journal。
 
 ## 权威回放与 Telemetry overlay
 

@@ -16,8 +16,8 @@ checkPaths:
   - apps/api/**
   - supabase/**
   - infrastructure/observability/**
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 # WISER Agent EXCON v2：多场景、多智能体与可观测导调总体设计
@@ -49,6 +49,12 @@ Scenario（可管理的场景目录项）
 1. 智能体继续通过版本化 Skill 调用 HTTP/MCP 参训；Web 不模拟智能体完成任务。
 2. Web 分为场景管理区和导调观察区；普通观察页面只读，管理命令由明确的管理员权限、幂等键和审计事件保护。
 3. PostgreSQL 追加式领域事件是演练事实源；OpenTelemetry 是可丢失、可采样、可过期的技术观测投影，不承担业务审计或授权。
+
+### 1.1 当前持久化实现注记（2026-08-22）
+
+当前完整栈已为 v2 提供跨重启持久性，但实现形态需要与本文后续的规范化 repository 目标区分：Fastify 使用单 writer、非超级用户的 PostgreSQL append-only command journal，覆盖从 `createScenario` 到 `endorseSubmission` 的全部 19 个 mutation。每条 intent/outcome 保存 canonical request/result hash，以及可重放的 UUID、时间和 lease counter tape；lease 明文只以带历史 key-id 的 HMAC secret reference 表示。启动必须获取 advisory lock，按序重放并比较成功或稳定拒绝结果，损坏、缺失 outcome、未知 key 或 replay drift 都失败关闭。
+
+因此当前 Event/Receipt/as-of projection 可以从 journal 确定性恢复，MCP/Skill/HTTP 合约跨重启保持；但这不是本文 M2/M5 描述的“每个 v2 aggregate 直接落规范化 repository + v1 facade”最终形态，也不支持多个 API writer 共享 mutable aggregate。v1 Episode 仍是独立、显式选择的内存 compatibility 实现。
 
 ## 2. 目标与非目标
 

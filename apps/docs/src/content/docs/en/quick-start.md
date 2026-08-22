@@ -1,6 +1,6 @@
 ---
 title: Quick start
-description: Verify unified Auth, Agent EXCON, and the complete Data Foundation dependency profile locally.
+description: Start and verify unified Auth, durable Agent EXCON v2, and the complete Data Foundation slice locally.
 docType: workflow
 scope: repository
 status: active
@@ -8,205 +8,189 @@ authoritative: true
 owner: wiser
 language: en
 whenToUse:
-  - when first installing, verifying, or starting the local development stack
+  - when first installing, verifying, or starting the complete local WISER platform
 whenToUpdate:
-  - when toolchain, commands, ports, or local service entry points change
+  - when toolchain, commands, ports, local identities, or service entrypoints change
 checkPaths:
   - package.json
   - compose.yaml
   - .env.example
+  - scripts/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: b2b07c3d5840e6a27613128f0f1d34f05d071cbf
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
-## Know the current boundary first
+## Current runtime boundary
 
-The default development protocol is `/api/v2`, and the Agent EXCON Skill and MCP server also default to v2. Fastify implements multi-scenario management, RunAgent `/sync`, Task leases, Messages/Artifacts, Submissions/endorsements, and safe replay through an **in-memory protocol adapter**. The Supabase v2 schema/RLS exists but is not yet used by the API. A process restart therefore loses v2 API state: this is a protocol/TDD/local-debugging slice, not a durable production deployment.
+The complete local stack shares one Supabase Auth, Fastify API, Next.js Web, MCP server, and Fumadocs application:
 
-The v1 Episode remains runnable only through explicit compatibility selection. It is not yet a facade over v2 facts, and a v2 failure never causes automatic downgrade.
+- Agent EXCON v2 writes all 19 mutations to an append-only command journal in Supabase PostgreSQL and verifies deterministic replay with generation tapes and result hashes at startup. Only one non-superuser writer is allowed. v1 Episodes remain an explicit in-memory compatibility protocol.
+- Data Foundation's 22 Capabilities are wired to independent data-postgres, SeaweedFS, concrete ingestion Worker, five projections, REST, GraphQL, MCP, Skill, and the unified Web query workspace.
+- Data Web requires a real Supabase session. Its server-only DAL forwards the access token to the API; the browser never receives database, S3, or projection credentials.
+- Chinese (`zh-CN`) is the default, English routes are isomorphic, and both systems share light/dark themes, semantic tokens, keyboard behavior, and responsive layout.
 
-Data Foundation now has an independent authority database/S3 adapter, pure domain policies, a generic durable-job runtime, and the complete dependency profile. Concrete projection consumers and the final REST/GraphQL/MCP/Skill/Web slice remain unfinished. At this milestone, the data smoke verifies real image health, WISER/pgSTAC migrations, the deterministic seed, API readiness, and all 22 Capabilities; it is not yet the final 18-step ingestion acceptance test.
+## Tool baseline
 
-## Baseline
-
-| Tool             | Pinned baseline        | Purpose                                              |
-| ---------------- | ---------------------- | ---------------------------------------------------- |
-| Node.js          | 24 LTS                 | Web, API, Worker, MCP, and docs                      |
-| pnpm             | 11                     | Workspace and exact dependency lock                  |
-| Docker + Compose | Compose v5             | Application services and local observability profile |
-| Supabase CLI     | Workspace-pinned       | Auth, PostgreSQL, and Storage                        |
-| Codex CLI        | Signed in with ChatGPT | Trusted host-side development and debugging          |
+| Tool         | Repository baseline                                           |
+| ------------ | ------------------------------------------------------------- |
+| Node.js      | 24 LTS, `>=24.18.0 <25`                                       |
+| pnpm         | `11.22.0`                                                     |
+| TypeScript   | `7.0.2`; every application explicitly uses the TypeScript CLI |
+| Docker       | Engine 29+ / Compose 5+                                       |
+| Supabase CLI | Exact workspace pin                                           |
+| Docpact      | `0.1.9`                                                       |
 
 ```bash
 node --version
 pnpm --version
 docker compose version
-codex login status
 ```
 
-## Install and verify
+## Install and static verification
 
 ```bash
 corepack enable
-pnpm install
+pnpm install --frozen-lockfile
 pnpm verify
+pnpm supabase:verify
+pnpm data:verify
 ```
+
+`pnpm verify` checks formatting, lint, types, unit/integration tests, every workspace build, and Compose config. `supabase:verify` resets local Supabase and runs pgTAP, lint, and advisors. `data:verify` covers Data scripts, contracts/core/infra/Worker tests, types, builds, and profile config.
 
 ## Documentation governance
 
-The repository uses Docpact 0.1.9 to map implementation paths to documents that must be read, updated, or explicitly reviewed. Install the CLI, query the route before coding, and inspect unstaged worktree changes afterward:
-
 ```bash
 cargo install docpact --version 0.1.9
-pnpm docpact:route --paths 'packages/core/src/**'
+pnpm docpact:route --paths 'apps/api/src/data-foundation/**'
 pnpm docpact:check
+pnpm docpact:validate
 ```
 
-Run `pnpm docpact:validate` after changing `.docpact/config.yaml` or CI. The pull-request gate blocks unmet documentation obligations and uncovered implementation changes.
+Always route the actual change path. When `check` reports `review_or_update`, read and update the document or record explicit review only after confirming it remains accurate. Baselines and waivers are not routine bypasses.
 
-To verify only the current v2 multi-agent protocol slice:
+## Start the complete platform with one command
 
 ```bash
-pnpm --filter @agent-excon/contracts test
-pnpm --filter @agent-excon/core test
-pnpm --filter @wiser/api test
-pnpm --filter @wiser/mcp test
-node skills/agent-excon/scripts/lint-skill.mjs
+pnpm stack:full:up
 ```
 
-These tests cover distinct-role quorum, Task/Barrier state, Receipt chains, `/sync`, Task leases, Messages/Artifacts, Submissions/endorsements, Receipt-gated safe Submission recovery, deterministic evaluator → rework → resubmit, participant-safe replay, and MCP-to-HTTP mappings. The complete loop is delivered in the local in-memory profile; the durable PostgreSQL adapter is not connected yet.
+The command:
 
-## Unified Auth mode
+1. starts Supabase Auth/PostgreSQL/Storage/Studio;
+2. reads publishable Supabase runtime information and signs in the seeded local operator;
+3. creates or reuses local HMAC/database secrets in ignored `.wiser/local/runtime-secrets.json` with mode `0600`;
+4. provisions journal login only for non-superuser `wiser_excon_api`, without injecting a service-role key;
+5. builds one shared WISER application image and waits for default services plus the `data-foundation` profile;
+6. runs checksum migrations, deterministic seed, and the 18-step Data smoke.
 
-Non-production defaults to `WISER_AUTH_MODE=off`, preserving the current EXCON local-token compatibility entry. To enable the unified Supabase identity slice, configure:
+`.env` is optional for local overrides. The default complete stack does not require secrets to be written into the repository. Production must inject every credential from managed secret storage and must not reuse Compose defaults.
 
-```dotenv
-WISER_AUTH_MODE=supabase
-SUPABASE_URL=http://127.0.0.1:56321
-SUPABASE_PUBLISHABLE_KEY=<local-publishable-key>
-DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:56322/postgres
-WISER_DELEGATED_CREDENTIAL_HMAC_KEYS='{"activeKeyId":"primary-local","keys":{"primary-local":"<unpadded-base64url-of-32+-random-bytes>"}}'
-```
-
-Generate every HMAC key from at least 32 cryptographically random bytes and keep the JSON server-side. The API refuses malformed, short, padded, or missing key rings and never accepts this value from a browser.
-
-Production defaults to mandatory `supabase` mode and fails closed when any value is missing. Browsers use only `NEXT_PUBLIC_SUPABASE_*`; server variables and database connections never receive the `NEXT_PUBLIC_` prefix.
-
-## Start the Data Foundation profile
-
-Copy the environment template and generate local-only random values for every blank credential. Never commit `.env`:
+To observe each phase separately:
 
 ```bash
-cp .env.example .env
+pnpm supabase:start
 pnpm data:up
 pnpm data:migrate
 pnpm data:seed
 pnpm data:smoke
 ```
 
-`data:up` builds the shared WISER application image and starts both the default services and the `data-foundation` profile. Images are locked directly by tag+digest, and the OpenSearch ICU initializer also verifies the official artifact's SHA-512. The current official GeoServer and PostgreSQL 18/PostGIS 3.6 images are amd64-only, so Compose explicitly emulates them on Apple Silicon; the other core images use native arm64.
+`data:migrate` verifies `0001`–`0007` filenames and SHA-256 under a session advisory lock. `data:seed` is repeatable. `data:up` is also repeatable: OpenSearch ICU initialization, object-store bucket creation, and runtime-role provisioning converge from existing state.
 
-| Data service          | Local entrypoint                     |
-| --------------------- | ------------------------------------ |
-| data-postgres         | `127.0.0.1:55432`                    |
-| SeaweedFS S3          | `http://127.0.0.1:18333`             |
-| Weaviate              | `http://127.0.0.1:18080`             |
-| OpenSearch            | `https://127.0.0.1:19200`            |
-| OpenSearch Dashboards | `http://127.0.0.1:15601`             |
-| Neo4j HTTP            | `http://127.0.0.1:17474`             |
-| GeoServer             | `http://127.0.0.1:18081/geoserver`   |
-| STAC API              | `http://127.0.0.1:18082`             |
-| TiTiler               | `http://127.0.0.1:18000`             |
-| Martin                | `http://127.0.0.1:13000`             |
-| Tika                  | `http://127.0.0.1:19998`             |
-| ClamAV                | `127.0.0.1:13310`                    |
-| Data Worker health    | `http://127.0.0.1:13003/health/live` |
-| MCP Streamable HTTP   | `http://127.0.0.1:13004/mcp`         |
+## Real 18-step smoke
 
-Normal shutdown preserves data:
+`pnpm data:smoke` uses `sample-stations.geojson` and `sample-evidence.md` to prove, in order:
 
-```bash
-pnpm data:down
+1. presigned upload Session creation;
+2. both fixture uploads and Session completion;
+3. ingestion creation and idempotent submit;
+4. ClamAV scan;
+5. SHA-256 fingerprints;
+6. GeoJSON/Tika parsing;
+7. fake-AI plan and controlled validation;
+8. deterministic transformation;
+9. quality checks;
+10. human-gated immutable authority commit;
+11. raw content promotion;
+12. same-transaction Outbox write;
+13. PostGIS, Weaviate, OpenSearch, Neo4j, and STAC projection builds;
+14. five `projection_status=SUCCEEDED` rows;
+15. REST catalog and federated search;
+16. GraphQL catalog query;
+17. MCP `data_catalog_get`;
+18. the authenticated Chinese Web catalog plus replay of the same Outbox event without duplicates.
+
+On failure, the script prints recent Data service, API, and Web logs. It does not write credentials or object bodies into its report.
+
+## Local entrypoints
+
+| Service                 | Address                                                       |
+| ----------------------- | ------------------------------------------------------------- |
+| Web / Data Foundation   | `http://127.0.0.1:3000/zh-CN/data-foundation`                 |
+| API / Data REST         | `http://127.0.0.1:3001` / `/api/data/v1`                      |
+| GraphQL                 | `http://127.0.0.1:3001/graphql`                               |
+| Fumadocs                | `http://127.0.0.1:4321`                                       |
+| Supabase Studio         | `http://127.0.0.1:56323`                                      |
+| data-postgres           | `127.0.0.1:55432`                                             |
+| SeaweedFS S3            | `http://127.0.0.1:18333`                                      |
+| Weaviate                | `http://127.0.0.1:18080`                                      |
+| OpenSearch / Dashboards | `https://127.0.0.1:19200` / `http://127.0.0.1:15601`          |
+| Neo4j HTTP              | `http://127.0.0.1:17474`                                      |
+| GeoServer / STAC API    | `http://127.0.0.1:18081/geoserver` / `http://127.0.0.1:18082` |
+| TiTiler / Martin        | `http://127.0.0.1:18000` / `http://127.0.0.1:13000`           |
+| Tika / ClamAV           | `http://127.0.0.1:19998` / `127.0.0.1:13310`                  |
+| Data Worker             | `http://127.0.0.1:13003/health/ready`                         |
+| MCP Streamable HTTP     | `http://127.0.0.1:13004/mcp`                                  |
+
+Every host port binds to loopback. Database and projection administration credentials are never given to an external Agent.
+
+## Local sign-in and query workspace
+
+The Supabase seed provides this local-fixture-only operator:
+
+```text
+operator@agent-excon.test
+WiserLocalOperator-2026!
 ```
 
-Only when you deliberately intend to remove the allowlisted Data Foundation volumes, run:
+Sign in at `http://127.0.0.1:3000/zh-CN/login`. The Data workspace displays catalog items, versions, provenance/authorization, security, quality/acceptance, ingestion state, issues, Agent runs, Operation events, projection status, lineage, search, graph, and map views. Invoke writes through [Data REST](/en/protocols/data-rest/), [Data GraphQL](/en/protocols/data-graphql/), [Data MCP](/en/protocols/data-mcp/), or `skills/wiser-data-foundation`.
+
+## Use MCP separately
+
+Both stdio and Streamable HTTP call only the HTTP API. Before a standalone start, obtain a real Supabase JWT or `wdc1.` delegated credential:
 
 ```bash
-WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
-```
-
-The script first verifies the Compose project and exact allowlist; it cannot remove Supabase or observability volumes.
-
-## Start local services
-
-```bash
-pnpm stack:up
-```
-
-Supabase CLI starts Auth/PostgreSQL 17/Storage/Studio. Compose starts API, read-only Web, Worker, and docs.
-
-| Service         | Address                             |
-| --------------- | ----------------------------------- |
-| Web             | `http://127.0.0.1:3000/zh-CN`       |
-| API             | `http://127.0.0.1:3001`             |
-| Docs            | `http://127.0.0.1:4321`             |
-| Worker health   | `http://127.0.0.1:3002/health/live` |
-| Supabase Studio | `http://127.0.0.1:56323`            |
-
-Read the public v2 catalog without credentials:
-
-```bash
-curl --fail http://127.0.0.1:3001/api/v2/scenarios
-```
-
-Operator mutations and RunAgent calls use separate bearer credentials. Participant requests also carry an `X-Run-Agent-Id` bound to the token. The default Compose participant token cannot impersonate an operator or arbitrary RunAgent. Before an interactive exercise, a trusted runtime must provision a short-lived token bound to the concrete Run/RunAgent.
-
-## Participate through MCP
-
-MCP calls only HTTP and never reads the database. Start it only after receiving a trusted `runId`, `runAgentId`, and short-lived RunAgent token:
-
-```bash
-export AGENT_EXCON_API_KEY=<short-lived-run-agent-token>
-export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
+export DATA_API_URL=http://127.0.0.1:3001/api/data/v1/
+export DATA_API_BEARER_TOKEN=<short-lived-bearer>
+export DATA_TENANT_ID=<tenant-uuid>
+export DATA_PROJECT_ID=<project-uuid>
+export DATA_PURPOSE=data-steward-console
 
 pnpm --filter @wiser/mcp build
 pnpm --filter @wiser/mcp start
 ```
 
-The default v2 loop is `assignment → sync/ack → issued Task → claim/begin/heartbeat → Message/Artifact → Submission → wait-and-sync → safe recovery/review → endorsement → Feedback → agent-safe replay`. See [MCP integration](/en/protocols/mcp/) for the 18 tools and implemented routes. `/sync` is the only new-content issuance operation; recovery GETs never turn eligible content into issued content.
+Streamable HTTP additionally requires `DATA_MCP_BEARER_TOKEN` at the `/mcp` boundary. It is not the downstream Data API identity.
 
-Select both the protocol and URL only for an explicitly assigned legacy Episode:
+## Stop and clean up
 
-```bash
-export AGENT_EXCON_PROTOCOL_VERSION=v1
-export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v1/
-```
-
-## Start the technical-observability profile
+Stop only the Data profile while preserving API/Web and every named volume:
 
 ```bash
-pnpm observability:up
-pnpm observability:smoke
+pnpm data:down
 ```
 
-The profile includes the Telemetry Ingress, OTel Collector, Tempo, Prometheus, Loki, and Grafana. Grafana is at `http://127.0.0.1:3300`. Participant OTLP/HTTP can enter only through `http://127.0.0.1:14318`; trusted platform OTLP uses loopback ports `4317/4318`. The ingress binds RunAgent identity, overwrites reported identity, applies quotas, and rejects sensitive fields. External agents cannot connect directly to the Collector.
-
-```bash
-pnpm observability:down
-```
-
-Stopping preserves named volumes. Traces, logs, and metrics are best-effort diagnostics; deleting them cannot affect Event/Receipt replay.
-
-## Web data modes
-
-Web delivers read-only `reference` and `live` modes. Reference is the deterministic build/E2E default and uses fixed fixtures for multi-scenario, per-agent trace, and perspective replay views; the Compose development stack selects live by default. Live fetches safe DTOs only from a server module with an operator token, fails closed, and reports missing checkpoint, topology, Agent detail, or Span detail instead of falling back to fixtures or fabricating participant activity.
-
-Exercise mutations always come from external agents through Skill + HTTP/MCP. Web has no participant submission, clock-advance, or impersonation controls.
-
-## Stop services
+Stop all Compose services and Supabase:
 
 ```bash
 pnpm stack:down
 ```
 
-Normal shutdown preserves named volumes. Data deletion remains a separate explicit maintenance action.
+Only remove allowlisted Data Foundation volumes after exact confirmation:
+
+```bash
+WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
+```
+
+The reset script verifies the Compose project and exact volume allowlist; it cannot delete Supabase or observability volumes.

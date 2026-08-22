@@ -18,7 +18,7 @@ checkPaths:
   - infrastructure/**
   - supabase/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 ## 决策摘要
@@ -26,6 +26,8 @@ lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
 WISER 是产品与平台总上下文。Agent EXCON 与 Data Foundation 是平级的业务系统，不是彼此内部的功能目录。它们复用同一套 Fastify、Next.js、MCP、Fumadocs、Supabase Auth 和可观测性入口，同时保留各自的领域模型、应用用例、Worker 与权威事实。
 
 本次重构是一个连续交付目标。内部可以按 Red → Green → Refactor 分阶段并频繁提交，但中间阶段不能被描述为完整交付；只有 Agent EXCON 回归、Data Foundation 全纵切、统一 UI、双语文档、深浅主题、Compose、CI 和安全门禁全部通过后才完成。
+
+当前组合根已接入统一 Supabase Auth、平台身份/委托模块、持久化 EXCON v2 command journal、Data 的 22 个 Capability executor、REST、GraphQL、MCP/Skill、具体入库 Worker、五类投影和双语 Web。`pnpm stack:full:up` 使用同一 Auth 启动完整栈并执行 Data 的 18 步 smoke；v1 Episode 保留为显式内存 compatibility，不代表统一平台的持久化路径。
 
 ## 系统边界
 
@@ -94,4 +96,4 @@ Core 必须纯净确定性；Application 承担用例、Ports 和 Capability Han
 
 ## 完成边界
 
-重构完成意味着：原 EXCON 行为和历史兼容不回退；统一 Supabase Auth 生效；Data Foundation 从上传、扫描、解释、确定性转换、质量检查、权威提交到全部投影和 REST/GraphQL/MCP/Web 查询真实可运行；统一文档、UI、主题、可观测性和 CI 全部通过。
+该边界通过可执行命令持续证明，而不是靠文档宣称：原 EXCON 回归、统一 Supabase Auth、Data Foundation 上传/扫描/解释/确定性转换/质量/权威提交/五类投影/REST/GraphQL/MCP/Web、统一 UI/主题/双语文档与 CI 必须同时通过。对应门禁是 `pnpm verify`、`pnpm supabase:verify`、`pnpm data:verify`、`pnpm data:smoke`、Compose config 与 Docpact。

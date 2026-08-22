@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 ## 单一身份源
@@ -27,7 +27,7 @@ lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
 
 JWT 证明主体、认证强度与 Session；动态 Tenant、Project、Role 和 Scope 从 Supabase 控制面解析。`user_metadata` 可由用户修改，绝不参与授权；动态权限也不完整复制进 JWT，因为 claims 只有刷新 Token 后才变化。
 
-当前已交付 `platform` / `platform_private` Schema、用户自动建档、Tenant/Project/Membership、Role/Scope/Binding、Delegation、私有 Credential/Audit/Outbox、最小权限与 50 项 pgTAP 控制面契约。框架无关的 `SupabaseJwtPrincipalResolver`、`getClaims` 结果验证器和单查询 PostgreSQL Membership loader 已能组合并 fail closed；委托凭据签发仍属于下一授权接线里程碑。
+当前已交付 `platform` / `platform_private` Schema、用户自动建档、Tenant/Project/Membership、Role/Scope/Binding、Delegation、私有 Credential/Audit/Outbox、最小权限与 pgTAP 控制面契约。框架无关的 `SupabaseJwtPrincipalResolver`、`getClaims` 结果验证器、单查询 PostgreSQL Membership loader、委托 credential 签发/轮换/撤销及实时 Resolver 已在默认 Supabase runtime 组合并 fail closed。
 
 Fastify 已提供 `/api/platform/v1/me` 安全投影与委托命令面。`WISER_AUTH_MODE=supabase` 会在默认进程中创建最新稳定 `supabase-js` client、受限 PostgreSQL Pool、按前缀分流的 JWT/delegated Resolver 与事务 Delegation service；生产缺少 Supabase、数据库或 HMAC key ring 配置时拒绝启动，进程关闭时释放共享 Pool。
 
@@ -100,6 +100,8 @@ Shell 的用户状态只来自刚完成验证的 authenticated claims，不把�
 Fastify `platform.delegation` 模块现已固定 create、metadata read、issue、rotate 与 revoke 的 HTTP 命令边界。只有通过验证且拥有 `platform.delegation.manage` 的 Supabase human 才能调用；命令必须使用 UUID 幂等键，TTL 最长一小时，委托 Scope 必须已知，ceiling 不得高于调用方实时上限。明文只出现在成功的 issue/rotate 响应中，所有响应均为 `private, no-store`。`PostgresPlatformDelegationService` 在每个事务内重验 Supabase Session 与实时 Membership，取得幂等锁和 aggregate 行锁，把 credential 有效期裁剪到 15 分钟与 Delegation expiry 中较早者，保证单 active credential，并原子写 Audit 与 Control Outbox。同 hash 命令可安全重放；issue/rotate 重放返回 `SECRET_NOT_RECOVERABLE`，不会保存可恢复明文。Audit、Outbox 与错误中均不含 Token/HMAC。
 
 Delegated Bearer 解析会在任何数据库查询前校验封装格式，再按公开 key id 加载一条私有记录，在 Node 内执行固定长度 timing-safe HMAC 比较，之后才信任控制事实。每个请求都实时复核双方 Actor、双方 Tenant/Project Membership、Tenant、Project、Delegation/Credential 生命周期、Purpose 与 expiry。有效 Scope 是委托 Scope、委托人实时 Scope 与注入的 known-scope registry 的有序交集；有效安全 ceiling 取 Delegation 与委托人当前 ceiling 中较低者。第一版不使用正向授权缓存。
+
+Agent EXCON v2 participant authenticator 与 Data Capability Handler 现在复用同一个 prefix-routed Platform Resolver。完整栈给 EXCON 注入固定 Tenant/Project/Purpose，并要求 delegated principal 的 `runAgentIds`/Scope 与请求资源一致；Data REST、GraphQL、MCP 和 Web server DAL 都用同一 Supabase JWT 或 `wdc1.` credential 解析实时上下文。EXCON command journal 和 data-postgres 只保存 scoped subject reference/audit，不创建第二套身份系统。
 
 ## Data Foundation 跨库引用
 

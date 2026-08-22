@@ -7,7 +7,7 @@ authoritative: true
 owner: wiser
 language: en
 whenToUse:
-  - when learning the project boundary, current status, and local entry points
+  - when learning the project boundary, delivered state, and local entry points
 whenToUpdate:
   - when product boundaries, delivery status, or development entry points change
 checkPaths:
@@ -16,7 +16,7 @@ checkPaths:
   - compose.yaml
   - docs/roadmap.md
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: b2b07c3d5840e6a27613128f0f1d34f05d071cbf
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 # WISER · Water Intelligence System & Engine for Reconfiguration
@@ -25,112 +25,112 @@ English · [中文（默认）](./README.md)
 
 **wiser water, better future**
 
-**水地图：AI 赋能的水智能系统与重构引擎**
+WISER has evolved from a single agent exercise control application into an extensible multi-system platform. Agent EXCON and Data Foundation are the first two peer business systems. They share Fastify, Next.js, MCP, Fumadocs, Supabase Auth, observability entrypoints, and the WISER Design System while retaining separate domains, authorities, and workers.
 
-**Water Intelligence System & Engine for Reconfiguration, empowered by AI**
+## Delivered now
 
-WISER supports perception, simulation, decision-making, and reconfiguration for water systems. Its first open-source core subsystem is **Agent Exercise Control Infrastructure / Agent EXCON**, which packages real-world work as runnable, replayable, and verifiable scenarios exposed through HTTP, MCP, and versioned file-based Skills.
+- **Unified platform**: Supabase Auth is the sole authority for users, sessions, tenants, projects, memberships, roles, scopes, and delegated identities. Web uses the same SSR session, and API requests re-resolve live authorization context.
+- **Agent EXCON**: the v2 multi-scenario/multi-RunAgent protocol, 18 MCP Tools, deterministic evaluation, Receipt replay, and observatory remain intact. The full stack journals all 19 v2 mutations in append-only PostgreSQL tables through a non-superuser role and verifies deterministic replay at startup. v1 Episodes remain an explicit, non-durable compatibility protocol.
+- **Data Foundation**: REST, schema-first GraphQL, MCP, and the file-based Skill share one Zod contract and Handler for 22 Capabilities. Independent data-postgres/PostGIS, SeaweedFS S3, a durable Worker, Transactional Outbox, five PostGIS/Weaviate/OpenSearch/Neo4j/STAC projections, and governed query adapters are wired into the default Data runtime.
+- **Unified product UI**: Data Foundation catalog, versions, ingestion, quality, lineage, knowledge, graph, GIS, map, Operation, and Capability views live in the existing Next.js app. Every visible message exists in `zh-CN` and `en`, Chinese is the default, and the Agent EXCON light/dark responsive shell is reused.
+- **Unified documentation**: bilingual architecture, quick start, and Agent EXCON/Data REST, GraphQL, and MCP references are published by one Fumadocs app and governed by Docpact.
 
-The repository now follows a WISER multi-system platform boundary: Fastify, Next.js, MCP, Fumadocs, Supabase Auth, and the WISER Design System are shared hosts while Agent EXCON retains its own authoritative domain facts. The second system, **Data Foundation**, now has strict contracts, pure domain policies, independent PostgreSQL/PostGIS and S3 authority adapters, a durable-task runtime, and an exactly pinned full Compose profile. Concrete projections and the complete transport/product slice remain Red → Green work, so this infrastructure milestone is not the final Data Foundation delivery.
-
-The repository began with a testable single-agent compatibility slice for ecological replenishment and multi-source allocation in the Yongding River system. The default development protocol is now the v2 multi-scenario, multi-role team exercise: evidence, hydraulic, ecology, and dispatch-coordination agents receive different Receipts, execute Tasks concurrently, and collaborate explicitly through Messages, ArtifactVersions, Submissions, and Feedback.
-
-Agents load [`skills/agent-excon`](./skills/agent-excon/SKILL.md) and participate through HTTP or MCP. Web never impersonates a participant; it provides multi-scenario management, run status, per-agent OTel-style traces, and historical-perspective replay backed by domain events and receipts.
-
-## Engineering principles
-
-- Real-use-case Red → Green → Refactor: tests define behavior before implementation.
-- Deterministic evaluation first; AI may explain a verdict but never decides scores.
-- Local development reuses `codex login` by default; CI and deployments use a fake or OpenAI-compatible provider.
-- Supabase supplies Auth, PostgreSQL, Storage, and local tooling; complex transactions use `pg` and SQL.
-- PostgreSQL state tables handle initial asynchronous work without Redis or another message broker.
-- Chinese is the default UI and documentation locale, with matching English content.
-
-## Delivered v2 increment
-
-- `packages/contracts` and the pure `packages/core` define Scenario/Version/Run/RunAgent/Task/Barrier, Receipt/Event, Message/Artifact, Submission/Feedback, and deterministic state machines.
-- Fastify exposes a development `/api/v2` slice for multi-scenario management, Run staffing, Receipt `/sync`, Task leases, collaboration artifacts, submissions/endorsements, and safe replay. It currently uses an **in-memory protocol adapter**, so state does not survive a process restart.
-- Supabase includes the v2 PostgreSQL schema, constraints, RLS, private Event/Outbox/credential/telemetry tables, and pgTAP coverage, but Fastify is not yet connected through a PostgreSQL API adapter.
-- The Agent EXCON Skill defaults to the v2 RunAgent loop. The stdio MCP server implements 18 v2 participant tools aligned with the HTTP routes, including Receipt-gated safe Submission recovery and bounded wait-and-sync that never advances virtual time. v1 is enabled only through explicit compatibility selection and never by automatic fallback.
-- The local WorkBuddy Cookbook runs the real Yongding v2 collaboration flow in four isolated top-level processes. Its scripted and fault-injection profiles traverse the real MCP boundary and cover deterministic evaluation, scoped rework, three exact endorsements, and both barriers; live WorkBuddy starts only after explicit opt-in.
-- The Compose `observability` profile includes the authenticated Telemetry Ingress, OTel Collector, Tempo, Prometheus, Loki, and Grafana. Domain Events/Receipts remain authoritative; OTel is a best-effort diagnostic projection.
-- Web delivers Chinese-default multi-scenario, per-agent trace, perspective replay, and an authority-aware diagnostic board. Four-role verdicts, Barriers, the Red→Green revision ledger, and OTel Trace/Span/Log/Metric coverage stay on separate evidence tracks. Reference and live modes are read-only; `live` reports gaps explicitly and never falls back to or fabricates participant activity.
-
-Important unfinished boundaries are the PostgreSQL API adapter and the v1-to-v2 compatibility facade. The current v2 is therefore a protocol/TDD/local-debugging slice, not a durable production platform.
-
-## Intended workspace
+## Repository boundaries
 
 ```text
-apps/          HTTP API, read-only Web, worker, MCP, and Fumadocs documentation
-cookbooks/     Local multi-agent TDD, WorkBuddy launch, and redacted reports
-packages/      Contracts, pure domain core, and infrastructure adapters
-infrastructure/ Exact images, data-postgres migrations, Compose, and observability
-scenarios/     Versioned scenarios and provenance manifests
-skills/        Independently publishable WISER system Skills
-supabase/      Configuration, migrations, seeds, and database tests
-tests/         Cross-boundary acceptance tests
+apps/           Shared API, Web, MCP, docs, and system-specific workers
+packages/       Platform contracts/auth and system contracts/core/infra
+infrastructure/ Exact images, Data Foundation, Docker, and observability config
+skills/         Independently loadable Agent EXCON and Data Foundation Skills
+supabase/       Unified Auth/control plane, EXCON schema, migrations, seeds, pgTAP
+scenarios/      Versioned exercise scenarios and provenance
+tests/          Cross-boundary fixtures and acceptance tests
 ```
+
+Dependency direction is `platform contracts <- system contracts <- core <- application <- infra/apps`. MCP, Skills, and browsers call only HTTP; they never connect directly to an authority database or projection. Data projections are rebuildable and never authorization or publication authority.
 
 ## Environment baseline
 
-- Node.js 24 LTS (`24.19.0` recommended; compatible range `>=24.18.0 <25`)
-- pnpm 11
+- Node.js 24 LTS (`>=24.18.0 <25`)
+- pnpm `11.22.0`
+- TypeScript `7.0.2`
 - Docker Engine 29+ / Docker Compose 5+
-- Codex CLI (the default local AI provider)
+- workspace-pinned Supabase CLI
 
-Install and verify:
+npm dependencies are exact and share one `pnpm-lock.yaml`. Containers use a stable tag plus `sha256` digest; Data Foundation pins are audited in [`infrastructure/data-foundation/versions.env`](./infrastructure/data-foundation/versions.env), and `latest` is forbidden.
+
+## Install and verify
 
 ```bash
 corepack enable
-pnpm install
+pnpm install --frozen-lockfile
 pnpm verify
+pnpm supabase:verify
+pnpm data:verify
 ```
 
-The repository uses Docpact 0.1.9 to deterministically connect code changes to documentation obligations. Install it, route the reading path before coding, and inspect worktree changes afterward:
+The repository uses Docpact 0.1.9. Route actual paths before a change, then inspect documentation obligations and validate governance afterward:
 
 ```bash
 cargo install docpact --version 0.1.9
-pnpm docpact:route --paths 'packages/core/src/**'
+pnpm docpact:route --paths 'packages/data-core/src/**'
 pnpm docpact:check
+pnpm docpact:validate
 ```
 
-Rules live in [`.docpact/config.yaml`](./.docpact/config.yaml), and pull requests run the blocking check in CI.
+## Start the complete platform
 
-Start the complete development stack:
+One command starts Supabase, unified Auth, durable EXCON v2, Data Foundation, API, Web, MCP, and docs, then runs migrations, seeds, and the real 18-step smoke:
 
 ```bash
-pnpm stack:up
+pnpm stack:full:up
 ```
 
-Supabase CLI first starts Auth/PostgreSQL 17/Storage/Studio, then Compose starts API, read-only Web, worker, and docs. Defaults are Web `:3000`, API `:3001`, worker health `:3002`, docs `:4321`, and Supabase Studio `:56323`. Stop with `pnpm stack:down`.
+`stack:full:up` creates and reuses local keys in the ignored `.wiser/local/runtime-secrets.json`, provisions the EXCON journal's non-superuser login, and runs `data:up → data:migrate → data:seed → data:smoke`. It neither reads nor mounts `~/.codex/auth.json`, and it never injects a Supabase service-role key into applications.
 
-Start the Data Foundation profile with:
+| Surface               | Address                                   |
+| --------------------- | ----------------------------------------- |
+| WISER Web             | `http://127.0.0.1:3000/zh-CN`             |
+| Fastify API / GraphQL | `http://127.0.0.1:3001` / `POST /graphql` |
+| Fumadocs              | `http://127.0.0.1:4321`                   |
+| Data Worker           | `http://127.0.0.1:13003/health/ready`     |
+| MCP Streamable HTTP   | `http://127.0.0.1:13004/mcp`              |
+| Supabase Studio       | `http://127.0.0.1:56323`                  |
+
+For individual steps:
 
 ```bash
-cp .env.example .env
-# Generate local-only values for the blank DATA_* credentials in .env.
+pnpm supabase:start
 pnpm data:up
 pnpm data:migrate
 pnpm data:seed
 pnpm data:smoke
 ```
 
-The profile uses independent PostgreSQL 18.6/PostGIS 3.6, SeaweedFS, Weaviate, OpenSearch with `analysis-icu`, Neo4j, GeoServer, pgSTAC/STAC API, TiTiler, Martin, Tika, and ClamAV. Every host port binds only to `127.0.0.1`. `infrastructure/data-foundation/versions.env` records exact image tag+digest values and the ICU artifact SHA-512. Use `pnpm data:down` for normal shutdown; deletion additionally requires the exact confirmation variable and cannot target Supabase or observability volumes.
+`data:smoke` uploads real GeoJSON and Markdown fixtures, traverses ClamAV, SHA-256, Tika/GeoJSON parsing, fake-AI planning, deterministic transformation, quality/manual review, authoritative commit, Outbox, and five projections, then verifies REST, GraphQL, MCP, and the authenticated Web catalog. It replays the same Outbox event and proves that no duplicate version, object, node, or projection appears.
 
-Start the optional local technical-observability stack with:
+Normal shutdown preserves data:
 
 ```bash
-pnpm observability:up
+pnpm data:down
+pnpm stack:down
 ```
 
-It exposes a participant OTLP/HTTP ingress on loopback `:14318`, trusted platform OTLP on `:4317/:4318`, Grafana on `:3300`, and Prometheus on `:9090`, with local Trace/Log storage in Tempo/Loki. The ingress binds RunAgent identity, overwrites reported identity, applies quotas, and rejects sensitive fields. `pnpm observability:down` stops only these services and preserves named volumes.
+Removing Data Foundation volumes requires exact confirmation:
 
-Codex subscription auth is host-only for trusted local development. Containers and CI default to the fake provider. Never commit or mount `~/.codex/auth.json`, Supabase service-role keys, or other credentials.
+```bash
+WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
+```
 
-## Project status
+## Explicit compatibility boundaries
 
-The v2 contracts, pure domain core, in-memory HTTP collaboration slice, database schema/RLS, Skill, 18 MCP tools, safe Submission recovery, deterministic evaluation/rework/endorsement loop, and authenticated observability path are verifiable today. The [WorkBuddy TDD Cookbook](./cookbooks/workbuddy-yongding-tdd/README.md) provides a repeatable local four-agent entrypoint. Agent EXCON durable wiring remains in progress. Data Foundation has reached the authority-schema/S3, generic Worker, and complete dependency-profile milestone, while its projection consumers and complete REST/GraphQL/MCP/Skill/Web slice remain unfinished. The v1 Episode is an **explicit compatibility protocol** and is still a separate implementation, not a completed v2 facade. Scope and acceptance criteria live in [`docs/roadmap.md`](./docs/roadmap.md), with the complete design in [`docs/design/v2-multi-scenario-multi-agent-observability.md`](./docs/design/v2-multi-scenario-multi-agent-observability.md). Contribution rules are in [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+- EXCON v2 in production/full-stack mode uses a single-writer append-only command journal plus deterministic replay. It is not a normalized PostgreSQL repository for every v2 aggregate. Journal lock, hashes, generation tape, and secret-reference verification fail closed.
+- v1 Episodes remain an explicit in-memory compatibility implementation; v2 failures never downgrade automatically.
+- Data Foundation Web is currently an authenticated governance and query workspace. Upload, submit, and review mutations are invoked through REST, GraphQL, MCP, or the Skill; the browser never receives database, object-store, or projection credentials.
+- Fake AI and embeddings exist for tests, CI, and repeatable local smoke only. Deterministic rules and human review retain authority over quality, acceptance, and publication.
+
+See [Quick start](./apps/docs/src/content/docs/en/quick-start.md), [Data Foundation architecture](./apps/docs/src/content/docs/en/architecture/data-foundation.md), and [`CONTRIBUTING.md`](./CONTRIBUTING.md) for details.
 
 ## License
 
-Code is available under the [MIT License](./LICENSE). Scenario data and third-party materials retain the licenses declared in their own `PROVENANCE.md`; the MIT license does not automatically cover them.
+Code is available under the [MIT License](./LICENSE). Scenario data and third-party material retain the licenses in their own `PROVENANCE.md`; MIT does not automatically cover those assets.

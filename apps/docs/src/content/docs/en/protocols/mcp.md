@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: a3c0bb29bf69bb1a1b4c4bf899c783d2876ba6ff
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 ## An HTTP adapter
@@ -28,6 +28,8 @@ The server uses the stable v1 line of `@modelcontextprotocol/sdk`. Local clients
 ## WISER module composition
 
 Agent EXCON, Data Foundation, and future systems reuse one MCP Server. Each system statically registers Tools and Resources through a `WiserMcpModule`; module ids are namespaced and globally unique, and duplicates fail before a transport connects. Registration composes only the protocol surface, while every business call continues through the HTTP API.
+
+The Data Foundation module registers 22 Tools and five governed Resources when all five Data API/scope environment values are present. Partial configuration fails closed; no Data configuration runs EXCON alone. See [Data MCP](/en/protocols/data-mcp/) for Data Tools, the two bearer layers, upload/Operation flow, and response bounds.
 
 ## Configuration
 
@@ -108,7 +110,7 @@ This table matches `apps/mcp/src/server.ts` and the current Fastify routes. HTTP
 - A complete MCP response over 32,000 characters returns `MCP_RESPONSE_TOO_LARGE`. Narrow `sync.maxItems` or the replay cursor; never treat a truncated payload as complete fact.
 - The RunAgent replay Tool does not expose operator/team/role/eligible perspectives.
 
-The local v2 Lab delivers the deterministic evaluator → rework → resubmit and team-endorsement loop. It remains a non-durable development profile and does not imply that the PostgreSQL adapter is complete.
+The local v2 Lab may explicitly use the memory profile. The complete stack and production use an append-only PostgreSQL command journal: intent/outcome rows, canonical hashes, and generation tapes for all 19 v2 mutations replay deterministically after restart. A single-writer advisory lock, non-superuser RLS, lease-HMAC secret references, and replay-drift checks fail closed. MCP remains an HTTP adapter and never reads the journal.
 
 ## Resource
 

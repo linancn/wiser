@@ -16,14 +16,16 @@ checkPaths:
   - packages/infra/**
   - supabase/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 9465d7fada3ed33d926f6afac5041f8f9980c817
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 ## Migration invariant
 
 The v1 walking skeleton remains a compatibility protocol while facts converge on v2. Episode and Run tables must not remain dual-write authorities because state, events, receipts, and outbox records could no longer commit atomically.
 
-Supabase manages Auth, the platform control plane, and EXCON data; its migrations, declarative schema, seed, and pgTAP suite remain synchronized. The future independent Data Foundation `data-postgres` uses its own checksummed SQL runner, advisory lock, and migration history. The two databases never share migration directories or pretend to form a cross-database transaction.
+Supabase manages Auth, the platform control plane, and EXCON data; its migrations, declarative schema, seed, and pgTAP suite remain synchronized. The running independent Data Foundation `data-postgres` uses its own checksum SQL runner, advisory lock, and `0001`–`0007` migration history. The two databases never share migration directories or pretend to form a cross-database transaction.
+
+The complete stack now recovers all 19 v2 mutations across restart through a single-writer append-only command journal. That does not mean the v1 facade or normalized v2 aggregate adapters are complete. The cutover sequence below remains the constraint for eventually converging v1 Episode facts onto the v2 Event/Receipt model.
 
 ## Online cutover order
 

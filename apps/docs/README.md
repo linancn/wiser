@@ -1,5 +1,5 @@
 ---
-title: Agent EXCON documentation application guide
+title: WISER documentation application guide
 docType: component-guide
 scope: apps/docs
 status: active
@@ -15,18 +15,18 @@ checkPaths:
   - apps/docs/src/components/**
   - apps/docs/src/lib/**
   - apps/docs/source.config.ts
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 # WISER Docs
 
-Next.js 16 + Fumadocs bilingual static documentation. Simplified Chinese is served at the root URL and English under `/en`.
+Next.js 16 + Fumadocs is the single bilingual documentation application for WISER Platform, Agent EXCON, Data Foundation, and future systems. Simplified Chinese is served at the root URL and English under `/en`. Architecture and protocol navigation includes shared platform/Auth/design contracts plus separate Agent EXCON HTTP/MCP and Data REST/GraphQL/MCP references.
 
 The app declares exact dependency versions in its own `package.json`. Install it from the repository root so the workspace keeps one shared lockfile; do not generate an app-specific lockfile:
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm --filter @wiser/docs dev
 ```
 

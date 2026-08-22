@@ -18,7 +18,7 @@ checkPaths:
   - infrastructure/**
   - supabase/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 ## Decision summary
@@ -26,6 +26,8 @@ lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
 WISER is the product and platform context. Agent EXCON and Data Foundation are peer business systems, not feature folders inside each other. They reuse one Fastify, Next.js, MCP, Fumadocs, Supabase Auth, and observability entry surface while retaining separate domains, application use cases, workers, and authoritative facts.
 
 The reconstruction is one continuous delivery objective. Internal Red → Green → Refactor phases and frequent commits provide recovery points, but no intermediate phase represents full delivery. Completion requires Agent EXCON regression, the complete Data Foundation slice, unified UI, bilingual documentation, both color themes, Compose, CI, and security gates.
+
+The current composition root wires unified Supabase Auth, platform identity/delegation, the durable EXCON v2 command journal, all 22 Data Capability executors, REST, GraphQL, MCP/Skill, the concrete ingestion Worker, five projections, and bilingual Web. `pnpm stack:full:up` starts the complete stack under the same Auth and executes the 18-step Data smoke. v1 Episodes remain an explicit in-memory compatibility path, not the unified platform's durable runtime.
 
 ## System boundaries
 
@@ -94,4 +96,4 @@ Core remains pure and deterministic. Application owns use cases, Ports, and Capa
 
 ## Completion boundary
 
-The reconstruction is complete only when existing EXCON behavior and compatibility remain intact; unified Supabase Auth is active; Data Foundation runs from upload, scanning, interpretation, deterministic transformation, and quality checks through authoritative commit, all projections, and REST/GraphQL/MCP/Web queries; and unified documentation, UI, themes, observability, and CI all pass.
+This boundary is continuously proven by executable commands rather than documentation claims. Existing EXCON regressions, unified Supabase Auth, Data Foundation upload/scan/interpretation/deterministic transform/quality/authority commit/five projections/REST/GraphQL/MCP/Web, unified UI/themes/bilingual docs, and CI must pass together. The gates are `pnpm verify`, `pnpm supabase:verify`, `pnpm data:verify`, `pnpm data:smoke`, Compose config, and Docpact.

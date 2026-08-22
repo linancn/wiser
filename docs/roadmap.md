@@ -1,5 +1,5 @@
 ---
-title: WISER Agent EXCON roadmap
+title: WISER platform roadmap
 docType: roadmap
 scope: agent-excon
 status: active
@@ -15,8 +15,8 @@ checkPaths:
   - packages/**
   - supabase/**
   - docs/design/**
-lastReviewedAt: 2026-08-21
-lastReviewedCommit: cca05b0bfc076853dfba2dd8bfc7431eb767d1ee
+lastReviewedAt: 2026-08-22
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 # WISER Agent EXCON roadmap / 路线图
@@ -31,6 +31,8 @@ Agent EXCON（智能体演练场 / 导调中枢）是 WISER 的首个子系统�
 
 Agent EXCON is WISER's first subsystem. Agents participate through Skill + HTTP/MCP; Web manages and visualizes scenarios, observability, and replay without acting as a participant.
 
+Data Foundation / 数据基座 is the second peer system. It reuses the same Supabase Auth, Fastify, Next.js, MCP, Fumadocs, design system, and repository while owning independent data-postgres/S3 authority, ingestion, quality, lineage, and rebuildable projections.
+
 ## Explicit compatibility baseline / 显式兼容基线
 
 v1 can run one fixed, versioned, two-stage Jing-Jin-Ji water-system Episode from creation through Observation, allocation planning, deterministic feedback, virtual-time advance, final evaluation, and event replay. It remains available only as an explicitly selected compatibility protocol.
@@ -43,17 +45,17 @@ The current v1 implementation is **not** yet a facade over v2 facts. Automatic f
 
 ## Delivered v2 development increment / 已交付的 v2 开发增量
 
-| Area / 领域                     | Delivered now / 当前已交付                                                                                                                                                                                                                                       | Boundary / 边界                                                                                                                                             |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Contracts and core / 契约与核心 | Strict DTOs plus pure deterministic Run, Task, Barrier, Event/Receipt, feedback, and attribution state machines / 严格 DTO 与纯确定性状态机                                                                                                                      | No database, HTTP, clock, random, or AI dependencies in core / 核心不依赖数据库、HTTP、时钟、随机或 AI                                                      |
-| HTTP protocol / HTTP 协议       | Scenario management, Agent versions, Run staffing/start, `/sync`, Task leases, Messages, Artifacts, Task Submissions, Receipt-gated Submission recovery, endorsements, Events, replay, and trace summaries / 场景管理、Run 编组、协作与回放                      | The Fastify v2 service is in-memory and non-durable / Fastify v2 当前为非持久化内存适配器                                                                   |
-| PostgreSQL / Supabase           | v2 schema, constraints, RLS, private Event/Outbox/credential/telemetry tables, seed, and pgTAP tests / v2 schema、约束、RLS、私有表、种子与数据库测试                                                                                                            | No PostgreSQL API adapter yet / 尚无 PostgreSQL API adapter                                                                                                 |
-| Agent behavior / 智能体行为     | v2-first Skill, role-aware Yongding references, and local deterministic evaluator/rework/endorsement loop / v2 默认 Skill、角色参考与本机确定性评价闭环                                                                                                          | The loop remains an in-memory development profile / 该闭环仍为内存开发 profile                                                                              |
-| MCP                             | 18 v2 stdio participant tools mapped to implemented HTTP routes, including Receipt-gated recovery and bounded wait-and-sync; explicit v1 mode / 18 个与实际 HTTP 路由一致的 v2 stdio 工具，包括安全恢复与有界等待；显式 v1 模式                                  | Recovery returns only exact immutable snapshots already receipted to that RunAgent / 恢复仅返回已向该 RunAgent 发放 Receipt 的精确不可变快照                |
-| Observability / 可观测性        | Authenticated participant Telemetry Ingress, OTel Collector, Tempo, Prometheus, Loki, Grafana, identity overwrite, quotas, redaction, and smoke verification / 认证入口、完整信号栈、身份覆盖、限额、脱敏与 smoke                                                | Telemetry remains best effort and never enters adjudication or audit truth / Telemetry 仍是最佳努力投影，不参与裁决或审计事实                               |
-| Web                             | Chinese-default multi-scenario reference and fail-closed `live` read modes, per-agent OTel-style trace views, trust/coverage labels, and perspective replay / 中文默认的多场景 reference 与 fail-closed `live` 只读模式、分 Agent Trace、信任/覆盖标签和视角回放 | Live mode exposes missing checkpoint/topology/Span detail instead of fabricating it / live 模式显式呈现缺失的 checkpoint、topology 和 Span 明细，不伪造数据 |
+| Area / 领域                     | Delivered now / 当前已交付                                                                                                                                                                                                                                       | Boundary / 边界                                                                                                                                                               |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contracts and core / 契约与核心 | Strict DTOs plus pure deterministic Run, Task, Barrier, Event/Receipt, feedback, and attribution state machines / 严格 DTO 与纯确定性状态机                                                                                                                      | No database, HTTP, clock, random, or AI dependencies in core / 核心不依赖数据库、HTTP、时钟、随机或 AI                                                                        |
+| HTTP protocol / HTTP 协议       | Scenario management, Agent versions, Run staffing/start, `/sync`, Task leases, Messages, Artifacts, Task Submissions, Receipt-gated recovery, endorsements, Events, replay, and traces / 场景管理、Run 编组、协作与回放                                          | Memory is an explicit non-production lab; the complete stack uses durable journal replay / 内存仅为显式非生产 Lab，完整栈使用持久 journal replay                              |
+| PostgreSQL / Supabase           | v2 schema/RLS plus non-superuser append-only intent/outcome journal, generation tape, replay verification, seed, and pgTAP / v2 schema/RLS、非超级用户 journal、生成值 tape、重放校验、种子与 pgTAP                                                              | Single-writer journal is delivered; normalized aggregate repositories and the v1 facade are not / 单 writer journal 已交付，规范化 aggregate repository 与 v1 facade 尚未完成 |
+| Agent behavior / 智能体行为     | v2-first Skill, role-aware Yongding references, deterministic evaluator/rework/endorsement loop, and restart recovery / v2 默认 Skill、角色参考、确定性评价闭环与重启恢复                                                                                        | v1 remains a separate in-memory compatibility implementation / v1 仍是独立内存兼容实现                                                                                        |
+| MCP                             | 18 v2 stdio participant tools mapped to implemented HTTP routes, including Receipt-gated recovery and bounded wait-and-sync; explicit v1 mode / 18 个与实际 HTTP 路由一致的 v2 stdio 工具，包括安全恢复与有界等待；显式 v1 模式                                  | Recovery returns only exact immutable snapshots already receipted to that RunAgent / 恢复仅返回已向该 RunAgent 发放 Receipt 的精确不可变快照                                  |
+| Observability / 可观测性        | Authenticated participant Telemetry Ingress, OTel Collector, Tempo, Prometheus, Loki, Grafana, identity overwrite, quotas, redaction, and smoke verification / 认证入口、完整信号栈、身份覆盖、限额、脱敏与 smoke                                                | Telemetry remains best effort and never enters adjudication or audit truth / Telemetry 仍是最佳努力投影，不参与裁决或审计事实                                                 |
+| Web                             | Chinese-default multi-scenario reference and fail-closed `live` read modes, per-agent OTel-style trace views, trust/coverage labels, and perspective replay / 中文默认的多场景 reference 与 fail-closed `live` 只读模式、分 Agent Trace、信任/覆盖标签和视角回放 | Live mode exposes missing checkpoint/topology/Span detail instead of fabricating it / live 模式显式呈现缺失的 checkpoint、topology 和 Span 明细，不伪造数据                   |
 
-## Active goal — durable multi-scenario, multi-agent platform / 当前目标
+## Delivered durability and remaining migration / 已交付持久性与剩余迁移
 
 The authoritative design is [WISER Agent EXCON v2](design/v2-multi-scenario-multi-agent-observability.md).
 
@@ -73,15 +75,21 @@ The authoritative design is [WISER Agent EXCON v2](design/v2-multi-scenario-mult
 ### Milestone status / 里程碑状态
 
 - **M0 — Design and reference UI / 设计与参考界面: delivered.** v2 ADR, bilingual design, multi-scenario catalog, multi-agent trace waterfall, and perspective replay fixture are present.
-- **M1 — Contracts and protocol API / 契约与协议 API: delivered as an in-memory development slice.** Public/manage scenarios, Agent/Run, participant collaboration, safe replay, and telemetry overlay routes are implemented and tested.
-- **M2 — Domain and database / 领域与数据库: partial.** Pure concurrency/receipt state machines and the Supabase schema/RLS are delivered; the PostgreSQL API adapter and durable transactions are not.
-- **M3 — Agent protocol / 智能体协议: delivered for the local in-memory profile.** The v2 Skill, 18 MCP tools, bounded wait, Receipt-gated Submission recovery, and deterministic four-role evaluator/rework/endorsement loop are delivered; durable wiring remains under M2.
+- **M1 — Contracts and protocol API / 契约与协议 API: delivered.** Public/manage scenarios, Agent/Run, participant collaboration, safe replay, and telemetry overlay routes are implemented and tested in memory and journal modes.
+- **M2 — Domain and database / 领域与数据库: durable journal delivered, normalized adapter partial.** Pure state machines, Supabase schema/RLS, all 19 mutation intents/outcomes, single-writer locking, secret references, and deterministic restart replay are delivered. Per-aggregate repositories remain a future multi-writer evolution.
+- **M3 — Agent protocol / 智能体协议: delivered.** The v2 Skill, 18 MCP tools, bounded wait, Receipt-gated recovery, deterministic four-role evaluator/rework/endorsement, and durable full-stack wiring are delivered.
 - **M4 — Observability profile / 可观测性: delivered for local drill-down.** Telemetry Ingress, Collector, Tempo, Prometheus, Loki, Grafana, redaction, identity enforcement, correlation, and smoke verification are included.
-- **M5 — Authoritative replay and migration / 权威回放与迁移: partial.** The in-memory service provides as-of projections and management routes; durable PostgreSQL projection, v1 facade/backfill, and cold-history reconciliation remain.
+- **M5 — Authoritative replay and migration / 权威回放与迁移: partial.** Journal replay durably reconstructs as-of projections and management state. The v1 facade/backfill and normalized cold-history reconciliation remain.
+
+## Data Foundation delivery / 数据基座交付
+
+The Data Foundation initialization slice is implemented in the same monorepo: 22 shared Capabilities, seven checksum migrations, 36 FORCE-RLS authority tables, SeaweedFS content authority, concrete ClamAV/Tika/fake-Agent/deterministic-transform Worker, Transactional Outbox, five PostGIS/Weaviate/OpenSearch/Neo4j/STAC projections, REST, GraphQL, MCP, Skill, and bilingual themed Web. `pnpm data:smoke` is the executable 18-step gate and replays one Outbox event to prove projection idempotency.
+
+数据基座已在同一 monorepo 完成初始化纵切：22 项共享 Capability、7 个 checksum migration、36 张 FORCE RLS 权威表、SeaweedFS 内容权威、具体 ClamAV/Tika/fake Agent/确定性转换 Worker、Transactional Outbox、PostGIS/Weaviate/OpenSearch/Neo4j/STAC 五类投影，以及 REST、GraphQL、MCP、Skill 和双语主题 Web。`pnpm data:smoke` 是真实 18 步门禁，并通过重放同一 Outbox event 证明投影幂等。
 
 ## Next delivery gates / 下一交付关口
 
-1. Implement the PostgreSQL API adapter with explicit transactions, row locks/optimistic versions, idempotency, Event/Receipt/outbox atomicity, and production credential verification. / 实现 PostgreSQL API adapter 及原子事务边界。
+1. If multi-writer EXCON deployment is required, evolve journal replay into normalized aggregate repositories without weakening current hash/replay recovery. / 若需要多 writer EXCON 部署，在保留现有 hash/replay 恢复的前提下演进规范化 aggregate repository。
 2. Move v1 onto an explicit facade backed by v2 facts, reconcile unfinished Episodes, then backfill cold history. / 将 v1 迁移为 v2 事实上的显式 facade。
 
 ## Still out of scope / 仍不在范围内

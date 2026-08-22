@@ -7,7 +7,7 @@ authoritative: true
 owner: wiser
 language: zh-CN
 whenToUse:
-  - 了解项目边界、当前状态与本机入口时
+  - 了解项目边界、当前交付状态与本机入口时
 whenToUpdate:
   - 产品边界、交付状态或开发入口变化时
 checkPaths:
@@ -16,7 +16,7 @@ checkPaths:
   - compose.yaml
   - docs/roadmap.md
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: b2b07c3d5840e6a27613128f0f1d34f05d071cbf
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 # WISER · 水地图
@@ -27,110 +27,114 @@ lastReviewedCommit: b2b07c3d5840e6a27613128f0f1d34f05d071cbf
 
 **水地图：AI 赋能的水智能系统与重构引擎**
 
-**Water Intelligence System & Engine for Reconfiguration, empowered by AI**
+WISER 已从单一智能体演练场重构为可继续扩展的多系统平台。Agent EXCON 与 Data Foundation / 数据基座是首批两个平级业务系统；它们共享 Fastify、Next.js、MCP、Fumadocs、Supabase Auth、可观测性入口和 WISER Design System，同时保留各自的领域模型、权威数据与 Worker。
 
-WISER 面向水系统的感知、推演、决策与重构。当前首个开源核心子系统是**智能体演练场 / Agent EXCON**：它把真实世界任务封装为可运行、可回放、可验证的演练场景，并通过 HTTP、MCP 与文件化 Skill 向异构智能体开放。
+## 当前已交付
 
-仓库现已采用 WISER 多系统平台边界：Fastify、Next.js、MCP、Fumadocs、Supabase Auth 和 WISER Design System 是共享宿主，Agent EXCON 保持独立领域事实；第二个系统 **Data Foundation / 数据基座** 已交付严格契约、纯领域规则、独立 PostgreSQL/PostGIS 与 S3 权威适配器、持久任务 runtime，以及精确锁定的完整 Compose profile。具体投影、完整 transport 与产品纵切仍按本仓库的 Red → Green 里程碑推进，不能把当前基础设施里程碑称为最终数据基座。
+- **统一平台**：Supabase Auth 是用户、Session、Tenant、Project、Membership、Role、Scope 与委托身份的唯一权威；Web 使用同一套 SSR Session，API 对每次请求重新验证实时授权上下文。
+- **Agent EXCON**：v2 多场景、多 RunAgent 协作协议、18 个 MCP Tool、确定性评价、Receipt 回放和观测界面均保留。完整栈使用非超级用户 PostgreSQL append-only command journal 持久化 19 个 v2 mutation，并在启动时校验重放；v1 Episode 仍是显式、非持久化兼容协议。
+- **Data Foundation**：22 项 Capability 的 REST、schema-first GraphQL、MCP 与文件化 Skill 共享同一 Zod 契约和 Handler。独立 data-postgres/PostGIS、SeaweedFS S3、持久任务 Worker、Transactional Outbox、PostGIS/Weaviate/OpenSearch/Neo4j/STAC 五类投影和受治理查询已接入默认 Data runtime。
+- **统一产品界面**：Data Foundation 在现有 Next.js 应用中提供目录、版本、入库、质量、血缘、知识、图谱、GIS、地图、Operation 和 Capability 页面。所有可见文案都有 `zh-CN`/`en`，中文默认，并复用 Agent EXCON 的浅色/深色主题和响应式 Shell。
+- **统一文档**：中英文架构、快速开始及 Agent EXCON/Data REST、GraphQL、MCP 协议都由同一个 Fumadocs 应用发布并受 Docpact 治理。
 
-仓库从一个可验证的单智能体兼容纵切开始：京津冀永定河流域生态补水与多水源联合调度。当前默认开发协议已是 v2 多场景、多角色团队演练：水情证据、水动力约束、生态目标与调度协调智能体获得不同 Receipt、并行完成 Task，并以 Message、ArtifactVersion、Submission 和 Feedback 显式协作。
-
-演练由智能体加载 [`skills/agent-excon`](./skills/agent-excon/SKILL.md) 后通过 HTTP 或 MCP 运行。Web 不模拟智能体参训；它负责多场景管理、导调态势、按 Agent 的 OTel 式 Trace 和基于领域事件/Receipt 的当时视角回放。
-
-## 工程原则
-
-- 真实用例驱动的 Red → Green → Refactor；每个行为先由测试定义。
-- 确定性裁决优先；AI 只生成解释性摘要，不决定分数或最终裁决。
-- 本机开发调试默认复用 `codex login`，CI 与部署使用 fake 或 OpenAI-compatible provider。
-- Supabase 提供 Auth、PostgreSQL、Storage 与本地开发工具；复杂事务使用 `pg` + SQL。
-- PostgreSQL 状态表承担初期异步任务，不引入 Redis 或额外消息队列。
-- 中文界面和文档为默认，英文内容保持一一对应。
-
-## 已交付的 v2 增量
-
-- `packages/contracts` 与纯 `packages/core` 已定义 Scenario/Version/Run/RunAgent/Task/Barrier、Receipt/Event、Message/Artifact、Submission/Feedback 及确定性状态机。
-- Fastify 已提供多场景管理、Run 编组、Receipt `/sync`、Task 租约、协作工件、提交/背书和安全回放的 `/api/v2` 开发纵切；当前实现是**内存协议适配器**，进程重启后不保留状态。
-- Supabase 已有 v2 PostgreSQL schema、约束、RLS、私有 Event/Outbox/credential/telemetry 表和 pgTAP 覆盖，但 Fastify 尚未接入 PostgreSQL API adapter。
-- Agent EXCON Skill 已以 v2 RunAgent 循环为默认；stdio MCP 已实现与 HTTP 路由一致的 18 个 v2 参训工具，包括 Receipt-gated 的 Submission 安全恢复与不推进虚拟时钟的有界 wait-and-sync。v1 只在显式选择兼容模式时启用，不会自动降级。
-- 本机 WorkBuddy Cookbook 已能用四个隔离的顶层进程运行真实 Yongding v2 协作链；scripted 与故障注入 profile 均经过真实 MCP，覆盖确定性评价、scoped rework、三方背书与两个 Barrier，真实 WorkBuddy 仅在显式 opt-in 时启动。
-- Compose `observability` profile 已包含认证 Telemetry Ingress、OTel Collector、Tempo、Prometheus、Loki 和 Grafana；领域 Event/Receipt 始终是权威事实，OTel 只是最佳努力诊断投影。
-- Web 已交付中文默认的多场景、分 Agent Trace、视角回放与 authority-aware 诊断板；4/4 评价、Barrier、Red→Green 修订账本与 OTel Trace/Span/Log/Metric coverage 分轨展示。reference/live 均只读，`live` 失败时显式显示数据缺口，不回退或伪造参训过程。
-
-尚未交付的关键边界是 PostgreSQL API adapter，以及把 v1 翻译到 v2 事实的 compatibility facade。因此当前 v2 适合协议/TDD/本地调试，不应被描述为持久化生产平台。
-
-## 目标中的仓库结构
+## 仓库边界
 
 ```text
-apps/          HTTP API、只读 Web、Worker、MCP 与 Fumadocs 文档
-cookbooks/     本机多智能体 TDD、WorkBuddy 启动与脱敏报告
-packages/      协议、纯领域核心与基础设施适配器
-infrastructure/ 精确镜像、data-postgres 迁移、Compose 与可观测性配置
-scenarios/     版本化演练场景及来源清单
-skills/        可独立发布的 WISER 系统 Skills
-supabase/      配置、迁移、种子与数据库测试
-tests/         跨边界验收测试
+apps/           共享 API、Web、MCP、文档，以及各系统 Worker
+packages/       平台 contracts/auth 与各系统 contracts/core/infra
+infrastructure/ 精确镜像、Data Foundation、Docker 与可观测性配置
+skills/         可独立加载的 Agent EXCON 与 Data Foundation Skills
+supabase/       统一 Auth、控制面、EXCON schema、迁移、种子与 pgTAP
+scenarios/      版本化演练场景及来源清单
+tests/          跨边界 fixture 与验收测试
 ```
+
+依赖方向固定为 `platform contracts <- system contracts <- core <- application <- infra/apps`。MCP、Skill 和浏览器只调用 HTTP API，不直连权威数据库或投影存储。Data Foundation 投影可重建，不能成为授权或发布权威。
 
 ## 环境基线
 
-- Node.js 24 LTS（推荐 `24.19.0`，兼容范围 `>=24.18.0 <25`）
-- pnpm 11
+- Node.js 24 LTS（范围 `>=24.18.0 <25`）
+- pnpm `11.22.0`
+- TypeScript `7.0.2`
 - Docker Engine 29+ / Docker Compose 5+
-- Codex CLI（本机开发的默认 AI provider）
+- workspace 固定的 Supabase CLI
 
-安装并验证：
+npm 依赖使用精确版本并由一个 `pnpm-lock.yaml` 锁定；容器使用稳定 tag 加 `sha256` digest，Data Foundation 镜像登记在 [`infrastructure/data-foundation/versions.env`](./infrastructure/data-foundation/versions.env)，禁止 `latest`。
+
+## 安装与验证
 
 ```bash
 corepack enable
-pnpm install
+pnpm install --frozen-lockfile
 pnpm verify
+pnpm supabase:verify
+pnpm data:verify
 ```
 
-仓库使用 Docpact 0.1.9 确定性地关联代码变更与文档义务。安装后，可在编码前查询阅读路径，并在编码后检查工作区变更：
+仓库使用 Docpact 0.1.9。修改前根据实际路径查询文档路由，修改后检查工作区文档义务：
 
 ```bash
 cargo install docpact --version 0.1.9
-pnpm docpact:route --paths 'packages/core/src/**'
+pnpm docpact:route --paths 'packages/data-core/src/**'
 pnpm docpact:check
+pnpm docpact:validate
 ```
 
-规则位于 [`.docpact/config.yaml`](./.docpact/config.yaml)，PR 会在 CI 中执行阻断检查。
+## 启动完整平台
 
-启动完整开发栈：
+一条命令启动 Supabase、统一 Auth、持久化 EXCON v2、Data Foundation、API、Web、MCP 和文档，执行迁移、种子与真实 18 步 smoke：
 
 ```bash
-pnpm stack:up
+pnpm stack:full:up
 ```
 
-这会先由 Supabase CLI 启动 Auth/PostgreSQL 17/Storage/Studio，再由 Compose 启动 API、只读 Web、Worker 和文档。默认地址为 Web `:3000`、API `:3001`、Worker health `:3002`、文档 `:4321`、Supabase Studio `:56323`。停止使用 `pnpm stack:down`。
+`stack:full:up` 会在被 Git 忽略的 `.wiser/local/runtime-secrets.json` 创建并复用本机密钥，给 EXCON journal 配置非超级用户登录，随后执行 `data:up → data:migrate → data:seed → data:smoke`。它不会读取或挂载 `~/.codex/auth.json`，也不会把 Supabase service-role key 注入应用。
 
-启动 Data Foundation profile：
+常用入口：
+
+| 表面                  | 地址                                      |
+| --------------------- | ----------------------------------------- |
+| WISER Web             | `http://127.0.0.1:3000/zh-CN`             |
+| Fastify API / GraphQL | `http://127.0.0.1:3001` / `POST /graphql` |
+| Fumadocs              | `http://127.0.0.1:4321`                   |
+| Data Worker           | `http://127.0.0.1:13003/health/ready`     |
+| MCP Streamable HTTP   | `http://127.0.0.1:13004/mcp`              |
+| Supabase Studio       | `http://127.0.0.1:56323`                  |
+
+只需分步运行时：
 
 ```bash
-cp .env.example .env
-# 为 .env 中留空的 DATA_* credential 生成本机专用值
+pnpm supabase:start
 pnpm data:up
 pnpm data:migrate
 pnpm data:seed
 pnpm data:smoke
 ```
 
-该 profile 使用独立的 PostgreSQL 18.6/PostGIS 3.6、SeaweedFS、Weaviate、带 `analysis-icu` 的 OpenSearch、Neo4j、GeoServer、pgSTAC/STAC API、TiTiler、Martin、Tika 与 ClamAV；所有宿主端口只绑定 `127.0.0.1`。`infrastructure/data-foundation/versions.env` 登记镜像的精确 tag+digest 和 ICU artifact SHA-512。普通停止使用 `pnpm data:down`；删除数据还要求精确确认变量，不能误删 Supabase 或观测卷。
+`data:smoke` 真实上传 GeoJSON 与 Markdown，执行 ClamAV、SHA-256、Tika/GeoJSON 解析、fake AI 计划、确定性转换、质量/人工审核、权威版本提交、Outbox、五类投影，并通过 REST、GraphQL、MCP 和登录后的 Web 目录复核；随后重放同一 Outbox event，确认无重复版本、对象、节点或投影。
 
-按需启动本地技术观测栈：
+普通停止保留数据：
 
 ```bash
-pnpm observability:up
+pnpm data:down
+pnpm stack:down
 ```
 
-它在回环地址提供参训者 OTLP/HTTP Ingress `:14318`、平台 OTLP `:4317/:4318`、Grafana `:3300` 和 Prometheus `:9090`，并用 Tempo/Loki 保存本地 Trace/Log。Ingress 绑定 RunAgent、覆盖自报身份、限流并拒绝敏感字段；`pnpm observability:down` 只停止这些服务并保留命名卷。
+删除 Data Foundation 命名卷需要显式确认：
 
-本机 Codex 订阅只供可信开发调试，运行在宿主机；容器和 CI 默认使用 fake provider。切勿提交或挂载 `~/.codex/auth.json`、Supabase service-role key 或其他凭据。
+```bash
+WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
+```
 
-## 项目状态
+## 需要明确的兼容边界
 
-v2 的契约、纯领域核心、内存 HTTP 协作纵切、数据库 schema/RLS、Skill、18 个 MCP 工具、Submission 安全恢复、确定性评价/返工/背书闭环和认证观测链路已经可验证；[WorkBuddy TDD Cookbook](./cookbooks/workbuddy-yongding-tdd/README.md) 提供可重复的四智能体本机入口。Agent EXCON 的持久化接线仍在进行。Data Foundation 已达到“权威 schema/S3 + 通用 Worker + 完整依赖 profile”里程碑，但投影消费者、完整 REST/GraphQL/MCP/Skill/Web 纵切尚未完成。v1 Episode 保留为**显式兼容协议**，目前仍是独立实现，而不是已完成的 v2 facade。范围与验收标准记录在 [`docs/roadmap.md`](./docs/roadmap.md)，完整设计见 [`docs/design/v2-multi-scenario-multi-agent-observability.md`](./docs/design/v2-multi-scenario-multi-agent-observability.md)，贡献约定见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
+- EXCON v2 的生产/完整栈持久层是单写者 append-only command journal 加确定性重放；它不是把每个 v2 聚合直接映射到规范化 PostgreSQL repository。journal 锁、哈希、生成值 tape 或秘密引用不一致时会失败关闭。
+- v1 Episode 保留为显式兼容实现且仍使用内存状态；v2 失败不会自动降级到 v1。
+- Data Foundation Web 当前是有身份的治理与查询工作区；上传、提交、审核等 mutation 通过 REST、GraphQL、MCP 或 Skill 发起，浏览器不持有数据库、对象存储或投影凭据。
+- fake AI/embedding 只用于测试、CI 和本机可重复 smoke，不代表生产模型输出；确定性质量、验收和发布结论始终由本地规则与人工门禁决定。
+
+更详细的启动步骤见 [快速开始](./apps/docs/src/content/docs/zh-CN/quick-start.md)，Data 事实边界见 [数据基座架构](./apps/docs/src/content/docs/zh-CN/architecture/data-foundation.md)，贡献约定见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
 
 ## 许可
 
-代码采用 [MIT License](./LICENSE)。场景数据和第三方材料按各自的 `PROVENANCE.md` 与数据许可管理；MIT 许可不会自动覆盖这些材料。
+代码采用 [MIT License](./LICENSE)。场景数据和第三方材料继续遵循各自 `PROVENANCE.md` 与数据许可；MIT 不自动覆盖这些材料。

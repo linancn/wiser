@@ -1,6 +1,6 @@
 ---
-title: WISER · Agent Exercise Control Infrastructure
-description: WISER is the Water Intelligence System & Engine for Reconfiguration, empowered by AI; Agent EXCON provides its runnable and replayable exercise environment.
+title: WISER · Multi-system platform
+description: The shared Auth, protocol, UI, and documentation platform for Agent EXCON, Data Foundation, and future water-intelligence systems.
 ---
 
 <HomeHero locale="en" />
@@ -9,7 +9,7 @@ description: WISER is the Water Intelligence System & Engine for Reconfiguration
 
 > The default combines real water-system relationships and a few sourced historical observations with isolated synthetic capacities, targets, rules, plans, and outcomes. It never issues commands to operational systems.
 
-## A multi-agent environment, not a collection of demo endpoints
+## Two running systems, one platform boundary
 
 <Cards>
   <Card title="Environment control">
@@ -21,8 +21,8 @@ description: WISER is the Water Intelligence System & Engine for Reconfiguration
     retain evidence and versions.
   </Card>
   <Card title="Open protocols">
-    HTTP is the foundation. SDKs, file-based Skills, and MCP share the same Zod
-    contracts.
+    HTTP is the foundation. Each system derives REST, GraphQL, MCP, and Skills
+    from its own strict Zod Capability or protocol contract.
   </Card>
   <Card title="Multi-agent collaboration">
     Roles execute parallel Tasks, converge through explicit artifacts, and
@@ -32,6 +32,15 @@ description: WISER is the Water Intelligence System & Engine for Reconfiguration
     Events and Agent receipts reconstruct what each member actually received;
     OTel traces diagnose technology but do not define audit truth.
   </Card>
+  <Card title="Data Foundation">
+    Upload, quarantine, scan, interpretation, deterministic transformation,
+    quality review, authority versions, and five rebuildable projections form
+    one verified slice.
+  </Card>
+  <Card title="Unified identity and UI">
+    Both systems share Supabase Auth, the WISER shell, Chinese/English,
+    light/dark themes, and one Fumadocs site.
+  </Card>
 </Cards>
 
 ## Choose a path
@@ -40,17 +49,17 @@ description: WISER is the Water Intelligence System & Engine for Reconfiguration
   <Card
     title="Quick start"
     href="/en/quick-start/"
-    description="Start services and verify the v2 RunAgent collaboration slice."
+    description="Start unified Auth, durable EXCON v2, and the 18-step Data Foundation slice."
   />
   <Card
     title="Architecture"
-    href="/en/architecture/overview/"
-    description="Understand multi-scenario, multi-agent, replay, and OTel boundaries."
+    href="/en/architecture/wiser-platform/"
+    description="Understand WISER, EXCON, Data Foundation, and shared-host authority boundaries."
   />
   <Card
-    title="HTTP protocol"
-    href="/en/protocols/http/"
-    description="Review resources, state, idempotency, and errors."
+    title="Data Foundation"
+    href="/en/architecture/data-foundation/"
+    description="Review data authority, ingestion, Outbox, projections, and four product interfaces."
   />
   <Card
     title="TDD guide"
@@ -59,4 +68,4 @@ description: WISER is the Water Intelligence System & Engine for Reconfiguration
   />
 </Cards>
 
-> v2 contracts, core, the in-memory HTTP collaboration slice, deterministic evaluation/rework/endorsement loop, database schema/RLS, Skill, MCP, and authenticated observability are delivered. The PostgreSQL API adapter and v1 facade are not. v1 requires explicit selection.
+> The complete stack runs under unified Supabase Auth. EXCON v2 persists and deterministically replays all 19 mutations through a single-writer PostgreSQL command journal. Data Foundation wires all 22 Capabilities, its concrete Worker, five projections, REST/GraphQL/MCP/Skill/Web. v1 remains explicit and in-memory.

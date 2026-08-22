@@ -16,14 +16,14 @@ checkPaths:
   - packages/contracts/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: bf610e20dfca64f3a28f201241788430cebe2a82
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 ## Default protocol and implementation status
 
 HTTP is the only business protocol foundation. Web, Skills, MCP, and future SDKs call HTTP rather than domain tables. The default development base is `/api/v2`; `/api/v1` is only for an explicitly assigned Episode and is never an automatic fallback after a v2 failure.
 
-The `/api/v2` routes and contracts are executable and tested, but Fastify currently uses an **in-memory protocol adapter**. The Supabase v2 schema/RLS exists, while a PostgreSQL API adapter does not. Responses, Events, Receipts, and idempotency records therefore disappear on process restart. The tables below list registered routes only; they do not present future ADR endpoints as implemented behavior.
+`/api/v2` has two explicit runtimes. Non-production protocol tests may select `EXCON_V2_MODE=memory`. The complete stack and production use `postgres`: a non-superuser appends intent/outcome rows for all 19 mutations to a Supabase PostgreSQL journal, then verifies deterministic startup replay through UUID/time/lease generation tapes and result hashes. One advisory-lock writer owns the journal; corruption, replay drift, unknown HMAC keys, and incomplete outcomes fail closed. This survives restart, but it is not one normalized repository per v2 aggregate. The tables below list registered routes only.
 
 ## WISER module composition
 
@@ -46,9 +46,9 @@ Commands require a UUID `Idempotency-Key`; all routes require Bearer, Tenant, Pr
 
 ## Data Foundation discovery
 
-`GET /api/data/v1/health` is a non-cacheable aggregate of data-postgres, object-store, and Data Worker readiness; it returns 503 when any required authority dependency is unavailable. `GET /api/data/v1/capabilities` returns the complete ordered Registry with draft-7 input/output JSON Schemas and exact REST, GraphQL, MCP, and Skill mappings. These discovery endpoints are implemented by the injectable `data.foundation` module. The shared `DataCapabilityHandler` now requires exactly one executor for each of the 22 static Capabilities, validates input and output with the Registry Zod schemas, enforces live Scope/security ceilings and command idempotency, applies the declared timeout, and writes only payload hashes to the audit port. Concrete business executors are not yet complete; REST and GraphQL dispatch through this one handler, while MCP and Skills reach it only through HTTP.
+`GET /api/data/v1/health` is a non-cacheable aggregate of data-postgres, object-store, and Data Worker readiness; it returns 503 when any authority dependency is unavailable. `GET /api/data/v1/capabilities` returns the ordered 22-item Registry, draft-7 I/O JSON Schemas, and exact REST/GraphQL/MCP/Skill mappings. The default Data runtime composes all 22 read/command/specialized-query executors and registers both REST and schema-first GraphQL; a missing, duplicate, or extra executor fails startup.
 
-The injectable `data.foundation.rest` module now registers all 22 Registry REST mappings without duplicating discovery routes. It resolves the unified WISER principal, composes path/query/body fields without collisions, enforces UUID idempotency and strong `If-Match: "vN"` on versioned commands, emits ETags/no-store, and maps the Operation-event page to a bounded SSE snapshot. The transport is complete and tested; runtime composition still needs the remaining business executors before every route can succeed against authority data.
+REST resolves the unified WISER principal, composes path/query/body fields without collisions, enforces UUID idempotency and strong `If-Match: "vN"` on versioned commands, emits ETags/no-store, and maps Operation events to bounded SSE snapshots. The governed version-asset route reauthorizes through Supabase and data-postgres RLS/audit before returning a short-lived `303` signed redirect. See [Data REST](/en/protocols/data-rest/) and [Data GraphQL](/en/protocols/data-graphql/) for the complete protocol.
 
 ## Public scenario catalog
 
@@ -152,7 +152,7 @@ Non-empty sequences are contiguous, each `previousReceiptHash` joins the trusted
 - Artifact updates compare the exact `baseVersionId` and never overwrite a concurrent version.
 - Endorsement consumes an ActionGrant matching actor, Task, Submission revision, action, scope, expiry, and use count.
 
-The local in-memory profile implements immutable submissions, endorsements, ActionGrants, and the complete evaluator → `EVALUATING` → `REWORK`/`ACCEPTED` → revision/resubmit orchestration. The loop is not connected to the durable PostgreSQL adapter yet.
+Immutable submissions, endorsements, ActionGrants, and the complete evaluator → `EVALUATING` → `REWORK`/`ACCEPTED` → revision/resubmit loop run through the same v2 service. In the complete stack every mutation writes a journal intent and a verifiable outcome; restart replays them in order and recovers Events, Receipts, and idempotent results. Lease tokens are persisted only as key-id-bound HMAC secret references, never plaintext.
 
 ## Authoritative replay and telemetry overlay
 

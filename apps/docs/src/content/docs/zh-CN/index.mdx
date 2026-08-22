@@ -1,6 +1,6 @@
 ---
-title: WISER 水地图 · 智能体演练场
-description: WISER 是 AI 赋能的水智能系统与重构引擎；Agent EXCON 将现实任务封装为可运行、可裁决、可回放的智能体环境。
+title: WISER 水地图 · 多系统平台
+description: 统一承载 Agent EXCON、Data Foundation 以及未来水智能系统的 Auth、协议、界面和文档平台。
 ---
 
 <HomeHero locale="zh-CN" />
@@ -9,7 +9,7 @@ description: WISER 是 AI 赋能的水智能系统与重构引擎；Agent EXCON 
 
 > 当前默认案例使用真实水系统关系和少量有来源的历史观测作事实锚点；容量、目标、规则、方案和结果均为隔离合成数据，不向现实控制系统发出指令。
 
-## 一个多智能体环境，而不是一组演示接口
+## 两个已运行系统，一套平台边界
 
 <Cards>
   <Card title="环境控制">
@@ -19,8 +19,8 @@ description: WISER 是 AI 赋能的水智能系统与重构引擎；Agent EXCON 
     确定性规则优先；统计、模型和人工评价均保存依据、版本与置信度。
   </Card>
   <Card title="协议开放">
-    HTTP 是统一底座，TypeScript SDK、文件化 Skill 和 MCP Server 都建立在同一份
-    Zod 合约上。
+    HTTP 是统一底座；每个系统的 REST、GraphQL、MCP 和 Skill 都从自己的严格 Zod
+    Capability/协议合约派生。
   </Card>
   <Card title="多智能体协作">
     多个角色并行完成
@@ -30,6 +30,13 @@ description: WISER 是 AI 赋能的水智能系统与重构引擎；Agent EXCON 
     事件与 Agent Receipt 重建每个智能体实际获得的信息；OTel Trace
     用于技术诊断而非审计事实。
   </Card>
+  <Card title="数据基座">
+    上传、隔离、扫描、解释、确定性转换、质量审核、权威版本与五类可重建投影形成一条可验证纵切。
+  </Card>
+  <Card title="统一身份与界面">
+    两个系统共享 Supabase Auth、WISER Shell、中文/英文、浅色/深色主题与同一
+    Fumadocs 文档站。
+  </Card>
 </Cards>
 
 ## 从这里进入
@@ -38,17 +45,17 @@ description: WISER 是 AI 赋能的水智能系统与重构引擎；Agent EXCON 
   <Card
     title="快速开始"
     href="/quick-start/"
-    description="启动服务并验证 v2 RunAgent 协作协议纵切。"
+    description="启动统一 Auth、持久化 EXCON v2 与 Data Foundation 18 步纵切。"
   />
   <Card
     title="架构边界"
-    href="/architecture/overview/"
-    description="了解多场景、多智能体、权威回放和 OTel 的职责边界。"
+    href="/architecture/wiser-platform/"
+    description="了解 WISER、EXCON、Data Foundation 与共享宿主的权威边界。"
   />
   <Card
-    title="HTTP 协议"
-    href="/protocols/http/"
-    description="查看资源、状态机、幂等和错误约定。"
+    title="Data Foundation"
+    href="/architecture/data-foundation/"
+    description="查看数据权威、入库、Outbox、投影与四种产品接口。"
   />
   <Card
     title="TDD 贡献指南"
@@ -57,4 +64,4 @@ description: WISER 是 AI 赋能的水智能系统与重构引擎；Agent EXCON 
   />
 </Cards>
 
-> v2 契约、核心、内存 HTTP 协作纵切、确定性评价/返工/背书闭环、数据库 schema/RLS、Skill、MCP 和认证观测链路已交付；PostgreSQL API adapter 与 v1 facade 仍未交付。v1 只能显式选择。
+> 完整栈以统一 Supabase Auth 运行；EXCON v2 的 19 个 mutation 使用单 writer PostgreSQL command journal 持久化并确定性重放，Data Foundation 的 22 项 Capability、具体 Worker、五类投影、REST/GraphQL/MCP/Skill/Web 已接线。v1 仍只能显式选择且使用内存状态。

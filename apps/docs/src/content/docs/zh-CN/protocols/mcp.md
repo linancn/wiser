@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/**
   - skills/agent-excon/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: a3c0bb29bf69bb1a1b4c4bf899c783d2876ba6ff
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 ## MCP 是 HTTP 适配器
@@ -28,6 +28,8 @@ MCP Server 只调用公开 HTTP API，不复制状态机、权限、Receipt 或�
 ## WISER 模块组合
 
 Agent EXCON、Data Foundation 与未来系统复用同一个 MCP Server。每个系统通过静态 `WiserMcpModule` 注册 Tool/Resource；模块 ID 必须命名空间化且全局唯一，重复 ID 会在连接 transport 前失败。模块注册只组合协议面，所有业务调用仍必须经 HTTP API。
+
+Data Foundation 模块在五个 `DATA_API_*`/scope 环境值完整提供时注册 22 个 Tool 与 5 个受控 Resource；部分配置会失败关闭，完全未配置则只运行 EXCON。Data Tool、双层 bearer、上传/Operation 流程和响应上限见 [Data MCP](/protocols/data-mcp/)。
 
 ## 配置
 
@@ -108,7 +110,7 @@ pnpm --filter @wiser/mcp start:http
 - 单次完整 MCP 响应超过 32,000 字符时返回 `MCP_RESPONSE_TOO_LARGE`；缩小 `sync.maxItems` 或回放 cursor，不能截断后继续当作完整事实。
 - RunAgent replay Tool 不提供 operator/team/role/eligible 视角。
 
-本机 v2 Lab 已交付确定性 evaluator → rework → resubmit 与团队背书闭环；该实现仍是非持久化开发 profile，不代表 PostgreSQL adapter 已完成。
+本机 v2 Lab 可显式使用 memory profile。完整栈和生产使用 PostgreSQL append-only command journal：全部 19 个 v2 mutation 的 intent/outcome、canonical hash 与生成值 tape 可在重启时确定性重放；单 writer advisory lock、非超级用户 RLS、lease HMAC secret reference 和 replay-drift 检查均失败关闭。MCP 仍只是 HTTP adapter，不读取 journal。
 
 ## Resource
 

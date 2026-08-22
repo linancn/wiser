@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 74e4485097a69818b29fb012b16647e882961625
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 ## One identity authority
@@ -27,7 +27,7 @@ All WISER systems use the existing Supabase Auth service, JWT signing keys/JWKS,
 
 A JWT proves the subject, authentication assurance, and session. Dynamic Tenant, Project, Role, and Scope facts are resolved from the Supabase control plane. User-editable `user_metadata` never participates in authorization, and dynamic grants are not fully copied into JWTs because claims change only after token refresh.
 
-Delivered now: the `platform` / `platform_private` schemas, automatic user provisioning, Tenant/Project/Membership, Role/Scope/Binding, Delegation, private Credential/Audit/Outbox storage, least-privilege grants, and 50 pgTAP control-plane contract checks. The framework-independent `SupabaseJwtPrincipalResolver`, `getClaims` result verifier, and single-query PostgreSQL Membership loader compose and fail closed. Delegated-credential issuance remains the next authorization wiring milestone.
+Delivered now: the `platform` / `platform_private` schemas, automatic user provisioning, Tenant/Project/Membership, Role/Scope/Binding, Delegation, private Credential/Audit/Outbox storage, least-privilege grants, and pgTAP control-plane contracts. The framework-independent `SupabaseJwtPrincipalResolver`, `getClaims` result verifier, single-query PostgreSQL Membership loader, delegated credential issue/rotate/revoke path, and live Resolver compose in the default Supabase runtime and fail closed.
 
 Fastify exposes the safe `/api/platform/v1/me` projection and delegated command surface. `WISER_AUTH_MODE=supabase` creates the current stable `supabase-js` client, bounded PostgreSQL pool, prefix-routed JWT/delegated Resolver, and transactional Delegation service in the default process. Production refuses missing Supabase, database, or HMAC key-ring configuration, and process shutdown closes the shared pool.
 
@@ -100,6 +100,8 @@ A user or service calls an authorized API to issue a short-lived delegated crede
 The Fastify `platform.delegation` module now fixes the HTTP command boundary for create, metadata read, issue, rotate, and revoke. It accepts only verified Supabase humans with `platform.delegation.manage`, UUID idempotency keys, a maximum one-hour TTL, known delegated scopes, and a ceiling no higher than the caller's live ceiling. Plaintext appears only in successful issue/rotate responses and every response is `private, no-store`. `PostgresPlatformDelegationService` revalidates the Supabase Session and live memberships inside each transaction, takes idempotency and aggregate locks, clips credentials to 15 minutes and the Delegation expiry, preserves one active credential, and writes Audit plus Control Outbox atomically. Same-hash command replay is safe; issue/rotate replay returns `SECRET_NOT_RECOVERABLE` rather than storing recoverable plaintext. Audit, Outbox, and errors contain neither token nor HMAC.
 
 Delegated bearer resolution parses the envelope before any database lookup, loads one private record by its public key id, verifies the HMAC in Node with a fixed-length timing-safe comparison, and only then trusts control facts. Every request rechecks both actors, both Tenant/Project memberships, the Tenant, Project, delegation and credential lifecycle, Purpose, and expiry. Effective scopes are the sorted intersection of delegation scopes, the delegator's current live scopes, and the injected known-scope registry; the effective security ceiling is the lower of the delegation and the delegator's current ceiling. No positive authorization cache is used.
+
+The Agent EXCON v2 participant authenticator and Data Capability Handler now reuse the same prefix-routed Platform Resolver. The complete stack injects fixed EXCON Tenant/Project/Purpose and requires delegated `runAgentIds`/scopes to match the resource. Data REST, GraphQL, MCP, and the Web server DAL all resolve live context from the same Supabase JWT or `wdc1.` credential. The EXCON command journal and data-postgres retain only scoped subject references/audit and never create another identity system.
 
 ## Cross-database Data Foundation references
 

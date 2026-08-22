@@ -1,5 +1,5 @@
 ---
-title: Agent EXCON HTTP API guide
+title: WISER HTTP API host guide
 docType: component-guide
 scope: apps/api
 status: active
@@ -7,73 +7,114 @@ authoritative: true
 owner: wiser
 language: en
 whenToUse:
-  - when changing or running the HTTP API boundary
+  - when changing or running the shared HTTP API boundary
 whenToUpdate:
-  - when API routes, authentication, or runtime durability changes
+  - when API modules, routes, authentication, or runtime durability changes
 checkPaths:
   - apps/api/**
   - packages/contracts/**
   - packages/core/**
+  - packages/data-*/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: bf610e20dfca64f3a28f201241788430cebe2a82
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 # WISER API host
 
-Shared Fastify HTTP composition host for WISER systems. Agent EXCON remains the first registered business protocol; Data Foundation joins through the same static module boundary.
+This is the shared Fastify composition root for WISER Platform, Agent EXCON, Data Foundation, and future systems. Modules are statically imported as namespaced `WiserApiModule` values; duplicate ids fail before readiness. No transport scans TypeScript AST or bypasses system application/authorization boundaries.
+
+For the complete local runtime, use the repository workflow instead of assembling secrets by hand:
 
 ```bash
-AGENT_EXCON_PARTICIPANT_TOKEN=local-demo-participant-token \
-API_PORT=3001 \
-pnpm --filter @wiser/api dev
+pnpm stack:full:up
 ```
 
-The default `InMemoryExerciseService` (v1) and `InMemoryV2ExerciseService` are deterministic walking-slice adapters for local demos and contract tests. They are intentionally non-durable and provide no cross-process concurrency, transaction, RLS, Outbox, or recovery guarantee. Production must inject PostgreSQL/Supabase repositories implementing `ExerciseService` and `V2ExerciseService`; HTTP handlers, Skill, and MCP contracts do not change.
+For protocol/unit development with local compatibility defaults:
 
-`buildApp()` is the WISER Fastify composition root. Additional product systems register explicit, statically imported `WiserApiModule` values through `BuildAppOptions.modules`; module ids are namespaced and unique, and duplicate ids fail during readiness. Agent EXCON routes remain available while Data Foundation and future systems join the same process without copying the HTTP host.
+```bash
+API_PORT=3001 pnpm --filter @wiser/api dev
+```
 
-`createPlatformIdentityModule()` adds the protected `GET /api/platform/v1/me` vertical slice when a `PlatformPrincipalResolver` is injected. It requires Bearer, Tenant, Project, and Purpose context and returns only the safe actor, role, scope, maximum-security-level, and authorization-version projection; credentials and Session ids never enter the response.
+Non-production defaults to `WISER_AUTH_MODE=off`, `EXCON_V2_MODE=memory`, and `DATA_FOUNDATION_MODE=off` only when the corresponding runtime fields are absent. Production forbids Auth/Data off and forbids the EXCON memory runtime.
 
-`createPlatformDelegationModule()` defines the human-only delegated-credential command surface. A verified Supabase principal must have `platform.delegation.manage`; requested Scope, Purpose, TTL, and L0-L3 ceiling may not exceed the live context. Every command requires a UUID `Idempotency-Key`, every response is `private, no-store`, metadata reads never expose a token, and issue/rotate are the only one-time plaintext responses. In Supabase mode the default process injects `PostgresPlatformDelegationService`, the live delegated Resolver, and the same bounded Pool.
+## Unified Auth composition
 
-`createDataFoundationModule()` mounts Data Foundation beside Agent EXCON without a second Fastify process. Its injected readiness probe drives truthful `GET /api/data/v1/health` status across data-postgres, object storage, and Worker. `GET /api/data/v1/capabilities` projects the ordered 22-item Zod 4 Registry into draft-7 input/output JSON Schema plus exact REST, GraphQL, MCP, and Skill mappings. Both responses are non-cacheable; the default process does not report Data Foundation ready until concrete authority probes are wired.
+`WISER_AUTH_MODE=supabase` creates one current `supabase-js` `getClaims` client, bounded PostgreSQL control-plane Pool, prefix-routed Supabase JWT/delegated Resolver, and transactional Delegation service. It requires:
 
-`DataCapabilityHandler` is the single in-process application boundary planned for Data Foundation REST and schema-first GraphQL. Startup fails unless every Registry Capability has exactly one executor. Each call validates Registry input/output, live Scopes, requested L0-L3 ceiling, UUID command idempotency, and the declared timeout; its audit record contains identity/context plus canonical SHA-256 hashes, never the payload. The Handler is delivered, but concrete business executors and the remaining REST/GraphQL routes are not yet runtime-wired. MCP and Skills must continue through HTTP rather than importing it.
+```text
+SUPABASE_URL
+SUPABASE_PUBLISHABLE_KEY
+DATABASE_URL
+WISER_DELEGATED_CREDENTIAL_HMAC_KEYS
+```
 
-`createDataFoundationRestModule()` projects all 22 Registry mappings through that Handler. Its route boundary shares the platform Resolver, rejects path/query/body collisions and prototype keys, normalizes bounded GET arrays/numbers, requires command idempotency and version ETags, and produces stable safe errors. Operation events use a one-shot SSE snapshot with exact event ids/types/data plus the continuation cursor. The module is not registered by `main.ts` until the complete executor set is available.
+Every protected request supplies Bearer, Tenant, Project, and Purpose. The Resolver verifies the Supabase Session or strict `wdc1.<public-key-id>.<secret>` credential, then resolves live membership, roles, scopes, L0–L3 ceiling, and authorization version. A malformed/failed delegated credential is never retried as JWT, and failed JWT authentication never falls back to a local token.
 
-`main.ts` creates the concrete Supabase `getClaims` client, PostgreSQL Membership/delegated loaders, transactional delegation service, and prefix-routed composite Resolver when `WISER_AUTH_MODE=supabase`. A `wdc1.` token is never retried as JWT after delegated verification fails. Production defaults to Supabase mode and refuses missing `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `DATABASE_URL`, or `WISER_DELEGATED_CREDENTIAL_HMAC_KEYS`; non-production defaults to `off` for the legacy local-token compatibility profile. The bounded shared Pool is closed through the Fastify lifecycle.
+Platform routes include:
 
-Participant requests use `Authorization: Bearer <token>`. Every POST uses a UUID `Idempotency-Key`; observe, submit, and advance also include `episodeVersion`.
+- `GET /api/platform/v1/me`, a safe principal/authorization projection;
+- create/read/issue/rotate/revoke under `/api/platform/v1/delegations`;
+- credential revoke under `/api/platform/v1/credentials/:credentialId:revoke`.
 
-Key routes:
+Delegation commands require a Supabase human with `platform.delegation.manage` and a UUID `Idempotency-Key`. Issue/rotate return plaintext once; replay returns `SECRET_NOT_RECOVERABLE`. Audit, Outbox, errors, and metadata never contain plaintext or HMAC.
+
+## Agent EXCON runtime durability
+
+v1 `InMemoryExerciseService` remains the explicit legacy Episode compatibility implementation. Its state does not survive restart and v2 failures never downgrade to v1.
+
+v2 has two deliberate modes:
+
+- `memory`: deterministic protocol tests and isolated local labs only; forbidden in production;
+- `postgres`: the full-stack/production mode, configured by `EXCON_JOURNAL_DATABASE_URL` and `EXCON_LEASE_HMAC_KEYS`.
+
+The PostgreSQL mode wraps the deterministic v2 service in an append-only command journal. It records all 19 v2 mutations (`createScenario` through `endorseSubmission`) as immutable intent/outcome rows, including canonical request/result hashes and a deterministic tape of generated UUIDs, timestamps, and lease counters. Lease tokens are never stored in plaintext; journal arguments contain HMAC secret references keyed by a retained rotation key id.
+
+Startup requires a non-superuser role, acquires one PostgreSQL advisory writer lock, loads every intent/outcome in sequence, verifies schema/hash/secret references, replays the generation tape, and compares each result or stable rejection. Corrupt, incomplete, drifted, unknown-key, or concurrently owned journals fail closed. Fastify shutdown releases the writer lock and closes the Pool.
+
+This is durable restart recovery, but it is intentionally a single-writer journal/replay adapter rather than one normalized PostgreSQL repository per v2 aggregate.
+
+### EXCON routes
 
 - `GET /health/live`, `GET /health/ready`, `GET /openapi.json`
-- `GET /api/v1/scenario`
-- `POST /api/v1/episodes`, `GET /api/v1/episodes/{id}`
-- `POST /api/v1/episodes/{id}/observe`, `GET .../observations`
-- `POST /api/v1/episodes/{id}/submissions`
-- `GET /api/v1/submissions/{id}/evaluation`
-- `GET /api/v1/episodes/{id}/feedback`
-- `POST /api/v1/episodes/{id}/advance`
-- `GET /api/v1/episodes/{id}/events`
+- explicit v1 Episode API under `/api/v1`
+- public v2 scenario catalog under `/api/v2/scenarios`
+- operator Scenario/Agent/Run lifecycle and replay under `/api/v2`
+- RunAgent `/sync`, Task leases, Messages, Artifacts, Submissions, endorsements, Feedback, and agent-safe replay under `/api/v2`
 
-Deterministic evaluation never calls an LLM. AI adapters may create explanatory summaries outside the scoring boundary.
+The participant authenticator uses the same Platform Resolver when unified Auth is active. The injected EXCON Tenant, Project, and Purpose are fixed server context; a Supabase human or delegated Agent must have the right live EXCON roles/scopes and RunAgent binding. Static participant/operator tokens exist only when Auth is explicitly off outside production.
 
-## v2 multi-agent protocol slice
+## Data Foundation runtime
 
-Public scenario catalog reads require no bearer token and structurally omit draft and validation fields. Management, Agent catalog, Run lifecycle, event/replay, and observability reads require an explicit `operator` principal. `/sync` and the four issued-resource recovery routes require a separate `run_agent` principal bound to the concrete `runAgentId`; an operator token cannot act as a participant.
+`DATA_FOUNDATION_MODE=enabled` requires unified Auth and validates the complete Data runtime configuration at startup. It creates:
 
-Every v2 POST requires a UUID `Idempotency-Key`. Scenario draft validation/publication, AgentVersion publication, and Run start use the version of the smallest changed aggregate. Joining a RunAgent does not consume the ExerciseRun lifecycle version, and each RunTask carries its own `lockVersion`.
+- one bounded non-superuser data-postgres API Pool;
+- internal and public-endpoint SeaweedFS S3 clients;
+- all 22 exact Capability executors (read, command, and specialized query);
+- one `DataCapabilityHandler` with hash-only audit;
+- readiness probes for database, object store, and Data Worker;
+- REST, schema-first GraphQL, and governed asset-download modules.
 
-Key v2 routes:
+Startup fails unless executor ids exactly match the Registry. `onClose` closes the Pool and both S3 clients exactly once.
 
-- `GET /api/v2/scenarios`, `GET /api/v2/scenarios/{id}` and published version reads
-- `POST /api/v2/manage/scenarios`, `POST .../{id}/versions`, `POST .../{versionId}:validate|publish`
-- `POST /api/v2/agents`, `POST /api/v2/agents/{id}/versions`
-- `POST /api/v2/runs`, `POST /api/v2/runs/{id}/agents`, `POST /api/v2/runs/{id}:start`
-- `POST /api/v2/runs/{id}/sync`
-- `GET /api/v2/runs/{id}/tasks|messages|artifacts|feedback` (already issued only)
-- `GET /api/v2/runs/{id}/events|replay|traces`
+### Data routes
 
-The replay response deliberately separates the complete, unsampled authoritative `RunEvent`/Receipt projection from the best-effort telemetry overlay. An empty sync batch has `fromReceiptSeq: null`; acknowledgements append a new event and never mutate an issuance Receipt.
+- `GET /api/data/v1/health`
+- `GET /api/data/v1/capabilities`
+- `GET /api/data/v1/capabilities/:capabilityId/:version`
+- all 22 Registry REST mappings under `/api/data/v1`
+- `GET /api/data/v1/tenants/:tenantId/projects/:projectId/versions/:versionId/assets/source` for audited short-lived `303` redirects
+- `POST /graphql` with all 22 schema-first fields
+
+REST requires UUID idempotency keys for commands, strong `If-Match: "vN"` for versioned commands, cursor paging, safe ETags, no-store, and bounded Operation SSE snapshots. GraphQL shares the Handler, allows one mutation field, disables batching/subscriptions/GraphiQL, enforces depth/complexity/timeout, and disables introspection in production.
+
+Data query adapters accept only structured inputs. PostgreSQL, OpenSearch, Weaviate, Neo4j, PostGIS, and pgSTAC credentials stay server-side. Results are reauthorized against Supabase context and data-postgres RLS before return or asset redirect.
+
+## Deterministic and secret boundaries
+
+- Deterministic EXCON evaluation and Data quality/publication policy never call an LLM.
+- AI adapters may propose explanations or plans, but never score, authorize, approve, or publish.
+- Tests/CI and the local Data smoke use the fake provider/embedding.
+- Never mount `~/.codex/auth.json` into this process or a container.
+- Never expose Supabase service-role, database URLs, S3 keys, projection credentials, journal HMAC keys, delegated HMAC keys, or Task lease tokens in a browser, MCP argument, log, or telemetry.
+
+See the bilingual Fumadocs references for [Agent EXCON HTTP](../docs/src/content/docs/en/protocols/http.md), [Data REST](../docs/src/content/docs/en/protocols/data-rest.md), and [Data GraphQL](../docs/src/content/docs/en/protocols/data-graphql.md).

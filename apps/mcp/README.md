@@ -1,5 +1,5 @@
 ---
-title: Agent EXCON MCP adapter guide
+title: WISER MCP Gateway guide
 docType: component-guide
 scope: apps/mcp
 status: active
@@ -14,15 +14,16 @@ checkPaths:
   - apps/mcp/**
   - apps/api/**
   - skills/agent-excon/**
+  - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: a3c0bb29bf69bb1a1b4c4bf899c783d2876ba6ff
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
 # WISER MCP Gateway
 
-本包提供 WISER Agent EXCON 的本地 stdio MCP 适配器，以及面向 Compose/远程客户端的无状态 Streamable HTTP 入口。它只调用公开 HTTP API，不读 PostgreSQL，不持有 service-role 凭据，也不通过 Web 参训。默认协议是多场景、多智能体 **v2**，默认 API 基路径是 `/api/v2/`。
+本包提供 WISER Agent EXCON 与 Data Foundation 的共享本地 stdio MCP Gateway，以及面向 Compose/远程客户端的无状态 Streamable HTTP 入口。它只调用公开 HTTP API，不读 PostgreSQL/投影，不持有 service-role 凭据，也不通过 Web 参训。EXCON 默认协议是多场景、多智能体 **v2**，默认 API 基路径是 `/api/v2/`。
 
-This package provides both the local stdio MCP adapter for WISER Agent EXCON and a stateless Streamable HTTP entrypoint for Compose or remote clients. It calls only the public HTTP API, never reads PostgreSQL, never holds service-role credentials, and does not exercise through the Web console. The default protocol is multi-scenario, multi-agent **v2**, with `/api/v2/` as the default API base path.
+This package provides the shared local stdio MCP Gateway for WISER Agent EXCON and Data Foundation plus a stateless Streamable HTTP entrypoint for Compose or remote clients. It calls only public HTTP APIs, never reads PostgreSQL/projections, never holds service-role credentials, and does not exercise through Web. EXCON defaults to multi-scenario, multi-agent **v2** with `/api/v2/` as its base path.
 
 WISER systems extend the same server through explicit `WiserMcpModule` values. Module ids are statically registered, namespaced, and unique; duplicate ids fail before a transport connects. A module may register Tools and Resources, but every business operation still uses an HTTP client rather than importing application or database code.
 
@@ -40,6 +41,20 @@ pnpm --filter @wiser/mcp start
 `AGENT_EXCON_API_KEY` 必须是短期、可撤销、最小 scope，且服务端绑定具体 `run_agent_id` 的参训 token。不要把 token 写入 MCP 工具参数、Message、Artifact、Submission、日志或提交记录。
 
 `AGENT_EXCON_API_KEY` must be a short-lived, revocable, least-scope participant token bound server-side to one concrete `run_agent_id`. Never put the token in MCP tool arguments, Messages, Artifacts, Submissions, logs, or commits.
+
+Data Foundation 在以下五项全部存在时注册 22 个 Tool 与 5 个 Resource；部分配置会失败关闭，全部缺失则只启动 EXCON：
+
+Data Foundation registers 22 Tools and five Resources when all five values are present. Partial configuration fails closed; omitting all five starts EXCON alone:
+
+```bash
+export DATA_API_URL=http://127.0.0.1:3001/api/data/v1/
+export DATA_API_BEARER_TOKEN=<supabase-jwt-or-wdc1-delegated-credential>
+export DATA_TENANT_ID=<tenant-uuid>
+export DATA_PROJECT_ID=<project-uuid>
+export DATA_PURPOSE=data-steward-console
+```
+
+Data command inputs add UUID `idempotencyKey`; upload complete, ingestion submit/approve/reject, and Operation cancel also map `expectedVersion` to `If-Match`. Full Tool/Resource tables are in [`protocols/data-mcp.md`](../docs/src/content/docs/en/protocols/data-mcp.md).
 
 ### Streamable HTTP / Streamable HTTP transport
 
@@ -137,10 +152,8 @@ Resource `excon://scenarios/jing-jin-ji-yongding-river` 提供中英文的京津
 
 ## 当前后端边界 / Current backend boundary
 
-这 18 个 v2 Tools 已实现并由 MCP `listTools()` 与 HTTP request-mapping 测试验证，但 MCP 只是适配器。当前 Fastify v2 服务使用不持久化的内存协议实现；Supabase v2 schema/RLS 尚未通过 PostgreSQL API adapter 接入。交互式运行还需要受信运行时提供绑定到具体 RunAgent 的 credential。
+EXCON 的 18 个 v2 Tool 与 Data 的 22 个 Tool 均由 `listTools()`、strict schema 与 HTTP mapping 测试验证；MCP 始终只是适配器。完整栈中的 EXCON v2 通过单 writer、非超级用户 PostgreSQL append-only command journal 持久化全部 19 个 mutation，并在启动时验证生成值 tape、hash 与 lease HMAC reference 后重放。memory 只供显式非生产 Lab；v1 仍是独立的内存 compatibility protocol。
 
-These 18 v2 Tools are implemented and verified by MCP `listTools()` and HTTP request-mapping tests, but MCP remains only an adapter. The current Fastify v2 service uses a non-durable in-memory protocol implementation; the Supabase v2 schema/RLS is not yet connected through a PostgreSQL API adapter. An interactive Run also requires a trusted runtime to provision a credential bound to the concrete RunAgent.
+All 18 EXCON v2 Tools and 22 Data Tools are verified through `listTools()`, strict schemas, and HTTP mappings; MCP always remains an adapter. The complete stack persists all 19 EXCON v2 mutations through a single-writer, non-superuser, append-only PostgreSQL command journal and verifies generation tapes, hashes, and lease-HMAC references before startup replay. Memory is an explicit non-production lab mode; v1 remains a separate in-memory compatibility protocol.
 
-本机 v2 Lab 已交付确定性 evaluator → rework → resubmit 与团队背书闭环，但仍是非持久化开发 profile。参训者安全的 `GET runs/{runId}/submissions` 与 `excon_list_submissions` 只恢复自身已 Receipt 的不可变快照；不得用 operator replay 替代。
-
-The local v2 Lab delivers the deterministic evaluator → rework → resubmit and team-endorsement loop, but it remains a non-durable development profile. Participant-safe `GET runs/{runId}/submissions` and `excon_list_submissions` recover only immutable snapshots already receipted to the caller; never substitute operator replay.
+Data Tools reach the fully composed 22-executor runtime and preserve unified Supabase authorization. The Streamable HTTP boundary bearer is only gateway authentication; it never replaces either system's downstream API credential. Participant-safe EXCON Submission recovery still returns only immutable revisions receipted to that RunAgent; never substitute operator replay.
