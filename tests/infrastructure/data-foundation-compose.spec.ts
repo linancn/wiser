@@ -105,6 +105,17 @@ describe('Data Foundation Compose profile', () => {
     }
   });
 
+  it('keeps credentialed GIS backends private behind the governed API proxy', () => {
+    for (const service of ['geoserver', 'stac-api', 'titiler', 'martin']) {
+      const block = serviceBlock(service);
+      expect(block, service).not.toContain('ports:');
+      expect(block, service).toContain('expose:');
+    }
+    expect(serviceBlock('api')).toContain('DATA_GEOSERVER_URL:');
+    expect(serviceBlock('api')).toContain('DATA_TITILER_URL:');
+    expect(serviceBlock('api')).toContain('DATA_MARTIN_URL:');
+  });
+
   it('uses named persistence and one-shot migrations without default passwords', () => {
     for (const service of [
       'data-postgres',
