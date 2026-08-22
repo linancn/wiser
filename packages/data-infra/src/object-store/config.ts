@@ -126,6 +126,8 @@ export function createSeaweedFsS3Client(
     region: config.region,
     forcePathStyle: true,
     credentials: config.credentials,
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
   };
   return new S3Client(clientConfig);
 }
