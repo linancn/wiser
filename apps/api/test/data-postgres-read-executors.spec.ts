@@ -93,12 +93,47 @@ const versionRow = {
   supersedes_version_id: null,
 };
 
+const ingestionId = '66666666-6666-4666-8666-666666666666';
+
+const qualityIssueRow = {
+  issue_id: '99999999-9999-4999-8999-999999999991',
+  severity: 'ERROR',
+  status: 'OPEN',
+  field_path: 'properties.stationId',
+  message: 'stationId is required',
+  created_at: '2026-08-22T00:02:00.000Z',
+};
+
+const agentRunRow = {
+  agent_run_id: '99999999-9999-4999-8999-999999999992',
+  agent_kind: 'semantic-mapper',
+  provider: 'deterministic-fake',
+  model: 'wiser-fake-embedding-v1',
+  deterministic: true,
+  input_hash: 'd'.repeat(64),
+  output_hash: 'e'.repeat(64),
+  status: 'SUCCEEDED',
+  created_at: '2026-08-22T00:01:00.000Z',
+  updated_at: '2026-08-22T00:02:00.000Z',
+};
+
+const projectionStatusRow = {
+  data_item_id: itemRow.data_item_id,
+  version_id: versionRow.version_id,
+  projection_kind: 'opensearch',
+  status: 'SUCCEEDED',
+  attempt_count: '1',
+  projected_at: '2026-08-22T00:03:00.000Z',
+  updated_at: '2026-08-22T00:03:00.000Z',
+};
+
 class FakeClient implements PostgresDataReadClient {
   readonly queries: Array<{
     readonly text: string;
     readonly values?: readonly unknown[];
   }> = [];
   notFound = false;
+  emptyIngestionSummaries = false;
   released = false;
 
   query(
@@ -131,7 +166,7 @@ class FakeClient implements PostgresDataReadClient {
           ? []
           : [
               {
-                ingestion_id: '66666666-6666-4666-8666-666666666666',
+                ingestion_id: ingestionId,
                 tenant_id: context.authorization.tenantId,
                 project_id: context.authorization.projectId,
                 asset_ids: versionRow.asset_ids,
@@ -145,6 +180,31 @@ class FakeClient implements PostgresDataReadClient {
               },
             ],
       });
+    }
+    if (/data\.ingestion\.quality-issues/.test(text)) {
+      return Promise.resolve({
+        rows: this.emptyIngestionSummaries ? [] : [qualityIssueRow],
+      });
+    }
+    if (/data\.ingestion\.agent-runs/.test(text)) {
+      return Promise.resolve({
+        rows: this.emptyIngestionSummaries ? [] : [agentRunRow],
+      });
+    }
+    if (/data\.ingestion\.linked-items/.test(text)) {
+      return Promise.resolve({
+        rows: this.emptyIngestionSummaries
+          ? []
+          : [
+              {
+                data_item_id: itemRow.data_item_id,
+                version_id: versionRow.version_id,
+              },
+            ],
+      });
+    }
+    if (/data\.ingestion\.projection-statuses/.test(text)) {
+      return Promise.resolve({ rows: [projectionStatusRow] });
     }
     if (/data\.operation\.get/.test(text)) {
       return Promise.resolve({
@@ -343,6 +403,56 @@ describe('data-postgres RLS read executors', () => {
         ingestion,
       ).success,
     ).toBe(true);
+    expect(ingestion).toEqual({
+      ingestion: {
+        ingestionId,
+        tenantId: context.authorization.tenantId,
+        projectId: context.authorization.projectId,
+        assetIds: versionRow.asset_ids,
+        intendedUses: ['dispatch'],
+        requestedSecurityLevel: 'L2_RESTRICTED',
+        state: 'COMMITTED',
+        operationId: '77777777-7777-4777-8777-777777777777',
+        version: 2,
+        createdAt: '2026-08-22T00:00:00.000Z',
+        updatedAt: '2026-08-22T00:03:00.000Z',
+      },
+      qualityIssues: [
+        {
+          issueId: qualityIssueRow.issue_id,
+          severity: 'ERROR',
+          status: 'OPEN',
+          fieldPath: 'properties.stationId',
+          message: 'stationId is required',
+          createdAt: '2026-08-22T00:02:00.000Z',
+        },
+      ],
+      agentRuns: [
+        {
+          agentRunId: agentRunRow.agent_run_id,
+          agentKind: 'semantic-mapper',
+          provider: 'deterministic-fake',
+          model: 'wiser-fake-embedding-v1',
+          deterministic: true,
+          inputHash: 'd'.repeat(64),
+          outputHash: 'e'.repeat(64),
+          status: 'SUCCEEDED',
+          createdAt: '2026-08-22T00:01:00.000Z',
+          updatedAt: '2026-08-22T00:02:00.000Z',
+        },
+      ],
+      projectionStatuses: [
+        {
+          dataItemId: itemRow.data_item_id,
+          versionId: versionRow.version_id,
+          projectionKind: 'opensearch',
+          status: 'SUCCEEDED',
+          attemptCount: 1,
+          projectedAt: '2026-08-22T00:03:00.000Z',
+          updatedAt: '2026-08-22T00:03:00.000Z',
+        },
+      ],
+    });
     expect(
       DATA_CAPABILITY_REGISTRY['data.operation.get'].outputSchema.safeParse(
         operation,
@@ -353,6 +463,59 @@ describe('data-postgres RLS read executors', () => {
         events,
       ).success,
     ).toBe(true);
+  });
+
+  it('returns real empty summary arrays and queries projections by linked data item', async () => {
+    const pool = new FakePool();
+    const runtime = createPostgresDataReadRuntime(pool);
+    const populated = await executor(runtime, 'data.ingestion.get').execute(
+      { ingestionId },
+      context,
+    );
+    const projectionQuery = pool.client.queries.find(({ text }) =>
+      /data\.ingestion\.projection-statuses/.test(text),
+    );
+    expect(pool.client.queries.at(0)?.text.trim()).toBe('BEGIN READ ONLY');
+    expect(pool.client.queries.at(-1)?.text.trim()).toBe('COMMIT');
+    expect(
+      pool.client.queries.filter(
+        ({ text }) => text.trim() === 'BEGIN READ ONLY',
+      ),
+    ).toHaveLength(1);
+    expect(projectionQuery?.values).toEqual([
+      [itemRow.data_item_id],
+      [versionRow.version_id],
+    ]);
+    expect(
+      pool.client.queries
+        .filter(({ text }) => /data\.ingestion\./.test(text))
+        .every(
+          ({ text }) => !/evidence|error_detail|idempotency_key/i.test(text),
+        ),
+    ).toBe(true);
+    expect(
+      DATA_CAPABILITY_REGISTRY['data.ingestion.get'].outputSchema.safeParse(
+        populated,
+      ).success,
+    ).toBe(true);
+
+    const emptyPool = new FakePool();
+    emptyPool.client.emptyIngestionSummaries = true;
+    const emptyRuntime = createPostgresDataReadRuntime(emptyPool);
+    const empty = await executor(emptyRuntime, 'data.ingestion.get').execute(
+      { ingestionId },
+      context,
+    );
+    expect(empty).toMatchObject({
+      qualityIssues: [],
+      agentRuns: [],
+      projectionStatuses: [],
+    });
+    expect(
+      emptyPool.client.queries.some(({ text }) =>
+        /data\.ingestion\.projection-statuses/.test(text),
+      ),
+    ).toBe(false);
   });
 
   it('returns the same safe 404 for absent and RLS-hidden resources', async () => {

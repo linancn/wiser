@@ -74,4 +74,22 @@ describe('Data Foundation management routes', () => {
     expect(source).toContain('getDataFoundationDal');
     expect(source).not.toMatch(/fixture|mock|sample/i);
   });
+
+  it('renders ingestion runtime summaries instead of API coverage placeholders', async () => {
+    const source = await readFile(
+      new URL(
+        '[locale]/data-foundation/ingestions/[ingestionId]/page.tsx',
+        new URL('./', import.meta.url),
+      ),
+      'utf8',
+    );
+    expect(source).toContain('IngestionRuntimeSummaries');
+    expect(source).not.toContain('CoverageGap');
+    expect(dictionaries['zh-CN'].dataFoundation.ingestionPage.emptyIssues).toBe(
+      '本次入库没有返回质量问题。',
+    );
+    expect(dictionaries.en.dataFoundation.ingestionPage.emptyIssues).toBe(
+      'No quality issues were returned for this ingestion.',
+    );
+  });
 });

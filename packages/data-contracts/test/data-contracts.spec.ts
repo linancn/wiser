@@ -12,6 +12,7 @@ import {
   DataItemSchema,
   DataItemVersionSchema,
   IngestionStateSchema,
+  IngestionOutputSchema,
   OperationSchema,
   OperationStatusSchema,
   ProcessingStageSchema,
@@ -585,7 +586,7 @@ const expectedJsonSchemaHashes = {
   },
   'data.ingestion.get': {
     input: 'bf57edf9d7399573105b1a2ddcc13160b29c2a8de852e6b70e3aaba4dede9878',
-    output: 'ab7ff15fce6f1b1d2b9fe851578aa973bedc10925bed0a5646afb6eeca875be3',
+    output: '2ae981bc11bde3945596af53544f9a185a9ab08e9760232f49ac7114ff3608bd',
   },
   'data.ingestion.approve': {
     input: '284419a11ea425388676752a72d139705ca907bea613595468383bce808be9b4',
@@ -593,7 +594,7 @@ const expectedJsonSchemaHashes = {
   },
   'data.ingestion.reject': {
     input: 'ef64d5a6d39a6695165c43780fee6f3feedd60aa77f9f10919e5d383972e9df6',
-    output: 'ab7ff15fce6f1b1d2b9fe851578aa973bedc10925bed0a5646afb6eeca875be3',
+    output: '2ae981bc11bde3945596af53544f9a185a9ab08e9760232f49ac7114ff3608bd',
   },
   'data.operation.cancel': {
     input: '9c3b5eb52eee1d4a21f3f318608d18c22fd3ab3b9d86bc4faa835993e59d37ec',
@@ -690,6 +691,93 @@ describe('Data Foundation status contracts', () => {
     expect(SecurityLevelSchema.safeParse('SECRET').success).toBe(false);
     expect(QualityGradeSchema.safeParse('PASSED').success).toBe(false);
     expect(AcceptanceStatusSchema.safeParse('A').success).toBe(false);
+  });
+});
+
+describe('ingestion detail summaries', () => {
+  const ingestion = {
+    ingestionId: INGESTION_ID,
+    tenantId: TENANT_ID,
+    projectId: PROJECT_ID,
+    assetIds: [ASSET_ID],
+    intendedUses: ['hydrology-analysis'],
+    requestedSecurityLevel: 'L1_INTERNAL',
+    state: 'PUBLISHED',
+    operationId: OPERATION_ID,
+    version: 4,
+    createdAt: '2026-08-22T01:00:00Z',
+    updatedAt: '2026-08-22T01:05:00Z',
+  } as const;
+
+  it('accepts bounded real summaries while preserving command output compatibility', () => {
+    expect(IngestionOutputSchema.safeParse({ ingestion }).success).toBe(true);
+    expect(
+      IngestionOutputSchema.safeParse({
+        ingestion,
+        qualityIssues: [],
+        agentRuns: [
+          {
+            agentRunId: '30000000-0000-4000-8000-000000000001',
+            agentKind: 'semantic-mapper',
+            provider: 'deterministic-fake',
+            model: 'wiser-fake-embedding-v1',
+            deterministic: true,
+            inputHash: 'a'.repeat(64),
+            outputHash: 'b'.repeat(64),
+            status: 'SUCCEEDED',
+            createdAt: '2026-08-22T01:01:00Z',
+            updatedAt: '2026-08-22T01:02:00Z',
+          },
+        ],
+        projectionStatuses: [
+          {
+            dataItemId: DATA_ITEM_ID,
+            versionId: VERSION_ID,
+            projectionKind: 'opensearch',
+            status: 'SUCCEEDED',
+            attemptCount: 1,
+            projectedAt: '2026-08-22T01:04:00Z',
+            updatedAt: '2026-08-22T01:04:00Z',
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects leaked summary fields and non-hex hashes at strict boundaries', () => {
+    expect(
+      IngestionOutputSchema.safeParse({
+        ingestion,
+        qualityIssues: [
+          {
+            issueId: '30000000-0000-4000-8000-000000000002',
+            severity: 'ERROR',
+            status: 'OPEN',
+            message: 'stationId is required',
+            createdAt: '2026-08-22T01:03:00Z',
+            evidence: { rawValue: 'must-not-cross-the-contract' },
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      IngestionOutputSchema.safeParse({
+        ingestion,
+        agentRuns: [
+          {
+            agentRunId: '30000000-0000-4000-8000-000000000001',
+            agentKind: 'semantic-mapper',
+            provider: 'deterministic-fake',
+            model: 'wiser-fake-embedding-v1',
+            deterministic: true,
+            inputHash: 'not-a-sha256',
+            status: 'SUCCEEDED',
+            createdAt: '2026-08-22T01:01:00Z',
+            updatedAt: '2026-08-22T01:02:00Z',
+          },
+        ],
+      }).success,
+    ).toBe(false);
   });
 });
 

@@ -7,6 +7,7 @@ import {
   parseDataCatalogPage,
   parseDataRouteUuid,
   parseGeoQuery,
+  parseIngestion,
   parseSearchQuery,
 } from './data-foundation';
 
@@ -147,5 +148,76 @@ describe('Data Foundation browser-safe contracts', () => {
     expect(ingestionStepState('COMMITTED', 'APPROVED')).toBe('complete');
     expect(ingestionStepState('FAILED', 'VALIDATED')).toBe('future');
     expect(ingestionStepState('CANCELLED', 'RECEIVED')).toBe('future');
+  });
+
+  it('projects real ingestion detail summaries and rejects malformed hashes', () => {
+    const response = {
+      ingestion: {
+        ingestionId: UUID,
+        tenantId: '22222222-2222-4222-8222-222222222222',
+        projectId: '33333333-3333-4333-8333-333333333333',
+        assetIds: ['44444444-4444-4444-8444-444444444444'],
+        intendedUses: ['operations'],
+        requestedSecurityLevel: 'L1_INTERNAL',
+        state: 'PUBLISHED',
+        operationId: '55555555-5555-4555-8555-555555555555',
+        version: 4,
+        createdAt: '2026-08-22T01:00:00.000Z',
+        updatedAt: '2026-08-22T01:05:00.000Z',
+      },
+      qualityIssues: [],
+      agentRuns: [
+        {
+          agentRunId: '66666666-6666-4666-8666-666666666666',
+          agentKind: 'semantic-mapper',
+          provider: 'deterministic-fake',
+          model: 'wiser-fake-embedding-v1',
+          deterministic: true,
+          inputHash: 'a'.repeat(64),
+          outputHash: 'b'.repeat(64),
+          status: 'SUCCEEDED',
+          createdAt: '2026-08-22T01:01:00.000Z',
+          updatedAt: '2026-08-22T01:02:00.000Z',
+          internalPrompt: 'must-not-cross-the-DAL',
+        },
+      ],
+      projectionStatuses: [
+        {
+          dataItemId: '77777777-7777-4777-8777-777777777777',
+          versionId: '88888888-8888-4888-8888-888888888888',
+          projectionKind: 'opensearch',
+          status: 'SUCCEEDED',
+          attemptCount: 1,
+          projectedAt: '2026-08-22T01:04:00.000Z',
+          updatedAt: '2026-08-22T01:04:00.000Z',
+        },
+      ],
+    };
+
+    expect(parseIngestion(response)).toMatchObject({
+      ingestionId: UUID,
+      qualityIssues: [],
+      agentRuns: [
+        {
+          agentRunId: '66666666-6666-4666-8666-666666666666',
+          inputHash: 'a'.repeat(64),
+        },
+      ],
+      projectionStatuses: [
+        {
+          dataItemId: '77777777-7777-4777-8777-777777777777',
+          projectionKind: 'opensearch',
+        },
+      ],
+    });
+    expect(parseIngestion(response).agentRuns?.[0]).not.toHaveProperty(
+      'internalPrompt',
+    );
+    expect(() =>
+      parseIngestion({
+        ...response,
+        agentRuns: [{ ...response.agentRuns[0], inputHash: 'not-sha256' }],
+      }),
+    ).toThrow(/ingestion response/i);
   });
 });
