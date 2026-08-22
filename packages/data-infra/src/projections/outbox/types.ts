@@ -60,6 +60,7 @@ export interface ProjectionOutboxRepository {
     scope: ProjectionScope,
     consumerName: string,
     event: ProjectionEvent,
+    failureCategory?: string,
   ): Promise<void>;
   close(): Promise<void>;
 }

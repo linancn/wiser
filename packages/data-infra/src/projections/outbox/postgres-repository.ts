@@ -144,9 +144,23 @@ insert into event.consumer_checkpoint (
   partition_key,
   last_outbox_event_id,
   last_event_id,
+  last_error,
   security_level,
   policy_version
-) values ($1, $2, $3, 'data.version.committed', $4, $5, $6, $7)
+) values (
+  $1,
+  $2,
+  $3,
+  'data.version.committed',
+  $4,
+  $5,
+  case
+    when $8::text is null then null
+    else jsonb_build_object('category', $8::text)
+  end,
+  $6,
+  $7
+)
 on conflict (tenant_id, project_id, consumer_name, partition_key) do update
 set last_event_id = case
       when excluded.last_outbox_event_id > event.consumer_checkpoint.last_outbox_event_id
@@ -157,7 +171,11 @@ set last_event_id = case
       event.consumer_checkpoint.last_outbox_event_id,
       excluded.last_outbox_event_id
     ),
-    last_error = null,
+    last_error = case
+      when excluded.last_outbox_event_id > event.consumer_checkpoint.last_outbox_event_id
+        then excluded.last_error
+      else event.consumer_checkpoint.last_error
+    end,
     security_level = excluded.security_level,
     policy_version = excluded.policy_version,
     row_version = event.consumer_checkpoint.row_version + 1,
@@ -366,7 +384,11 @@ export class PostgresProjectionOutboxRepository implements ProjectionOutboxRepos
     scope: ProjectionScope,
     consumerName: string,
     event: ProjectionEvent,
+    failureCategory?: string,
   ): Promise<void> {
+    if (failureCategory !== undefined) {
+      assertFailureCategory(failureCategory);
+    }
     return this.transaction(scope, async (client) => {
       await client.query(ADVANCE_CHECKPOINT_SQL, [
         scope.tenantId,
@@ -376,6 +398,7 @@ export class PostgresProjectionOutboxRepository implements ProjectionOutboxRepos
         event.eventId,
         scope.maxSecurityLevel,
         scope.policyVersion,
+        failureCategory ?? null,
       ]);
     });
   }

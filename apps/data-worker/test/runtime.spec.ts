@@ -45,6 +45,7 @@ const event: ProjectionEvent = {
 class MemoryRepository implements ProjectionOutboxRepository {
   readonly states = new Map<ProjectionKind, ProjectionState>();
   checkpoint = 0;
+  checkpointFailure: string | undefined;
 
   readBatch(): Promise<readonly ProjectionEvent[]> {
     return Promise.resolve(this.checkpoint === 0 ? [event] : []);
@@ -69,8 +70,14 @@ class MemoryRepository implements ProjectionOutboxRepository {
     this.states.set(kind, 'FAILED');
     return Promise.resolve();
   }
-  advanceCheckpoint(): Promise<void> {
+  advanceCheckpoint(
+    _scope?: ProjectionScope,
+    _consumerName?: string,
+    _event?: ProjectionEvent,
+    failureCategory?: string,
+  ): Promise<void> {
     this.checkpoint = 1;
+    this.checkpointFailure = failureCategory;
     return Promise.resolve();
   }
   close(): Promise<void> {
@@ -163,7 +170,7 @@ describe('default Data Worker runtime', () => {
     const gate: ProjectionPublicationGate = {
       publish: vi.fn(() => {
         if (unavailable) return Promise.reject(new Error('temporary'));
-        return Promise.resolve();
+        return Promise.resolve('PUBLISHED' as const);
       }),
       isPublished: () => Promise.resolve(false),
       close: () => Promise.resolve(),
@@ -195,6 +202,31 @@ describe('default Data Worker runtime', () => {
     });
     expect(project).toHaveBeenCalledTimes(5);
     expect(delegate.checkpoint).toBe(1);
+    expect(delegate.checkpointFailure).toBeUndefined();
+  });
+
+  it('checkpoints a terminal publication poison event without replaying succeeded targets', async () => {
+    const delegate = new MemoryRepository();
+    const gate: ProjectionPublicationGate = {
+      publish: () => Promise.resolve('TERMINAL_OPERATION'),
+      isPublished: () => Promise.resolve(false),
+      close: () => Promise.resolve(),
+    };
+    const project = vi.fn(() => Promise.resolve());
+    const consumer = new ProjectionOutboxConsumer({
+      repository: new PublishingProjectionRepository(delegate, gate),
+      targets: ['POSTGIS', 'WEAVIATE', 'OPENSEARCH', 'NEO4J', 'STAC'].map(
+        (kind) => ({ kind: kind as ProjectionKind, project }),
+      ),
+      consumerName: 'data-worker-projection-v1',
+    });
+
+    await expect(consumer.processBatch(scope, 1)).resolves.toMatchObject({
+      checkpointedEvents: 1,
+      attemptedTargets: 5,
+    });
+    expect(delegate.checkpoint).toBe(1);
+    expect(delegate.checkpointFailure).toBe('PUBLICATION_OPERATION_TERMINAL');
   });
 
   it('runs scheduler and projection loop together, then drains and closes both', async () => {
@@ -265,7 +297,7 @@ describe('default Data Worker runtime', () => {
     let checks = 0;
     let clock = 0;
     const gate: ProjectionPublicationGate = {
-      publish: () => Promise.resolve(),
+      publish: () => Promise.resolve('PUBLISHED'),
       isPublished: () => Promise.resolve(++checks >= 2),
       close: () => Promise.resolve(),
     };

@@ -150,6 +150,12 @@ describe('Postgres projection outbox repository', () => {
     );
     await repository.markSucceeded(event, 'WEAVIATE');
     await repository.advanceCheckpoint(scope, 'projection-worker-v1', event);
+    await repository.advanceCheckpoint(
+      scope,
+      'projection-worker-v1',
+      event,
+      'PUBLICATION_OPERATION_TERMINAL',
+    );
 
     const statements = pool.clients.flatMap((client) => client.queries);
     const prepare = statements.find(({ text }) =>
@@ -168,14 +174,17 @@ describe('Postgres projection outbox repository', () => {
     );
     expect(failure?.values).toContain('VECTOR_BACKEND_UNAVAILABLE');
     expect(JSON.stringify(failure?.values)).not.toContain('password');
-    const checkpoint = statements.find(({ text }) =>
+    const checkpoints = statements.filter(({ text }) =>
       /insert into event\.consumer_checkpoint/i.test(text),
     );
+    const checkpoint = checkpoints[0];
     expect(checkpoint?.text).toMatch(/greatest/i);
     expect(checkpoint?.text).toMatch(
-      /last_error\s*=\s*case[\s\S]*jsonb_build_object\('category'/i,
+      /last_error,[\s\S]*jsonb_build_object\('category',\s*\$8::text\)/i,
     );
+    expect(checkpoint?.text).toMatch(/last_error\s*=\s*case/i);
     expect(checkpoint?.values).toContain(event.outboxEventId);
+    expect(checkpoints[1]?.values).toContain('PUBLICATION_OPERATION_TERMINAL');
     expect(pool.clients.every(({ released }) => released)).toBe(true);
 
     await repository.close();

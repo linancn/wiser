@@ -572,7 +572,7 @@ export class PostgresProjectionPublicationGate implements ProjectionPublicationG
     }
   }
 
-  publish(event: ProjectionEvent): Promise<void> {
+  publish(event: ProjectionEvent): Promise<'PUBLISHED' | 'TERMINAL_OPERATION'> {
     return transaction(this.pool, event, false, async (client) => {
       const locked = await client.query(PUBLICATION_LOCK_SQL, [
         event.tenantId,
@@ -616,10 +616,17 @@ export class PostgresProjectionPublicationGate implements ProjectionPublicationG
         ) {
           throw new Error('Publication authority is inconsistent.');
         }
-        return;
+        return 'PUBLISHED' as const;
       }
       if (state !== 'COMMITTED' && state !== 'PROJECTING') {
         throw new Error('Publication state is invalid.');
+      }
+      const operationStatus = text(row, 'operation_status');
+      if (operationStatus === 'FAILED' || operationStatus === 'CANCELLED') {
+        return 'TERMINAL_OPERATION' as const;
+      }
+      if (operationStatus !== 'RUNNING') {
+        throw new Error('Publication Operation is not running.');
       }
       let sessionVersion = integer(row, 'session_row_version');
       if (state === 'COMMITTED') {
@@ -666,10 +673,6 @@ export class PostgresProjectionPublicationGate implements ProjectionPublicationG
         ]);
         if (version.rows.length !== 1) throw new Error('Publication conflict.');
       }
-      const operationStatus = text(row, 'operation_status');
-      if (operationStatus !== 'RUNNING') {
-        throw new Error('Publication Operation is not running.');
-      }
       await client.query(PUBLICATION_OPERATION_EVENTS_SQL, [
         event.tenantId,
         event.projectId,
@@ -689,6 +692,7 @@ export class PostgresProjectionPublicationGate implements ProjectionPublicationG
         event.securityLevel,
         event.policyVersion,
       ]);
+      return 'PUBLISHED' as const;
     });
   }
 

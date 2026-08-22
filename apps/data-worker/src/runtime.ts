@@ -17,7 +17,7 @@ import {
 } from './handlers/registry.js';
 
 export interface ProjectionPublicationGate {
-  publish(event: ProjectionEvent): Promise<void>;
+  publish(event: ProjectionEvent): Promise<'PUBLISHED' | 'TERMINAL_OPERATION'>;
   isPublished(input: {
     readonly tenantId: string;
     readonly projectId: string;
@@ -70,8 +70,15 @@ export class PublishingProjectionRepository implements ProjectionOutboxRepositor
     consumerName: string,
     event: ProjectionEvent,
   ): Promise<void> {
-    await this.publication.publish(event);
-    await this.delegate.advanceCheckpoint(scope, consumerName, event);
+    const outcome = await this.publication.publish(event);
+    await this.delegate.advanceCheckpoint(
+      scope,
+      consumerName,
+      event,
+      outcome === 'TERMINAL_OPERATION'
+        ? 'PUBLICATION_OPERATION_TERMINAL'
+        : undefined,
+    );
   }
 
   close(): Promise<void> {
