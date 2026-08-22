@@ -8,6 +8,7 @@ const complete = {
   DATA_DATABASE_URL:
     'postgresql://wiser_runtime:local@data-postgres:5432/wiser_data',
   DATA_S3_ENDPOINT: 'http://seaweedfs:8333',
+  DATA_S3_PUBLIC_ENDPOINT: 'http://127.0.0.1:18333',
   DATA_S3_REGION: 'us-east-1',
   DATA_S3_BUCKET: 'wiser-authority',
   DATA_S3_ACCESS_KEY_ID: 'wiser-runtime',
@@ -73,6 +74,7 @@ describe('Data Foundation API runtime configuration', () => {
           secretAccessKey: complete.DATA_S3_SECRET_ACCESS_KEY,
         },
       },
+      objectStorePublicEndpoint: complete.DATA_S3_PUBLIC_ENDPOINT,
       workerUrl: complete.DATA_WORKER_URL,
       weaviate: {
         url: complete.DATA_WEAVIATE_URL,
