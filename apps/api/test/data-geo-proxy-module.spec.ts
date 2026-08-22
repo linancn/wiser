@@ -140,7 +140,7 @@ describe('Data Foundation governed GIS proxy', () => {
 
     for (const [path, parameters] of [
       ['/api/data/v1/geo/ogc/{service}', ['service', 'request']],
-      ['/api/data/v1/geo/stac/*', ['*']],
+      ['/api/data/v1/geo/stac/{*}', ['*']],
       [
         '/api/data/v1/geo/tiles/vector/versions/{versionId}/{z}/{x}/{tile}',
         ['versionId', 'z', 'x', 'tile'],
@@ -297,6 +297,7 @@ describe('Data Foundation governed GIS proxy', () => {
       headers,
     });
     expect(vector.statusCode).toBe(200);
+    expect([...vector.rawPayload]).toEqual([26, 0]);
     expect(fixture.authority.authorizeVectorVersion).toHaveBeenCalledWith({
       context,
       versionId: VERSION_ID,

@@ -401,6 +401,10 @@ where asset.tenant_id = $1::uuid and asset.project_id = $2::uuid
   and asset.version_id = $3::uuid and version.committed_at is not null
   and asset.lifecycle_state = 'RAW' and asset.content_hash is not null
   and asset.content_blob_id is not null
+  and lower(btrim(split_part(asset.media_type, ';', 1))) in (
+    'image/tiff', 'image/geotiff', 'application/geotiff',
+    'application/x-geotiff'
+  )
   and security.authorized_row(asset.tenant_id, asset.project_id,
     asset.security_level, asset.policy_version)
   and security.authorized_row(version.tenant_id, version.project_id,
@@ -523,29 +527,31 @@ export class PostgresDataFoundationGeoAuthorityPort
         context.authorization.projectId,
         input.versionId,
       ]);
-      const row = result.rows[0];
-      const storageKey = row?.['storage_key'];
-      const contentHash = row?.['content_hash'];
-      const mediaType = row?.['media_type'];
-      const expectedKey =
-        `tenants/${context.authorization.tenantId}` +
-        `/projects/${context.authorization.projectId}` +
-        `/versions/${input.versionId}/sha256/${String(contentHash)}`;
-      const normalizedMediaType =
-        typeof mediaType === 'string'
-          ? mediaType.split(';', 1)[0]!.trim().toLowerCase()
-          : '';
-      if (
-        result.rows.length !== 1 ||
-        row?.['version_id'] !== input.versionId ||
-        typeof storageKey !== 'string' ||
-        typeof contentHash !== 'string' ||
-        !HASH_PATTERN.test(contentHash) ||
-        storageKey !== expectedKey ||
-        !COG_MEDIA_TYPES.has(normalizedMediaType)
-      ) {
+      const row = result.rows.find((candidate) => {
+        const storageKey = candidate['storage_key'];
+        const contentHash = candidate['content_hash'];
+        const mediaType = candidate['media_type'];
+        const expectedKey =
+          `tenants/${context.authorization.tenantId}` +
+          `/projects/${context.authorization.projectId}` +
+          `/versions/${input.versionId}/sha256/${String(contentHash)}`;
+        const normalizedMediaType =
+          typeof mediaType === 'string'
+            ? mediaType.split(';', 1)[0]!.trim().toLowerCase()
+            : '';
+        return (
+          candidate['version_id'] === input.versionId &&
+          typeof storageKey === 'string' &&
+          typeof contentHash === 'string' &&
+          HASH_PATTERN.test(contentHash) &&
+          storageKey === expectedKey &&
+          COG_MEDIA_TYPES.has(normalizedMediaType)
+        );
+      });
+      if (row === undefined) {
         throw proxyError('NOT_FOUND');
       }
+      const storageKey = row['storage_key'] as string;
       await client.query('COMMIT');
       return Object.freeze({
         sourceUrl: `s3://${this.#bucket}/${storageKey}`,

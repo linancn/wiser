@@ -178,8 +178,7 @@ describe('Postgres GIS authority and audit port', () => {
           authority,
           audit: authority,
           proxy: {
-            request: () =>
-              Promise.reject(new Error('must not reach upstream')),
+            request: () => Promise.reject(new Error('must not reach upstream')),
           },
         }),
       ],
@@ -275,20 +274,23 @@ describe('Postgres GIS authority and audit port', () => {
     const validStorageKey =
       `tenants/${TENANT_ID}/projects/${PROJECT_ID}` +
       `/versions/${VERSION_ID}/sha256/${HASH}`;
-    const client = new FakeClient([], [
-      {
-        version_id: VERSION_ID,
-        storage_key: validStorageKey.replace(HASH, 'b'.repeat(64)),
-        content_hash: 'b'.repeat(64),
-        media_type: 'application/geo+json',
-      },
-      {
-        version_id: VERSION_ID,
-        storage_key: validStorageKey,
-        content_hash: HASH,
-        media_type: 'image/tiff; application=geotiff',
-      },
-    ]);
+    const client = new FakeClient(
+      [],
+      [
+        {
+          version_id: VERSION_ID,
+          storage_key: validStorageKey.replace(HASH, 'b'.repeat(64)),
+          content_hash: 'b'.repeat(64),
+          media_type: 'application/geo+json',
+        },
+        {
+          version_id: VERSION_ID,
+          storage_key: validStorageKey,
+          content_hash: HASH,
+          media_type: 'image/tiff; application=geotiff',
+        },
+      ],
+    );
     const port = new PostgresDataFoundationGeoAuthorityPort({
       pool: { connect: () => Promise.resolve(client) },
       bucket: 'wiser-authority',

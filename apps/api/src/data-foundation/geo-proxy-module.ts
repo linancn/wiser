@@ -1,7 +1,13 @@
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type {
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  FastifySchema,
+  RouteHandlerMethod,
+} from 'fastify';
 import { z } from 'zod';
 
 import { deterministicStacCollectionId } from '@wiser/data-infra';
@@ -20,7 +26,7 @@ const ITEM_PATTERN = /^wiser-[a-f0-9]{48}$/;
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
 const SAFE_BUCKET_PATTERN = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/;
 const READ_METHODS = new Set(['GET', 'HEAD']);
-const ROUTE_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
+const FORBIDDEN_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'] as const;
 
 export type DataFoundationGeoTarget =
   'GEOSERVER' | 'STAC' | 'TITILER' | 'MARTIN';
@@ -182,6 +188,231 @@ const errors = {
       '服务暂时无法完成 GIS 请求。 / The service could not complete the GIS request.',
   },
 } as const satisfies Readonly<Record<string, ErrorMapping>>;
+
+const GeoErrorResponseSchema = {
+  description: 'Stable bilingual GIS proxy error without upstream details.',
+  type: 'object',
+  additionalProperties: false,
+  required: ['code', 'message', 'traceId'],
+  properties: {
+    code: { type: 'string' },
+    message: { type: 'string' },
+    traceId: { type: 'string', pattern: '^[a-f0-9]{32}$' },
+  },
+} as const;
+
+const GeoAuthHeadersSchema = {
+  type: 'object',
+  required: [
+    'authorization',
+    'x-wiser-tenant-id',
+    'x-wiser-project-id',
+    'x-wiser-purpose',
+  ],
+  properties: {
+    authorization: { type: 'string', pattern: '^Bearer [^\\s]+$' },
+    'x-wiser-tenant-id': { type: 'string', format: 'uuid' },
+    'x-wiser-project-id': { type: 'string', format: 'uuid' },
+    'x-wiser-purpose': { type: 'string', minLength: 1, maxLength: 96 },
+  },
+} as const;
+
+function geoResponses(success: Readonly<Record<string, unknown>>) {
+  return {
+    200: success,
+    401: GeoErrorResponseSchema,
+    403: GeoErrorResponseSchema,
+    404: GeoErrorResponseSchema,
+    413: GeoErrorResponseSchema,
+    422: GeoErrorResponseSchema,
+    502: GeoErrorResponseSchema,
+    503: GeoErrorResponseSchema,
+  } as const;
+}
+
+const OgcRouteSchema = {
+  tags: ['data-foundation'],
+  summary: 'Governed read-only OGC proxy',
+  description:
+    'Maps an authenticated WISER context to one fixed GeoServer WMS, WFS, WCS, or WMTS endpoint. GeoServer REST/admin and remote URL parameters are not reachable.',
+  operationId: 'data_geo_ogc_proxy',
+  security: [{ bearerAuth: [] }],
+  headers: GeoAuthHeadersSchema,
+  params: {
+    type: 'object',
+    required: ['service'],
+    properties: {
+      service: { type: 'string', enum: ['wms', 'wfs', 'wcs', 'wmts'] },
+    },
+  },
+  querystring: {
+    type: 'object',
+    required: ['request'],
+    properties: {
+      request: {
+        type: 'string',
+        description:
+          'Service-specific read operation such as GetCapabilities, GetMap, GetFeature, GetCoverage, or GetTile.',
+      },
+      service: { type: 'string' },
+      version: { type: 'string' },
+      versionId: { type: 'string', format: 'uuid' },
+      bbox: { type: 'string' },
+      crs: { type: 'string' },
+      srs: { type: 'string' },
+      width: { type: 'integer', minimum: 1, maximum: 4096 },
+      height: { type: 'integer', minimum: 1, maximum: 4096 },
+      format: { type: 'string' },
+    },
+    additionalProperties: true,
+  },
+  response: geoResponses({
+    description:
+      'Whitelisted OGC XML, GeoJSON/GML, raster image, or vector-tile response.',
+    type: 'string',
+  }),
+} as const satisfies FastifySchema;
+
+const StacWildcardRouteSchema = {
+  tags: ['data-foundation'],
+  summary: 'Governed tenant/project STAC proxy',
+  description:
+    'Exposes only the deterministic STAC collection for the authenticated tenant and project.',
+  operationId: 'data_geo_stac_proxy',
+  security: [{ bearerAuth: [] }],
+  headers: GeoAuthHeadersSchema,
+  params: {
+    type: 'object',
+    required: ['*'],
+    properties: {
+      '*': {
+        type: 'string',
+        description:
+          'Whitelisted conformance, search, or current collection/item path.',
+      },
+    },
+  },
+  querystring: {
+    type: 'object',
+    properties: {
+      limit: { type: 'integer', minimum: 1, maximum: 100 },
+      bbox: { type: 'string' },
+      datetime: { type: 'string' },
+      ids: { type: 'string' },
+      token: { type: 'string' },
+    },
+    additionalProperties: false,
+  },
+  response: geoResponses({
+    description: 'Bounded STAC JSON or GeoJSON response.',
+    type: 'object',
+    additionalProperties: true,
+  }),
+} as const satisfies FastifySchema;
+
+const StacRootRouteSchema = {
+  ...StacWildcardRouteSchema,
+  operationId: 'data_geo_stac_collection',
+  params: {
+    type: 'object',
+    properties: {},
+    additionalProperties: false,
+  },
+} as const satisfies FastifySchema;
+
+const VectorTileRouteSchema = {
+  tags: ['data-foundation'],
+  summary: 'Governed immutable-version vector tile',
+  description:
+    'Reauthorizes the immutable version through data-postgres RLS before calling the tenant-scoped Martin MVT function.',
+  operationId: 'data_geo_vector_tile',
+  security: [{ bearerAuth: [] }],
+  headers: GeoAuthHeadersSchema,
+  params: {
+    type: 'object',
+    required: ['versionId', 'z', 'x', 'tile'],
+    properties: {
+      versionId: { type: 'string', format: 'uuid' },
+      z: { type: 'integer', minimum: 0, maximum: 22 },
+      x: { type: 'integer', minimum: 0 },
+      tile: { type: 'string', pattern: '^\\d+\\.pbf$' },
+    },
+  },
+  response: geoResponses({
+    description: 'Mapbox Vector Tile with source-layer authority.',
+    type: 'string',
+    contentEncoding: 'binary',
+    contentMediaType: 'application/vnd.mapbox-vector-tile',
+  }),
+} as const satisfies FastifySchema;
+
+const RasterTileRouteSchema = {
+  tags: ['data-foundation'],
+  summary: 'Governed immutable-version raster tile',
+  description:
+    'Resolves an authorized COG authority asset server-side and calls fixed-origin TiTiler without accepting a client URL or source.',
+  operationId: 'data_geo_raster_tile',
+  security: [{ bearerAuth: [] }],
+  headers: GeoAuthHeadersSchema,
+  params: {
+    type: 'object',
+    required: ['versionId', 'tms', 'z', 'x', 'tile'],
+    properties: {
+      versionId: { type: 'string', format: 'uuid' },
+      tms: { type: 'string', enum: ['WebMercatorQuad'] },
+      z: { type: 'integer', minimum: 0, maximum: 22 },
+      x: { type: 'integer', minimum: 0 },
+      tile: { type: 'string', pattern: '^\\d+\\.(?:png|jpg|webp)$' },
+    },
+  },
+  querystring: {
+    type: 'object',
+    properties: {
+      resampling: { type: 'string' },
+      rescale: { type: 'string' },
+      bidx: { type: 'integer', minimum: 1, maximum: 256 },
+      colormap_name: { type: 'string' },
+      return_mask: { type: 'boolean' },
+    },
+    additionalProperties: false,
+  },
+  response: geoResponses({
+    description: 'PNG, JPEG, or WebP raster tile.',
+    type: 'string',
+    contentEncoding: 'binary',
+    contentMediaType: 'image/png',
+  }),
+} as const satisfies FastifySchema;
+
+const passThroughGeoValidatorCompiler = () => (value: unknown) => ({ value });
+const passThroughGeoSerializerCompiler =
+  () =>
+  (value: unknown): string =>
+    Buffer.isBuffer(value)
+      ? (value as unknown as string)
+      : JSON.stringify(value);
+
+function registerReadOnlyRoute(
+  app: FastifyInstance,
+  url: string,
+  schema: FastifySchema,
+  handler: RouteHandlerMethod,
+): void {
+  app.route({
+    method: 'GET',
+    url,
+    schema,
+    validatorCompiler: passThroughGeoValidatorCompiler,
+    serializerCompiler: passThroughGeoSerializerCompiler,
+    handler,
+  });
+  app.route({
+    method: [...FORBIDDEN_METHODS],
+    url,
+    schema: { hide: true },
+    handler,
+  });
+}
 
 function geoError(
   code: DataFoundationGeoProxyErrorCode,
@@ -895,42 +1126,44 @@ export function createDataFoundationGeoProxyModule(
           'unauthenticated GIS proxy request denied',
         );
       };
-      app.route({
-        method: [...ROUTE_METHODS],
-        url: '/api/data/v1/geo/ogc/:service',
-        handler: (request, reply) =>
-          execute(request, reply, async (context) => {
-            const params = request.params as { readonly service?: unknown };
-            const planned = ogcRequest(request, params.service);
-            if (planned === null) return null;
-            if (planned.versionId !== undefined) {
-              await options.authority.authorizeVectorVersion({
-                context,
-                versionId: planned.versionId,
-              });
-            }
-            const query = planned.query.map(
-              ([key, value]) =>
-                [
-                  key,
-                  value
-                    .replace('__WISER_TENANT__', context.authorization.tenantId)
-                    .replace(
-                      '__WISER_PROJECT__',
-                      context.authorization.projectId,
-                    ),
-                ] as const,
-            );
-            return {
-              target: planned.target,
-              path: planned.path,
-              method: request.method as 'GET' | 'HEAD',
-              query,
+      const ogcHandler: RouteHandlerMethod = (request, reply) =>
+        execute(request, reply, async (context) => {
+          const params = request.params as { readonly service?: unknown };
+          const planned = ogcRequest(request, params.service);
+          if (planned === null) return null;
+          if (planned.versionId !== undefined) {
+            await options.authority.authorizeVectorVersion({
               context,
-              signal: AbortSignal.timeout(timeoutMs),
-            };
-          }),
-      });
+              versionId: planned.versionId,
+            });
+          }
+          const query = planned.query.map(
+            ([key, value]) =>
+              [
+                key,
+                value
+                  .replace('__WISER_TENANT__', context.authorization.tenantId)
+                  .replace(
+                    '__WISER_PROJECT__',
+                    context.authorization.projectId,
+                  ),
+              ] as const,
+          );
+          return {
+            target: planned.target,
+            path: planned.path,
+            method: request.method as 'GET' | 'HEAD',
+            query,
+            context,
+            signal: AbortSignal.timeout(timeoutMs),
+          };
+        });
+      registerReadOnlyRoute(
+        app,
+        '/api/data/v1/geo/ogc/:service',
+        OgcRouteSchema,
+        ogcHandler,
+      );
 
       const stacHandler = (request: FastifyRequest, reply: FastifyReply) =>
         execute(request, reply, (context) => {
@@ -946,82 +1179,88 @@ export function createDataFoundationGeoProxyModule(
             signal: AbortSignal.timeout(timeoutMs),
           };
         });
-      app.route({
-        method: [...ROUTE_METHODS],
-        url: '/api/data/v1/geo/stac',
-        handler: stacHandler,
-      });
-      app.route({
-        method: [...ROUTE_METHODS],
-        url: '/api/data/v1/geo/stac/*',
-        handler: stacHandler,
-      });
+      registerReadOnlyRoute(
+        app,
+        '/api/data/v1/geo/stac',
+        StacRootRouteSchema,
+        stacHandler,
+      );
+      registerReadOnlyRoute(
+        app,
+        '/api/data/v1/geo/stac/*',
+        StacWildcardRouteSchema,
+        stacHandler,
+      );
 
-      app.route({
-        method: [...ROUTE_METHODS],
-        url: '/api/data/v1/geo/tiles/vector/versions/:versionId/:z/:x/:tile',
-        handler: (request, reply) =>
-          execute(request, reply, async (context) => {
-            const tile = tileCoordinates(request.params);
-            if (tile === null || tile.format !== 'pbf') return null;
-            const query = strictQuery(request, new Set());
-            if (query === null || query.length !== 0) return null;
-            await options.authority.authorizeVectorVersion({
-              context,
+      const vectorHandler: RouteHandlerMethod = (request, reply) =>
+        execute(request, reply, async (context) => {
+          const tile = tileCoordinates(request.params);
+          if (tile === null || tile.format !== 'pbf') return null;
+          const query = strictQuery(request, new Set());
+          if (query === null || query.length !== 0) return null;
+          await options.authority.authorizeVectorVersion({
+            context,
+            versionId: tile.versionId,
+          });
+          return {
+            target: 'MARTIN',
+            path: `/wiser_spatial_extent_mvt/${tile.z}/${tile.x}/${tile.y}`,
+            method: request.method as 'GET' | 'HEAD',
+            query: sortedQuery({
+              tenantId: context.authorization.tenantId,
+              projectId: context.authorization.projectId,
               versionId: tile.versionId,
-            });
-            return {
-              target: 'MARTIN',
-              path: `/wiser_spatial_extent_mvt/${tile.z}/${tile.x}/${tile.y}`,
-              method: request.method as 'GET' | 'HEAD',
-              query: sortedQuery({
-                tenantId: context.authorization.tenantId,
-                projectId: context.authorization.projectId,
-                versionId: tile.versionId,
-                maxSecurityLevel: context.authorization.maxSecurityLevel,
-                policyVersion: String(context.authorization.authzVersion),
-              }),
-              context,
-              signal: AbortSignal.timeout(timeoutMs),
-            };
-          }),
-      });
+              maxSecurityLevel: context.authorization.maxSecurityLevel,
+              policyVersion: String(context.authorization.authzVersion),
+            }),
+            context,
+            signal: AbortSignal.timeout(timeoutMs),
+          };
+        });
+      registerReadOnlyRoute(
+        app,
+        '/api/data/v1/geo/tiles/vector/versions/:versionId/:z/:x/:tile',
+        VectorTileRouteSchema,
+        vectorHandler,
+      );
 
-      app.route({
-        method: [...ROUTE_METHODS],
-        url: '/api/data/v1/geo/tiles/raster/versions/:versionId/:tms/:z/:x/:tile',
-        handler: (request, reply) =>
-          execute(request, reply, async (context) => {
-            const params = request.params as { readonly tms?: unknown };
-            const tile = tileCoordinates(request.params);
-            const query = rasterQuery(request);
-            if (
-              tile === null ||
-              !['png', 'jpg', 'webp'].includes(tile.format) ||
-              params.tms !== 'WebMercatorQuad' ||
-              query === null
-            ) {
-              return null;
-            }
-            const source = await options.authority.resolveRasterVersion({
-              context,
-              versionId: tile.versionId,
-            });
-            if (!safeRasterSource(source.sourceUrl, context, tile.versionId)) {
-              throw geoError('INVALID_RESPONSE');
-            }
-            return {
-              target: 'TITILER',
-              path:
-                `/cog/tiles/WebMercatorQuad/${tile.z}/${tile.x}/${tile.y}` +
-                `.${tile.format}`,
-              method: request.method as 'GET' | 'HEAD',
-              query: sortedQuery({ ...query, url: source.sourceUrl }),
-              context,
-              signal: AbortSignal.timeout(timeoutMs),
-            };
-          }),
-      });
+      const rasterHandler: RouteHandlerMethod = (request, reply) =>
+        execute(request, reply, async (context) => {
+          const params = request.params as { readonly tms?: unknown };
+          const tile = tileCoordinates(request.params);
+          const query = rasterQuery(request);
+          if (
+            tile === null ||
+            !['png', 'jpg', 'webp'].includes(tile.format) ||
+            params.tms !== 'WebMercatorQuad' ||
+            query === null
+          ) {
+            return null;
+          }
+          const source = await options.authority.resolveRasterVersion({
+            context,
+            versionId: tile.versionId,
+          });
+          if (!safeRasterSource(source.sourceUrl, context, tile.versionId)) {
+            throw geoError('INVALID_RESPONSE');
+          }
+          return {
+            target: 'TITILER',
+            path:
+              `/cog/tiles/WebMercatorQuad/${tile.z}/${tile.x}/${tile.y}` +
+              `.${tile.format}`,
+            method: request.method as 'GET' | 'HEAD',
+            query: sortedQuery({ ...query, url: source.sourceUrl }),
+            context,
+            signal: AbortSignal.timeout(timeoutMs),
+          };
+        });
+      registerReadOnlyRoute(
+        app,
+        '/api/data/v1/geo/tiles/raster/versions/:versionId/:tms/:z/:x/:tile',
+        RasterTileRouteSchema,
+        rasterHandler,
+      );
     },
   };
 }
