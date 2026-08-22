@@ -44,6 +44,19 @@ test('serves Chinese by default and preserves the English corpus', async ({
   await expect(
     page.getByRole('heading', { name: 'Development guide' }),
   ).toBeVisible();
+
+  await page.goto('/development/product-experience/');
+  await expect(
+    page.getByRole('heading', { name: '产品界面与内容设计' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: '选择文档语言' }).click();
+  await page.getByRole('button', { name: 'English', exact: true }).click();
+  await expect(page).toHaveURL(/\/en\/development\/product-experience\/$/);
+  await expect(
+    page.getByRole('heading', {
+      name: 'Product interface and content design',
+    }),
+  ).toBeVisible();
 });
 
 test('keeps the migrated document routes and built-in search available', async ({

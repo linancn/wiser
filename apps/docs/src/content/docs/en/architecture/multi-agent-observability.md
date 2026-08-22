@@ -16,7 +16,7 @@ checkPaths:
   - apps/telemetry-ingress/**
   - infrastructure/observability/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 283879984de8a5d65d71c384bef90da2cd5ca541
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## A Run is a team exercise
@@ -35,7 +35,7 @@ Ecology ─────┘                              │
 
 ## Control-room information architecture
 
-Global navigation contains only **Scenario library** and **Run control**. The library owns drafts, validation, publication, versions, and team contracts. Run control is read-only by default, and every Run is split into **Overview / Collaboration / Evaluation / Trace / Replay** workspaces.
+Agent EXCON context navigation contains only **Scenarios** and **Exercise runs** beneath WISER primary system navigation; these tasks never compete with Data Foundation or Portal. Scenarios own drafts, validation, publication, versions, and team contracts. Exercise runs are read-only by default, and every Run is split into **Overview / Collaboration / Evaluation / Trace / Replay** object-local workspaces.
 
 - **Overview** answers authority status, highest risk, and next action first. It shows at most three attention items, team posture, recent events, and the basin decision spine.
 - **Collaboration** renders requests/responses, ArtifactVersion handoffs, and per-recipient Receipt state as a confluence ledger. It never labels acknowledgement as read or agreement.
@@ -44,9 +44,9 @@ Global navigation contains only **Scenario library** and **Run control**. The li
 - **Replay** reconstructs receipts, events, and visible evidence by `run_seq` and historical perspective. Technical telemetry remains a best-effort overlay.
 
 ```text
-Scenario library ──→ Scenario workspace ──→ related Runs
+Scenarios ──→ Scenario configuration ──→ related Runs
                                              │
-Run control ───────→ Run overview ───────────┼─→ Evaluation
+Exercise runs ─────→ Run overview ───────────┼─→ Evaluation
                                              ├─→ Collaboration
                                              ├─→ Trace
                                              └─→ Replay

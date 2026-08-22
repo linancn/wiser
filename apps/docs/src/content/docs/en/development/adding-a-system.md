@@ -29,7 +29,7 @@ checkPaths:
   - .docpact/**
   - .github/workflows/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## Intended use
@@ -185,15 +185,17 @@ A Skill documents discovery, invocation, recovery, and security workflows. It al
 ## 6. Integrate the unified frontend
 
 Put system pages under `apps/web/src/app/[locale]/<system>/` and reuse the existing `AppShell`, semantic tokens, components, and theme mechanism.
+Read [Product interface and content design](/en/development/product-experience/) first. A new system joins the existing `Portal → business system → system workspace → domain object` hierarchy.
 
 Complete all of the following:
 
-- add the system to system navigation and preserve consistent movement among Agent EXCON, Data Foundation, and the new system;
+- add the system to primary navigation, retain Portal as the platform home, and preserve consistent movement among Data Foundation, Agent EXCON, and the new system;
 - provide identical routes, states, actions, and information hierarchy for `zh-CN` and `en`, with `zh-CN` still the default;
 - put all visible copy in both dictionaries in `apps/web/src/lib/i18n.ts` instead of scattering monolingual strings through components;
 - use a server-only DAL for Session and internal API addresses; the browser calls only same-origin routes or safe DTOs;
 - support light/dark themes, keyboard operation, focus states, responsive layouts, and error/empty/loading states;
 - show real unavailable/authorization/contract states on failure instead of falling back to static examples that imply success.
+- keep environment variables, internal URLs, HTTP statuses, DTO/DAL details, and operator recovery commands out of ordinary pages; failures explain impact and a user action only.
 
 Add Vitest/Playwright coverage for both locale entrypoints, login/authorization failure, the core user task, themes, and keyboard paths.
 

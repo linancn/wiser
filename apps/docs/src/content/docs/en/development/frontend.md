@@ -19,7 +19,7 @@ checkPaths:
   - apps/docs/src/**
   - apps/docs/e2e/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 283879984de8a5d65d71c384bef90da2cd5ca541
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## Two frontend applications
@@ -32,15 +32,16 @@ lastReviewedCommit: 283879984de8a5d65d71c384bef90da2cd5ca541
 The applications share the WISER visual language, Chinese-default policy, and light/dark capability, but they do not share runtime state. Product functionality belongs in `apps/web`; developer guidance belongs in `apps/docs`. Do not turn Docs into another product console or embed long development guides in product pages.
 
 See the [local development environment](/en/development/local-environment/) for runtime modes and ports. See the [WISER Design System](/en/architecture/design-system/) for visual tokens, component semantics, and accessibility contracts.
+See [Product interface and content design](/en/development/product-experience/) for Portal, navigation hierarchy, product naming, and user-facing copy.
 
 ## Locale and theme contract
 
 ### Product Web
 
-- Supported locales are `zh-CN` and `en`; `/` redirects to `/zh-CN/scenarios`.
+- Supported locales are `zh-CN` and `en`; `/` redirects to the public `/zh-CN` Portal, and the English Portal is `/en`.
 - Every product page lives under `src/app/[locale]`, so Chinese and English naturally use the same locale-free slug. For example, `/zh-CN/runs` corresponds to `/en/runs`.
 - Visible copy belongs in the two dictionaries in `src/lib/i18n.ts`. Chinese is the default expression; protocol and domain identifiers such as HTTP, MCP, Run, and DataItem may remain English.
-- `AppShell` owns system switching, primary navigation, current identity, theme, and locale switching. New pages continue to use that shell instead of introducing parallel global navigation.
+- `AppShell` owns the Portal entry, primary system switching, current identity, theme, and locale switching; its second row contains only the current system's workspace navigation. New pages continue to use that shell instead of introducing parallel global navigation.
 - Themes consume semantic tokens. `wiser-theme` persists the choice, first use respects the system preference, and `data-theme` is set before hydration. Light and dark preserve the same hierarchy, state meaning, and actions.
 
 ### Documentation site
@@ -53,12 +54,15 @@ See the [local development environment](/en/development/local-environment/) for 
 
 | Workspace                  | Routes                                                                                                           |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| WISER Portal               | `/[locale]`; anonymous visitors may read the platform and system introduction                                    |
 | Unified identity           | `/[locale]/login`, `/[locale]/auth/login`, `/[locale]/auth/callback`, `/[locale]/auth/sign-out`                  |
 | Agent EXCON scenarios      | `/[locale]/scenarios`, `/[locale]/scenarios/[scenarioId]`                                                        |
 | Agent EXCON runs           | `/[locale]/runs`, `/[locale]/runs/[runId]`, plus `collaboration`, `diagnostics`, `trace`, and `replay` subroutes |
 | Data Foundation overview   | `/[locale]/data-foundation`                                                                                      |
 | Data Foundation workspaces | `catalog`, `ingestions`, `quality`, `search`, `knowledge`, `graph`, `geo`, `map`, and `capabilities`             |
 | Data Foundation detail     | `catalog/[dataItemId]`, `ingestions/[ingestionId]`, `operations/[operationId]`, and `lineage/[dataItemId]`       |
+
+In Supabase mode, Portal, sign-in, and Auth transport routes are public. Other localized product routes require verified authenticated claims in Proxy; anonymous requests retain their target and redirect to locale sign-in. `WISER_AUTH_MODE=off` remains a local reference-preview mode only.
 
 Pages are Server Components by default. Add a Client Component only for browser interaction, browser APIs, or local state. Do not move data access and identity logic into the browser merely because a parent view contains an interaction.
 
@@ -88,7 +92,7 @@ Map tiles also use a same-origin Web route whose server proxy adds identity and 
 
 ## Implement a new page
 
-1. Identify whether the page belongs to Platform, Agent EXCON, or Data Foundation, then reuse the existing system navigation and domain vocabulary.
+1. Identify whether the page belongs to Portal, Agent EXCON, or Data Foundation, then preserve the `Portal → system → workspace → domain object` hierarchy and existing domain vocabulary.
 2. Add one locale-free slug under `src/app/[locale]`; create one page implementation and source Chinese/English content from isomorphic dictionaries.
 3. Read data in a Server Component by default. EXCON uses the existing read-model source; Data Foundation uses the server-only DAL. Never access a database, projection store, or internal GIS service directly.
 4. Render the applicable loading, empty, authentication, authorization, contract, and unavailable states explicitly. Preserve a recovery action in failure states.

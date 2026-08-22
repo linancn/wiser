@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 283879984de8a5d65d71c384bef90da2cd5ca541
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## One identity authority
@@ -31,7 +31,7 @@ The control plane contains `platform` / `platform_private` schemas, automatic us
 
 Fastify exposes the safe `/api/platform/v1/me` projection and delegated command surface. `WISER_AUTH_MODE=supabase` creates a `supabase-js` client, bounded PostgreSQL pool, prefix-routed JWT/delegated Resolver, and transactional Delegation service in the default process. Production refuses missing Supabase, database, or HMAC key-ring configuration, and process shutdown closes the shared pool.
 
-Web uses `@supabase/ssr` Browser/Server clients and Next.js `proxy.ts`. Proxy calls `getClaims()` before producing a response, writes refreshed cookies to both request and response, and sets `private, no-store`. Bilingual password login, PKCE callback, POST-only local sign-out, and the shared Shell use the same session boundary. Every continuation target is normalized to the active locale and rejected if it leaves the WISER origin or re-enters an Auth endpoint; every Auth response is non-cacheable.
+Web uses `@supabase/ssr` Browser/Server clients and Next.js `proxy.ts`. Proxy calls `getClaims()` before producing a response, writes refreshed cookies to both request and response, and sets `private, no-store`. The `/[locale]` Portal, sign-in, and Auth transport routes allow anonymous access. Other localized product routes without verified authenticated claims preserve their destination and redirect to locale sign-in. Bilingual password login, PKCE callback, POST-only local sign-out, and the shared Shell use the same session boundary. Every continuation target is normalized to the active locale and rejected if it leaves the WISER origin or re-enters an Auth endpoint; every Auth response is non-cacheable.
 
 Delegated credentials strictly parse `wdc1.<key-id>.<secret>`, generate independent 128-bit locators and 256-bit secrets with Node's secure random source, and store only a domain-separated HMAC-SHA-256. The JSON key-ring configuration requires canonical unpadded base64url keys of at least 256 bits, names one active key for issuance, retains previous keys for verification during rotation, and fails closed without echoing secret configuration. The default process composes the delegated principal Resolver, single-query PostgreSQL adapter, and transactional create/issue/rotate/revoke service.
 
@@ -93,6 +93,8 @@ A failed JWT never falls back to a local token, preventing token confusion. Loca
 ## Web sessions
 
 Web uses Supabase SSR cookies. Server Components forward the current access token, and Fastify verifies and authorizes it again. The browser receives only the Supabase URL and publishable key; service-role and secret keys, database URLs, object-store secrets, and internal projection credentials never enter the client.
+
+The public Portal shows platform and system descriptions only; it reads no project, Data, or exercise facts. Proxy's sign-in gate establishes only the minimum “valid Session exists” boundary and never replaces Data Capability, EXCON operator, or resource authorization on the server. `WISER_AUTH_MODE=off` is an explicit local reference-preview mode and is rejected in production.
 
 The Shell derives its user indicator only from a freshly verified authenticated claim set. It never renders user-editable metadata as a trusted role or administrator label. Invalid, expired, privileged, unavailable, or malformed claims produce the same anonymous/fail-closed state.
 

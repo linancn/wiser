@@ -29,7 +29,7 @@ checkPaths:
   - .docpact/**
   - .github/workflows/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## 适用目标
@@ -185,15 +185,17 @@ Skill 只说明发现、调用、恢复和安全工作流。它同样通过 HTTP
 ## 6. 接入统一前端
 
 新系统页面放在 `apps/web/src/app/[locale]/<system>/`，并复用现有 `AppShell`、语义 token、组件和主题机制。
+开始前先阅读[产品界面与内容设计](/development/product-experience/)；新系统必须进入既有 `Portal → 业务系统 → 系统工作区 → 领域对象` 层级。
 
 必须同时完成：
 
-- 在系统导航加入新入口，并保持 Agent EXCON、Data Foundation 和新系统之间切换一致；
+- 在一级系统导航加入新入口，保留 Portal 作为平台首页，并保持数据基座、智能体演练场和新系统之间切换一致；
 - 为 `zh-CN` 和 `en` 提供相同路由、状态、操作和信息层级，`zh-CN` 仍为默认；
 - 所有可见文案进入 `apps/web/src/lib/i18n.ts` 的两个 dictionary，不在组件中散落单语字符串；
 - 使用 server-only DAL 读取 Session 和内部 API 地址，浏览器只调用同源 route 或安全 DTO；
 - 同时支持浅色/深色、键盘操作、focus 状态、响应式和错误/空/加载状态；
 - 数据失败时展示真实 unavailable/authorization/contract 状态，不退回静态样例伪造成功。
+- 普通页面不显示环境变量、内部 URL、HTTP 状态、DTO/DAL 或运维恢复命令；失败态只说明影响和用户可执行动作。
 
 至少为两个 locale 的主入口、登录/授权失败、核心任务、主题和键盘路径增加 Vitest/Playwright 覆盖。
 

@@ -17,7 +17,7 @@ checkPaths:
   - compose.yaml
   - package.json
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: ccd874eda8e16f8fd9169ec2f2769ff17f287c48
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 # WISER · Water Intelligence System & Engine for Reconfiguration
@@ -30,11 +30,11 @@ WISER is a multi-system platform for water-intelligence products. Its business s
 
 ## Systems and entrypoints
 
-| System          | Human-facing frontend                                 | Public backend entrypoint                              | Primary source                                                                                                                                                                            |
-| --------------- | ----------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| WISER Platform  | Sign-in, user controls, and shared shell: `/en/login` | Identity and delegation: `/api/platform/v1`            | `packages/platform-*`, `apps/api/src/platform`, `apps/web/src/components/app-shell.tsx`, `apps/web/src/components/current-user-control.tsx`, `apps/web/src/app/[locale]/auth`, `supabase` |
-| Agent EXCON     | Scenarios and runs: `/en/scenarios`, `/en/runs`       | HTTP: `/api/v2`; MCP: `/mcp`                           | `packages/contracts`, `packages/core`, `packages/infra`, `packages/excon-scenarios`; `apps/worker` is v1 compatibility only                                                               |
-| Data Foundation | Data workspace: `/en/data-foundation`                 | REST: `/api/data/v1`; GraphQL: `/graphql`; MCP: `/mcp` | `packages/data-*`, `apps/api/src/data-foundation`, `apps/data-worker`, `infrastructure/data-foundation`                                                                                   |
+| System          | Human-facing frontend                           | Public backend entrypoint                              | Primary source                                                                                                                                                                            |
+| --------------- | ----------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| WISER Platform  | Portal and unified sign-in: `/en`, `/en/login`  | Identity and delegation: `/api/platform/v1`            | `packages/platform-*`, `apps/api/src/platform`, `apps/web/src/components/app-shell.tsx`, `apps/web/src/components/current-user-control.tsx`, `apps/web/src/app/[locale]/auth`, `supabase` |
+| Data Foundation | Data workspace: `/en/data-foundation`           | REST: `/api/data/v1`; GraphQL: `/graphql`; MCP: `/mcp` | `packages/data-*`, `apps/api/src/data-foundation`, `apps/data-worker`, `infrastructure/data-foundation`                                                                                   |
+| Agent EXCON     | Scenarios and runs: `/en/scenarios`, `/en/runs` | HTTP: `/api/v2`; MCP: `/mcp`                           | `packages/contracts`, `packages/core`, `packages/infra`, `packages/excon-scenarios`; `apps/worker` is v1 compatibility only                                                               |
 
 Browsers, Skills, and MCP clients access business capabilities through HTTP boundaries. They never connect directly to databases, object storage, or projections. See the [platform architecture](./apps/docs/src/content/docs/en/architecture/wiser-platform.md) for system-level boundaries.
 
@@ -44,7 +44,7 @@ Browsers, Skills, and MCP clients access business capabilities through HTTP boun
 
 | Path                     | Type             | Responsibility                                                                                                          | Complete-stack entrypoint             |
 | ------------------------ | ---------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| `apps/web`               | Frontend         | WISER product UI; Chinese default, English and light/dark themes                                                        | `http://127.0.0.1:3000/zh-CN`         |
+| `apps/web`               | Frontend         | WISER Portal, unified sign-in, and business workspaces; Chinese default, English and light/dark themes                  | `http://127.0.0.1:3000/zh-CN`         |
 | `apps/docs`              | Frontend         | Fumadocs site for every WISER system                                                                                    | `http://127.0.0.1:4321`               |
 | `apps/api`               | Backend          | Shared Fastify host for Platform, Agent EXCON, and Data Foundation                                                      | `http://127.0.0.1:3001`               |
 | `apps/worker`            | Backend worker   | PostgreSQL-backed v1 compatibility/testing worker; default API does not enqueue it, and v2 evaluates inside API service | `http://127.0.0.1:3002/health/ready`  |

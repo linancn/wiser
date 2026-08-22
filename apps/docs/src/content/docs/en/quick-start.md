@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: ccd874eda8e16f8fd9169ec2f2769ff17f287c48
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 This page covers the first complete run only. See the [local development environment](/en/development/local-environment/) for standalone frontend/backend commands, every port, environment variables, and troubleshooting.
@@ -63,7 +63,7 @@ The default complete stack is ready only after the command succeeds. It neither 
 
 | Purpose               | Address                                    |
 | --------------------- | ------------------------------------------ |
-| WISER home            | `http://127.0.0.1:3000/en`                 |
+| WISER Portal          | `http://127.0.0.1:3000/en`                 |
 | Agent EXCON scenarios | `http://127.0.0.1:3000/en/scenarios`       |
 | Agent EXCON runs      | `http://127.0.0.1:3000/en/runs`            |
 | Data Foundation       | `http://127.0.0.1:3000/en/data-foundation` |

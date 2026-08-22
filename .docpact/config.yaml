@@ -1,7 +1,7 @@
 version: 1
 layout: repo
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: ed36c7913b5dd2b2542adf1aa1ce1e5d9a70029f
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 catalog:
   repos:
     - id: wiser
@@ -466,22 +466,18 @@ rules:
     scope: repo
     repo: wiser
     triggers:
-      - path: apps/web/src/app/globals.css
-        kind: code
-      - path: apps/web/src/components/app-shell.tsx
-        kind: code
-      - path: apps/web/src/components/app-shell.module.css
-        kind: code
-      - path: apps/web/src/components/theme-toggle.tsx
-        kind: code
-      - path: apps/web/src/components/current-user-control.tsx
+      - path: apps/web/src/**
         kind: code
     requiredDocs:
       - path: apps/docs/src/content/docs/zh-CN/architecture/design-system.md
         mode: review_or_update
       - path: apps/docs/src/content/docs/en/architecture/design-system.md
         mode: review_or_update
-    reason: Shared UI token and platform component changes must preserve the bilingual light/dark WISER Design System.
+      - path: apps/docs/src/content/docs/zh-CN/development/product-experience.md
+        mode: review_or_update
+      - path: apps/docs/src/content/docs/en/development/product-experience.md
+        mode: review_or_update
+    reason: Every product UI change must preserve the shared bilingual visual system, platform hierarchy, human-facing copy, and state boundaries.
   - id: wiser-web-host
     scope: repo
     repo: wiser

@@ -18,7 +18,7 @@ checkPaths:
   - infrastructure/**
   - supabase/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 283879984de8a5d65d71c384bef90da2cd5ca541
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## Decision summary
@@ -88,6 +88,7 @@ Core remains pure and deterministic. Application owns use cases, Ports, and Capa
 
 ## Platform-wide contracts
 
+- Product entry follows `WISER Portal → business system → system workspace → domain object`. Portal explains the platform and unified sign-in rather than acting as a third system; Data Foundation precedes Agent EXCON in primary navigation.
 - Chinese is the default; English routes, states, and capabilities are isomorphic.
 - Every system uses the WISER Design System and supports persistent light and dark themes.
 - Every added or upgraded npm package uses the latest compatible stable release confirmed at implementation time, an exact version, and the shared lockfile.

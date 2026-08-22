@@ -17,7 +17,7 @@ checkPaths:
   - compose.yaml
   - package.json
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: ccd874eda8e16f8fd9169ec2f2769ff17f287c48
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 # WISER · 水地图
@@ -32,9 +32,9 @@ WISER 是承载水智能产品的多系统平台。仓库内的业务系统共�
 
 | 系统                       | 面向人的前端                                  | 对外后端入口                                           | 主要源码                                                                                                                                                                                  |
 | -------------------------- | --------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| WISER Platform             | 登录、用户菜单与统一 Shell：`/zh-CN/login`    | 身份与委托：`/api/platform/v1`                         | `packages/platform-*`、`apps/api/src/platform`、`apps/web/src/components/app-shell.tsx`、`apps/web/src/components/current-user-control.tsx`、`apps/web/src/app/[locale]/auth`、`supabase` |
-| Agent EXCON                | 场景与 Run：`/zh-CN/scenarios`、`/zh-CN/runs` | HTTP：`/api/v2`；MCP：`/mcp`                           | `packages/contracts`、`packages/core`、`packages/infra`、`packages/excon-scenarios`；`apps/worker` 仅属 v1 compatibility                                                                  |
+| WISER Platform             | Portal 与统一登录：`/zh-CN`、`/zh-CN/login`   | 身份与委托：`/api/platform/v1`                         | `packages/platform-*`、`apps/api/src/platform`、`apps/web/src/components/app-shell.tsx`、`apps/web/src/components/current-user-control.tsx`、`apps/web/src/app/[locale]/auth`、`supabase` |
 | Data Foundation / 数据基座 | 数据工作区：`/zh-CN/data-foundation`          | REST：`/api/data/v1`；GraphQL：`/graphql`；MCP：`/mcp` | `packages/data-*`、`apps/api/src/data-foundation`、`apps/data-worker`、`infrastructure/data-foundation`                                                                                   |
+| 智能体演练场 / Agent EXCON | 场景与 Run：`/zh-CN/scenarios`、`/zh-CN/runs` | HTTP：`/api/v2`；MCP：`/mcp`                           | `packages/contracts`、`packages/core`、`packages/infra`、`packages/excon-scenarios`；`apps/worker` 仅属 v1 compatibility                                                                  |
 
 所有浏览器、Skill 和 MCP 客户端都通过 HTTP 边界访问业务能力，不直连数据库、对象存储或投影。系统级说明见[平台架构](./apps/docs/src/content/docs/zh-CN/architecture/wiser-platform.md)。
 
@@ -44,7 +44,7 @@ WISER 是承载水智能产品的多系统平台。仓库内的业务系统共�
 
 | 路径                     | 类型        | 职责                                                                                             | 完整栈入口                            |
 | ------------------------ | ----------- | ------------------------------------------------------------------------------------------------ | ------------------------------------- |
-| `apps/web`               | 前端        | WISER 产品界面；中文默认，支持英文与深浅色主题                                                   | `http://127.0.0.1:3000/zh-CN`         |
+| `apps/web`               | 前端        | WISER Portal、统一登录与业务工作区；中文默认，支持英文与深浅色主题                               | `http://127.0.0.1:3000/zh-CN`         |
 | `apps/docs`              | 前端        | 全系统 Fumadocs 文档站                                                                           | `http://127.0.0.1:4321`               |
 | `apps/api`               | 后端        | 统一 Fastify Host；组合 Platform、Agent EXCON、Data Foundation                                   | `http://127.0.0.1:3001`               |
 | `apps/worker`            | 后端 Worker | PostgreSQL-backed v1 compatibility/testing Worker；默认 API 不 enqueue，v2 在 API service 内评价 | `http://127.0.0.1:3002/health/ready`  |

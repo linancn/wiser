@@ -18,7 +18,7 @@ checkPaths:
   - .github/workflows/**
   - package.json
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 9b08f11b30895f78063d42881a16e62bb3ffc054
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 # WISER repository instructions
@@ -35,6 +35,15 @@ lastReviewedCommit: 9b08f11b30895f78063d42881a16e62bb3ffc054
 - Every visible UI message belongs in both locale dictionaries. Chinese (`zh-CN`) is the default, and English preserves the same routes, states, and actions.
 - `apps/docs` is the human-facing source of truth for current architecture, protocols, and development workflows. Root READMEs orient first-time readers; component READMEs stay scoped to one process. Superseded plans and milestone narratives belong in Git history or issue tracking, not active runbooks.
 - Before adding or upgrading an npm package or Docker image, verify the latest compatible stable version from current primary sources. Pin npm packages exactly, commit the lockfile, and pin container images by stable tag and digest; never use `latest`.
+
+## Product experience
+
+- Before changing any product page, navigation, visible copy, empty state, or failure state, read both `apps/docs/src/content/docs/en/architecture/design-system.md` and `apps/docs/src/content/docs/en/development/product-experience.md`.
+- Information hierarchy is always `WISER Portal → business system → system workspace → domain object`. Portal is not a peer system; Data Foundation precedes Agent EXCON; Chinese UI names Agent EXCON `智能体演练场`.
+- The WISER logo returns to the locale Portal. Portal and Auth routes are public; Supabase mode requires a verified Session before entering a business workspace. `WISER_AUTH_MODE=off` is local reference preview only.
+- Ordinary UI copy answers user goal, state, impact, and next action. Never expose environment variables, credentials, internal URLs, HTTP status codes, DTO/DAL/Worker/Outbox details, raw upstream errors, or operator recovery commands.
+- Technical vocabulary such as Trace, Span, CRS, version, and hash appears only where the specialist task requires it. Empty states describe what the user can do; they do not narrate missing API coverage or sample-fallback policy.
+- Navigation and route matching live in pure configuration/functions. Visible copy, including third-party accessible names, lives in the isomorphic locale dictionaries; do not add component-local bilingual branches.
 
 ## Database and security
 

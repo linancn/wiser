@@ -19,7 +19,7 @@ checkPaths:
   - apps/docs/src/**
   - apps/docs/e2e/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 283879984de8a5d65d71c384bef90da2cd5ca541
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## 两个前端应用
@@ -32,15 +32,16 @@ lastReviewedCommit: 283879984de8a5d65d71c384bef90da2cd5ca541
 两个应用共享 WISER 的视觉语言、中文默认策略和深浅色能力，但不共享运行时状态。产品功能只进入 `apps/web`，开发者说明只进入 `apps/docs`；不要把文档站做成另一个产品控制台，也不要把长篇开发说明嵌进产品页面。
 
 本机运行模式和完整端口表见[本机开发环境](/development/local-environment/)。视觉 Token、组件语义和无障碍合同见[WISER Design System](/architecture/design-system/)。
+Portal、导航层级、产品命名和用户文案见[产品界面与内容设计](/development/product-experience/)。
 
 ## 语言与主题合同
 
 ### 产品 Web
 
-- 受支持的 locale 是 `zh-CN` 和 `en`；`/` 重定向到 `/zh-CN/scenarios`。
+- 受支持的 locale 是 `zh-CN` 和 `en`；`/` 重定向到公开 Portal `/zh-CN`，英文 Portal 是 `/en`。
 - 每个产品页面放在 `src/app/[locale]` 下，因此中英文天然使用相同的 locale-free slug。例如 `/zh-CN/runs` 对应 `/en/runs`。
 - 可见文案进入 `src/lib/i18n.ts` 的两套字典。中文是默认表达；HTTP、MCP、Run、DataItem 等协议或领域标识可保留英文。
-- `AppShell` 统一承载系统切换、主导航、当前身份、主题和语言切换。新增页面继续使用该 Shell，不创建平行的全局导航。
+- `AppShell` 统一承载 Portal 入口、一级系统切换、当前身份、主题和语言切换；第二行只显示当前系统的工作区导航。新增页面继续使用该 Shell，不创建平行的全局导航。
 - 主题使用语义 Token；`wiser-theme` 保存用户选择，首次访问尊重系统偏好，并在 hydration 前设置 `data-theme`。浅色和深色必须保留相同的信息层级、状态含义和操作。
 
 ### 文档站
@@ -53,12 +54,15 @@ lastReviewedCommit: 283879984de8a5d65d71c384bef90da2cd5ca541
 
 | 工作区                 | 路由                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------ |
+| WISER Portal           | `/[locale]`；允许匿名查看平台与系统介绍                                                                |
 | 统一身份               | `/[locale]/login`、`/[locale]/auth/login`、`/[locale]/auth/callback`、`/[locale]/auth/sign-out`        |
 | Agent EXCON 场景       | `/[locale]/scenarios`、`/[locale]/scenarios/[scenarioId]`                                              |
 | Agent EXCON 运行       | `/[locale]/runs`、`/[locale]/runs/[runId]` 及 `collaboration`、`diagnostics`、`trace`、`replay` 子路由 |
 | Data Foundation 总览   | `/[locale]/data-foundation`                                                                            |
 | Data Foundation 工作区 | `catalog`、`ingestions`、`quality`、`search`、`knowledge`、`graph`、`geo`、`map`、`capabilities`       |
 | Data Foundation 详情   | `catalog/[dataItemId]`、`ingestions/[ingestionId]`、`operations/[operationId]`、`lineage/[dataItemId]` |
+
+Supabase 模式中，Portal、登录和 Auth transport 公开；其他 locale 产品路由要求 Proxy 取得已验证的 authenticated claims，否则保留目标地址并跳转到同语言登录页。`WISER_AUTH_MODE=off` 只保留本机 reference 预览。
 
 页面默认使用 Server Component。只有浏览器交互、浏览器 API 或局部状态需要时才增加 Client Component；不要因为父页面包含交互就把取数和身份逻辑下放到浏览器。
 
@@ -88,7 +92,7 @@ Data Foundation 没有 reference 模式。所有页面通过 `src/lib/data-found
 
 ## 实现一个新页面
 
-1. 先确认页面属于 Platform、Agent EXCON 还是 Data Foundation，并复用现有系统导航和领域术语。
+1. 先确认页面属于 Portal、智能体演练场还是数据基座，并复用 `Portal → 系统 → 工作区 → 领域对象` 层级与既有领域术语。
 2. 在 `src/app/[locale]` 增加一个 locale-free slug，只创建一份页面实现；中英文内容来自同构字典。
 3. 默认在 Server Component 读取数据。EXCON 使用既有 read-model source；Data Foundation 使用 server-only DAL；不要直接访问数据库、投影库或内部 GIS 服务。
 4. 为 loading、empty、authentication、authorization、contract 和 unavailable 状态选择适用的明确呈现。失败时保留用户可执行的恢复动作。

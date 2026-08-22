@@ -15,7 +15,7 @@ checkPaths:
   - apps/web/src/**
   - apps/docs/src/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 283879984de8a5d65d71c384bef90da2cd5ca541
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## Design direction
@@ -52,8 +52,8 @@ Light and dark are two mappings of the same information hierarchy, not separate 
 ## Layout contract
 
 ```text
-┌ WISER brand ─ Systems ─ Context ─ Theme ─ Language ┐
-├ system navigation / breadcrumbs / active project ──┤
+┌ WISER Portal ─ Data Foundation ─ Agent EXCON ─ Account ─ Theme ─ Language ┐
+├ current-system workspace navigation (absent on Portal / Auth) ────────────┤
 │                                                    │
 │ page thesis + authority/status strip              │
 │                                                    │
@@ -63,7 +63,9 @@ Light and dark are two mappings of the same information hierarchy, not separate 
 └ source, authority, version, freshness ─────────────┘
 ```
 
-- The global shell, system switcher, Project context, theme, and language remain in the same location everywhere.
+- Information hierarchy is `Portal → business system → system workspace → domain object`; object-local tabs never become platform navigation.
+- The WISER logo returns to the locale Portal. Portal is not a third system, and Data Foundation precedes Agent EXCON.
+- The global shell, system switcher, Project context, theme, and language remain in the same location everywhere. System workspace navigation appears only after entering that system.
 - A page identifies the user's object and its authoritative state before metrics or technical detail.
 - Lists, catalogs, and runtime views share card, table, filter, pagination, empty, and failure primitives.
 - Technical diagnostics may be denser but never dominate the first visual layer of management and business pages.
@@ -77,6 +79,13 @@ Shared components include AppShell, SystemSwitcher, ProjectSwitcher, PageHeader,
 - Buttons use action verbs, and an action keeps the same name from button to toast.
 - Empty states explain the available action; failures state what happened, its impact, and recovery.
 - Every visible string exists in both zh-CN and en dictionaries. Components do not scatter hard-coded bilingual ternaries.
+
+## Product-content boundary
+
+- Ordinary pages explain user goal, current state, impact, and next action before implementation architecture.
+- Introductions, empty states, and failures do not expose environment variables, internal URLs, HTTP status, raw error codes, DTO/DAL, databases, workers, or operator recovery commands.
+- Trace, Span, CRS, version, and hash terminology appears only when the specialist task requires it.
+- See [Product interface and content design](/en/development/product-experience/) for naming, public entry, copy, and new-system contracts.
 
 ## System adaptation
 

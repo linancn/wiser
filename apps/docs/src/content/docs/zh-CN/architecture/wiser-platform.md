@@ -18,7 +18,7 @@ checkPaths:
   - infrastructure/**
   - supabase/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 283879984de8a5d65d71c384bef90da2cd5ca541
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## 决策摘要
@@ -88,6 +88,7 @@ Core 必须纯净确定性；Application 承担用例、Ports 和 Capability Han
 
 ## 平台级合同
 
+- 产品入口遵循 `WISER Portal → 业务系统 → 系统工作区 → 领域对象`。Portal 负责平台介绍与统一登录，不是第三个业务系统；数据基座在一级导航中排在智能体演练场之前。
 - 中文为默认语言，英文路由、状态和能力同构。
 - 所有系统共享 WISER Design System，并支持持久化的浅色/深色主题。
 - 新增或升级的 npm 包使用实施时确认的最新兼容稳定版、精确版本与同一 lockfile。

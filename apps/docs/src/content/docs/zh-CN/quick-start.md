@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: ccd874eda8e16f8fd9169ec2f2769ff17f287c48
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 本页只覆盖第一次完整运行。日常的前后端单独启动、所有端口、环境变量和故障排查见[本机开发环境](/development/local-environment/)。
@@ -63,10 +63,10 @@ pnpm stack:full:up
 
 | 用途                | 地址                                          |
 | ------------------- | --------------------------------------------- |
-| WISER 首页          | `http://127.0.0.1:3000/zh-CN`                 |
-| Agent EXCON 场景    | `http://127.0.0.1:3000/zh-CN/scenarios`       |
-| Agent EXCON Runs    | `http://127.0.0.1:3000/zh-CN/runs`            |
-| Data Foundation     | `http://127.0.0.1:3000/zh-CN/data-foundation` |
+| WISER Portal        | `http://127.0.0.1:3000/zh-CN`                 |
+| 智能体演练场 · 场景 | `http://127.0.0.1:3000/zh-CN/scenarios`       |
+| 智能体演练场 · 运行 | `http://127.0.0.1:3000/zh-CN/runs`            |
+| 数据基座            | `http://127.0.0.1:3000/zh-CN/data-foundation` |
 | 文档站              | `http://127.0.0.1:4321`                       |
 | API readiness       | `http://127.0.0.1:3001/health/ready`          |
 | OpenAPI             | `http://127.0.0.1:3001/openapi.json`          |

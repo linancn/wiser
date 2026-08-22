@@ -18,7 +18,7 @@ checkPaths:
   - supabase/**
   - package.json
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: ccd874eda8e16f8fd9169ec2f2769ff17f287c48
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## Before you start
@@ -52,6 +52,7 @@ Then run Docpact route for the actual target paths before creating or changing f
 | [Local development environment](/en/development/local-environment/)                     | Should I use the complete stack, base stack, or standalone app, and what are the ports, identities, and stop paths? |
 | [Backend development](/en/development/backend/)                                         | How do API, both workers, MCP, and Telemetry Ingress run and verify?                                                |
 | [Frontend development](/en/development/frontend/)                                       | What are the Web/Docs route, session, bilingual, theme, and Playwright contracts?                                   |
+| [Product interface and content design](/en/development/product-experience/)             | How should Portal, navigation hierarchy, product names, user copy, and failure states be designed?                  |
 | [Databases and migrations](/en/development/databases/)                                  | How do Supabase and data-postgres authorities, migrations, RLS, and resets differ?                                  |
 | [Testing and verification](/en/development/testing/)                                    | Which Red/Green, focused, database, browser, and smoke gates apply to a change?                                     |
 | [Documentation development](/en/development/documentation/)                             | How are READMEs, the docs site, component guides, locales, and Docpact maintained?                                  |

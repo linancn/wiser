@@ -22,7 +22,7 @@ checkPaths:
   - apps/docs/src/content/**
   - .docpact/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## Give each fact one authoritative home

@@ -142,6 +142,7 @@ describe('developer handbook and current-state architecture', () => {
     'local-environment.md',
     'backend.md',
     'frontend.md',
+    'product-experience.md',
     'databases.md',
     'testing.md',
     'documentation.md',

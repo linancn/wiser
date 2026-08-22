@@ -16,7 +16,7 @@ checkPaths:
   - apps/telemetry-ingress/**
   - infrastructure/observability/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 283879984de8a5d65d71c384bef90da2cd5ca541
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## 一个 Run 是一次团队演练
@@ -35,7 +35,7 @@ Run 只管理阶段和虚拟时钟；评价与重做属于各自 Task。这样�
 
 ## 导调台信息架构
 
-全局导航只保留“场景库”和“运行指挥”。场景库负责草稿、校验、发布、版本和团队契约；运行指挥默认只读，每个 Run 再分为“总览 / 协作 / 评测 / Trace / 回放”五个工作区。
+智能体演练场的二级导航只保留“演练场景”和“演练运行”；它们位于 WISER 一级系统导航之下，不与数据基座或 Portal 混排。演练场景负责草稿、校验、发布、版本和团队契约；演练运行默认只读，每个 Run 再分为“总览 / 协作 / 评测 / 追踪 / 回放”五个对象内工作区。
 
 - **总览**先回答权威结果、最高风险和下一步，只展示前三项关注、团队态势、最近事件与流域决策脊柱。
 - **协作**以汇流账本呈现 request/response、ArtifactVersion handoff 和逐收件人 Receipt 状态；不把 acknowledgement 描述成已读或同意。
@@ -44,9 +44,9 @@ Run 只管理阶段和虚拟时钟；评价与重做属于各自 Task。这样�
 - **回放**按 `run_seq` 和当时视角重建收据、事件与可见证据，技术遥测只作为 best-effort 叠加。
 
 ```text
-场景库 ──→ 场景编排 ──→ 关联 Run
+演练场景 ──→ 场景配置 ──→ 关联 Run
                          │
-运行指挥 ──→ Run 总览 ──┼─→ 评测
+演练运行 ──→ Run 总览 ──┼─→ 评测
                          ├─→ 协作
                          ├─→ Trace
                          └─→ 回放

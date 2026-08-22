@@ -17,7 +17,7 @@ checkPaths:
   - .docpact/config.yaml
   - .github/workflows/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 9b08f11b30895f78063d42881a16e62bb3ffc054
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 # Contributing / 贡献指南

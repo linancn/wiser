@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 283879984de8a5d65d71c384bef90da2cd5ca541
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## 单一身份源
@@ -31,7 +31,7 @@ JWT 证明主体、认证强度与 Session；动态 Tenant、Project、Role 和 
 
 Fastify 提供 `/api/platform/v1/me` 安全投影与委托命令面。`WISER_AUTH_MODE=supabase` 在默认进程中创建 `supabase-js` client、受限 PostgreSQL Pool、按前缀分流的 JWT/delegated Resolver 与事务 Delegation service；生产缺少 Supabase、数据库或 HMAC key ring 配置时拒绝启动，进程关闭时释放共享 Pool。
 
-Web 使用 `@supabase/ssr` 建立 Browser/Server Client 与 Next.js `proxy.ts`。Proxy 在响应产生前调用 `getClaims()`，刷新后的 Cookie 同时写回 request/response，并设置 `private, no-store`。双语密码登录、PKCE callback、仅 POST 的本地退出，以及共享 Shell 的当前 Session 状态使用同一 Session 边界。所有 continuation target 都被规范到当前语言；离开 WISER origin 或重新进入 Auth endpoint 的地址一律拒绝；所有 Auth 响应均不可缓存。
+Web 使用 `@supabase/ssr` 建立 Browser/Server Client 与 Next.js `proxy.ts`。Proxy 在响应产生前调用 `getClaims()`，刷新后的 Cookie 同时写回 request/response，并设置 `private, no-store`。`/[locale]` Portal、登录与 Auth transport 允许匿名访问；其他 locale 产品路由缺少已验证 authenticated claims 时，Proxy 保留目标地址并跳到同语言登录页。双语密码登录、PKCE callback、仅 POST 的本地退出，以及共享 Shell 的当前 Session 状态使用同一 Session 边界。所有 continuation target 都被规范到当前语言；离开 WISER origin 或重新进入 Auth endpoint 的地址一律拒绝；所有 Auth 响应均不可缓存。
 
 委托凭据严格解析 `wdc1.<key-id>.<secret>`，使用 Node 安全随机源分别生成 128-bit locator 与 256-bit secret，数据库只保存经过域隔离的 HMAC-SHA-256。JSON key ring 只接受至少 256-bit 的规范无填充 base64url key，指定一个 active key 负责新签发，同时保留旧 key 支持轮换期验证；任何配置错误都 fail closed，且不会回显秘密。delegated principal Resolver、PostgreSQL 单查询 adapter 与事务 create/issue/rotate/revoke service 都在默认进程 runtime 中组合。
 
@@ -93,6 +93,8 @@ JWT 失败后不得回退到 Local Token，防止 token confusion。Local Token 
 ## Web Session
 
 Web 使用 Supabase SSR Cookie。Server Component 转发当前 Access Token，Fastify 再次验证并授权。浏览器只获得 Supabase URL 与 publishable key；service role、secret key、数据库连接、对象存储密钥和内部投影凭据均不得进入客户端。
+
+公开 Portal 只展示平台和系统介绍，不读取项目、数据或演练事实。Proxy 登录门禁只建立“已有有效 Session”的最低边界，不能替代 Data Capability、EXCON operator 或具体资源的服务端授权。`WISER_AUTH_MODE=off` 只允许显式本机 reference 预览，生产环境拒绝该模式。
 
 Shell 的用户状态只来自刚完成验证的 authenticated claims，不把用户可编辑 metadata 渲染成可信 Role 或管理员标签。Claims 无效、过期、带特权角色、服务不可用或格式畸形时，一律进入匿名/fail-closed 状态。
 

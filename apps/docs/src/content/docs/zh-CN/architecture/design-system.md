@@ -15,7 +15,7 @@ checkPaths:
   - apps/web/src/**
   - apps/docs/src/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 283879984de8a5d65d71c384bef90da2cd5ca541
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## 设计方向
@@ -52,8 +52,8 @@ WISER 面向水系统专家、导调人员和数据治理人员。界面的单�
 ## 布局合同
 
 ```text
-┌ WISER brand ─ Systems ─ Context ─ Theme ─ Language ┐
-├ system navigation / breadcrumbs / active project ──┤
+┌ WISER Portal ─ 数据基座 ─ 智能体演练场 ─ Account ─ Theme ─ Language ┐
+├ 当前系统工作区导航（Portal / Auth 不显示）──────────────────────────┤
 │                                                    │
 │ page thesis + authority/status strip              │
 │                                                    │
@@ -63,7 +63,9 @@ WISER 面向水系统专家、导调人员和数据治理人员。界面的单�
 └ source, authority, version, freshness ─────────────┘
 ```
 
-- 全局 Shell、系统切换、Project 上下文、主题和语言在所有页面位置一致。
+- 信息层级固定为 `Portal → 业务系统 → 系统工作区 → 领域对象`；对象内页签不得提升为平台导航。
+- WISER Logo 返回当前语言 Portal；Portal 不作为第三个系统。数据基座排在智能体演练场之前。
+- 全局 Shell、系统切换、Project 上下文、主题和语言在所有页面位置一致；系统工作区导航只在进入该系统后出现。
 - 页面先说明用户面对的对象和当前权威状态，再展示指标或技术细节。
 - 列表、目录和运行态使用相同的卡片、表格、过滤、分页、空态和错误态原语。
 - 技术诊断可以更密，但不得污染管理和业务页面的第一视觉层。
@@ -77,6 +79,13 @@ WISER 面向水系统专家、导调人员和数据治理人员。界面的单�
 - 按钮使用动作动词；同一动作从按钮到 Toast 保持同名。
 - 空态解释可以做什么；失败态说明发生了什么、影响范围和恢复动作。
 - 所有可见文案必须同时进入 zh-CN 与 en 字典，禁止组件内散落硬编码双语三元表达。
+
+## 产品内容边界
+
+- 普通页面先说明用户目标、当前状态、影响和下一步，不解释实现架构。
+- 页面导语、空态与失败态不得显示环境变量、内部 URL、HTTP 状态、原始错误码、DTO/DAL、数据库、Worker 或运维恢复命令。
+- Trace、Span、CRS、版本和哈希等术语只在完成专业任务确实需要时出现。
+- 详细的命名、公开入口、文案与新系统接入合同见[产品界面与内容设计](/development/product-experience/)。
 
 ## 系统适配
 

@@ -18,7 +18,7 @@ checkPaths:
   - supabase/**
   - package.json
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: ccd874eda8e16f8fd9169ec2f2769ff17f287c48
+lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
 ---
 
 ## 开始前
@@ -52,6 +52,7 @@ pnpm install --frozen-lockfile
 | [本机开发环境](/development/local-environment/)          | 应选完整栈、基础栈还是单应用？端口、身份与停止方式是什么？        |
 | [后端开发](/development/backend/)                        | API、两个 Worker、MCP 与 Telemetry Ingress 如何运行和验证？       |
 | [前端开发](/development/frontend/)                       | Web 与 Docs 的路由、Session、双语、主题和 Playwright 合同是什么？ |
+| [产品界面与内容设计](/development/product-experience/)   | Portal、导航层级、产品命名、用户文案和失败态应该如何设计？        |
 | [数据库与迁移](/development/databases/)                  | Supabase 与 data-postgres 的权威、迁移、RLS 和 reset 如何区分？   |
 | [测试与验证](/development/testing/)                      | 一项改动应运行哪些 Red/Green、聚焦、数据库、浏览器与 smoke 门禁？ |
 | [文档开发](/development/documentation/)                  | README、文档站、组件说明、双语与 Docpact 如何维护？               |

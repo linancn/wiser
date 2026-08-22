@@ -6,6 +6,7 @@
     "local-environment",
     "backend",
     "frontend",
+    "product-experience",
     "databases",
     "testing",
     "documentation",
