@@ -216,7 +216,7 @@ describe('Agent EXCON HTTP walking slice', () => {
     const openapiBody = OpenApiResponseSchema.parse(json(openapi));
     expect(openapiBody).toMatchObject({
       openapi: '3.1.0',
-      info: { title: 'Agent EXCON API', version: '0.1.0' },
+      info: { title: 'WISER Platform API', version: '0.1.0' },
     });
     expect(openapiBody.paths).toHaveProperty('/api/v1/episodes');
   });
