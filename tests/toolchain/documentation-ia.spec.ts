@@ -295,3 +295,70 @@ describe('canonical human documentation governance', () => {
     );
   });
 });
+
+describe('runnable component guides', () => {
+  const applications = [
+    'api',
+    'data-worker',
+    'docs',
+    'mcp',
+    'telemetry-ingress',
+    'web',
+    'worker',
+  ];
+
+  it('gives every runnable application one scoped human README', () => {
+    for (const application of applications) {
+      const path = `apps/${application}/README.md`;
+      expect(existsSync(resolve(repositoryRoot, path)), path).toBe(true);
+      const guide = read(path);
+      for (const field of [
+        'docType: component-guide',
+        'status: active',
+        'authoritative: true',
+        'owner: wiser',
+        'whenToUse:',
+        'whenToUpdate:',
+        'checkPaths:',
+        'lastReviewedAt:',
+        'lastReviewedCommit:',
+      ]) {
+        expect(guide, `${path}: ${field}`).toContain(field);
+      }
+      expect(guide, path).toMatch(/## (Run|运行|Run \/ 运行)/);
+      expect(guide, path).toMatch(/## (Verify|验证|Verify \/ 验证)/);
+    }
+  });
+
+  it('keeps component guides scoped and removes run-history prose', () => {
+    expect(read('apps/api/README.md')).not.toContain('The API pins');
+    expect(read('apps/api/README.md')).not.toContain('### Data routes');
+    expect(read('apps/mcp/README.md')).not.toContain('## v2 Tools');
+    expect(read('apps/mcp/README.md')).not.toContain(
+      '## 当前后端边界 / Current backend boundary',
+    );
+    expect(read('infrastructure/observability/README.md')).not.toContain(
+      'independently from the application stack',
+    );
+    expect(
+      read('examples/agent-excon/workbuddy-yongding-tdd/showcase/README.md'),
+    ).not.toContain('历史保留的最近一次 live 运行');
+  });
+
+  it('inventories and routes every runnable component guide', () => {
+    const config = read('.docpact/config.yaml');
+    for (const application of applications) {
+      expect(config).toContain(`apps/${application}/README.md`);
+    }
+
+    expect(docpactRule(config, 'evaluation-runtime')).toContain(
+      '- path: apps/worker/README.md',
+    );
+    expect(docpactRule(config, 'data-foundation-worker')).toContain(
+      '- path: apps/data-worker/README.md',
+    );
+    expect(docpactRule(config, 'telemetry-stack')).toContain(
+      '- path: apps/telemetry-ingress/README.md',
+    );
+  });
+});
