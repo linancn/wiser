@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DATA_FOUNDATION_ROUTES,
+  ingestionStepState,
   isMapDisplayableFeature,
   parseDataCatalogPage,
   parseDataRouteUuid,
@@ -137,5 +138,14 @@ describe('Data Foundation browser-safe contracts', () => {
         ],
       }),
     ).toThrow(/geo response/i);
+  });
+
+  it('does not invent a linear history across ingestion terminal branches', () => {
+    expect(ingestionStepState('REJECTED', 'REJECTED')).toBe('current');
+    expect(ingestionStepState('REJECTED', 'APPROVED')).toBe('future');
+    expect(ingestionStepState('COMMITTED', 'REJECTED')).toBe('future');
+    expect(ingestionStepState('COMMITTED', 'APPROVED')).toBe('complete');
+    expect(ingestionStepState('FAILED', 'VALIDATED')).toBe('future');
+    expect(ingestionStepState('CANCELLED', 'RECEIVED')).toBe('future');
   });
 });

@@ -170,4 +170,41 @@ describe('Data Foundation server-only HTTP DAL', () => {
       kind: 'contract',
     });
   });
+
+  it('parses an authenticated degraded health document returned with HTTP 503', async () => {
+    const dal = createDataFoundationDal({
+      config: {
+        apiOrigin: 'http://api:3001',
+        tenantId: TENANT_ID,
+        projectId: PROJECT_ID,
+        purpose: 'data-steward-console',
+        requestTimeoutMs: 5_000,
+        responseLimitBytes: 32_768,
+      },
+      createAuthClient: () => Promise.resolve(authClient([])),
+      fetch: () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              status: 'degraded',
+              authority: { database: true, objectStore: false },
+              worker: false,
+              projections: 'rebuildable',
+            }),
+            {
+              status: 503,
+              headers: { 'content-type': 'application/json' },
+            },
+          ),
+        ),
+    });
+
+    await expect(dal.health()).resolves.toEqual({
+      status: 'degraded',
+      database: true,
+      objectStore: false,
+      worker: false,
+      projections: 'rebuildable',
+    });
+  });
 });
