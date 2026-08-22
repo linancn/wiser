@@ -58,6 +58,7 @@
     "stack:down": "pnpm compose:down && pnpm supabase:stop"
   },
   "devDependencies": {
+    "@agent-excon/scenarios": "workspace:*",
     "@types/node": "24.13.3",
     "@vitest/coverage-v8": "4.1.11",
     "oxlint": "1.79.0",

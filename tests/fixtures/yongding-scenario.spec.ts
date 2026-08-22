@@ -17,7 +17,7 @@ interface StageFixture {
 }
 
 function readFixture(stage: 1 | 2): StageFixture {
-  return loadYongdingStageFixture(stage) as StageFixture;
+  return loadYongdingStageFixture(stage);
 }
 
 describe('Yongding River scenario fixtures', () => {
