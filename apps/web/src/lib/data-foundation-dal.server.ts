@@ -14,6 +14,7 @@ import {
   parseOperation,
   parseOperationEventStream,
   parseSearchPage,
+  parseStacFeatureCollection,
   type CapabilityRegistryDto,
   type DataCatalogPageDto,
   type DataHealthDto,
@@ -26,6 +27,7 @@ import {
   type OperationDto,
   type OperationEventDto,
   type SearchPageDto,
+  type StacFeatureCollectionDto,
 } from './data-foundation';
 import { createWiserServerSupabaseClient } from './supabase/server';
 
@@ -97,6 +99,9 @@ export interface DataFoundationDal {
   knowledge(query: string): Promise<SearchPageDto>;
   graph(entityId: string): Promise<GraphResultDto>;
   geo(geometry: GeoGeometryDto): Promise<GeoQueryDto>;
+  stacItems(input?: {
+    readonly bbox?: readonly [number, number, number, number];
+  }): Promise<StacFeatureCollectionDto>;
 }
 
 interface DataFoundationDalOptions {
@@ -409,7 +414,9 @@ export function createDataFoundationDal(
     }
     const contentType = response.headers.get('content-type') ?? '';
     if (
-      (mode === 'json' && !contentType.includes('application/json')) ||
+      (mode === 'json' &&
+        !contentType.includes('application/json') &&
+        !contentType.includes('application/geo+json')) ||
       (mode === 'sse' && !contentType.includes('text/event-stream'))
     ) {
       throw new DataFoundationApiError('contract', 502);
@@ -562,8 +569,182 @@ export function createDataFoundationDal(
           }),
         parseGeoQuery,
       ),
+    stacItems: (input = {}) => {
+      const search = new URLSearchParams({ limit: '100' });
+      if (input.bbox !== undefined) {
+        search.set('bbox', input.bbox.join(','));
+      }
+      return parsed(
+        () => call(`/api/data/v1/geo/stac/search?${search.toString()}`),
+        parseStacFeatureCollection,
+      );
+    },
   };
   return Object.freeze(dal);
+}
+
+const GEO_PROXY_CONTENT_TYPES = new Set([
+  'application/json',
+  'application/geo+json',
+  'application/xml',
+  'text/xml',
+  'application/gml+xml',
+  'application/vnd.ogc.gml',
+  'application/vnd.mapbox-vector-tile',
+  'application/x-protobuf',
+  'application/octet-stream',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/tiff',
+]);
+
+function governedGeoPath(path: readonly string[]): string | null {
+  if (
+    path.length < 2 ||
+    path.length > 10 ||
+    path.some(
+      (segment) =>
+        segment.length === 0 ||
+        segment.length > 128 ||
+        segment === '.' ||
+        segment === '..' ||
+        segment.includes('/') ||
+        segment.includes('\\') ||
+        /[\u0000-\u001f\u007f]/.test(segment),
+    )
+  ) {
+    return null;
+  }
+  const joined = path.join('/');
+  if (
+    /^(?:ogc\/(?:wms|wfs|wcs|wmts)|stac\/(?:conformance|search|collections\/(?:current|wiser-[a-f0-9]{32})(?:\/items(?:\/wiser-[a-f0-9]{48})?)?)|tiles\/vector\/versions\/[0-9a-f-]{36}\/\d{1,2}\/\d+\/\d+\.pbf|tiles\/raster\/versions\/[0-9a-f-]{36}\/WebMercatorQuad\/\d{1,2}\/\d+\/\d+\.(?:png|jpg|webp))$/i.test(
+      joined,
+    )
+  ) {
+    return joined;
+  }
+  return null;
+}
+
+async function boundedBytes(
+  response: Response,
+  limit: number,
+): Promise<Uint8Array> {
+  const declared = response.headers.get('content-length');
+  if (
+    declared !== null &&
+    (!/^\d+$/.test(declared) || Number(declared) > limit)
+  ) {
+    throw new DataFoundationApiError('contract', 502);
+  }
+  if (response.body === null) return new Uint8Array();
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      length += chunk.value.byteLength;
+      if (length > limit) {
+        await reader.cancel();
+        throw new DataFoundationApiError('contract', 502);
+      }
+      chunks.push(chunk.value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return new Uint8Array(Buffer.concat(chunks, length));
+}
+
+export interface DataFoundationGeoWebProxyOptions {
+  readonly request: Request;
+  readonly path: readonly string[];
+  readonly config: DataFoundationWebConfig;
+  readonly createAuthClient: () => Promise<DataFoundationAuthClient | null>;
+  readonly fetch?: typeof globalThis.fetch;
+  readonly now?: () => Date;
+}
+
+export async function proxyDataFoundationGeoRequest(
+  options: DataFoundationGeoWebProxyOptions,
+): Promise<Response> {
+  const path = governedGeoPath(options.path);
+  if (path === null || !['GET', 'HEAD'].includes(options.request.method)) {
+    throw new DataFoundationApiError('invalid-request', 422);
+  }
+  const incoming = new URL(options.request.url);
+  if ([...incoming.searchParams].length > 32) {
+    throw new DataFoundationApiError('invalid-request', 422);
+  }
+  const seen = new Set<string>();
+  for (const [rawKey, value] of incoming.searchParams) {
+    const key = rawKey.toLowerCase();
+    if (
+      seen.has(key) ||
+      ['url', 'source', 'href', 'sld', 'sld_body'].includes(key) ||
+      value.length > 2_048 ||
+      /[\u0000-\u001f\u007f]/.test(value)
+    ) {
+      throw new DataFoundationApiError('invalid-request', 422);
+    }
+    seen.add(key);
+  }
+  const accessToken = await verifiedAccessToken(
+    options.createAuthClient,
+    options.now ?? (() => new Date()),
+  );
+  const upstream = new URL(
+    `/api/data/v1/geo/${path}`,
+    `${options.config.apiOrigin}/`,
+  );
+  upstream.search = incoming.search;
+  let response: Response;
+  try {
+    response = await (options.fetch ?? globalThis.fetch)(upstream, {
+      method: options.request.method,
+      headers: {
+        accept:
+          options.request.headers.get('accept') ??
+          'application/json, application/geo+json, image/png, image/jpeg, image/webp, application/vnd.mapbox-vector-tile',
+        authorization: `Bearer ${accessToken}`,
+        'x-wiser-tenant-id': options.config.tenantId,
+        'x-wiser-project-id': options.config.projectId,
+        'x-wiser-purpose': options.config.purpose,
+      },
+      cache: 'no-store',
+      redirect: 'error',
+      signal: AbortSignal.timeout(options.config.requestTimeoutMs),
+    });
+  } catch {
+    throw new DataFoundationApiError('unavailable', 503);
+  }
+  const contentType = response.headers.get('content-type') ?? '';
+  const mediaType = contentType.split(';', 1)[0]!.trim().toLowerCase();
+  if (!GEO_PROXY_CONTENT_TYPES.has(mediaType)) {
+    throw new DataFoundationApiError('contract', 502);
+  }
+  const body = await boundedBytes(response, options.config.responseLimitBytes);
+  const headers = new Headers({
+    'cache-control': 'private, no-cache, no-store, max-age=0, must-revalidate',
+    'content-type': contentType,
+  });
+  const etag = response.headers.get('etag');
+  if (
+    etag !== null &&
+    etag.length <= 1_024 &&
+    !/[\u0000-\u001f\u007f]/.test(etag)
+  ) {
+    headers.set('etag', etag);
+  }
+  const responseBody = new ArrayBuffer(body.byteLength);
+  new Uint8Array(responseBody).set(body);
+  return new Response(options.request.method === 'HEAD' ? null : responseBody, {
+    status: response.status,
+    headers,
+  });
 }
 
 export async function getDataFoundationDal(): Promise<DataFoundationDal> {

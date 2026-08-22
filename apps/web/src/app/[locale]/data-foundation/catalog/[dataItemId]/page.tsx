@@ -23,6 +23,7 @@ import {
 import { getDataFoundationDal } from '@/lib/data-foundation-dal.server';
 import {
   dataFoundationMetadata,
+  dataPageFailure,
   handleDataPageError,
   invalidDataPageRequest,
 } from '@/lib/data-foundation-page.server';
@@ -30,6 +31,7 @@ import { getDictionary, isLocale } from '@/lib/i18n';
 
 interface DataItemPageProps {
   readonly params: Promise<{ locale: string; dataItemId: string }>;
+  readonly searchParams: Promise<{ version?: string | string[] }>;
 }
 
 export async function generateMetadata({ params }: DataItemPageProps) {
@@ -41,27 +43,59 @@ export async function generateMetadata({ params }: DataItemPageProps) {
   );
 }
 
-export default async function DataItemPage({ params }: DataItemPageProps) {
-  const { dataItemId: rawDataItemId, locale } = await params;
+export default async function DataItemPage({
+  params,
+  searchParams,
+}: DataItemPageProps) {
+  const [{ dataItemId: rawDataItemId, locale }, search] = await Promise.all([
+    params,
+    searchParams,
+  ]);
   if (!isLocale(locale)) notFound();
   const copy = getDictionary(locale).dataFoundation;
   const dataItemId = parseDataRouteUuid(rawDataItemId);
+  const versionId =
+    search.version === undefined
+      ? undefined
+      : (parseDataRouteUuid(search.version) ?? null);
   const route = `/${locale}/data-foundation/catalog/${rawDataItemId}`;
   let detail: DataItemDetailDto | undefined;
   let versions: DataItemVersionPageDto | undefined;
   let failure: ReturnType<typeof handleDataPageError> | undefined;
   try {
-    if (dataItemId === null) throw invalidDataPageRequest();
+    if (dataItemId === null || versionId === null) {
+      throw invalidDataPageRequest();
+    }
     const dal = await getDataFoundationDal();
     [detail, versions] = await Promise.all([
-      dal.dataItem(dataItemId),
+      dal.dataItem(dataItemId, versionId),
       dal.versions(dataItemId),
     ]);
+    if (
+      versionId !== undefined &&
+      detail.selectedVersion?.versionId !== versionId
+    ) {
+      throw dataPageFailure('contract', 502);
+    }
   } catch (error) {
     failure = handleDataPageError(error, locale, route);
   }
 
   const item = detail?.item;
+  const selectedVersion = detail?.selectedVersion;
+  const mapSearch = new URLSearchParams();
+  if (selectedVersion !== undefined) {
+    mapSearch.set('version', selectedVersion.versionId);
+  }
+  if (item?.spatialExtent !== undefined) {
+    mapSearch.set('bbox', item.spatialExtent.bbox.join(','));
+    if (
+      item.spatialExtent.crs === 'EPSG:4326' ||
+      item.spatialExtent.crs === 'EPSG:4490'
+    ) {
+      mapSearch.set('crs', item.spatialExtent.crs);
+    }
+  }
   return (
     <DataPageMain>
       <DataPageHeader
@@ -144,12 +178,37 @@ export default async function DataItemPage({ params }: DataItemPageProps) {
                     item.canonicalCrs ??
                     copy.common.notProvided,
                 },
+                ...(selectedVersion === undefined
+                  ? []
+                  : [
+                      {
+                        label: copy.itemPage.selectedVersion,
+                        value: (
+                          <ProtocolValue>
+                            v{selectedVersion.version} ·{' '}
+                            {selectedVersion.versionId}
+                          </ProtocolValue>
+                        ),
+                      },
+                    ]),
               ]}
             />
           </DataSection>
           <DataSection>
             <SectionHeading title={copy.itemPage.versionsTitle} />
-            <VersionList locale={locale} versions={versions.items} />
+            <VersionList
+              hrefBase={route}
+              locale={locale}
+              selectedVersionId={selectedVersion?.versionId}
+              versions={versions.items}
+            />
+            {selectedVersion === undefined ? null : (
+              <Link
+                href={`/${locale}/data-foundation/map?${mapSearch.toString()}`}
+              >
+                {copy.itemPage.openOnMap}
+              </Link>
+            )}
           </DataSection>
           <DataSection>
             <SectionHeading title={copy.itemPage.governanceTitle} />

@@ -8,16 +8,18 @@ import {
   DataPageHeader,
   DataPageMain,
   DataSection,
+  MapQueryForm,
   Notice,
-  QueryForm,
   SectionHeading,
 } from '@/components/data-foundation-workspace';
 import {
   bboxGeometry,
   isMapDisplayableFeature,
+  parseDataRouteUuid,
   parseGeoBbox,
   toMapFeatureCollection,
   type GeoQueryDto,
+  type StacFeatureCollectionDto,
 } from '@/lib/data-foundation';
 import { getDataFoundationDal } from '@/lib/data-foundation-dal.server';
 import {
@@ -30,7 +32,11 @@ import { getDictionary, isLocale } from '@/lib/i18n';
 
 interface MapPageProps {
   readonly params: Promise<{ locale: string }>;
-  readonly searchParams: Promise<{ bbox?: string | string[] }>;
+  readonly searchParams: Promise<{
+    bbox?: string | string[];
+    crs?: string | string[];
+    version?: string | string[];
+  }>;
 }
 
 export async function generateMetadata({ params }: MapPageProps) {
@@ -48,11 +54,24 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
   const copy = getDictionary(locale).dataFoundation;
   const route = `/${locale}/data-foundation/map`;
   const bbox = parseGeoBbox(search.bbox);
+  const versionId =
+    search.version === undefined
+      ? undefined
+      : (parseDataRouteUuid(search.version) ?? null);
+  const crs =
+    search.crs === undefined
+      ? 'EPSG:4326'
+      : search.crs === 'EPSG:4326' || search.crs === 'EPSG:4490'
+        ? search.crs
+        : null;
   let result: GeoQueryDto | undefined;
+  let stac: StacFeatureCollectionDto = { extents: [] };
   let capabilityAvailable = false;
   let failure: ReturnType<typeof handleDataPageError> | undefined;
   try {
-    if (bbox === null) throw invalidDataPageRequest();
+    if (bbox === null || versionId === null || crs === null) {
+      throw invalidDataPageRequest();
+    }
     const dal = await getDataFoundationDal();
     if (bbox === undefined) {
       const registry = await dal.capabilities();
@@ -61,13 +80,27 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
       );
       if (!capabilityAvailable) throw dataPageFailure('contract', 502);
     } else {
-      result = await dal.geo(bboxGeometry(bbox));
+      [result, stac] = await Promise.all([
+        dal.geo(bboxGeometry(bbox, crs)),
+        dal.stacItems({ bbox }),
+      ]);
     }
   } catch (error) {
     failure = handleDataPageError(error, locale, route);
   }
-  const displayable = result?.features.filter(isMapDisplayableFeature) ?? [];
-  const unsupportedCount = (result?.features.length ?? 0) - displayable.length;
+  const selectedVersionId = versionId ?? undefined;
+  const versionFeatures =
+    result?.features.filter(
+      (feature) =>
+        selectedVersionId === undefined ||
+        feature.versionId === selectedVersionId,
+    ) ?? [];
+  const displayable = versionFeatures.filter(isMapDisplayableFeature);
+  const stacExtents = stac.extents.filter(
+    (extent) =>
+      selectedVersionId === undefined || extent.versionId === selectedVersionId,
+  );
+  const unsupportedCount = versionFeatures.length - displayable.length;
 
   return (
     <DataPageMain>
@@ -77,15 +110,18 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
         lede={copy.mapPage.lede}
         aside={<AuthorityFlag locale={locale} />}
       />
-      <QueryForm
+      <MapQueryForm
         action={route}
-        name="bbox"
-        label={copy.mapPage.bboxLabel}
-        placeholder={copy.mapPage.bboxPlaceholder}
-        defaultValue={typeof search.bbox === 'string' ? search.bbox : ''}
-        hint={copy.geoPage.bboxHint}
+        bbox={typeof search.bbox === 'string' ? search.bbox : ''}
+        bboxHint={copy.geoPage.bboxHint}
+        bboxLabel={copy.mapPage.bboxLabel}
+        bboxPlaceholder={copy.mapPage.bboxPlaceholder}
+        crs={crs ?? 'EPSG:4326'}
+        crsLabel={copy.mapPage.crsLabel}
+        version={typeof search.version === 'string' ? search.version : ''}
+        versionLabel={copy.mapPage.versionLabel}
+        versionPlaceholder={copy.mapPage.versionPlaceholder}
         submitLabel={copy.common.searchAction}
-        resetHref={route}
         resetLabel={copy.common.resetAction}
       />
       {failure === undefined ? null : (
@@ -100,7 +136,9 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
       {result === undefined ? null : (
         <DataSection>
           <SectionHeading title={copy.mapPage.mapTitle} />
-          {displayable.length === 0 ? (
+          {displayable.length === 0 &&
+          stacExtents.length === 0 &&
+          selectedVersionId === undefined ? (
             <DataEmpty
               title={copy.mapPage.mapTitle}
               copy={copy.mapPage.noFeatures}
@@ -108,13 +146,32 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
           ) : (
             <DataFoundationMap
               ariaLabel={copy.mapPage.mapAria}
+              displayCrs={crs ?? 'EPSG:4326'}
               features={toMapFeatureCollection({ features: displayable })}
+              labels={{
+                layersLabel: copy.mapPage.layersLabel,
+                authorityLayer: copy.mapPage.authorityLayer,
+                stacLayer: copy.mapPage.stacLayer,
+                vectorLayer: copy.mapPage.vectorLayer,
+                rasterLayer: copy.mapPage.rasterLayer,
+                selectedVersion: copy.mapPage.selectedVersion,
+                noSelectedVersion: copy.mapPage.noSelectedVersion,
+                displayCrs: copy.mapPage.displayCrs,
+              }}
+              stacExtents={stacExtents}
+              selectedVersion={selectedVersionId}
+              vectorTileUrl={
+                selectedVersionId === undefined
+                  ? undefined
+                  : `/api/data-foundation/geo/tiles/vector/versions/${encodeURIComponent(selectedVersionId)}/{z}/{x}/{y}.pbf`
+              }
+              rasterTileUrl={
+                selectedVersionId === undefined
+                  ? undefined
+                  : `/api/data-foundation/geo/tiles/raster/versions/${encodeURIComponent(selectedVersionId)}/WebMercatorQuad/{z}/{x}/{y}.png`
+              }
             />
           )}
-          <Notice
-            title={copy.common.apiCoverage}
-            copy={copy.mapPage.baseLayerGap}
-          />
           {unsupportedCount === 0 ? null : (
             <Notice
               title={copy.common.coordinates}

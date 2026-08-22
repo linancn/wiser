@@ -287,6 +287,8 @@ const zhCN = {
       projection: '投影状态',
       lineage: '血缘关系',
       selectedVersion: '当前选择版本',
+      selectVersion: '选择版本 {version}',
+      openOnMap: '在受控地图中打开此版本',
       noVersions: 'API 尚未返回不可变版本。',
     },
     ingestionsPage: {
@@ -403,8 +405,17 @@ const zhCN = {
       noFeatures: 'API 没有返回可显示的空间要素。',
       unsupportedCrs:
         '部分要素使用 MapLibre 当前无法直接显示的坐标参考，已保留在空间查询表中。',
-      baseLayerGap:
-        '当前 API 未返回授权瓦片地址；地图仅绘制真实 GeoJSON，不加载外部底图。',
+      versionLabel: '不可变版本 ID',
+      versionPlaceholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx（可选）',
+      crsLabel: '查询坐标系',
+      layersLabel: '地图图层',
+      authorityLayer: 'PostGIS 权威 GeoJSON',
+      stacLayer: 'STAC 资产范围',
+      vectorLayer: '受控矢量瓦片',
+      rasterLayer: '受控栅格瓦片',
+      selectedVersion: '地图版本',
+      noSelectedVersion: '未固定版本',
+      displayCrs: '显示坐标系',
     },
     capabilitiesPage: {
       metaTitle: '能力注册表',
@@ -1140,6 +1151,8 @@ const en: typeof zhCN = {
       projection: 'Projection status',
       lineage: 'Lineage',
       selectedVersion: 'Selected version',
+      selectVersion: 'Select version {version}',
+      openOnMap: 'Open this version on the governed map',
       noVersions: 'The API has not returned an immutable version.',
     },
     ingestionsPage: {
@@ -1258,8 +1271,17 @@ const en: typeof zhCN = {
       noFeatures: 'The API returned no displayable spatial features.',
       unsupportedCrs:
         'Some features use coordinate references that MapLibre cannot display directly. They remain visible in the geo query table.',
-      baseLayerGap:
-        'The current API returned no authorized tile URL. The map draws real GeoJSON only and loads no external basemap.',
+      versionLabel: 'Immutable version ID',
+      versionPlaceholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (optional)',
+      crsLabel: 'Query coordinate system',
+      layersLabel: 'Map layers',
+      authorityLayer: 'PostGIS authority GeoJSON',
+      stacLayer: 'STAC asset extents',
+      vectorLayer: 'Governed vector tiles',
+      rasterLayer: 'Governed raster tiles',
+      selectedVersion: 'Map version',
+      noSelectedVersion: 'No version pinned',
+      displayCrs: 'Display coordinate system',
     },
     capabilitiesPage: {
       metaTitle: 'Capability Registry',

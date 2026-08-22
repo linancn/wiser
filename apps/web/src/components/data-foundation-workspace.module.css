@@ -67,6 +67,40 @@
   font: inherit;
 }
 
+.queryForm select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-primary);
+  background: var(--surface);
+  font: inherit;
+}
+
+.mapQueryFields {
+  display: grid !important;
+  grid-template-columns: minmax(240px, 1.35fr) minmax(240px, 1fr) minmax(
+      190px,
+      0.55fr
+    ) !important;
+  gap: 0.8rem !important;
+}
+
+.mapQueryFields > label {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--text-strong);
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
+.mapQueryActions {
+  display: flex !important;
+  grid-template-columns: none !important;
+  gap: 0.5rem !important;
+}
+
 .queryForm button,
 .queryForm a {
   display: inline-flex;
@@ -546,6 +580,11 @@
   border-bottom: 1px solid var(--border);
 }
 
+.versionList > li[data-selected='true'] {
+  background: var(--accent-soft);
+  box-shadow: inset 5px 0 0 var(--accent);
+}
+
 .versionList > li:last-child,
 .eventList > li:last-child,
 .edgeList > li:last-child {
@@ -564,6 +603,17 @@
   background: var(--accent-soft);
   font-family: var(--mono);
   font-weight: 760;
+}
+
+a.versionIndex {
+  text-decoration: none;
+}
+
+a.versionIndex:hover,
+a.versionIndex:focus-visible {
+  border-color: var(--accent-strong);
+  outline: 2px solid transparent;
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .versionList dl {
@@ -913,6 +963,10 @@
 }
 
 @media (max-width: 900px) {
+  .mapQueryFields {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
   .pageHeader,
   .sectionHeading,
   .graphGrid {
@@ -957,6 +1011,10 @@
 }
 
 @media (max-width: 620px) {
+  .mapQueryFields {
+    grid-template-columns: 1fr !important;
+  }
+
   .pageHeader {
     padding-top: 2.3rem;
   }

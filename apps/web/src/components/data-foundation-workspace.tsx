@@ -443,10 +443,14 @@ export function DataItemList({
 }
 
 export function VersionList({
+  hrefBase,
   locale,
+  selectedVersionId,
   versions,
 }: {
+  readonly hrefBase?: string;
   readonly locale: Locale;
+  readonly selectedVersionId?: string;
   readonly versions: readonly DataItemVersionDto[];
 }) {
   const copy = getDictionary(locale).dataFoundation;
@@ -461,8 +465,29 @@ export function VersionList({
   return (
     <ol className={styles.versionList}>
       {versions.map((version) => (
-        <li key={version.versionId}>
-          <div className={styles.versionIndex}>v{version.version}</div>
+        <li
+          key={version.versionId}
+          data-selected={
+            version.versionId === selectedVersionId ? 'true' : undefined
+          }
+        >
+          {hrefBase === undefined ? (
+            <div className={styles.versionIndex}>v{version.version}</div>
+          ) : (
+            <Link
+              className={styles.versionIndex}
+              href={`${hrefBase}?version=${encodeURIComponent(version.versionId)}`}
+              aria-current={
+                version.versionId === selectedVersionId ? 'page' : undefined
+              }
+              aria-label={copy.itemPage.selectVersion.replace(
+                '{version}',
+                String(version.version),
+              )}
+            >
+              v{version.version}
+            </Link>
+          )}
           <div>
             <ProtocolValue>{version.versionId}</ProtocolValue>
             <div className={styles.badgeRow}>
@@ -499,6 +524,75 @@ export function VersionList({
         </li>
       ))}
     </ol>
+  );
+}
+
+export function MapQueryForm({
+  action,
+  bbox,
+  bboxHint,
+  bboxLabel,
+  bboxPlaceholder,
+  crs,
+  crsLabel,
+  resetLabel,
+  submitLabel,
+  version,
+  versionLabel,
+  versionPlaceholder,
+}: {
+  readonly action: string;
+  readonly bbox: string;
+  readonly bboxHint: string;
+  readonly bboxLabel: string;
+  readonly bboxPlaceholder: string;
+  readonly crs: 'EPSG:4326' | 'EPSG:4490';
+  readonly crsLabel: string;
+  readonly resetLabel: string;
+  readonly submitLabel: string;
+  readonly version: string;
+  readonly versionLabel: string;
+  readonly versionPlaceholder: string;
+}) {
+  return (
+    <form
+      className={`${styles.queryForm} ${styles.mapQueryForm}`}
+      action={action}
+    >
+      <div className={styles.mapQueryFields}>
+        <label>
+          <span>{bboxLabel}</span>
+          <input
+            name="bbox"
+            defaultValue={bbox}
+            placeholder={bboxPlaceholder}
+            autoComplete="off"
+            inputMode="decimal"
+          />
+        </label>
+        <label>
+          <span>{versionLabel}</span>
+          <input
+            name="version"
+            defaultValue={version}
+            placeholder={versionPlaceholder}
+            autoComplete="off"
+          />
+        </label>
+        <label>
+          <span>{crsLabel}</span>
+          <select name="crs" defaultValue={crs}>
+            <option value="EPSG:4326">EPSG:4326 · WGS 84</option>
+            <option value="EPSG:4490">EPSG:4490 · CGCS2000</option>
+          </select>
+        </label>
+      </div>
+      <small>{bboxHint}</small>
+      <div className={styles.mapQueryActions}>
+        <button type="submit">{submitLabel}</button>
+        <Link href={action}>{resetLabel}</Link>
+      </div>
+    </form>
   );
 }
 

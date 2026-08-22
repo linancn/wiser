@@ -374,6 +374,17 @@ export interface MapFeatureCollectionDto {
   }[];
 }
 
+export interface StacExtentDto {
+  readonly itemId: string;
+  readonly versionId: string;
+  readonly dataItemId: string;
+  readonly bbox: readonly [number, number, number, number];
+}
+
+export interface StacFeatureCollectionDto {
+  readonly extents: readonly StacExtentDto[];
+}
+
 export interface CapabilitySummaryDto {
   readonly id: string;
   readonly version: string;
@@ -1028,6 +1039,67 @@ export function parseGeoQuery(value: unknown): GeoQueryDto {
   };
 }
 
+export function parseStacFeatureCollection(
+  value: unknown,
+): StacFeatureCollectionDto {
+  const contract = 'STAC';
+  const row = object(value, contract);
+  if (
+    row.type !== 'FeatureCollection' ||
+    !Array.isArray(row.features) ||
+    row.features.length > 1_000
+  ) {
+    fail(contract);
+  }
+  return {
+    extents: row.features.map((value) => {
+      const feature = object(value, contract);
+      const properties = object(feature.properties, contract);
+      const itemId = string(feature.id, contract, 54, 54);
+      const collection = string(feature.collection, contract, 38, 38);
+      if (
+        feature.type !== 'Feature' ||
+        !/^wiser-[a-f0-9]{48}$/.test(itemId) ||
+        !/^wiser-[a-f0-9]{32}$/.test(collection) ||
+        !Array.isArray(feature.bbox) ||
+        feature.bbox.length !== 4
+      ) {
+        fail(contract);
+      }
+      const bbox = feature.bbox.map((coordinate) =>
+        finite(coordinate, contract),
+      );
+      const [minimumX, minimumY, maximumX, maximumY] = bbox;
+      if (
+        minimumX === undefined ||
+        minimumY === undefined ||
+        maximumX === undefined ||
+        maximumY === undefined ||
+        minimumX < -180 ||
+        maximumX > 180 ||
+        minimumY < -90 ||
+        maximumY > 90 ||
+        minimumX > maximumX ||
+        minimumY > maximumY
+      ) {
+        fail(contract);
+      }
+      return {
+        itemId,
+        versionId: uuid(
+          properties.versionId ?? properties['wiser:version_id'],
+          contract,
+        ),
+        dataItemId: uuid(
+          properties.dataItemId ?? properties['wiser:data_item_id'],
+          contract,
+        ),
+        bbox: [minimumX, minimumY, maximumX, maximumY],
+      };
+    }),
+  };
+}
+
 export function toMapFeatureCollection(
   value: GeoQueryDto,
 ): MapFeatureCollectionDto {
@@ -1184,6 +1256,7 @@ export function parseGeoBbox(
 
 export function bboxGeometry(
   bbox: readonly [number, number, number, number],
+  crs: 'EPSG:4326' | 'EPSG:4490' = 'EPSG:4326',
 ): GeoGeometryDto {
   const [minimumX, minimumY, maximumX, maximumY] = bbox;
   return {
@@ -1197,6 +1270,6 @@ export function bboxGeometry(
         [minimumX, minimumY],
       ],
     ],
-    crs: 'EPSG:4326',
+    crs,
   };
 }
