@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "generate": "fumadocs-mdx",
-    "dev": "next dev",
+    "dev": "next dev --hostname 127.0.0.1 --port 4321",
     "build": "next build",
     "typecheck": "next typegen && tsc --noEmit",
     "test:e2e": "playwright test"

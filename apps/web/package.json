@@ -6,7 +6,7 @@
   "description": "Unified bilingual WISER workspace and system shell",
   "license": "MIT",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 127.0.0.1 --port 3000",
     "build": "next build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

@@ -65,9 +65,7 @@ describe('human documentation entrypoints', () => {
   });
 
   it('keeps quick start focused on an executable first run', () => {
-    const chinese = read(
-      'apps/docs/src/content/docs/zh-CN/quick-start.md',
-    );
+    const chinese = read('apps/docs/src/content/docs/zh-CN/quick-start.md');
     const english = read('apps/docs/src/content/docs/en/quick-start.md');
 
     for (const heading of [
@@ -111,11 +109,7 @@ describe('human documentation entrypoints', () => {
     const webScripts = web.scripts as Record<string, string>;
     const docsScripts = docs.scripts as Record<string, string>;
 
-    expect(webScripts.dev).toBe(
-      'next dev --hostname 127.0.0.1 --port 3000',
-    );
-    expect(docsScripts.dev).toBe(
-      'next dev --hostname 127.0.0.1 --port 4321',
-    );
+    expect(webScripts.dev).toBe('next dev --hostname 127.0.0.1 --port 3000');
+    expect(docsScripts.dev).toBe('next dev --hostname 127.0.0.1 --port 4321');
   });
 });

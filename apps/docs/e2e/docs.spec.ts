@@ -8,20 +8,24 @@ test('serves Chinese by default and preserves the English corpus', async ({
   await expect(
     page.getByRole('heading', { name: 'wiser water, better future' }),
   ).toBeVisible();
-  await expect(page.getByText('WISER Platform', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'WISER WISER Platform' }),
+  ).toBeVisible();
   await expect(page.locator('main')).toContainText('数据基座');
-  await expect(page.getByText('公平性约束')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '系统地图' })).toBeVisible();
 
   await page.goto('/en/');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await expect(page.getByText('WISER Platform', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'WISER WISER Platform' }),
+  ).toBeVisible();
   await expect(page.locator('main')).toContainText('Data Foundation');
-  await expect(page.getByText('Fairness invariant')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'System map' })).toBeVisible();
 
   await page.goto('/quick-start/');
   await expect(page.getByRole('heading', { name: '快速开始' })).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: '先认识当前边界' }),
+    page.getByRole('heading', { name: '0. 前置条件' }),
   ).toBeVisible();
   await page.getByRole('button', { name: '选择文档语言' }).click();
   await page.getByRole('button', { name: 'English', exact: true }).click();

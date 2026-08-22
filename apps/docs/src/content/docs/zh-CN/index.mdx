@@ -1,67 +1,65 @@
 ---
-title: WISER 水地图 · 多系统平台
-description: 统一承载 Agent EXCON、Data Foundation 以及未来水智能系统的 Auth、协议、界面和文档平台。
+title: WISER 文档
+description: WISER Platform、Agent EXCON 与 Data Foundation 的统一产品和开发文档。
 ---
 
 <HomeHero locale="zh-CN" />
 
-<HomeTimeline locale="zh-CN" />
-
-> 当前默认案例使用真实水系统关系和少量有来源的历史观测作事实锚点；容量、目标、规则、方案和结果均为隔离合成数据，不向现实控制系统发出指令。
-
-## 两个已运行系统，一套平台边界
-
-<Cards>
-  <Card title="环境控制">
-    锁定场景版本和虚拟时间，按规则释放观察，避免历史回放中的时间穿越。
-  </Card>
-  <Card title="事实裁决">
-    确定性规则优先；统计、模型和人工评价均保存依据、版本与置信度。
-  </Card>
-  <Card title="协议开放">
-    HTTP 是统一底座；每个系统的 REST、GraphQL、MCP 和 Skill 都从自己的严格 Zod
-    Capability/协议合约派生。
-  </Card>
-  <Card title="多智能体协作">
-    多个角色并行完成
-    Task，以显式工件汇流成团队提交，并分别获得个人、角色和团队反馈。
-  </Card>
-  <Card title="当时视角回放">
-    事件与 Agent Receipt 重建每个智能体实际获得的信息；OTel Trace
-    用于技术诊断而非审计事实。
-  </Card>
-  <Card title="数据基座">
-    上传、隔离、扫描、解释、确定性转换、质量审核、权威版本与五类可重建投影形成一条可验证纵切。
-  </Card>
-  <Card title="统一身份与界面">
-    两个系统共享 Supabase Auth、WISER Shell、中文/英文、浅色/深色主题与同一
-    Fumadocs 文档站。
-  </Card>
-</Cards>
-
-## 从这里进入
+## 系统地图
 
 <Cards>
   <Card
-    title="快速开始"
-    href="/quick-start/"
-    description="启动统一 Auth、持久化 EXCON v2 与 Data Foundation 18 步纵切。"
-  />
-  <Card
-    title="架构边界"
+    title="WISER Platform"
     href="/architecture/wiser-platform/"
-    description="了解 WISER、EXCON、Data Foundation 与共享宿主的权威边界。"
+    description="统一 Auth、Tenant/Project、授权、Web Shell、API/MCP/文档宿主与跨系统依赖规则。"
   />
   <Card
-    title="Data Foundation"
+    title="Agent EXCON"
+    href="/architecture/overview/"
+    description="多场景、多 RunAgent 演练，确定性裁决、Receipt、回放与可观测性。"
+  />
+  <Card
+    title="Data Foundation / 数据基座"
     href="/architecture/data-foundation/"
-    description="查看数据权威、入库、Outbox、投影与四种产品接口。"
-  />
-  <Card
-    title="TDD 贡献指南"
-    href="/contributing/tdd/"
-    description="用京津冀水系统合成演练驱动红—绿—重构。"
+    description="数据入库、不可变版本、质量、血缘、检索、图谱、GIS 与可重建投影。"
   />
 </Cards>
 
-> 完整栈以统一 Supabase Auth 运行；EXCON v2 的 19 个 mutation 使用单 writer PostgreSQL command journal 持久化并确定性重放，Data Foundation 的 22 项 Capability、具体 Worker、五类投影、REST/GraphQL/MCP/Skill/Web 已接线。v1 仍只能显式选择且使用内存状态。
+## 按任务查文档
+
+<Cards>
+  <Card
+    title="第一次运行"
+    href="/quick-start/"
+    description="安装依赖、启动完整平台、登录并确认所有主要入口。"
+  />
+  <Card
+    title="参与开发"
+    href="/development/"
+    description="选择本机运行模式，定位前后端源码，运行数据库、测试和文档流程。"
+  />
+  <Card
+    title="接入 Agent EXCON"
+    href="/protocols/http/"
+    description="使用 HTTP 或 MCP 参与演练、同步 Receipt、提交任务与读取反馈。"
+  />
+  <Card
+    title="接入 Data Foundation"
+    href="/protocols/data-rest/"
+    description="从 REST、GraphQL、MCP 与 Skill 中选择同一 Capability 契约的传输面。"
+  />
+  <Card
+    title="理解身份与安全"
+    href="/architecture/unified-auth/"
+    description="了解 Supabase Session、委托身份、Tenant/Project 与跨库授权边界。"
+  />
+  <Card
+    title="运行示例"
+    href="/scenarios/yongding-river-dispatch/"
+    description="使用版本化场景包和可执行 Cookbook 验证多智能体协作。"
+  />
+</Cards>
+
+## 文档边界
+
+本文档站描述当前可运行系统。命令、端口和代码入口必须能从仓库直接验证；版本号以 manifest、lockfile 与容器版本登记为准。规划、里程碑复盘和已经被当前实现取代的设计过程不属于运行手册。

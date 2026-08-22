@@ -1,71 +1,65 @@
 ---
-title: WISER · Multi-system platform
-description: The shared Auth, protocol, UI, and documentation platform for Agent EXCON, Data Foundation, and future water-intelligence systems.
+title: WISER documentation
+description: Unified product and development documentation for WISER Platform, Agent EXCON, and Data Foundation.
 ---
 
 <HomeHero locale="en" />
 
-<HomeTimeline locale="en" />
-
-> The default combines real water-system relationships and a few sourced historical observations with isolated synthetic capacities, targets, rules, plans, and outcomes. It never issues commands to operational systems.
-
-## Two running systems, one platform boundary
-
-<Cards>
-  <Card title="Environment control">
-    Pin scenario versions and virtual time, then release observations without
-    hindsight leakage.
-  </Card>
-  <Card title="Fact-based adjudication">
-    Deterministic rules come first; statistical, model, and human evaluators
-    retain evidence and versions.
-  </Card>
-  <Card title="Open protocols">
-    HTTP is the foundation. Each system derives REST, GraphQL, MCP, and Skills
-    from its own strict Zod Capability or protocol contract.
-  </Card>
-  <Card title="Multi-agent collaboration">
-    Roles execute parallel Tasks, converge through explicit artifacts, and
-    receive distinct individual, role, and team feedback.
-  </Card>
-  <Card title="Historical-perspective replay">
-    Events and Agent receipts reconstruct what each member actually received;
-    OTel traces diagnose technology but do not define audit truth.
-  </Card>
-  <Card title="Data Foundation">
-    Upload, quarantine, scan, interpretation, deterministic transformation,
-    quality review, authority versions, and five rebuildable projections form
-    one verified slice.
-  </Card>
-  <Card title="Unified identity and UI">
-    Both systems share Supabase Auth, the WISER shell, Chinese/English,
-    light/dark themes, and one Fumadocs site.
-  </Card>
-</Cards>
-
-## Choose a path
+## System map
 
 <Cards>
   <Card
-    title="Quick start"
-    href="/en/quick-start/"
-    description="Start unified Auth, durable EXCON v2, and the 18-step Data Foundation slice."
+    title="WISER Platform"
+    href="/en/architecture/wiser-platform/"
+    description="Unified Auth, tenants/projects, authorization, Web shell, API/MCP/docs hosts, and cross-system dependency rules."
   />
   <Card
-    title="Architecture"
-    href="/en/architecture/wiser-platform/"
-    description="Understand WISER, EXCON, Data Foundation, and shared-host authority boundaries."
+    title="Agent EXCON"
+    href="/en/architecture/overview/"
+    description="Multi-scenario, multi-RunAgent exercises with deterministic adjudication, receipts, replay, and observability."
   />
   <Card
     title="Data Foundation"
     href="/en/architecture/data-foundation/"
-    description="Review data authority, ingestion, Outbox, projections, and four product interfaces."
-  />
-  <Card
-    title="TDD guide"
-    href="/en/contributing/tdd/"
-    description="Drive small commits from a fact-anchored synthetic water-system exercise."
+    description="Ingestion, immutable versions, quality, lineage, search, graph, GIS, and rebuildable projections."
   />
 </Cards>
 
-> The complete stack runs under unified Supabase Auth. EXCON v2 persists and deterministically replays all 19 mutations through a single-writer PostgreSQL command journal. Data Foundation wires all 22 Capabilities, its concrete Worker, five projections, REST/GraphQL/MCP/Skill/Web. v1 remains explicit and in-memory.
+## Find documentation by task
+
+<Cards>
+  <Card
+    title="Run WISER for the first time"
+    href="/en/quick-start/"
+    description="Install dependencies, start the complete platform, sign in, and verify its primary entrypoints."
+  />
+  <Card
+    title="Develop WISER"
+    href="/en/development/"
+    description="Choose a local runtime mode, find frontend/backend source, and run database, test, and docs workflows."
+  />
+  <Card
+    title="Integrate Agent EXCON"
+    href="/en/protocols/http/"
+    description="Participate through HTTP or MCP, synchronize receipts, submit tasks, and read feedback."
+  />
+  <Card
+    title="Integrate Data Foundation"
+    href="/en/protocols/data-rest/"
+    description="Choose REST, GraphQL, MCP, or Skill over the same Capability contract."
+  />
+  <Card
+    title="Understand identity and security"
+    href="/en/architecture/unified-auth/"
+    description="Review Supabase sessions, delegated identities, tenant/project scope, and cross-database authorization."
+  />
+  <Card
+    title="Run an example"
+    href="/en/scenarios/yongding-river-dispatch/"
+    description="Use the versioned scenario package and executable Cookbook to verify multi-agent collaboration."
+  />
+</Cards>
+
+## Documentation boundary
+
+This site describes the systems that run now. Commands, ports, and source entrypoints must be verifiable from the repository. Manifests, the lockfile, and container-version records are authoritative for versions. Planning notes, milestone recaps, and design processes superseded by the implementation do not belong in operational guidance.

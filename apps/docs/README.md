@@ -1,40 +1,57 @@
 ---
-title: WISER documentation application guide
+title: WISER Docs component guide
 docType: component-guide
 scope: apps/docs
 status: active
 authoritative: true
 owner: wiser
-language: en
+language: bilingual
 whenToUse:
-  - when changing or running the bilingual documentation application
+  - when running or changing the WISER documentation application
 whenToUpdate:
-  - when the docs runtime, build, locale, or verification workflow changes
+  - when docs routes, locales, content structure, build, or verification changes
 checkPaths:
+  - apps/docs/package.json
+  - apps/docs/source.config.ts
   - apps/docs/src/app/**
   - apps/docs/src/components/**
+  - apps/docs/src/content/**
   - apps/docs/src/lib/**
-  - apps/docs/source.config.ts
+  - apps/docs/e2e/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
+lastReviewedCommit: ccd874eda8e16f8fd9169ec2f2769ff17f287c48
 ---
 
-# WISER Docs
+# WISER Docs / 文档应用
 
-Next.js 16 + Fumadocs is the single bilingual documentation application for WISER Platform, Agent EXCON, Data Foundation, and future systems. Simplified Chinese is served at the root URL and English under `/en`. Architecture and protocol navigation includes shared platform/Auth/design contracts plus separate Agent EXCON HTTP/MCP and Data REST/GraphQL/MCP references.
+`apps/docs` is the single Fumadocs site for WISER Platform, Agent EXCON, Data Foundation, and future systems. `apps/docs` 是所有 WISER 系统共用的 Fumadocs 文档站。
 
-The global brand lockup now reads **WISER Platform**, the bilingual home hero names both Agent EXCON and Data Foundation, and both locale layouts use platform-level metadata. It is one product documentation surface, not an EXCON-branded site with a Data appendix.
+## Entrypoints / 入口
 
-Runtime dependencies are pinned exactly to Next.js `16.3.2`, Fumadocs core/UI `16.15.0`, and Fumadocs MDX `15.3.1`; the repository's narrow pnpm cooldown exception admits these just-released verified stable versions while the frozen root lockfile fixes their full graph.
+- Chinese (default) / 中文（默认）：<http://127.0.0.1:4321/>
+- English / 英文：<http://127.0.0.1:4321/en/>
+- Application routes / 应用路由：`src/app/`
+- Documentation content / 文档内容：`src/content/docs/{zh-CN,en}/`
+- Navigation / 导航：each directory's `meta.json`
 
-The app declares exact dependency versions in its own `package.json`. Install it from the repository root so the workspace keeps one shared lockfile; do not generate an app-specific lockfile:
+## Run / 运行
+
+Install dependencies once from the repository root, then start the fixed local port:
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm --filter @wiser/docs dev
 ```
 
-Verification commands:
+## Content rules / 内容规则
+
+- Every visible page exists at the same locale-free slug in `zh-CN` and `en`.
+- Chinese is the default; both languages preserve the same meaning, routes, states, and actions.
+- Current architecture and executable workflows belong in the site. Release narratives and superseded plans stay in Git history or issue tracking.
+- Package versions come from manifests/lockfile; container versions come from Compose/version records. Do not copy transient version inventories into prose.
+- Add each page to the relevant `meta.json`, give governed Markdown complete Docpact frontmatter, and update links in the same change.
+
+## Verify / 验证
 
 ```bash
 pnpm --filter @wiser/docs typecheck
@@ -42,4 +59,4 @@ pnpm --filter @wiser/docs build
 pnpm --filter @wiser/docs test:e2e
 ```
 
-Documentation lives in `src/content/docs/zh-CN/` and `src/content/docs/en/`. Every Chinese page must have an English page with the same locale-free slug. `source.config.ts` compiles MDX into the generated `.source/` collection, and `next build` exports the static site into `out/`.
+The human workflow is documented in [Development documentation](./src/content/docs/en/development/index.md) and [Quick start](./src/content/docs/en/quick-start.md). / 面向人的开发流程见[开发手册](./src/content/docs/zh-CN/development/index.md)与[快速开始](./src/content/docs/zh-CN/quick-start.md)。

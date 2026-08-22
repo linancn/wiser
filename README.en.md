@@ -1,5 +1,5 @@
 ---
-title: WISER project overview
+title: WISER repository entrypoint
 docType: overview
 scope: repository
 status: active
@@ -7,17 +7,17 @@ authoritative: true
 owner: wiser
 language: en
 whenToUse:
-  - when learning the project boundary, delivered state, and local entry points
+  - when first understanding, starting, or navigating the WISER repository
 whenToUpdate:
-  - when product boundaries, delivery status, or development entry points change
+  - when system boundaries, application processes, commands, or public entrypoints change
 checkPaths:
   - apps/**
   - packages/**
   - examples/**
   - compose.yaml
-  - docs/roadmap.md
+  - package.json
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
+lastReviewedCommit: ccd874eda8e16f8fd9169ec2f2769ff17f287c48
 ---
 
 # WISER · Water Intelligence System & Engine for Reconfiguration
@@ -26,114 +26,105 @@ English · [中文（默认）](./README.md)
 
 **wiser water, better future**
 
-WISER has evolved from a single agent exercise control application into an extensible multi-system platform. Agent EXCON and Data Foundation are the first two peer business systems. They share Fastify, Next.js, MCP, Fumadocs, Supabase Auth, observability entrypoints, and the WISER Design System while retaining separate domains, authorities, and workers.
+WISER is a multi-system platform for water-intelligence products. Its business systems share Supabase Auth, the Web shell, API host, MCP gateway, documentation, design language, and observability while retaining independent domain contracts, cores, workers, and data authorities.
 
-## Delivered now
+## Systems and entrypoints
 
-- **Unified platform**: Supabase Auth is the sole authority for users, sessions, tenants, projects, memberships, roles, scopes, and delegated identities. Web uses the same SSR session, and API requests re-resolve live authorization context.
-- **Agent EXCON**: the v2 multi-scenario/multi-RunAgent protocol, 18 MCP Tools, deterministic evaluation, Receipt replay, and observatory remain intact. The full stack journals all 19 v2 mutations in append-only PostgreSQL tables through a non-superuser role and verifies deterministic replay at startup. v1 Episodes remain an explicit, non-durable compatibility protocol.
-- **Data Foundation**: REST, schema-first GraphQL, MCP, and the file-based Skill share one Zod contract and Handler for 22 Capabilities. Independent data-postgres/PostGIS, SeaweedFS S3, a durable Worker, Transactional Outbox, five PostGIS/Weaviate/OpenSearch/Neo4j/STAC projections, and governed query adapters are wired into the default Data runtime. OGC/STAC/vector/raster data is exposed only through the unified-Auth Fastify proxy; all four GIS backends have no host port.
-- **Unified product UI**: Data Foundation catalog, immutable-version selection, ingestion, quality, lineage, knowledge, graph, GIS, Operation, and Capability views live in the existing Next.js app. Its map combines PostGIS authority, STAC extent, vector MVT, and raster through a same-origin Session proxy. Every visible message exists in `zh-CN` and `en`, Chinese is the default, and the Agent EXCON light/dark responsive shell is reused.
-- **Unified documentation**: bilingual architecture, quick start, and Agent EXCON/Data REST, GraphQL, and MCP references are published by one Fumadocs app and governed by Docpact.
+| System          | Human-facing frontend                                 | Public backend entrypoint                              | Primary source                                                                                          |
+| --------------- | ----------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| WISER Platform  | Sign-in, user controls, and shared shell: `/en/login` | Identity and delegation: `/api/platform/v1`            | `packages/platform-*`, `apps/api/src/platform`, `apps/web/src/components/platform`, `supabase`          |
+| Agent EXCON     | Scenarios and runs: `/en/scenarios`, `/en/runs`       | HTTP: `/api/v2`; MCP: `/mcp`                           | `packages/contracts`, `packages/core`, `packages/infra`, `packages/excon-scenarios`, `apps/worker`      |
+| Data Foundation | Data workspace: `/en/data-foundation`                 | REST: `/api/data/v1`; GraphQL: `/graphql`; MCP: `/mcp` | `packages/data-*`, `apps/api/src/data-foundation`, `apps/data-worker`, `infrastructure/data-foundation` |
 
-## Repository boundaries
+Browsers, Skills, and MCP clients access business capabilities through HTTP boundaries. They never connect directly to databases, object storage, or projections. See the [platform architecture](./apps/docs/src/content/docs/en/architecture/wiser-platform.md) for system-level boundaries.
 
-```text
-apps/           Shared API, Web, MCP, docs, and system-specific workers
-packages/       Platform/system code and versioned runtime domain assets in @agent-excon/scenarios
-examples/       Executable tutorials, labs, and showcases for Agent EXCON and future systems
-infrastructure/ Exact images, Data Foundation, Docker, and observability config
-skills/         Independently loadable Agent EXCON and Data Foundation Skills
-supabase/       Unified Auth/control plane, EXCON schema, migrations, seeds, pgTAP
-tests/          Cross-boundary fixtures and acceptance tests
-```
+## Application processes
 
-Dependency direction is `platform contracts <- system contracts <- core <- application <- infra/apps`. MCP, Skills, and browsers call only HTTP; they never connect directly to an authority database or projection. Data projections are rebuildable and never authorization or publication authority.
+| Path                     | Type             | Responsibility                                                           | Complete-stack entrypoint             |
+| ------------------------ | ---------------- | ------------------------------------------------------------------------ | ------------------------------------- |
+| `apps/web`               | Frontend         | WISER product UI; Chinese default, English and light/dark themes         | `http://127.0.0.1:3000/zh-CN`         |
+| `apps/docs`              | Frontend         | Fumadocs site for every WISER system                                     | `http://127.0.0.1:4321`               |
+| `apps/api`               | Backend          | Shared Fastify host for Platform, Agent EXCON, and Data Foundation       | `http://127.0.0.1:3001`               |
+| `apps/worker`            | Backend worker   | Deterministic Agent EXCON evaluation jobs                                | `http://127.0.0.1:3002/health/ready`  |
+| `apps/data-worker`       | Backend worker   | Data ingestion, quality, publication, and projection jobs                | `http://127.0.0.1:13003/health/ready` |
+| `apps/mcp`               | Protocol gateway | Maps Agent EXCON and Data Foundation MCP tools to HTTP APIs              | `http://127.0.0.1:13004/mcp`          |
+| `apps/telemetry-ingress` | Optional backend | Authenticates, limits, and redacts external RunAgent OTLP/HTTP telemetry | `http://127.0.0.1:14318`              |
 
-## Environment baseline
+See the [local development environment](./apps/docs/src/content/docs/en/development/local-environment.md) for Supabase Studio, database, object-store, search/GIS, and observability ports.
 
-- Node.js 24 LTS (`>=24.18.0 <25`)
-- pnpm `11.22.0`
-- TypeScript `7.0.2`
-- Docker Engine 29+ / Docker Compose 5+
-- workspace-pinned Supabase CLI
+## Start in five minutes
 
-npm dependencies are exact and share one `pnpm-lock.yaml`. Containers use a stable tag plus `sha256` digest; Data Foundation pins are audited in [`infrastructure/data-foundation/versions.env`](./infrastructure/data-foundation/versions.env), and `latest` is forbidden.
-
-Key application pins in this delivery are AWS S3 SDK/presigner `3.1116.0`, Next.js `16.3.2`, Fumadocs core/UI `16.15.0` with MDX `15.3.1`, and MapLibre GL JS `6.5.0`. pnpm retains the 24-hour `minimumReleaseAge` for everything else and narrowly exempts only the just-verified, exactly pinned AWS/Smithy, Next, Fumadocs, and MapLibre packages. GraphQL `16.14.2` with Mercurius `16.10.0` is the validated Fastify 5/TS7 line; `@types/node` `24.13.3` deliberately matches Node 24 rather than a different runtime major.
-
-## Install and verify
+Install Node.js 24, Corepack, Docker Engine, and Docker Compose. Treat [`package.json`](./package.json) as the source of truth for supported versions.
 
 ```bash
 corepack enable
 pnpm install --frozen-lockfile
+pnpm stack:full:up
+```
+
+The first image build and end-to-end smoke can take time. After the command succeeds, open:
+
+- Product UI: <http://127.0.0.1:3000/zh-CN>
+- Documentation: <http://127.0.0.1:4321>
+- API readiness: <http://127.0.0.1:3001/health/ready>
+- Supabase Studio: <http://127.0.0.1:56323>
+
+The seeded account is for local fixtures only:
+
+```text
+operator@agent-excon.test
+WiserLocalOperator-2026!
+```
+
+Stop services while retaining local data:
+
+```bash
+pnpm stack:down
+```
+
+See [Quick start](./apps/docs/src/content/docs/en/quick-start.md) for staged startup, logs, reset behavior, and troubleshooting.
+
+## Develop and verify
+
+API, Web, and docs can run independently when the complete infrastructure is unnecessary. The [development guide](./apps/docs/src/content/docs/en/development/index.md) defines exact commands and capability boundaries for each mode. The primary pre-commit gate is:
+
+```bash
 pnpm verify
+```
+
+Database changes also require focused integration gates. Note that `supabase:verify` resets the local Supabase database:
+
+```bash
 pnpm supabase:verify
 pnpm data:verify
 ```
 
-The repository uses Docpact 0.1.9. Route actual paths before a change, then inspect documentation obligations and validate governance afterward:
+The repository uses Red → Green → Refactor, small commits, and Docpact governance. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the complete workflow.
 
-```bash
-cargo install docpact --version 0.1.9
-pnpm docpact:route --paths 'packages/data-core/src/**'
-pnpm docpact:check
-pnpm docpact:validate
+## Repository layout
+
+```text
+apps/           Runnable frontends, API, protocol gateway, and workers
+packages/       Platform/system contracts, pure cores, adapters, and runtime assets
+examples/       Executable tutorials, labs, and showcases grouped by system
+infrastructure/ Docker, Data Foundation, and observability infrastructure
+skills/         Agent Skills that use WISER through public protocols
+supabase/       Unified Auth, platform control plane, and Agent EXCON database assets
+tests/          Cross-application, toolchain, and acceptance tests
 ```
 
-## Start the complete platform
+Dependency direction is `platform contracts <- system contracts <- core <- application <- infra/apps`. New systems join the shared hosts and must not import another system's core or infrastructure.
 
-One command starts Supabase, unified Auth, durable EXCON v2, Data Foundation, API, Web, MCP, and docs, then runs migrations, seeds, and the real 18-step smoke:
+## Documentation
 
-```bash
-pnpm stack:full:up
-```
+- [Documentation home](./apps/docs/src/content/docs/en/index.mdx)
+- [Quick start](./apps/docs/src/content/docs/en/quick-start.md)
+- [Development guide](./apps/docs/src/content/docs/en/development/index.md)
+- [Platform architecture](./apps/docs/src/content/docs/en/architecture/wiser-platform.md)
+- [Interface navigation](./apps/docs/src/content/docs/en/protocols/meta.json)
 
-`stack:full:up` creates and reuses local keys in the ignored `.wiser/local/runtime-secrets.json`, provisions the EXCON journal's non-superuser login, and runs `data:up → data:migrate → data:seed → data:smoke`. It neither reads nor mounts `~/.codex/auth.json`, and it never injects a Supabase service-role key into applications.
+Every documentation page has an English and Chinese version at the same locale-free slug. `apps/docs` is the human-facing source of truth; component READMEs cover only the responsibility and direct commands for their directory.
 
-| Surface               | Address                                   |
-| --------------------- | ----------------------------------------- |
-| WISER Web             | `http://127.0.0.1:3000/zh-CN`             |
-| Fastify API / GraphQL | `http://127.0.0.1:3001` / `POST /graphql` |
-| Fumadocs              | `http://127.0.0.1:4321`                   |
-| Data Worker           | `http://127.0.0.1:13003/health/ready`     |
-| MCP Streamable HTTP   | `http://127.0.0.1:13004/mcp`              |
-| Supabase Studio       | `http://127.0.0.1:56323`                  |
+## License and security
 
-For individual steps:
-
-```bash
-pnpm supabase:start
-pnpm data:up
-pnpm data:migrate
-pnpm data:seed
-pnpm data:smoke
-```
-
-`data:smoke` uploads real GeoJSON and Markdown fixtures, traverses ClamAV, SHA-256, Tika/GeoJSON parsing, fake-AI planning, deterministic transformation, quality/manual review, authoritative commit, Outbox, and five projections, then verifies REST, GraphQL, MCP, and the authenticated Web catalog. It replays the same Outbox event and proves that no duplicate version, object, node, or projection appears.
-
-Normal shutdown preserves data:
-
-```bash
-pnpm data:down
-pnpm stack:down
-```
-
-Removing Data Foundation volumes requires exact confirmation:
-
-```bash
-WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
-```
-
-## Explicit compatibility boundaries
-
-- EXCON v2 in production/full-stack mode uses a single-writer append-only command journal plus deterministic replay. It is not a normalized PostgreSQL repository for every v2 aggregate. Journal lock, hashes, generation tape, and secret-reference verification fail closed.
-- v1 Episodes remain an explicit in-memory compatibility implementation; v2 failures never downgrade automatically.
-- Data Foundation Web is currently an authenticated governance and query workspace. Upload, submit, and review mutations are invoked through REST, GraphQL, MCP, or the Skill; the browser never receives database, object-store, or projection credentials.
-- Fake AI and embeddings exist for tests, CI, and repeatable local smoke only. Deterministic rules and human review retain authority over quality, acceptance, and publication.
-
-See [Quick start](./apps/docs/src/content/docs/en/quick-start.md), [Data Foundation architecture](./apps/docs/src/content/docs/en/architecture/data-foundation.md), and [`CONTRIBUTING.md`](./CONTRIBUTING.md) for details.
-
-## License
-
-Code is available under the [MIT License](./LICENSE). Scenario data and third-party material retain the licenses in their own `PROVENANCE.md`; MIT does not automatically cover those assets.
+Code is available under the [MIT License](./LICENSE). Scenario data and third-party material retain the terms in their `PROVENANCE.md`. Never expose local Supabase, database, object-store, or development credentials. See [`SECURITY.md`](./SECURITY.md) for private reporting guidance.
