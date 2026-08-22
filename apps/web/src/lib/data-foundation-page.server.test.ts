@@ -1,17 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { redirect } = vi.hoisted(() => ({ redirect: vi.fn() }));
+const { notFound, redirect } = vi.hoisted(() => ({
+  notFound: vi.fn(),
+  redirect: vi.fn(),
+}));
 
 vi.mock('server-only', () => ({}));
-vi.mock('next/navigation', () => ({ redirect }));
+vi.mock('next/navigation', () => ({ notFound, redirect }));
 
 import { DataFoundationApiError } from './data-foundation-dal.server';
 import { handleDataPageError } from './data-foundation-page.server';
 
 beforeEach(() => {
   redirect.mockReset();
+  notFound.mockReset();
   redirect.mockImplementation(() => {
     throw new Error('NEXT_REDIRECT');
+  });
+  notFound.mockImplementation(() => {
+    throw new Error('NEXT_NOT_FOUND');
   });
 });
 
@@ -35,5 +42,16 @@ describe('Data Foundation page error policy', () => {
       handleDataPageError(failure, 'en', '/en/data-foundation/catalog'),
     ).toBe(failure);
     expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it('uses the Next not-found boundary for an authenticated missing resource', () => {
+    expect(() =>
+      handleDataPageError(
+        new DataFoundationApiError('not-found', 404),
+        'en',
+        '/en/data-foundation/catalog/missing',
+      ),
+    ).toThrow('NEXT_NOT_FOUND');
+    expect(notFound).toHaveBeenCalledOnce();
   });
 });
