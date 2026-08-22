@@ -313,13 +313,18 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     openapi: {
       openapi: '3.1.0',
       info: {
-        title: 'Agent EXCON API',
+        title: 'WISER Platform API',
         description:
-          '面向 Skill/MCP 的京津冀永定河演练 API / Skill/MCP-facing Jing-Jin-Ji Yongding River exercise API',
+          'WISER 统一平台、Agent EXCON 与数据基座 API / Unified WISER Platform, Agent EXCON, and Data Foundation API',
         version: '0.1.0',
       },
       tags: [
         { name: 'health', description: 'Service health' },
+        { name: 'platform', description: 'Shared WISER platform services' },
+        {
+          name: 'data-foundation',
+          description: 'Governed WISER Data Foundation capabilities',
+        },
         { name: 'exercise', description: 'Skill-driven exercise workflow' },
         { name: 'trace', description: 'Participant-visible trace data' },
         {
