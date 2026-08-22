@@ -59,7 +59,7 @@
   },
   "devDependencies": {
     "@agent-excon/scenarios": "workspace:*",
-    "@types/node": "24.13.3",
+    "@types/node": "26.2.0",
     "@vitest/coverage-v8": "4.1.11",
     "oxlint": "1.79.0",
     "oxlint-tsgolint": "7.0.2001",
