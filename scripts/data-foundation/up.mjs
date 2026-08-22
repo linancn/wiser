@@ -48,7 +48,9 @@ async function localRuntimeSecrets() {
     return parsed;
   } catch (error) {
     if (error?.code !== 'ENOENT') {
-      throw new Error('Local WISER runtime secret state is invalid.');
+      throw new Error('Local WISER runtime secret state is invalid.', {
+        cause: error,
+      });
     }
   }
   const created = {
