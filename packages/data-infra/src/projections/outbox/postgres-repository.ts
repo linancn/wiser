@@ -126,7 +126,7 @@ const MARK_FAILED_SQL = `
 update service.projection_status
 set status = 'FAILED',
     projected_at = null,
-    error_detail = jsonb_build_object('category', $5),
+    error_detail = jsonb_build_object('category', $5::text),
     row_version = row_version + 1,
     updated_at = clock_timestamp()
 where tenant_id = $1
