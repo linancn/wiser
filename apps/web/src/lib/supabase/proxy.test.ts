@@ -14,6 +14,22 @@ describe('WISER Web Supabase SSR proxy', () => {
     );
   });
 
+  it('uses the server-only internal Supabase origin without changing the browser origin', () => {
+    expect(
+      loadWebSupabaseConfig({
+        NODE_ENV: 'development',
+        WISER_AUTH_MODE: 'supabase',
+        SUPABASE_URL: 'http://host.docker.internal:56321',
+        NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:56321',
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+          'publishable-test-key-long-enough',
+      }),
+    ).toEqual({
+      supabaseUrl: 'http://host.docker.internal:56321',
+      supabasePublishableKey: 'publishable-test-key-long-enough',
+    });
+  });
+
   it('refreshes verified claims and propagates updated cookies', async () => {
     const getClaims = vi.fn(() => Promise.resolve({ data: {}, error: null }));
     const createClientImplementation: SupabaseServerClientFactory = (
