@@ -1,9 +1,25 @@
 export { buildApp, type BuildAppOptions } from './app.js';
 export {
+  createDefaultApiApp,
   createDefaultApiModules,
   main,
+  type DefaultApiModuleFactories,
   type DefaultApiRuntimeFactories,
 } from './main.js';
+export {
+  PlatformParticipantAuthenticator,
+  loadPlatformParticipantContext,
+  type PlatformParticipantAuthenticatorOptions,
+  type PlatformParticipantContext,
+} from './platform/participant-authenticator.js';
+export {
+  createV2RuntimeFromEnvironment,
+  loadV2RuntimeConfig,
+  type V2Runtime,
+  type V2RuntimeConfig,
+  type V2RuntimeFactories,
+  type V2RuntimePoolOptions,
+} from './v2-runtime.js';
 export {
   DataCapabilityHandler,
   DataCapabilityHandlerError,
