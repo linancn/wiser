@@ -181,7 +181,7 @@ const defaultFactories: DataFoundationRuntimeFactories = {
     const pg = (pool as DefaultPool).pg;
     const embedding = new DeterministicFakeEmbedding({
       dimensions: config.fakeEmbeddingDimensions,
-      version: 'v1.0.0',
+      version: '1.0.0-fixture',
     });
     const search = new SearchOrchestrator({
       openSearch: new OpenSearchSearchBackend({
