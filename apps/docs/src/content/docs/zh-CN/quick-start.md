@@ -20,7 +20,7 @@ lastReviewedAt: 2026-08-22
 lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
-## 当前运行边界
+## 先认识当前边界
 
 完整本机栈共享一套 Supabase Auth、Fastify API、Next.js Web、MCP 和 Fumadocs：
 
