@@ -301,6 +301,9 @@ describe('PostgreSQL projection authority', () => {
     expect(sql).toMatch(/published_at = clock_timestamp\(\)/i);
     expect(sql).toMatch(/version\.publication_status = 'PUBLISHED'/i);
     expect(sql).toContain('PROJECTION_COMPLETED');
+    expect(sql).toMatch(
+      /'data-item-version',\s*\$4::uuid::text,\s*'SUCCEEDED'/i,
+    );
     expect(sql).not.toMatch(/update service\.operation set status/);
 
     const blockedPool = new FakePool();
