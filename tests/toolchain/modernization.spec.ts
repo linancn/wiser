@@ -82,6 +82,17 @@ describe('TypeScript 7 native toolchain', () => {
       expect(dependencies.typescript, manifestPath).toBe('7.0.2');
     }
   });
+
+  it('explicitly keeps both Next applications on the project-local TypeScript CLI', () => {
+    for (const configPath of [
+      'apps/web/next.config.ts',
+      'apps/docs/next.config.ts',
+    ]) {
+      expect(read(configPath), configPath).toMatch(
+        /experimental:\s*\{[\s\S]*useTypeScriptCli:\s*true/,
+      );
+    }
+  });
 });
 
 describe('Fumadocs documentation application', () => {
