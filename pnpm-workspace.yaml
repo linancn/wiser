@@ -21,6 +21,6 @@ minimumReleaseAgeExclude:
   - maplibre-gl
 
 catalog:
-  '@types/node': 24.13.3
+  '@types/node': 26.2.0
   typescript: 7.0.2
   zod: 4.4.3
