@@ -1,4 +1,11 @@
 {
   "title": "Protocols",
-  "pages": ["http", "mcp"]
+  "pages": [
+    "http",
+    "mcp",
+    "---Data Foundation---",
+    "data-rest",
+    "data-graphql",
+    "data-mcp"
+  ]
 }

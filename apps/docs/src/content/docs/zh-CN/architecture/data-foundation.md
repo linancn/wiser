@@ -1,6 +1,6 @@
 ---
 title: 数据基座领域架构
-description: Data Foundation 的权威边界、公开契约、确定性领域规则与完整纵切约束。
+description: Data Foundation 已交付的权威边界、入库纵切、投影、协议与验证合同。
 docType: architecture
 scope: data-foundation
 status: active
@@ -8,8 +8,8 @@ authoritative: true
 owner: wiser
 language: zh-CN
 whenToUse:
-  - 修改 Data Foundation DTO、Capability、状态机或领域门禁时
-  - 实现 data-postgres、对象存储、投影、API、MCP、Worker 或 Web 时
+  - 修改 Data Foundation DTO、Capability、状态机、权威数据或发布门禁时
+  - 实现或审查 data-postgres、对象存储、Worker、投影、API、MCP、Skill 或 Web 时
 whenToUpdate:
   - 公开契约、状态转换、权威源、投影或完成边界变化时
 checkPaths:
@@ -20,33 +20,55 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-22
-lastReviewedCommit: bf610e20dfca64f3a28f201241788430cebe2a82
+lastReviewedCommit: fe6687b78bae4241b59c82280f4a97b2fcff05d3
 ---
 
-## 边界与当前实现
+## 已交付边界
 
-Data Foundation 是 WISER 内与 Agent EXCON 平级的业务系统。它拥有 DataItem、不可变版本、资产、入库会话、质量、血缘、知识、检索与 GIS 事实；不拥有用户 Session、Tenant、Project、Role 或 Token。Supabase 是统一身份与控制面；独立 data-postgres/PostGIS 与 S3 兼容对象存储构成数据权威面；搜索、图谱、STAC 与 GIS 服务均为可重建投影。
+Data Foundation 是与 Agent EXCON 平级的 WISER 业务系统。它拥有 DataItem、不可变版本、资产、入库、质量、血缘、知识、检索、GIS、Operation 与投影事实；它不拥有用户 Session、Tenant、Project、Membership、Role 或 Token。Supabase Auth/PostgreSQL 是统一身份与控制面，独立 data-postgres/PostGIS 与 S3 兼容对象存储构成 Data 权威面。
 
-当前已落地 `@wiser/data-contracts`、`@wiser/data-core`、data-postgres/S3 authority `@wiser/data-infra`、`@wiser/data-worker` 的持久任务 runtime，以及完整依赖 Compose profile。可重建 PostGIS、Weaviate、OpenSearch、Neo4j、STAC adapter，重放安全的 Outbox ledger、固定 backend query 与受治理的 RRF SearchOrchestrator 也已可执行。具体入库 Handler、默认 Worker 接线与完整 transport 仍须沿同一边界完成，当前阶段不等于最终交付。
-
-## 唯一公开契约源
-
-`@wiser/data-contracts` 是 REST、GraphQL、MCP、Skill 与运行时校验的 transport-neutral 契约源。公开对象使用 `z.strictObject`，同时拒绝未知字段和缺失必填字段。生成的 draft-7 JSON Schema 经过规范化 SHA-256 回归；12 项首批 Capability 的 REST、GraphQL、MCP 与 Skill 映射也由精确表格测试锁定，禁止 AST 扫描或 transport 自行发明 Schema。
-
-Registry 保留首批 12 个 Capability 的稳定顺序：
+当前默认 Data runtime 已组合：
 
 ```text
-data.catalog.search       data.catalog.get
-data.query                data.search.federated
-data.knowledge.search     data.graph.expand
-data.graph.findPath       data.geo.query
-data.geo.intersect        data.ingestion.create
-data.ingestion.submit     data.operation.get
+Supabase principal + Tenant/Project/Purpose
+  → Fastify REST / schema-first GraphQL
+  → 同一 DataCapabilityHandler（22 项静态 executor）
+  → data-postgres RLS transaction / SeaweedFS S3
+  → PostgreSQL durable job + Transactional Outbox
+  → Data Worker
+  → PostGIS / Weaviate / OpenSearch / Neo4j / STAC
+  → REST / GraphQL / MCP / authenticated Web readback
 ```
 
-其后追加 10 个控制面 Capability，完整覆盖当前要求的 REST/GraphQL/MCP 操作：
+GeoServer、TiTiler 和 Martin 作为本机 GIS 服务存在于同一个精确锁定 profile；当前权威 Outbox 的五个完成目标是 PostGIS、Weaviate、OpenSearch、Neo4j 与 STAC。任何投影都可清空重建，不承担身份、授权、验收或发布权威。
+
+## 包与依赖方向
+
+| 模块                                        | 职责                                                                        |
+| ------------------------------------------- | --------------------------------------------------------------------------- |
+| `@wiser/data-contracts`                     | 严格 Zod DTO、22 项 Capability、四种 transport mapping                      |
+| `@wiser/data-core`                          | 纯确定性的入库/Operation 状态机、质量、安全继承和发布门禁                   |
+| `@wiser/data-infra`                         | checksum migration、PostgreSQL/S3、任务/Outbox、投影、检索和 fake embedding |
+| `@wiser/data-worker`                        | 具体入库 Handler、Scheduler、投影 consumer、健康与指标                      |
+| `apps/api`                                  | 统一身份后的 REST/GraphQL composition 与安全下载重定向                      |
+| `apps/mcp` / `skills/wiser-data-foundation` | 只经 HTTP 的 Agent 适配层                                                   |
+| `apps/web`                                  | server-only DAL 驱动的双语只读治理工作区                                    |
+
+依赖固定为 `platform contracts <- data-contracts <- data-core <- application/infra <- apps`。Core 不导入数据库、HTTP、文件系统、框架、时钟、随机或 AI Provider；时钟、ID 与外部效果全部通过 Port 注入。
+
+## 单一 Capability 契约
+
+`@wiser/data-contracts` 是 REST、GraphQL、MCP、Skill 与 runtime validation 的唯一契约源。公开对象使用 strict Zod 4 schema；未知字段和缺失必填字段均失败。`GET /api/data/v1/capabilities` 返回 draft-7 输入/输出 JSON Schema、Scope、安全上限、执行模式、timeout、audit level 以及精确的四种 transport mapping。
+
+Registry 的稳定顺序包含 22 项：
 
 ```text
+data.catalog.search              data.catalog.get
+data.query                       data.search.federated
+data.knowledge.search            data.graph.expand
+data.graph.findPath              data.geo.query
+data.geo.intersect               data.ingestion.create
+data.ingestion.submit            data.operation.get
 data.catalog.create              data.catalog.versions.list
 data.catalog.versions.get        data.uploadSession.create
 data.uploadSession.complete      data.ingestion.get
@@ -54,23 +76,43 @@ data.ingestion.approve           data.ingestion.reject
 data.operation.cancel            data.operation.events
 ```
 
-`data.operation.events` 的 REST mapping 明确使用 SSE。图查询仍由结构化 `graph.expand/findPath` 输入表达，不开放任意 Cypher；查询能力均禁止任意 SQL 或 OpenSearch DSL。
+所有执行器统一经过输入/输出校验、实时 Scope、安全等级 ceiling、Purpose、声明 timeout、command 幂等和 hash-only audit。查询只接受结构化 filter；不接受任意 SQL、Cypher、OpenSearch DSL、shell 或数据库管理命令。
 
-上传契约使用可判别且无歧义的模式。`PRESIGNED_PUT` 只暴露单一 URL，并禁止 multipart 字段；`MULTIPART` 暴露不透明 upload id、连续 part number、精确 part size、逐 part URL/过期时间，且不提供单对象 URL。完成请求携带同一不透明 id 与连续 ETag；未知字段、混合模式或乱序 payload 在对象存储 I/O 前即失败。
+首批能力使用 `data.catalog.read`、`data.query.execute`、`data.search.execute`、`data.knowledge.read`、`data.graph.read`、`data.geo.read`、`data.ingestion.write`、`data.operation.read` 与 `data.publish`。本机 `data-steward` Role seed 覆盖这九项；新增 Capability 时必须同时更新 Registry、Role/Scope、API、MCP、Skill、文档和验证。
 
-共享 Fastify 宿主现已提供可注入的 `data.foundation` 模块。`/api/data/v1/capabilities` 直接通过 Zod 4 draft-7 generator 序列化有序 Registry，客户端无需 AST 扫描即可读取四类 transport mapping。`/api/data/v1/health` 从注入 probe 报告 data-postgres、对象存储与 Worker readiness；任一权威依赖缺失即返回 503。默认进程尚未注册具体 probe，因此不能宣称 Data Foundation runtime ready。
+## 数据模型与独立迁移历史
 
-Transport-neutral `DataCapabilityHandler` 已完成：每个 Registry 条目对应一个静态 executor，统一执行 Zod 输入/输出门禁、实时 Scope 与安全上限、command 幂等、有界执行 signal 和仅含 hash 的 audit 事实。具体 executor 与路由仍是下一接线边界；Handler 存在不等于 REST/GraphQL 已完整交付。
+Data Foundation 不把 SQL 放进 Supabase migration。`infrastructure/data-foundation/postgres/migrations` 是唯一 canonical 历史：
 
-该 Handler 的 REST 投影也已覆盖全部 Registry mapping，包括无碰撞输入组合、UUID 幂等、强版本前置条件、ETag、no-store 与有界 Operation SSE。7 个读取 executor 已通过短 data-postgres RLS 事务提供目录/数据条/版本、入库、Operation 与事件分页，并使用 scope-bound cursor 和仅 hash 的 append-only audit。Command 与专用查询 executor 仍阻塞默认 runtime 注册。
+| Migration                                | 内容                                                                         |
+| ---------------------------------------- | ---------------------------------------------------------------------------- |
+| `0001_bootstrap.sql`                     | pgcrypto、PostGIS、btree_gist、unaccent、8 个业务 schema 与 migration ledger |
+| `0002_authority_model.sql`               | 目录、资产、入库、质量、血缘、知识、Operation、安全、Outbox 主模型           |
+| `0003_security_jobs_events.sql`          | RLS、授权 Session 参数、append-only guard、任务与事件安全                    |
+| `0004_job_lifecycle.sql`                 | claim/heartbeat/settle/fail/recover/cancel 与 Operation/Outbox 原子转换      |
+| `0005_content_blob_model.sql`            | 内容 blob 与资产身份分离、已存在数据回填、不可变存储引用                     |
+| `0006_content_lifecycle_constraints.sql` | `QUARANTINED → FINGERPRINTED → RAW` 结构约束                                 |
+| `0007_version_publication_lifecycle.sql` | 内容不可变前提下唯一允许一次 `UNPUBLISHED → PUBLISHED`                       |
 
-`DataItem` 是最小治理粒度，不等于文件、表或图层。质量等级、验收状态、发布状态和安全等级是四个独立维度；任何适配器都不能把它们压缩成一个“状态”。
+TS7 runner 按四位版本排序，在 session advisory lock 下逐文件事务执行，并记录文件名和 SHA-256。已执行文件缺失、改名、内容漂移或非前缀历史会失败关闭。pgSTAC 使用官方 pyPgSTAC 0.9.12 migration，不伪造成 PostgreSQL extension。
 
-首批 Capability 使用 9 个唯一 Scope：`data.catalog.read`、`data.query.execute`、`data.search.execute`、`data.knowledge.read`、`data.graph.read`、`data.geo.read`、`data.ingestion.write`、`data.operation.read` 与 `data.publish`。Supabase 的 `data-steward` 本地角色必须完整覆盖它们；新增 Capability 时 Registry 与 Role seed/管理命令必须在同一 Green 里对齐。
+业务模型共有 36 张表，全部 `ENABLE` 且 `FORCE ROW LEVEL SECURITY`；另有独立 `schema_migrations` ledger。API 和 Worker 通过部署脚本创建的不同非超级用户 role 访问，migration 不隐式授予 runtime。每个事务必须设置并验证 Tenant、Project、最高安全等级和 policy version；缺任一上下文返回零行或失败。
 
-## 确定性领域政策
+Operation event、Audit event、Outbox、content/version 历史由 trigger 拒绝不合法的 UPDATE/DELETE。复杂转换使用显式事务、行锁/乐观版本、唯一约束与 append-only 事实。
 
-入库状态严格使用 18 个值：
+## 权威对象与提交
+
+`DataItem` 是最小治理粒度，不等于文件、表或图层。processing stage、quality grade、acceptance status、publication status 与 L0–L3 security level 相互独立。
+
+SeaweedFS adapter 强制 path-style S3，并只从已验证的 Tenant/Project/Upload/Version UUID 与小写 SHA-256 派生 key。客户端不能提交任意对象路径。上传支持无歧义的 `PRESIGNED_PUT` 与 `MULTIPART`；签名 URL 只存活 60–900 秒。完成前 HEAD 必须同时匹配 size、content type 与 SHA-256 metadata。
+
+内容先停留在 `quarantine`。指纹后 `catalog.content_blob` 保存内容身份，正式提交把对象幂等提升到内容寻址的 raw/version key；相同 hash 可复用，不同 hash 永不覆盖。Abort 只能删除派生 quarantine 对象。API 读取版本资产时重新执行 Supabase 授权和 data-postgres RLS，追加 audit，再返回 60 秒 `303` signed redirect；STAC manifest 不直接暴露长期 S3 credential。
+
+正式版本只能从已批准且冻结的 review checkpoint 创建。一个 data-postgres 事务提交 DataItemVersion、质量/血缘事实、Operation event、Audit 与 Outbox；Supabase、data-postgres 和 S3 之间不伪造分布式事务。
+
+## 确定性入库与 Agent 边界
+
+入库使用 18 个状态：
 
 ```text
 RECEIVED → QUARANTINED → SECURITY_SCANNED → FINGERPRINTED
@@ -79,42 +121,59 @@ RECEIVED → QUARANTINED → SECURITY_SCANNED → FINGERPRINTED
 → REVIEW_REQUIRED / APPROVED / REJECTED
 → COMMITTED → PROJECTING → PUBLISHED
 
-任一允许中的非终态可按政策进入 FAILED 或 CANCELLED；
+允许的非终态可按政策进入 FAILED 或 CANCELLED；
 REJECTED、PUBLISHED、FAILED、CANCELLED 为终态。
 ```
 
-转换执行本身是 `SEMANTIC_MAPPED → VALIDATED` 之间的确定性步骤，不额外创造 `TRANSFORMED` 状态。非法转换抛出带稳定错误码的领域错误。Operation 使用独立的 `PENDING/RUNNING/WAITING_INPUT/WAITING_REVIEW/SUCCEEDED/FAILED/CANCELLED` 状态机。
+默认 Worker 现在注册了具体 `data.ingestion.process.v1` Handler，而不是空 Registry：
 
-质量门禁只读取确定性检查，按正权重计算稳定分数；blocking rule 失败时即使分数达到阈值也不能通过。A/B/C 表示质量等级，不等于验收结论。只有 `PASSED` 或 `CONDITIONALLY_PASSED` 才具有发布资格。
+1. 从权威表恢复上传资产和当前版本；
+2. 通过 S3 reader 核对 size/media type；
+3. 使用 ClamAV INSTREAM 扫描；
+4. 流式计算 SHA-256 并固化指纹；
+5. 用 Tika 解析 Markdown/文档，用受控 GeoJSON parser 保留来源 CRS；
+6. 生成确定性 profile/classification；
+7. fixture fake Agent 提出 schema/semantic plan，注入 validator 校验置信度与形状；
+8. 确定性 transformer、质量规则与 EPSG:4326/4490/3857 对齐执行；
+9. 冻结 hash-only review checkpoint，低置信度/高风险进入人工审核；
+10. 批准后提交权威版本与 Outbox，等待五类投影成功再发布。
 
-派生数据的安全等级取全部来源的最高等级。调用方可以显式提高，但不能降低继承等级。发布还必须同时满足：权威版本已提交、质量门禁通过、验收可发布、入库处于 `PROJECTING`，且每个唯一投影均为 `SUCCEEDED`。
+Agent 只提出解释与计划，不能修改原始数据、静默纠正字段、决定质量/验收、绕过审核或直接写权威/投影存储。fake Agent 和 `DeterministicFakeEmbedding` 只用于测试、CI 与本机 smoke；同文本、版本和维度产生相同有限向量。Worker 记录 Agent run/action、模型 identity、input/output hash 与 transform plan，不把 prompt、凭据或对象正文写入 audit。
 
-测试、CI 与本机 smoke 使用 `DeterministicFakeEmbedding`：以精确文本和声明的 fake model version 做 domain-separated SHA-256 扩展，再归一化到配置的 8–4096 维。它不依赖网络、时钟、随机数或模型；相同文本/版本必得相同有限数值，且显式 model identity 会进入投影 metadata。
+质量门禁只读取确定性检查；blocking rule 失败时即使总分过阈值也不能通过。派生安全等级取全部来源最高值，只能显式提高不能降低。发布要求已提交版本、可发布验收、通过质量门禁、`PROJECTING` 状态和五个唯一 `SUCCEEDED` 投影。
 
-## 权威提交与投影
+## 持久任务、Outbox 与投影
 
-正式版本只能由 `APPROVED → COMMITTED` 流程创建。data-postgres 事务原子写入版本、Operation event、审计和 Transactional Outbox；对象内容以 SHA-256 寻址，正式 manifest 只引用已验证的不可变对象。Supabase、data-postgres 和对象存储之间不伪造分布式事务。
+Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbeat、priority、attempt count、确定性指数退避、取消、等待输入/审核、超时回收和 dead letter。Native Node HTTP 暴露 `/health/live`、`/health/ready` 与 Prometheus `/metrics`，优雅关闭先停止领取并等待 in-flight Handler。
 
-S3 authority adapter 强制 SeaweedFS path-style endpoint，并从经过验证的 Tenant/Project/Upload/Version UUID 与小写 SHA-256 派生 `quarantine`、`raw`、`versions` key，拒绝调用方提供任意路径。单 PUT、multipart 和下载 URL 的 TTL 限制为 60–900 秒。提交前用 HEAD 同时核对 size 与 `sha256` metadata；目标已存在且一致时复用，hash 不同则返回 immutable conflict，绝不覆盖。Abort 只能删除派生的 quarantine key，不能删除 raw 或 version 对象；底层 endpoint 错误不会把凭据或原始错误正文暴露给调用方。
+`ProjectionOutboxConsumer` 读取单调 checkpoint。每个 target 的 `PENDING/RUNNING/SUCCEEDED/FAILED` ledger 跨崩溃保留；外部写成功但 ledger 尚未更新时可安全重试，已成功 target 会跳过。投影 identity 由 DataItem/Version/Evidence 等权威 ID 派生：
 
-前 3 个纯 SQL migration 初始化 pgcrypto、PostGIS、btree_gist、unaccent、8 个业务 Schema、`schema_migrations` 与 35 张权威表；第 4 个 migration 固化 Job claim、heartbeat、settle、fail、recover、cancel 与 Operation event/Outbox 原子写入。pgSTAC 按官方 pyPgSTAC migration 管理，不伪造成 `CREATE EXTENSION pgstac`。TS7 runner 按四位版本排序，记录文件名和 SHA-256，在 session advisory lock 下逐文件事务执行；已执行文件缺失、改名、内容漂移或非前缀历史都会 fail closed。
+- PostGIS 保留 source geometry，并存 CGCS2000 与 Web Mercator 派生形状；
+- Weaviate 使用 Worker 提供的固定版本向量与受认证 tenant；
+- OpenSearch 使用受治理 ICU 索引；
+- Neo4j 使用固定参数化 `MERGE`；
+- pgSTAC 写 STAC 1.1 Collection/Item，asset href 指向受控 API 下载入口。
 
-全部 35 张权威表启用并 FORCE RLS。runtime 读取必须同时设置经过验证的 Tenant、Project、最高安全等级和 policy version Session 参数；缺任一参数时返回零行。Migration 不创建也不授权 runtime role，部署层必须显式创建最小权限角色。Operation event、Audit event 与 Outbox event 使用数据库 trigger 拒绝 UPDATE/DELETE；持久任务通过 `FOR UPDATE SKIP LOCKED`、lease owner/expiry、attempt count 与优先级领取。
+对应 query adapter 下推 Tenant、Project、Version、security、policy version、acceptance、publication、domain 与 channel filter。`SearchOrchestrator` 并行召回，固定 `RRF k=60`，按 DataItem+Version 去重，再逐条授权并脱敏 excerpt。
 
-Data Worker 使用静态 Handler Registry；重复 job type 在启动时拒绝。Scheduler 注入时钟，执行超时回收、批量 claim、heartbeat、确定性指数退避、dead letter、取消及 `WAITING_INPUT/WAITING_REVIEW`；优雅停机会等待 in-flight Handler 后再关闭连接。Node 原生 HTTP 暴露 `/health/live`、`/health/ready` 与 Prometheus `/metrics`，不引入第二个 Web framework。通用 runtime 已交付，但默认入口尚未注册具体业务 Handler，因此不能被描述为完整入库 Worker。
+## 协议与产品面
 
-Worker 在启动时读取 canonical `DATA_*` 环境变量；数据库 URL、UUID scope、安全等级、lease/heartbeat 关系、host 或端口无效时 fail closed。旧 `WISER_DATA_*` 只作为临时且可观测的兼容 alias；canonical 值始终优先，canonical 已提供但无效时绝不回退 alias。
+- REST：`/api/data/v1` 的 discovery、22 项 Capability、Operation SSE 与授权资产重定向；见 [Data REST](/protocols/data-rest/)。
+- GraphQL：`POST /graphql`，22 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
+- MCP：stdio/无状态 Streamable HTTP，22 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
+- Skill：`skills/wiser-data-foundation` 定义发现、查询、上传、入库、Operation 与安全解释流程。
+- Web：现有 Next.js 应用中的 14 个 Data route，server-only DAL、真实 Supabase Session、双语、主题、状态/错误分支和 MapLibre GeoJSON 地图。
 
-## 精确锁定的本机依赖 profile
+Web 当前负责治理与查询，不在 Server Action 或 Route Handler 执行文件解析、向量化、GIS 转换或投影。mutation 由 REST、GraphQL、MCP 或 Skill 发起。
 
-`data-foundation` Compose profile 运行独立 PostgreSQL 18.6/PostGIS 3.6 权威库与 pyPgSTAC 0.9.12，以及 SeaweedFS 4.43、Weaviate 1.39.0、OpenSearch/Dashboards 3.8.0、Neo4j 2026.07.1、GeoServer 3.0.1、STAC API 6.3.1、TiTiler 2.2.1、Martin 1.14.0、Tika 3.3.1.0 和 ClamAV 1.5.4。Compose 中每个镜像都直接写稳定 tag 与 sha256 digest，并在 `infrastructure/data-foundation/versions.env` 再次审计登记。
+## 精确锁定的本机 profile
 
-OpenSearch 官方镜像不含 `analysis-icu`。一次性 initializer 只下载官方 3.8.0 artifact，先验证 SHA-512，再写入只读 named plugin volume；OpenSearch readiness 同时验证 cluster health 与插件已加载。所有服务先 drop 全部 Linux capability；只有经真实启动证明需要初始化 named volume 或降低 UID/GID 的上游入口，才加回 CHOWN/DAC/FOWNER/SETUID/SETGID 子集。所有端口绑定回环地址，使用非默认本机 credential，日志轮转、资源受限，且无 host network。
+Compose 使用 PostgreSQL/PostGIS `18-3.6`、pyPgSTAC `0.9.12`、SeaweedFS `4.43`、Weaviate `1.39.0`、OpenSearch/Dashboards `3.8.0`、Neo4j `2026.07.1`、GeoServer `3.0.1`、STAC API `6.3.1`、TiTiler `2.2.1`、Martin `1.14.0`、Tika `3.3.1.0` 与 ClamAV `1.5.4`。每个镜像在 Compose 和 `versions.env` 同时固定 tag+digest。
 
-PostgreSQL 18/PostGIS 与 GeoServer 当前官方镜像仅有 amd64，因此 Compose 显式声明 `linux/amd64`，在 Apple Silicon 确定性模拟。完整 WISER migration 已在该 PostgreSQL 18.6 容器上执行，SeaweedFS 的匿名 S3 访问也已确认拒绝；这些兼容性证据不能替代最终全栈 smoke 门禁。
+OpenSearch initializer 验证官方 ICU artifact SHA-512 并可重复执行。所有宿主端口绑定 `127.0.0.1`；服务默认 drop Linux capabilities、启用 `no-new-privileges`、资源上限与日志轮转，只给确实需要初始化卷/降权的入口加回最小 capability。PostGIS 与 GeoServer 当前官方镜像仅提供 amd64，Apple Silicon 由 Compose 显式模拟。
 
-`ProjectionOutboxConsumer` 从单调 checkpoint 后读取版本提交事件。每个 target 的 `PENDING/RUNNING/SUCCEEDED/FAILED` ledger 跨崩溃保留；重放会跳过已成功 target，并安全重复“外部写已完成、ledger 尚未更新”的写入。各 adapter 使用确定性 identity 和固定参数化请求：PostGIS 保存 source/CGCS2000/Web-Mercator geometry，Weaviate 使用 Worker vector 与认证 tenant，OpenSearch 保存 ICU 治理文档，Neo4j 使用固定 MERGE 事实，pgSTAC 使用 STAC 1.1 Collection/Item。对应搜索 backend 下推 Tenant、Project、Version、安全等级、policy version、验收、发布、业务域和 channel 过滤，调用方不能传 SQL、Cypher 或 DSL。RRF 固定 `k=60`，按 DataItem+Version 去重，对每个 hit 再授权并脱敏 excerpt。精确锁定的真实容器已经分别从 OpenSearch、Weaviate、Neo4j 与 pgSTAC 写读对返回 1 条授权且可重放结果。默认 Worker 尚未注册这些 Handler；任何读取、下载、导出或发布仍须由 API 使用 Supabase 权威上下文复核。
+## 可执行完成证明
 
-## 完成门槛
+`pnpm data:smoke` 的 18 个固定 step ID 真实贯穿：上传 Session、两个 fixture、ClamAV、SHA-256、解析、fake Agent、确定性转换、质量/人工审核、权威提交、raw 内容、Outbox、五类投影、projection ledger、REST、GraphQL、MCP 和登录后的 Web。随后回退 consumer checkpoint 重放同一 Outbox event，验证版本、对象、节点和投影不重复。
 
-只有两个 fixture 能真实贯穿上传、隔离、扫描、指纹、解析、fake AI 映射、确定性转换、质量检查、权威提交、Outbox、全部投影，并可从 REST、GraphQL、MCP 与统一 Web UI 查询时，Data Foundation 初始化才算完成。Fake embedding 必须稳定，重复消费同一 Outbox event 不得生成重复版本、对象、节点或投影。
+该 smoke 与 `pnpm verify`、`pnpm supabase:verify`、`pnpm data:verify`、Docpact、Compose config 一起构成当前交付门禁。

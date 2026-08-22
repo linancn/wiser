@@ -1,4 +1,11 @@
 {
   "title": "接入协议",
-  "pages": ["http", "mcp"]
+  "pages": [
+    "http",
+    "mcp",
+    "---数据基座---",
+    "data-rest",
+    "data-graphql",
+    "data-mcp"
+  ]
 }
