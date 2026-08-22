@@ -137,7 +137,10 @@ export function createS3AuthorityPresigner(
 ): S3AuthorityPresigner {
   return (command, expiresIn) => {
     if (command instanceof PutObjectCommand) {
-      return getSignedUrl(client, command, { expiresIn });
+      return getSignedUrl(client, command, {
+        expiresIn,
+        unhoistableHeaders: new Set(['x-amz-meta-sha256']),
+      });
     }
     if (command instanceof UploadPartCommand) {
       return getSignedUrl(client, command, { expiresIn });
