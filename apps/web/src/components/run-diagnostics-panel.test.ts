@@ -19,7 +19,7 @@ describe('Run diagnostics panel', () => {
       }),
     );
 
-    expect(html).toContain('诊断与确定性评测');
+    expect(html).toContain('评测结果与运行诊断');
     expect(html).toContain('4 / 4');
     expect(html).toContain('OUTPUT_SCHEMA_ADDITIONAL_PROPERTY');
     expect(html).toContain('analysis-ready');
@@ -45,9 +45,9 @@ describe('Run diagnostics panel', () => {
       }),
     );
 
-    expect(html).toContain('Diagnostics &amp; deterministic evaluation');
-    expect(html).toContain('Authoritative evaluation');
-    expect(html).toContain('Best-effort telemetry');
+    expect(html).toContain('Evaluation results and execution diagnostics');
+    expect(html).toContain('Evaluation result');
+    expect(html).toContain('Execution visibility');
     expect(html).toContain('Telemetry signal coverage');
   });
 });

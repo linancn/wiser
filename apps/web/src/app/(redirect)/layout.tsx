@@ -4,8 +4,8 @@ import type { ReactNode } from 'react';
 import '../globals.css';
 
 export const metadata: Metadata = {
-  title: 'Agent EXCON',
-  description: 'Agent Exercise Control Infrastructure',
+  title: 'WISER',
+  description: '水系统智能平台',
   icons: [{ rel: 'icon', url: '/favicon.svg', type: 'image/svg+xml' }],
 };
 

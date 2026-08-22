@@ -67,7 +67,7 @@ function safeEmail(value: unknown): string | null {
 }
 
 function fallbackRedirect(locale: Locale): string {
-  return `/${locale}/scenarios`;
+  return `/${locale}`;
 }
 
 export function safeLocalizedRedirect(

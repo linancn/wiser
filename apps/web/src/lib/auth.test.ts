@@ -58,6 +58,7 @@ function formRequest(path: string, values: Readonly<Record<string, string>>) {
 
 describe('WISER Web auth boundary', () => {
   it('allows only normalized same-locale application redirects', () => {
+    expect(safeLocalizedRedirect(undefined, 'zh-CN')).toBe('/zh-CN');
     expect(
       safeLocalizedRedirect('/zh-CN/runs/run-42?panel=trace#latest', 'zh-CN'),
     ).toBe('/zh-CN/runs/run-42?panel=trace#latest');
@@ -75,7 +76,7 @@ describe('WISER Web auth boundary', () => {
       '/zh-CN/login',
       '/zh-CN/%2e%2e/en/runs',
     ]) {
-      expect(safeLocalizedRedirect(unsafe, 'zh-CN')).toBe('/zh-CN/scenarios');
+      expect(safeLocalizedRedirect(unsafe, 'zh-CN')).toBe('/zh-CN');
     }
   });
 
@@ -196,9 +197,7 @@ describe('WISER auth HTTP workflows', () => {
     expect(exchangeCodeForSession).toHaveBeenCalledWith('pkce-code');
     expect(getClaims).toHaveBeenCalledOnce();
     expect(response.status).toBe(303);
-    expect(response.headers.get('location')).toBe(
-      'http://wiser.test/en/scenarios',
-    );
+    expect(response.headers.get('location')).toBe('http://wiser.test/en');
     expect(response.headers.get('cache-control')).toContain('no-store');
   });
 

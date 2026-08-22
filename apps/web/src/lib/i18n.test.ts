@@ -76,10 +76,10 @@ describe('bilingual product contract', () => {
 
   it('uses professional Chinese product terminology while retaining protocol names', () => {
     expect(dictionaries['zh-CN'].scenarioCenter.lede).toBe(
-      '当前展示导调员使用的管理视图预览。每个场景独立版本化，并明确多智能体角色、阶段契约和评价边界；参训智能体仍通过 Skill、HTTP 或 MCP 与平台交互。',
+      '浏览和管理多智能体演练场景。每个场景定义参与角色、任务阶段和评测要求。',
     );
     expect(dictionaries['zh-CN'].runWorkspace.trace).toBe('追踪');
-    expect(dictionaries['zh-CN'].trace.workspaceHeading).toBe('追踪分析');
+    expect(dictionaries['zh-CN'].trace.workspaceHeading).toBe('执行追踪');
     expect(dictionaries['zh-CN'].shell.themeToDark).toBe('切换至深色模式');
     expect(dictionaries['zh-CN'].shell.themeToLight).toBe('切换至浅色模式');
 
@@ -98,11 +98,11 @@ describe('bilingual product contract', () => {
       .join('\n')
       .replaceAll('Agent EXCON', '');
 
-    expect(productCopy).toContain('Skill');
-    expect(productCopy).toContain('HTTP');
-    expect(productCopy).toContain('MCP');
     expect(productCopy).toContain('OpenTelemetry');
     expect(productCopy).toContain('Span');
+    expect(productCopy).not.toMatch(
+      /WISER_[A-Z_]+|AGENT_EXCON_|Capability Registry|DTO|DAL|\/health\//,
+    );
     expect(productCopy).not.toMatch(
       /\b(?:Operator|Agent Session|Agent|Run|Trace|Barrier|ArtifactVersion|Receipt|Event|Telemetry|Best-effort|Thread|Operation|Exporter|Revision|Verdict|Evidence|Inject|Feedback|Prompt|Tool|payload|cursor|signal|live|Web|Log|Logs|Metric|Links?)\b/,
     );

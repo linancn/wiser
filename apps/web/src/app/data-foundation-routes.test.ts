@@ -111,10 +111,10 @@ describe('Data Foundation management routes', () => {
     expect(source).toContain('IngestionRuntimeSummaries');
     expect(source).not.toContain('CoverageGap');
     expect(dictionaries['zh-CN'].dataFoundation.ingestionPage.emptyIssues).toBe(
-      '本次入库没有返回质量问题。',
+      '本次接入没有需要处理的质量问题。',
     );
     expect(dictionaries.en.dataFoundation.ingestionPage.emptyIssues).toBe(
-      'No quality issues were returned for this ingestion.',
+      'This ingestion has no quality issue requiring attention.',
     );
   });
 });

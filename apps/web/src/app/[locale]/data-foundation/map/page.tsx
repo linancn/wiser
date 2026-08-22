@@ -157,6 +157,7 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
                 selectedVersion: copy.mapPage.selectedVersion,
                 noSelectedVersion: copy.mapPage.noSelectedVersion,
                 displayCrs: copy.mapPage.displayCrs,
+                controls: copy.mapPage.controls,
               }}
               stacExtents={stacExtents}
               selectedVersion={selectedVersionId}

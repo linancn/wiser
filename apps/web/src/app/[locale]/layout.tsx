@@ -60,8 +60,8 @@ export async function generateMetadata({
     description: dictionary.meta.description,
     alternates: {
       languages: {
-        'zh-CN': '/zh-CN/scenarios',
-        en: '/en/scenarios',
+        'zh-CN': '/zh-CN',
+        en: '/en',
       },
     },
     icons: [{ rel: 'icon', url: '/favicon.svg', type: 'image/svg+xml' }],

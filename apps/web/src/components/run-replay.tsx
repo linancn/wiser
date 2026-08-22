@@ -16,20 +16,10 @@ import workspaceStyles from './run-workspace.module.css';
 type ReplayProgressStyle = CSSProperties & { '--replay-progress': string };
 
 function categoryLabel(category: string, locale: Locale): string {
-  const labels: Record<string, Record<Locale, string>> = {
-    acknowledgement: { 'zh-CN': '确认接收', en: 'Acknowledgement' },
-    artifact: { 'zh-CN': '工件', en: 'Artifact' },
-    contribution: { 'zh-CN': '专业工件', en: 'Contribution' },
-    endorsement: { 'zh-CN': '背书', en: 'Endorsement' },
-    evaluation: { 'zh-CN': '裁决', en: 'Evaluation' },
-    feedback: { 'zh-CN': '反馈', en: 'Feedback' },
-    inject: { 'zh-CN': '信息注入', en: 'Inject' },
-    message: { 'zh-CN': '消息', en: 'Message' },
-    receipt: { 'zh-CN': '可见性收据', en: 'Receipt' },
-    run: { 'zh-CN': '运行', en: 'Run' },
-    submission: { 'zh-CN': '提交', en: 'Submission' },
-  };
-  return labels[category]?.[locale] ?? category;
+  const labels = getDictionary(locale).replay.categories;
+  return category in labels
+    ? labels[category as keyof typeof labels]
+    : category;
 }
 
 export function RunReplay({
@@ -79,9 +69,10 @@ export function RunReplay({
   const perspectiveSummary =
     perspectiveAgent === undefined
       ? dictionary.replay.operatorVisible
-      : locale === 'zh-CN'
-        ? `${perspectiveAgent.displayName[locale]}${dictionary.replay.agentVisibleSuffix}`
-        : `${perspectiveAgent.displayName[locale]} — ${dictionary.replay.agentVisibleSuffix}`;
+      : dictionary.replay.agentVisible.replace(
+          '{agent}',
+          perspectiveAgent.displayName[locale],
+        );
   const progress =
     events.length <= 1 ? 0 : (selectedIndex / (events.length - 1)) * 100;
 
@@ -252,9 +243,10 @@ export function RunReplay({
                   </h2>
                 </div>
                 <code>
-                  {locale === 'zh-CN'
-                    ? `${events.length} ${dictionary.replay.receiptCountLabel}`
-                    : `${events.length} visibility ${events.length === 1 ? 'receipt' : 'receipts'}`}
+                  {(events.length === 1
+                    ? dictionary.replay.receiptCountSingular
+                    : dictionary.replay.receiptCount
+                  ).replace('{count}', String(events.length))}
                 </code>
               </div>
               {events.length === 0 ? (

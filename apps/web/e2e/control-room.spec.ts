@@ -26,19 +26,35 @@ async function visibleNarrativeText(page: Page) {
   );
 }
 
-test('opens the Chinese scenario center and preserves the route in English', async ({
+test('opens the public Chinese portal and preserves the route in English', async ({
   page,
 }) => {
   await page.goto('/');
-  await expect(page).toHaveURL(/\/zh-CN\/scenarios$/);
-  await expect(page.getByRole('heading', { name: '场景中心' })).toBeVisible();
-  await expect(page.getByTestId('scenario-card')).toHaveCount(3);
+  await expect(page).toHaveURL(/\/zh-CN$/);
+  await expect(
+    page.getByRole('heading', {
+      name: '让可信数据与智能体协作服务于每一次水系统决策',
+    }),
+  ).toBeVisible();
+  await expect(page.getByTestId('portal-system')).toHaveCount(2);
+  await expect(page.getByTestId('portal-system').nth(0)).toContainText(
+    '数据基座',
+  );
+  await expect(page.getByTestId('portal-system').nth(1)).toContainText(
+    '智能体演练场',
+  );
+  await expect(
+    page.getByRole('link', { name: '登录 WISER' }).first(),
+  ).toBeVisible();
+  await expect(page.getByRole('navigation', { name: '主导航' })).toHaveCount(0);
 
   await page.getByRole('link', { name: 'English' }).click();
-  await expect(page).toHaveURL(/\/en\/scenarios$/);
+  await expect(page).toHaveURL(/\/en$/);
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(
-    page.getByRole('heading', { name: 'Scenario center' }),
+    page.getByRole('heading', {
+      name: 'Trusted data and agent collaboration for every water-system decision',
+    }),
   ).toBeVisible();
 
   for (const route of [
@@ -59,24 +75,28 @@ test('opens the Chinese scenario center and preserves the route in English', asy
 test('switches WISER systems without losing locale or color theme', async ({
   page,
 }) => {
-  await page.goto('/zh-CN/scenarios');
+  await page.goto('/zh-CN');
 
-  const systems = page.getByRole('navigation', { name: '系统导航' });
+  const systems = page.getByRole('navigation', { name: '平台工作区' });
   await expect(systems.getByRole('link')).toHaveCount(2);
+  await expect(systems.getByRole('link').nth(0)).toHaveText('数据基座');
+  await expect(systems.getByRole('link').nth(1)).toHaveText('智能体演练场');
   await expect(
-    systems.getByRole('link', { name: 'Agent EXCON' }),
-  ).toHaveAttribute('aria-current', 'page');
+    systems.getByRole('link', { name: '智能体演练场' }),
+  ).not.toHaveAttribute('aria-current', 'page');
 
   await page.getByRole('button', { name: '切换至深色模式' }).click();
   await systems.getByRole('link', { name: '数据基座' }).click();
   await expect(page).toHaveURL(/\/zh-CN\/data-foundation$/);
-  await expect(page.getByRole('heading', { name: '数据基座' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: '管理可信的水系统数据' }),
+  ).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
   await page.getByRole('link', { name: 'English' }).click();
   await expect(page).toHaveURL(/\/en\/data-foundation$/);
   await expect(
-    page.getByRole('heading', { name: 'Data Foundation' }),
+    page.getByRole('heading', { name: 'Manage trusted water-system data' }),
   ).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
@@ -89,7 +109,9 @@ test('offers the same unified identity surface in Chinese and English', async ({
   await expect(page.getByLabel('邮箱')).toBeVisible();
   await expect(page.getByLabel('密码')).toBeVisible();
   await expect(page.getByRole('button', { name: '登录' })).toBeVisible();
-  await expect(page.getByText('Supabase Auth', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: '一个账户，访问整个 WISER' }),
+  ).toBeVisible();
   await expect(page.locator('form')).toHaveAttribute(
     'action',
     '/zh-CN/auth/login',
@@ -136,16 +158,63 @@ test('keeps the identity gate accessible in both themes on a narrow screen', asy
   });
 });
 
+test('keeps the public portal readable, keyboard reachable, and overflow-free', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/zh-CN');
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: '跳到主要内容' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#main-content')).toBeFocused();
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath('portal-desktop-light.png'),
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' });
+  await page.evaluate(() => localStorage.removeItem('wiser-theme'));
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.getByTestId('portal-system')).toHaveCount(2);
+  const overflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+  for (const link of await page
+    .getByRole('navigation', { name: '平台工作区' })
+    .getByRole('link')
+    .all()) {
+    const box = await link.boundingBox();
+    expect(box?.x ?? -1).toBeGreaterThanOrEqual(0);
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(390);
+  }
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath('portal-mobile-dark.png'),
+  });
+});
+
 test('uses a two-level global navigation and enters Runs through overview', async ({
   page,
 }) => {
+  await page.goto('/zh-CN');
+  await expect(page.getByRole('navigation', { name: '主导航' })).toHaveCount(0);
+  const platformNav = page.getByRole('navigation', { name: '平台工作区' });
+  await expect(platformNav.getByRole('link')).toHaveCount(2);
+  await expect(
+    page.getByRole('link', { name: /WISER/ }).first(),
+  ).toHaveAttribute('href', '/zh-CN');
+
   await page.goto('/zh-CN/runs');
 
   const globalNav = page.getByRole('navigation', { name: '主导航' });
   await expect(globalNav.getByRole('link')).toHaveCount(2);
-  await expect(globalNav.getByRole('link', { name: '场景库' })).toBeVisible();
+  await expect(globalNav.getByRole('link', { name: '演练场景' })).toBeVisible();
   await expect(
-    globalNav.getByRole('link', { name: '运行指挥' }),
+    globalNav.getByRole('link', { name: '演练运行' }),
   ).toHaveAttribute('aria-current', 'page');
   const runLink = page
     .getByTestId('run-row')
@@ -157,6 +226,11 @@ test('uses a two-level global navigation and enters Runs through overview', asyn
   );
 
   await page.goto('/zh-CN/scenarios');
+  await expect(
+    page.getByRole('navigation', { name: '平台工作区' }).getByRole('link', {
+      name: '智能体演练场',
+    }),
+  ).toHaveAttribute('aria-current', 'page');
   const scenarioRunLink = page
     .getByTestId('scenario-card')
     .filter({ hasText: '永定河联合调度' })
@@ -201,7 +275,7 @@ test('uses consistent professional Chinese while preserving protocol terms', asy
   await page.goto('/zh-CN/scenarios');
   await expect(
     page.getByText(
-      '当前展示导调员使用的管理视图预览。每个场景独立版本化，并明确多智能体角色、阶段契约和评价边界；参训智能体仍通过 Skill、HTTP 或 MCP 与平台交互。',
+      '浏览和管理多智能体演练场景。每个场景定义参与角色、任务阶段和评测要求。',
       { exact: true },
     ),
   ).toBeVisible();
@@ -217,7 +291,7 @@ test('separates scenario management from active multi-agent runs', async ({
     .getByRole('link', { name: '查看场景' })
     .click();
 
-  await expect(page.getByRole('heading', { name: '场景编排' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '场景配置' })).toBeVisible();
   await expect(
     page.getByRole('heading', { name: '角色与协作契约' }),
   ).toBeVisible();
@@ -236,7 +310,7 @@ test('opens a human-first Run overview before technical drill-down', async ({
 }) => {
   await page.goto('/zh-CN/runs/run-yongding-spring-042');
 
-  await expect(page.getByRole('heading', { name: '导调总览' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '运行概览' })).toBeVisible();
   await expect(page.getByText('裁决通过', { exact: true })).toBeVisible();
   await expect(page.getByText('遥测有缺口', { exact: true })).toBeVisible();
   await expect(page.getByText('待办与风险', { exact: true })).toBeVisible();
@@ -267,7 +341,7 @@ test('observes parallel agents, cross-agent links, and perspective replay', asyn
   await page.goto('/zh-CN/runs/run-yongding-spring-042/diagnostics');
 
   await expect(
-    page.getByRole('heading', { name: '诊断与确定性评测' }),
+    page.getByRole('heading', { name: '评测结果与运行诊断' }),
   ).toBeVisible();
   await expect(page.getByTestId('diagnostic-summary')).toContainText('4 / 4');
   await expect(page.getByTestId('evaluation-row')).toHaveCount(6);
@@ -279,10 +353,10 @@ test('observes parallel agents, cross-agent links, and perspective replay', asyn
   await page.getByRole('link', { name: '追踪' }).click();
   await expect(page).toHaveURL(/\/trace$/);
 
-  await expect(page.getByRole('heading', { name: '追踪分析' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '执行追踪' })).toBeVisible();
   await expect(page.getByTestId('agent-lane')).toHaveCount(5);
   await expect(
-    page.getByRole('heading', { name: '诊断与确定性评测' }),
+    page.getByRole('heading', { name: '评测结果与运行诊断' }),
   ).toHaveCount(0);
   await page.getByRole('button', { name: /调度协调/ }).click();
   await expect(page.getByTestId('span-inspector')).toContainText('智能体');
@@ -300,7 +374,7 @@ test('shows causal agent exchanges and per-recipient delivery without claiming t
   await page.goto('/zh-CN/runs/run-yongding-spring-042/collaboration');
 
   await expect(
-    page.getByRole('heading', { name: '协作汇流', exact: true }),
+    page.getByRole('heading', { name: '团队协作', exact: true }),
   ).toBeVisible();
   await expect(page.getByRole('link', { name: '协作' })).toHaveAttribute(
     'aria-current',
@@ -394,7 +468,7 @@ test('shows causal agent exchanges and per-recipient delivery without claiming t
   await page.goto('/en/runs/run-yongding-spring-042/collaboration');
   await expect(
     page.getByRole('heading', {
-      name: 'Collaboration confluence',
+      name: 'Team collaboration',
       exact: true,
     }),
   ).toBeVisible();
@@ -428,7 +502,7 @@ test('keeps the operator workspace usable on a narrow screen', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/zh-CN/runs/run-yongding-spring-042/trace');
 
-  await expect(page.getByRole('heading', { name: '追踪分析' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '执行追踪' })).toBeVisible();
   await expect(page.getByTestId('mobile-trace-event')).toHaveCount(10);
   await expect(page.getByTestId('mobile-trace-event').first()).toBeVisible();
   await expect(page.locator('.waterfall-panel')).toBeHidden();
@@ -534,7 +608,7 @@ test('visually checks both color themes at desktop and 390px without browser err
       );
       await expect(page.getByRole('banner')).not.toContainText('设计预览');
       await expect(
-        page.getByRole('heading', { name: '追踪分析' }),
+        page.getByRole('heading', { name: '执行追踪' }),
       ).toBeVisible();
       const overflow = await page.evaluate(
         () =>

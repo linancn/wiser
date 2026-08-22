@@ -20,48 +20,18 @@ type TimelineStyle = CSSProperties & {
 };
 
 function stateLabel(state: AgentSession['state'], locale: Locale): string {
-  const labels = {
-    complete: { 'zh-CN': '已完成', en: 'Complete' },
-    disconnected: { 'zh-CN': '已断开', en: 'Disconnected' },
-    done: { 'zh-CN': '已完成', en: 'Done' },
-    joined: { 'zh-CN': '已加入', en: 'Joined' },
-    ready: { 'zh-CN': '已就绪', en: 'Ready' },
-    removed: { 'zh-CN': '已移除', en: 'Removed' },
-    waiting: { 'zh-CN': '等待中', en: 'Waiting' },
-    'waiting-feedback': { 'zh-CN': '等待反馈', en: 'Waiting for feedback' },
-    working: { 'zh-CN': '工作中', en: 'Working' },
-  } as const;
-  return labels[state][locale];
+  return getDictionary(locale).trace.agentStates[state];
 }
 
 function operationLabel(operation: ExerciseSpan['operation'], locale: Locale) {
-  const labels: Record<ExerciseSpan['operation'], Record<Locale, string>> = {
-    inject: { 'zh-CN': '信息注入', en: 'Inject' },
-    sync: { 'zh-CN': '同步收据', en: 'Sync receipts' },
-    model: { 'zh-CN': '模型推理', en: 'Model' },
-    tool: { 'zh-CN': '工具调用', en: 'Tool' },
-    contribution: { 'zh-CN': '专业工件', en: 'Contribution' },
-    coordination: { 'zh-CN': '团队汇聚', en: 'Coordination' },
-    submission: { 'zh-CN': '团队提交', en: 'Submission' },
-    evaluation: { 'zh-CN': '确定性裁决', en: 'Evaluation' },
-    feedback: { 'zh-CN': '定向反馈', en: 'Feedback' },
-  };
-  return labels[operation][locale];
+  return getDictionary(locale).trace.operations[operation];
 }
 
 function spanStatusLabel(
   status: ExerciseSpan['status'] | 'UNSET' | 'OK' | 'ERROR',
   locale: Locale,
 ): string {
-  const labels = {
-    ERROR: { 'zh-CN': '错误', en: 'Error' },
-    OK: { 'zh-CN': '正常', en: 'OK' },
-    UNSET: { 'zh-CN': '未设置', en: 'Not set' },
-    error: { 'zh-CN': '错误', en: 'Error' },
-    ok: { 'zh-CN': '正常', en: 'OK' },
-    running: { 'zh-CN': '进行中', en: 'Running' },
-  } as const;
-  return labels[status][locale];
+  return getDictionary(locale).trace.spanStatuses[status];
 }
 
 function AgentIdentity({
@@ -343,7 +313,9 @@ export function RunTrace({
                             {lane.agent === undefined ? (
                               <>
                                 <strong>{lane.label}</strong>
-                                <small>service.name / agent-excon</small>
+                                <small>
+                                  {dictionary.trace.platformService}
+                                </small>
                               </>
                             ) : (
                               <AgentIdentity

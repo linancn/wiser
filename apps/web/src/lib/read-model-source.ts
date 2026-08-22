@@ -1124,23 +1124,23 @@ const liveScenarioGaps: readonly ReadModelGap[] = [
   {
     code: 'SCENARIO_CHECKPOINTS_UNAVAILABLE',
     title: text(
-      '检查点尚未进入公开 v2 DTO',
-      'Checkpoints are not in the public v2 DTO',
+      '部分检查点信息暂不可用',
+      'Some checkpoint details are unavailable',
     ),
     detail: text(
-      '实时视图不会用参考样例补齐双时钟检查点。',
-      'The live view does not backfill dual-clock checkpoints from the reference fixture.',
+      '当前页面会在检查点信息可用后自动补充。',
+      'Checkpoint details will appear when they become available.',
     ),
   },
   {
     code: 'WATER_TOPOLOGY_UNAVAILABLE',
     title: text(
-      '水系拓扑尚未进入公开 v2 DTO',
-      'Water topology is not in the public v2 DTO',
+      '水系关系图暂不可用',
+      'The water-system relationship map is unavailable',
     ),
     detail: text(
-      '当前仅展示 API 返回的区域、版本和角色契约。',
-      'Only the region, versions, and role contracts returned by the API are shown.',
+      '目前仍可查看区域、版本和角色要求。',
+      'Region, version, and role requirements remain available.',
     ),
   },
 ];
@@ -1149,35 +1149,32 @@ const liveRunGaps: readonly ReadModelGap[] = [
   ...liveScenarioGaps,
   {
     code: 'AGENT_IDENTITY_DETAIL_UNAVAILABLE',
-    title: text(
-      '智能体身份详情未包含在运行智能体列表',
-      'Agent Identity detail is absent from the RunAgent list',
-    ),
+    title: text('部分智能体详情暂不可用', 'Some agent details are unavailable'),
     detail: text(
-      '当前显示运行智能体、角色、实例键和版本 ID；模型名称与工具计数暂不展示。',
-      'Real RunAgent, role, instance key, and version ID are shown; model names and tool counts remain blank.',
+      '目前仍可查看参演智能体、角色和版本。',
+      'Participating agents, roles, and versions remain available.',
     ),
   },
   {
     code: 'SPAN_DETAIL_UNAVAILABLE',
     title: text(
-      'v2 追踪端点当前只返回追踪摘要',
-      'The v2 traces endpoint currently returns trace summaries only',
+      '当前仅提供追踪摘要',
+      'Trace summaries are currently available',
     ),
     detail: text(
-      '不会补造参与者、模型或工具 Span，也不会推断父子关系；Span 瀑布需等待明细查询 DTO。',
-      'Participant, model, and tool spans or parent-child edges are never invented; the waterfall awaits a span-detail query DTO.',
+      '获得执行明细后，页面会显示完整调用链。',
+      'The full call chain will appear when execution details are available.',
     ),
   },
   {
     code: 'PARTICIPANT_REPLAY_UNAVAILABLE',
     title: text(
-      '实时页面只加载导调员回放视图',
-      'The live page loads only the operator replay projection',
+      '当前仅提供导调员回放视角',
+      'Only the exercise-controller replay view is available',
     ),
     detail: text(
-      '智能体历史视角必须通过显式授权查询加载，不能从导调员事件反推。',
-      'Historical agent views require an explicitly authorized query and are not inferred from operator events.',
+      '其他角色视角会在获得相应权限后显示。',
+      'Other role perspectives appear when the required access is available.',
     ),
   },
 ];

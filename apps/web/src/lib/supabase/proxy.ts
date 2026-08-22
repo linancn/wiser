@@ -17,6 +17,59 @@ export interface SupabaseProxyClient {
   };
 }
 
+function record(value: unknown): Readonly<Record<string, unknown>> | null {
+  return typeof value === 'object' && value !== null
+    ? (value as Readonly<Record<string, unknown>>)
+    : null;
+}
+
+function hasAuthenticatedClaims(value: unknown): boolean {
+  const result = record(value);
+  if (result === null || result['error'] !== null) return false;
+  const data = record(result['data']);
+  const claims = record(data?.['claims']);
+  return (
+    claims?.['role'] === 'authenticated' &&
+    typeof claims['sub'] === 'string' &&
+    typeof claims['session_id'] === 'string' &&
+    typeof claims['exp'] === 'number' &&
+    Number.isSafeInteger(claims['exp']) &&
+    claims['exp'] * 1_000 > Date.now()
+  );
+}
+
+export function isPublicWiserPath(pathname: string): boolean {
+  if (pathname === '/') return true;
+  const localeMatch = /^\/(zh-CN|en)(?=\/|$)/.exec(pathname);
+  if (localeMatch === null) return true;
+  const localeRoot = `/${localeMatch[1]}`;
+  return (
+    pathname === localeRoot ||
+    pathname === `${localeRoot}/login` ||
+    pathname.startsWith(`${localeRoot}/auth/`)
+  );
+}
+
+function anonymousRedirect(request: NextRequest, response: NextResponse) {
+  const locale = request.nextUrl.pathname.startsWith('/en') ? 'en' : 'zh-CN';
+  const login = new URL(`/${locale}/login`, request.url);
+  login.searchParams.set(
+    'next',
+    `${request.nextUrl.pathname}${request.nextUrl.search}`,
+  );
+  const redirect = NextResponse.redirect(login);
+  for (const [name, value] of response.headers.entries()) {
+    if (
+      name.toLowerCase() !== 'location' &&
+      name.toLowerCase() !== 'set-cookie'
+    ) {
+      redirect.headers.set(name, value);
+    }
+  }
+  for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+  return redirect;
+}
+
 export type SupabaseServerClientFactory = (
   url: string,
   publishableKey: string,
@@ -117,7 +170,18 @@ export async function updateSupabaseSession(
       },
     },
   );
-  await supabase.auth.getClaims();
+  let claimsResult: unknown = null;
+  try {
+    claimsResult = await supabase.auth.getClaims();
+  } catch {
+    claimsResult = null;
+  }
+  if (
+    !isPublicWiserPath(request.nextUrl.pathname) &&
+    !hasAuthenticatedClaims(claimsResult)
+  ) {
+    response = anonymousRedirect(request, response);
+  }
   if (!response.headers.get('Cache-Control')?.includes('no-store')) {
     response.headers.set(
       'Cache-Control',

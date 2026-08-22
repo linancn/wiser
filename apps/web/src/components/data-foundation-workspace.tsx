@@ -19,6 +19,7 @@ import type { DataFoundationApiError } from '@/lib/data-foundation-dal.server';
 import { getDictionary, type Locale } from '@/lib/i18n';
 
 import styles from './data-foundation-workspace.module.css';
+import { FailureState } from './failure-state';
 
 type DataCopy = ReturnType<typeof getDictionary>['dataFoundation'];
 
@@ -248,18 +249,34 @@ export function DataFailureState({
         return copy.failures.unavailable;
     }
   })();
+  const primaryAction = (() => {
+    switch (error.kind) {
+      case 'authentication':
+        return {
+          href: `/${locale}/login?next=/${locale}/data-foundation`,
+          label: failure.action,
+        };
+      case 'invalid-request':
+      case 'not-found':
+        return {
+          href: `/${locale}/data-foundation/catalog`,
+          label: failure.action,
+        };
+      default:
+        return {
+          href: `/${locale}`,
+          label: copy.common.returnPortal,
+        };
+    }
+  })();
   return (
-    <section className={styles.failure} role="alert">
-      <div className={styles.failureGauge} aria-hidden="true">
-        <span>!</span>
-      </div>
-      <div>
-        <p className={styles.eyebrow}>HTTP {error.status}</p>
-        <h1>{failure.title}</h1>
-        <p>{failure.copy}</p>
-        <strong>{failure.action}</strong>
-      </div>
-    </section>
+    <FailureState
+      eyebrow={copy.title}
+      title={failure.title}
+      copy={failure.copy}
+      guidance={failure.action}
+      primaryAction={primaryAction}
+    />
   );
 }
 
@@ -296,7 +313,6 @@ export function StatusBadge({
     <span className={styles.status} data-tone={tone(code)}>
       <i aria-hidden="true" />
       <span>{label}</span>
-      <code>{code}</code>
     </span>
   );
 }
@@ -605,7 +621,6 @@ export function CoverageGap({
 }) {
   return (
     <article className={styles.coverageGap}>
-      <p className={styles.rowKicker}>API</p>
       <h3>{title}</h3>
       <strong>{copy}</strong>
     </article>

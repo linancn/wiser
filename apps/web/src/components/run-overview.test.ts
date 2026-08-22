@@ -24,7 +24,7 @@ describe('Run overview', () => {
       }),
     );
 
-    expect(html).toContain('导调总览');
+    expect(html).toContain('运行概览');
     expect(html).toContain('裁决通过');
     expect(html).toContain('遥测有缺口');
     expect(html).toContain('待办与风险');

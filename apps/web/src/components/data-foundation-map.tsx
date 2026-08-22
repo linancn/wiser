@@ -156,6 +156,16 @@ interface MapLayerLabels {
   readonly selectedVersion: string;
   readonly noSelectedVersion: string;
   readonly displayCrs: string;
+  readonly controls: {
+    readonly toggleAttribution: string;
+    readonly title: string;
+    readonly resetBearing: string;
+    readonly zoomIn: string;
+    readonly zoomOut: string;
+    readonly windowsHelp: string;
+    readonly macHelp: string;
+    readonly mobileHelp: string;
+  };
 }
 
 export function DataFoundationMap({
@@ -352,22 +362,18 @@ export function DataFoundationMap({
       zoom: 2.3,
       attributionControl: false,
       cooperativeGestures: true,
-      locale:
-        document.documentElement.lang === 'zh-CN'
-          ? {
-              'AttributionControl.ToggleAttribution': '切换地图署名',
-              'Map.Title': '数据基座地图',
-              'NavigationControl.ResetBearing': '重置方向',
-              'NavigationControl.ZoomIn': '放大',
-              'NavigationControl.ZoomOut': '缩小',
-              'CooperativeGesturesHandler.WindowsHelpText':
-                '按住 Ctrl 并滚动以缩放地图',
-              'CooperativeGesturesHandler.MacHelpText':
-                '按住 Command 并滚动以缩放地图',
-              'CooperativeGesturesHandler.MobileHelpText':
-                '使用两根手指移动地图',
-            }
-          : undefined,
+      locale: {
+        'AttributionControl.ToggleAttribution':
+          labels.controls.toggleAttribution,
+        'Map.Title': labels.controls.title,
+        'NavigationControl.ResetBearing': labels.controls.resetBearing,
+        'NavigationControl.ZoomIn': labels.controls.zoomIn,
+        'NavigationControl.ZoomOut': labels.controls.zoomOut,
+        'CooperativeGesturesHandler.WindowsHelpText':
+          labels.controls.windowsHelp,
+        'CooperativeGesturesHandler.MacHelpText': labels.controls.macHelp,
+        'CooperativeGesturesHandler.MobileHelpText': labels.controls.mobileHelp,
+      },
     });
     map.addControl(new NavigationControl({ showCompass: true }), 'top-right');
     map.addControl(new AttributionControl({ compact: true }));
@@ -445,7 +451,14 @@ export function DataFoundationMap({
     });
     map.once('remove', () => themeObserver.disconnect());
     return () => map.remove();
-  }, [features, rasterTileUrl, stacExtents, vectorTileUrl, visible]);
+  }, [
+    features,
+    labels.controls,
+    rasterTileUrl,
+    stacExtents,
+    vectorTileUrl,
+    visible,
+  ]);
 
   const controls: readonly {
     readonly id: MapLayer;

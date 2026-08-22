@@ -37,18 +37,11 @@ export async function CurrentUserControl({
     return (
       <div className={styles.authControl}>
         <span
-          className={styles.authState}
-          data-state="disabled"
+          className={styles.authUnavailable}
           aria-label={dictionary.auth.disabled}
         >
-          <StateMark />
-          <span className={styles.authStateLabel}>
-            {dictionary.auth.disabled}
-          </span>
+          {dictionary.auth.disabled}
         </span>
-        <Link className={styles.authAction} href={`/${locale}/login`}>
-          {dictionary.auth.signIn}
-        </Link>
       </div>
     );
   }
@@ -57,16 +50,6 @@ export async function CurrentUserControl({
   if (viewer === null) {
     return (
       <div className={styles.authControl}>
-        <span
-          className={styles.authState}
-          data-state="anonymous"
-          aria-label={dictionary.auth.anonymous}
-        >
-          <StateMark />
-          <span className={styles.authStateLabel}>
-            {dictionary.auth.anonymous}
-          </span>
-        </span>
         <Link className={styles.authAction} href={`/${locale}/login`}>
           {dictionary.auth.signIn}
         </Link>

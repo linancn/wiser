@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
-import { redirect } from 'next/navigation';
 
+import { PortalLanding } from '@/components/portal-landing';
 import { isLocale } from '@/lib/i18n';
 
 interface LocalePageProps {
@@ -11,5 +11,5 @@ export default async function LocalePage({ params }: LocalePageProps) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
 
-  redirect(`/${locale}/scenarios`);
+  return <PortalLanding locale={locale} />;
 }

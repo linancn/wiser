@@ -99,9 +99,10 @@ export function RunDiagnosticsPanel({
               locale,
             )}{' '}
             ·{' '}
-            {locale === 'zh-CN'
-              ? `${telemetryFindingCount} 项诊断`
-              : `${telemetryFindingCount} ${telemetryFindingCount === 1 ? 'finding' : 'findings'}`}
+            {(telemetryFindingCount === 1
+              ? copy.findingCountSingular
+              : copy.findingCount
+            ).replace('{count}', String(telemetryFindingCount))}
           </small>
         </div>
       </section>

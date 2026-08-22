@@ -5,6 +5,13 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 import { getDictionary, switchLocalePath, type Locale } from '@/lib/i18n';
+import {
+  activeSystemForPath,
+  contextRoutesForPath,
+  isContextRouteActive,
+  isPrimarySystemActive,
+  PRIMARY_SYSTEMS,
+} from '@/lib/navigation';
 import styles from './app-shell.module.css';
 import { ThemeToggle } from './theme-toggle';
 
@@ -31,9 +38,12 @@ export function AppShell({
   const pathname = usePathname();
   const otherLocale: Locale = locale === 'zh-CN' ? 'en' : 'zh-CN';
   const languageHref = switchLocalePath(pathname, otherLocale);
-  const dataFoundationActive = pathname.includes('/data-foundation');
-  const platformActive =
-    pathname.includes('/login') || pathname.includes('/auth/');
+  const activeSystem = activeSystemForPath(pathname);
+  const contextRoutes = contextRoutesForPath(pathname);
+  const contextLabel =
+    activeSystem === 'data-foundation'
+      ? dictionary.systems.dataFoundation
+      : dictionary.systems.agentExcon;
 
   return (
     <div className={styles.shell} lang={locale}>
@@ -41,36 +51,28 @@ export function AppShell({
         {dictionary.shell.skip}
       </a>
       <header className={styles.header}>
-        <Link className={styles.brand} href={`/${locale}/scenarios`}>
+        <Link className={styles.brand} href={`/${locale}`}>
           <RiverMark />
           <span>
             <strong>{dictionary.brand.name}</strong>
             <small>{dictionary.brand.product}</small>
           </span>
         </Link>
-        <nav className={styles.nav} aria-label={dictionary.shell.mainNav}>
-          {dataFoundationActive ? (
-            <Link href={`/${locale}/data-foundation`} aria-current="page">
-              {dictionary.nav.overview}
+        <nav
+          className={styles.systemNav}
+          aria-label={dictionary.systems.navigation}
+        >
+          {PRIMARY_SYSTEMS.map((system) => (
+            <Link
+              key={system.id}
+              href={`/${locale}${system.path}`}
+              aria-current={
+                isPrimarySystemActive(pathname, system.id) ? 'page' : undefined
+              }
+            >
+              {dictionary.systems[system.labelKey]}
             </Link>
-          ) : (
-            <>
-              <Link
-                href={`/${locale}/scenarios`}
-                aria-current={
-                  pathname.includes('/scenarios') ? 'page' : undefined
-                }
-              >
-                {dictionary.nav.scenarios}
-              </Link>
-              <Link
-                href={`/${locale}/runs`}
-                aria-current={pathname.includes('/runs') ? 'page' : undefined}
-              >
-                {dictionary.nav.runs}
-              </Link>
-            </>
-          )}
+          ))}
         </nav>
         <div className={styles.actions}>
           {authControl}
@@ -85,26 +87,58 @@ export function AppShell({
           </Link>
         </div>
       </header>
-      <nav
-        className={styles.systemNav}
-        aria-label={dictionary.systems.navigation}
-      >
-        <strong>{dictionary.systems.label}</strong>
-        <Link
-          href={`/${locale}/scenarios`}
-          aria-current={
-            dataFoundationActive || platformActive ? undefined : 'page'
+      {contextRoutes.length === 0 ? null : (
+        <nav
+          className={styles.contextNav}
+          aria-label={
+            activeSystem === 'data-foundation'
+              ? dictionary.dataFoundation.navigation.label
+              : dictionary.shell.mainNav
           }
         >
-          {dictionary.systems.agentExcon}
-        </Link>
-        <Link
-          href={`/${locale}/data-foundation`}
-          aria-current={dataFoundationActive ? 'page' : undefined}
-        >
-          {dictionary.systems.dataFoundation}
-        </Link>
-      </nav>
+          <div className={styles.contextTrack}>
+            <span className={styles.contextLabel}>{contextLabel}</span>
+            {contextRoutes.map((route, index) => {
+              const previous = contextRoutes[index - 1];
+              const showGroup =
+                activeSystem === 'data-foundation' &&
+                route.group !== 'overview' &&
+                route.group !== previous?.group;
+              const routeLabel =
+                activeSystem === 'data-foundation'
+                  ? dictionary.dataFoundation.navigation[
+                      route.key as keyof typeof dictionary.dataFoundation.navigation
+                    ]
+                  : dictionary.nav[route.key as 'runs' | 'scenarios'];
+              return (
+                <span className={styles.contextItem} key={route.key}>
+                  {showGroup ? (
+                    <span className={styles.contextGroup}>
+                      {
+                        dictionary.dataFoundation.navigationGroups[
+                          route.group as 'explore' | 'manage' | 'services'
+                        ]
+                      }
+                    </span>
+                  ) : null}
+                  <Link
+                    href={`/${locale}${
+                      activeSystem === 'data-foundation'
+                        ? `/data-foundation${route.path}`
+                        : route.path
+                    }`}
+                    aria-current={
+                      isContextRouteActive(pathname, route) ? 'page' : undefined
+                    }
+                  >
+                    {routeLabel}
+                  </Link>
+                </span>
+              );
+            })}
+          </div>
+        </nav>
+      )}
       {children}
       <footer className={styles.footer}>
         <span>{dictionary.footer.product}</span>
