@@ -372,11 +372,12 @@ export async function assertRuntimeRoles() {
   const roles = await runPostgresSql(`
 select rolname || '|' || rolsuper || '|' || rolbypassrls || '|' || rolcanlogin
 from pg_catalog.pg_roles
-where rolname in ('wiser_data_runtime', 'wiser_data_api', 'wiser_data_worker')
+where rolname in ('wiser_data_runtime', 'wiser_data_api', 'wiser_data_worker', 'wiser_data_gis')
 order by rolname;
 `);
   const expected = [
     'wiser_data_api|false|false|true',
+    'wiser_data_gis|false|false|true',
     'wiser_data_runtime|false|false|false',
     'wiser_data_worker|false|false|true',
   ].join('\n');

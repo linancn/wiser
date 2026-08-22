@@ -247,10 +247,12 @@ services:
       - |
         test "$${#DATA_API_DATABASE_PASSWORD}" -ge 16
         test "$${#DATA_WORKER_DATABASE_PASSWORD}" -ge 16
+        test "$${#DATA_GIS_DATABASE_PASSWORD}" -ge 16
         exec psql -X -v ON_ERROR_STOP=1 \
           --username "$${PGUSER}" --dbname "$${PGDATABASE}" \
           --set=api_password="$${DATA_API_DATABASE_PASSWORD}" \
           --set=worker_password="$${DATA_WORKER_DATABASE_PASSWORD}" \
+          --set=gis_password="$${DATA_GIS_DATABASE_PASSWORD}" \
           --file=/opt/wiser/provision-runtime.sql
     restart: 'no'
     environment:
@@ -261,6 +263,7 @@ services:
       PGPASSWORD: ${DATA_POSTGRES_PASSWORD:-wiser-local-data-4f8c71b0f3e947d4}
       DATA_API_DATABASE_PASSWORD: ${DATA_API_DATABASE_PASSWORD:-wiser-local-api-runtime-8ac431d9}
       DATA_WORKER_DATABASE_PASSWORD: ${DATA_WORKER_DATABASE_PASSWORD:-wiser-local-worker-runtime-35b90c72}
+      DATA_GIS_DATABASE_PASSWORD: ${DATA_GIS_DATABASE_PASSWORD:-wiser-local-gis-runtime-e7c124a9}
     volumes:
       - ./infrastructure/data-foundation/postgres/provision-runtime.sql:/opt/wiser/provision-runtime.sql:ro
     depends_on:
@@ -658,11 +661,11 @@ services:
     profiles: [data-foundation]
     image: ghcr.io/maplibre/martin:1.14.0@sha256:fe5e8952312ca8ea0a25c4b1f72ceb13676f2b50dca310843e48b31c8ceb2264
     environment:
-      DATABASE_URL: postgresql://wiser_data:${DATA_POSTGRES_PASSWORD:-wiser-local-data-4f8c71b0f3e947d4}@data-postgres:5432/wiser_data
+      DATABASE_URL: postgresql://wiser_data_gis:${DATA_GIS_DATABASE_PASSWORD:-wiser-local-gis-runtime-e7c124a9}@data-postgres:5432/wiser_data
     ports:
       - 127.0.0.1:13000:3000
     depends_on:
-      data-migrate:
+      data-runtime-provision:
         condition: service_completed_successfully
     healthcheck:
       test: [CMD-SHELL, 'wget -q --spider http://127.0.0.1:3000/health']

@@ -54,7 +54,9 @@ describe('governed GIS tile migration', () => {
     expect(provision).toMatch(
       /grant\s+execute\s+on\s+function\s+service\.wiser_spatial_extent_mvt[\s\S]*?to\s+wiser_data_gis/i,
     );
-    expect(provision).not.toMatch(/grant\s+wiser_data_runtime\s+to\s+wiser_data_gis/i);
+    expect(provision).not.toMatch(
+      /grant\s+wiser_data_runtime\s+to\s+wiser_data_gis/i,
+    );
     expect(compose).toMatch(
       /martin:[\s\S]*?DATABASE_URL:\s*postgresql:\/\/wiser_data_gis:/,
     );

@@ -25,6 +25,14 @@ where not exists (
   select 1 from pg_catalog.pg_roles where rolname = 'wiser_data_worker'
 ) \gexec
 
+select format(
+  'create role wiser_data_gis LOGIN PASSWORD %L NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION',
+  :'gis_password'
+)
+where not exists (
+  select 1 from pg_catalog.pg_roles where rolname = 'wiser_data_gis'
+) \gexec
+
 alter role wiser_data_runtime NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION;
 
 select format(
@@ -37,6 +45,11 @@ select format(
   :'worker_password'
 ) \gexec
 
+select format(
+  'alter role wiser_data_gis LOGIN PASSWORD %L NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION',
+  :'gis_password'
+) \gexec
+
 grant wiser_data_runtime to wiser_data_api;
 grant wiser_data_runtime to wiser_data_worker;
 
@@ -46,8 +59,29 @@ alter role wiser_data_api set idle_in_transaction_session_timeout = '30s';
 alter role wiser_data_worker set search_path = public;
 alter role wiser_data_worker set statement_timeout = '15min';
 alter role wiser_data_worker set idle_in_transaction_session_timeout = '30s';
+alter role wiser_data_gis set search_path = service, public;
+alter role wiser_data_gis set statement_timeout = '10s';
+alter role wiser_data_gis set idle_in_transaction_session_timeout = '10s';
 
 grant connect on database wiser_data to wiser_data_runtime;
+grant connect on database wiser_data to wiser_data_gis;
+grant usage on schema service to wiser_data_gis;
+grant execute on function service.wiser_spatial_extent_mvt(
+  integer,
+  integer,
+  integer,
+  json
+) to wiser_data_gis;
+revoke all on all tables in schema
+  catalog,
+  ingestion,
+  quality,
+  lineage,
+  knowledge,
+  service,
+  security,
+  event
+from wiser_data_gis;
 grant usage on schema public to wiser_data_runtime;
 grant select on table public.schema_migrations to wiser_data_runtime;
 

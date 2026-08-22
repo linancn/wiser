@@ -9,22 +9,29 @@ const sqlPath = new URL(
   import.meta.url,
 );
 
-test('provisions separate non-bypass API and Worker identities through one NOLOGIN grant role', async () => {
+test('provisions isolated non-bypass API, Worker, and GIS identities', async () => {
   const sql = await readFile(sqlPath, 'utf8');
   for (const role of [
     'wiser_data_runtime',
     'wiser_data_api',
     'wiser_data_worker',
+    'wiser_data_gis',
   ]) {
     assert.match(sql, new RegExp(`\\b${role}\\b`));
   }
   assert.match(sql, /wiser_data_runtime\s+NOLOGIN/i);
   assert.match(sql, /wiser_data_api\s+LOGIN/i);
   assert.match(sql, /wiser_data_worker\s+LOGIN/i);
+  assert.match(sql, /wiser_data_gis\s+LOGIN/i);
   assert.match(sql, /NOSUPERUSER/i);
   assert.match(sql, /NOBYPASSRLS/i);
   assert.match(sql, /grant wiser_data_runtime to wiser_data_api/i);
   assert.match(sql, /grant wiser_data_runtime to wiser_data_worker/i);
+  assert.doesNotMatch(sql, /grant wiser_data_runtime to wiser_data_gis/i);
+  assert.match(
+    sql,
+    /grant execute on function service\.wiser_spatial_extent_mvt[\s\S]*?to wiser_data_gis/i,
+  );
   assert.doesNotMatch(sql, /grant\s+all\s+privileges/i);
   assert.doesNotMatch(sql, /password\s+'[^:]/i);
 });
@@ -38,9 +45,14 @@ test('keeps provisioning one-shot and gates authority runtimes on it', async () 
   assert.match(compose, /provision-runtime\.sql:ro/);
   assert.match(compose, /DATA_API_DATABASE_PASSWORD/);
   assert.match(compose, /DATA_WORKER_DATABASE_PASSWORD/);
+  assert.match(compose, /DATA_GIS_DATABASE_PASSWORD/);
   assert.match(
     compose,
     /data-worker:[\s\S]*?DATA_DATABASE_URL:\s*postgresql:\/\/wiser_data_worker:/,
+  );
+  assert.match(
+    compose,
+    /martin:[\s\S]*?DATABASE_URL:\s*postgresql:\/\/wiser_data_gis:/,
   );
   assert.match(
     compose,
