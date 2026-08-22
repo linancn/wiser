@@ -41,7 +41,7 @@ const dependencyEnvironment = {
   DATA_PROJECTION_HTTP_MAX_RESPONSE_BYTES: '1048576',
   DATA_PROJECTION_CACHE_EVENTS: '32',
   DATA_FAKE_EMBEDDING_DIMENSIONS: '32',
-  DATA_FAKE_EMBEDDING_VERSION: 'fixture-v1',
+  DATA_FAKE_EMBEDDING_VERSION: '1.0.0-fixture',
   DATA_PUBLICATION_WAIT_TIMEOUT_MS: '90000',
   DATA_PUBLICATION_WAIT_POLL_MS: '250',
 } as const;
@@ -123,7 +123,7 @@ describe('Data Worker environment contract', () => {
         httpMaximumResponseBytes: 1048576,
         maximumCachedEvents: 32,
         embeddingDimensions: 32,
-        embeddingVersion: 'fixture-v1',
+        embeddingVersion: '1.0.0-fixture',
         publicationWaitTimeoutMs: 90000,
         publicationWaitPollMs: 250,
       },
@@ -211,6 +211,7 @@ describe('Data Worker environment contract', () => {
       },
     ],
     [{ ...canonicalEnvironment, DATA_PROJECTION_BATCH_LIMIT: '101' }],
+    [{ ...canonicalEnvironment, DATA_FAKE_EMBEDDING_VERSION: 'fixture-v1' }],
   ])('fails closed for missing or invalid canonical configuration', (env) => {
     expect(() => loadDataWorkerConfig(env)).toThrow(
       'Invalid Data Worker configuration',

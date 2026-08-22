@@ -6,7 +6,7 @@ describe('deterministic fake embedding provider', () => {
   it('returns stable, bounded vectors without external state', async () => {
     const provider = new DeterministicFakeEmbedding({
       dimensions: 32,
-      version: 'fake-sha256-v1',
+      version: '1.0.0-fixture',
     });
 
     const first = await provider.embed('Yongding ecological evidence');
@@ -21,7 +21,7 @@ describe('deterministic fake embedding provider', () => {
     expect(provider.model).toEqual({
       provider: 'fake',
       model: 'sha256-expansion',
-      version: 'fake-sha256-v1',
+      version: '1.0.0-fixture',
       dimensions: 32,
     });
   });
@@ -31,13 +31,20 @@ describe('deterministic fake embedding provider', () => {
       () =>
         new DeterministicFakeEmbedding({
           dimensions: 0,
-          version: 'fake-sha256-v1',
+          version: '1.0.0-fixture',
         }),
     ).toThrow('dimensions');
     const provider = new DeterministicFakeEmbedding({
       dimensions: 8,
-      version: 'fake-sha256-v1',
+      version: '1.0.0-fixture',
     });
+    expect(
+      () =>
+        new DeterministicFakeEmbedding({
+          dimensions: 8,
+          version: 'fixture-v1',
+        }),
+    ).toThrow('version');
     await expect(provider.embed('')).rejects.toThrow('text');
   });
 });

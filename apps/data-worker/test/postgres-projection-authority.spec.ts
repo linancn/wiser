@@ -197,6 +197,42 @@ class FakePool implements DataPostgresPool {
   }
 }
 
+class ConcurrentQueryDetectingClient extends FakeClient {
+  hydrationQueryInFlight = false;
+  concurrentHydrationQueryObserved = false;
+
+  override async query(
+    text: string,
+    values?: readonly unknown[],
+  ): Promise<{ readonly rows: readonly Record<string, unknown>[] }> {
+    const hydrationQuery = /projection-hydration\./.test(text);
+    if (hydrationQuery) {
+      if (this.hydrationQueryInFlight) {
+        this.concurrentHydrationQueryObserved = true;
+      }
+      this.hydrationQueryInFlight = true;
+      await Promise.resolve();
+    }
+    try {
+      return await super.query(text, values);
+    } finally {
+      if (hydrationQuery) this.hydrationQueryInFlight = false;
+    }
+  }
+}
+
+class ConcurrentQueryDetectingPool implements DataPostgresPool {
+  readonly client = new ConcurrentQueryDetectingClient();
+
+  connect(): Promise<DataPostgresClient> {
+    return Promise.resolve(this.client);
+  }
+
+  end(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
 describe('PostgreSQL projection authority', () => {
   it('hydrates every normalized authority fact under one four-GUC read transaction', async () => {
     const pool = new FakePool();
@@ -222,6 +258,21 @@ describe('PostgreSQL projection authority', () => {
     ]);
     expect(client.queries.at(-1)?.text).toBe('COMMIT');
     expect(client.released).toBe(true);
+    const spatialQuery = client.queries.find(({ text }) =>
+      /projection-hydration\.spatial/.test(text),
+    );
+    expect(spatialQuery?.text).toMatch(
+      /ST_AsGeoJSON\(source_geometry,\s*9,\s*0\)/i,
+    );
+  });
+
+  it('serializes all reads made through the same transaction client', async () => {
+    const pool = new ConcurrentQueryDetectingPool();
+    const authority = new PostgresProjectionHydrationAuthority(pool);
+
+    await authority.load(event, ids);
+
+    expect(pool.client.concurrentHydrationQueryObserved).toBe(false);
   });
 
   it('publishes only with five SUCCEEDED ledgers and leaves terminal Operation settlement to the job', async () => {

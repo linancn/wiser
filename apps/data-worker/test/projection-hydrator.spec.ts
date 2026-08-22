@@ -112,7 +112,7 @@ describe('five-target projection hydrator', () => {
       authority,
       embedding: new DeterministicFakeEmbedding({
         dimensions: 8,
-        version: 'fixture-v1',
+        version: '1.0.0-fixture',
       }),
       maximumCachedEvents: 8,
     });
@@ -165,7 +165,7 @@ describe('five-target projection hydrator', () => {
         sourceHash: snapshot.evidence[0]?.sourceHash,
         publicationStatus: 'PUBLISHED',
         embeddingModel: 'sha256-expansion',
-        embeddingVersion: 'fixture-v1',
+        embeddingVersion: '1.0.0-fixture',
       });
       expect(calls[kind][0]).toHaveProperty('vector');
       expect(calls[kind][0]).toHaveProperty('content');
@@ -189,7 +189,7 @@ describe('five-target projection hydrator', () => {
       authority,
       embedding: new DeterministicFakeEmbedding({
         dimensions: 8,
-        version: 'fixture-v1',
+        version: '1.0.0-fixture',
       }),
       maximumCachedEvents: 8,
     });
@@ -209,7 +209,7 @@ describe('five-target projection hydrator', () => {
       authority,
       embedding: new DeterministicFakeEmbedding({
         dimensions: 8,
-        version: 'fixture-v1',
+        version: '1.0.0-fixture',
       }),
       maximumCachedEvents: 8,
     });
@@ -250,7 +250,7 @@ describe('five-target projection hydrator', () => {
       authority,
       embedding: new DeterministicFakeEmbedding({
         dimensions: 8,
-        version: 'fixture-v1',
+        version: '1.0.0-fixture',
       }),
       maximumCachedEvents: 8,
     });
