@@ -574,6 +574,9 @@ describe('append-only data-postgres audit port', () => {
     expect(insert?.text).not.toMatch(
       /request_payload|result_payload|input_payload|output_payload/i,
     );
+    for (let parameter = 10; parameter <= 16; parameter += 1) {
+      expect(insert?.text).toContain(`$${parameter}::text`);
+    }
     expect(insert?.values).not.toContain(JSON.stringify(record));
     expect(insert?.values).toContain(record.inputHash);
     expect(insert?.values).toContain(record.outputHash);
