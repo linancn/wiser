@@ -283,8 +283,8 @@ services:
       PGUSER: wiser_data
       PGPASSWORD: ${DATA_POSTGRES_PASSWORD:-wiser-local-data-4f8c71b0f3e947d4}
     depends_on:
-      data-postgres:
-        condition: service_healthy
+      data-migrate:
+        condition: service_completed_successfully
     deploy:
       resources: *data-resources
     logging: *data-logging
