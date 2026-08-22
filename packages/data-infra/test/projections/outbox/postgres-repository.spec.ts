@@ -163,6 +163,9 @@ describe('Postgres projection outbox repository', () => {
         /error_detail/i.test(text) &&
         /FAILED/.test(text),
     );
+    expect(failure?.text).toMatch(
+      /jsonb_build_object\('category', \$5::text\)/i,
+    );
     expect(failure?.values).toContain('VECTOR_BACKEND_UNAVAILABLE');
     expect(JSON.stringify(failure?.values)).not.toContain('password');
     const checkpoint = statements.find(({ text }) =>
