@@ -374,6 +374,31 @@ describe('Docpact documentation governance', () => {
     for (const ruleId of ['workbuddy-cookbook-runtime', 'workbuddy-showcase']) {
       expect(docpactRule(config, ruleId), ruleId).not.toBe('');
     }
+    const scenarioRule = docpactRule(config, 'scenario-pack');
+    for (const path of [
+      'packages/excon-scenarios/src/**',
+      'packages/excon-scenarios/scenarios/**/manifest.json',
+      'packages/excon-scenarios/scenarios/**/fixture/**',
+    ]) {
+      expect(scenarioRule).toContain(`- path: ${path}`);
+    }
+    expect(scenarioRule).not.toContain('- path: scenarios/');
+
+    const cookbookRule = docpactRule(config, 'workbuddy-cookbook-runtime');
+    for (const path of [
+      'examples/agent-excon/workbuddy-yongding-tdd/cookbook.yaml',
+      'examples/agent-excon/workbuddy-yongding-tdd/roles/**',
+      'examples/agent-excon/workbuddy-yongding-tdd/scripts/**',
+    ]) {
+      expect(cookbookRule).toContain(`- path: ${path}`);
+    }
+    expect(cookbookRule).not.toContain('- path: cookbooks/');
+
+    const showcaseRule = docpactRule(config, 'workbuddy-showcase');
+    expect(showcaseRule).toContain(
+      '- path: examples/agent-excon/workbuddy-yongding-tdd/showcase/scripts/**',
+    );
+    expect(showcaseRule).not.toContain('- path: cookbooks/');
     expect(docpactRule(config, 'participant-skill')).toBe('');
     expect(docpactRule(config, 'workbuddy-workflows')).toBe('');
     expect(docpactRule(config, 'workbuddy-cookbook-runtime')).not.toContain(
