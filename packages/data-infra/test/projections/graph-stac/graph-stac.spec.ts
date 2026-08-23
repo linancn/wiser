@@ -134,19 +134,22 @@ describe('Neo4j knowledge graph projection', () => {
     expect(http.requests[0]).toMatchObject({
       method: 'POST',
       url: 'http://neo4j:7474/db/neo4j/query/v2',
-      body: {
-        statement: expect.stringContaining('CREATE FULLTEXT INDEX'),
-        parameters: { indexName: NEO4J_ENTITY_FULLTEXT_INDEX },
-      },
     });
-    expect(http.requests[0]?.body).toMatchObject({
-      statement: expect.stringContaining("`fulltext.analyzer`: 'cjk'"),
+    const createBody = http.requests[0]?.body as {
+      readonly statement?: unknown;
+      readonly parameters?: unknown;
+    };
+    expect(createBody.parameters).toEqual({
+      indexName: NEO4J_ENTITY_FULLTEXT_INDEX,
     });
-    expect(http.requests[0]?.body).toMatchObject({
-      statement: expect.stringContaining(
-        '`fulltext.eventually_consistent`: false',
-      ),
-    });
+    if (typeof createBody.statement !== 'string') {
+      throw new Error('expected a Neo4j index statement');
+    }
+    expect(createBody.statement).toContain('CREATE FULLTEXT INDEX');
+    expect(createBody.statement).toContain("`fulltext.analyzer`: 'cjk'");
+    expect(createBody.statement).toContain(
+      '`fulltext.eventually_consistent`: false',
+    );
     expect(http.requests[1]?.body).toEqual({
       statement: 'CALL db.awaitIndex($indexName, $timeoutSeconds)',
       parameters: {

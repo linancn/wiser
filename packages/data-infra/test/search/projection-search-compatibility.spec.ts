@@ -147,7 +147,7 @@ describe('projection/search storage compatibility', () => {
     const openSearchProjectionHttp = new ProjectionClient();
     const openSearchProjection = new OpenSearchEvidenceProjection({
       baseUrl: 'https://opensearch:9200',
-      indexName: 'wiser-evidence-v1',
+      indexName: 'wiser-evidence-v2',
       username: 'admin',
       password: 'opensearch-secret',
       http: openSearchProjectionHttp,
@@ -157,7 +157,7 @@ describe('projection/search storage compatibility', () => {
 
     const openSearch = new OpenSearchSearchBackend({
       endpoint: 'https://opensearch:9200',
-      indexName: 'wiser-evidence-v1',
+      indexName: 'wiser-evidence-v2',
       username: 'admin',
       password: 'opensearch-secret',
       fetch: () =>
@@ -180,6 +180,7 @@ describe('projection/search storage compatibility', () => {
     const weaviateProjection = new WeaviateEvidenceProjection({
       baseUrl: 'http://weaviate:8080',
       apiKey: 'weaviate-secret',
+      vectorDimensions: evidenceInput.vector.length,
       http: weaviateProjectionHttp,
     });
     await weaviateProjection.put(evidenceInput);
@@ -195,13 +196,14 @@ describe('projection/search storage compatibility', () => {
     const weaviate = new WeaviateSearchBackend({
       endpoint: 'http://weaviate:8080',
       apiKey: 'weaviate-secret',
-      collectionName: 'WiserEvidenceChunk',
+      collectionName: 'WiserEvidenceChunkV2',
+      vectorDimensions: evidenceInput.vector.length,
       embed: () => Promise.resolve(evidenceInput.vector),
       fetch: () =>
         response({
           data: {
             Get: {
-              WiserEvidenceChunk: [
+              WiserEvidenceChunkV2: [
                 { ...evidenceSearchSource(properties), _additional: {} },
               ],
             },

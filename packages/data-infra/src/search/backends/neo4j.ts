@@ -3,6 +3,7 @@ import type {
   SearchBackendPort,
   SearchBackendRequest,
 } from '../index.js';
+import { NEO4J_ENTITY_FULLTEXT_INDEX } from '../../projections/graph-stac/neo4j.js';
 import {
   adapterError,
   basicAuthorization,
@@ -32,7 +33,17 @@ const FIELDS = Object.freeze([
 ]);
 
 const CYPHER =
-  'MATCH (entity:WiserEntity)-[:EVIDENCED_BY]->(evidence:WiserEvidence) WHERE evidence.tenantId = $tenantId AND evidence.projectId = $projectId AND evidence.securityLevel IN $securityLevels AND CASE evidence.securityLevel WHEN "L0_PUBLIC" THEN 0 WHEN "L1_INTERNAL" THEN 1 WHEN "L2_RESTRICTED" THEN 2 WHEN "L3_CONFIDENTIAL" THEN 3 END <= CASE $maxSecurityLevel WHEN "L0_PUBLIC" THEN 0 WHEN "L1_INTERNAL" THEN 1 WHEN "L2_RESTRICTED" THEN 2 WHEN "L3_CONFIDENTIAL" THEN 3 END AND evidence.policyVersion <= $policyVersion AND evidence.acceptanceStatus IN $acceptanceStatuses AND evidence.publicationStatus IN $publicationStatuses AND any(channel IN $channels WHERE channel IN coalesce(evidence.channels, [])) AND (size($versionIds) = 0 OR evidence.versionId IN $versionIds) AND (size($businessDomains) = 0 OR any(domain IN $businessDomains WHERE domain IN coalesce(evidence.businessDomains, []))) AND toLower(coalesce(entity.name, "")) CONTAINS toLower($query) RETURN evidence.tenantId AS tenantId, evidence.projectId AS projectId, evidence.dataItemId AS dataItemId, evidence.versionId AS versionId, evidence.evidenceId AS evidenceId, evidence.qualityGrade AS qualityGrade, evidence.acceptanceStatus AS acceptanceStatus, evidence.publicationStatus AS publicationStatus, evidence.securityLevel AS securityLevel, evidence.policyVersion AS policyVersion, [{field: "entityName", text: coalesce(entity.name, "")}] AS excerptFragments, coalesce(evidence.limitations, []) AS limitations ORDER BY entity.name, evidence.dataItemId, evidence.versionId, evidence.evidenceId LIMIT $limit';
+  'CALL db.index.fulltext.queryNodes($indexName, $query) YIELD node AS entity, score MATCH (entity:WiserEntity)-[relation:EVIDENCED_BY]->(evidence:WiserEvidence) WHERE entity.tenantId = $tenantId AND entity.projectId = $projectId AND relation.tenantId = $tenantId AND relation.projectId = $projectId AND evidence.tenantId = $tenantId AND evidence.projectId = $projectId AND entity.securityLevel IN $securityLevels AND relation.securityLevel IN $securityLevels AND evidence.securityLevel IN $securityLevels AND CASE evidence.securityLevel WHEN "L0_PUBLIC" THEN 0 WHEN "L1_INTERNAL" THEN 1 WHEN "L2_RESTRICTED" THEN 2 WHEN "L3_CONFIDENTIAL" THEN 3 END <= CASE $maxSecurityLevel WHEN "L0_PUBLIC" THEN 0 WHEN "L1_INTERNAL" THEN 1 WHEN "L2_RESTRICTED" THEN 2 WHEN "L3_CONFIDENTIAL" THEN 3 END AND entity.policyVersion <= $policyVersion AND relation.policyVersion <= $policyVersion AND evidence.policyVersion <= $policyVersion AND entity.acceptanceStatus IN $acceptanceStatuses AND relation.acceptanceStatus IN $acceptanceStatuses AND evidence.acceptanceStatus IN $acceptanceStatuses AND entity.publicationStatus IN $publicationStatuses AND relation.publicationStatus IN $publicationStatuses AND evidence.publicationStatus IN $publicationStatuses AND any(channel IN $channels WHERE channel IN coalesce(evidence.channels, [])) AND (size($versionIds) = 0 OR evidence.versionId IN $versionIds) AND (size($businessDomains) = 0 OR any(domain IN $businessDomains WHERE domain IN coalesce(evidence.businessDomains, []))) RETURN evidence.tenantId AS tenantId, evidence.projectId AS projectId, evidence.dataItemId AS dataItemId, evidence.versionId AS versionId, evidence.evidenceId AS evidenceId, evidence.qualityGrade AS qualityGrade, evidence.acceptanceStatus AS acceptanceStatus, evidence.publicationStatus AS publicationStatus, evidence.securityLevel AS securityLevel, evidence.policyVersion AS policyVersion, [{field: "entityName", text: coalesce(entity.name, "")}] AS excerptFragments, coalesce(evidence.limitations, []) AS limitations ORDER BY score DESC, entity.name, evidence.dataItemId, evidence.versionId, evidence.evidenceId LIMIT $limit';
+
+function literalFullTextQuery(value: string): string {
+  const normalized = value.normalize('NFKC').trim();
+  if (normalized.length === 0) throw adapterError('INVALID_REQUEST');
+  const terms = normalized.split(/\s+/u);
+  if (terms.length > 64) throw adapterError('INVALID_REQUEST');
+  return terms
+    .map((term) => `"${term.replace(/[+\-!(){}[\]^"~*?:\\/&|]/gu, '\\$&')}"`)
+    .join(' OR ');
+}
 
 export interface Neo4jSearchBackendOptions {
   readonly endpoint: string;
@@ -91,9 +102,10 @@ export class Neo4jSearchBackend implements SearchBackendPort {
         body: JSON.stringify({
           statement: CYPHER,
           parameters: {
+            indexName: NEO4J_ENTITY_FULLTEXT_INDEX,
             tenantId: request.tenantId,
             projectId: request.projectId,
-            query: request.query,
+            query: literalFullTextQuery(request.query),
             maxSecurityLevel: request.maxSecurityLevel,
             securityLevels: request.securityLevels,
             policyVersion: request.maximumPolicyVersion,

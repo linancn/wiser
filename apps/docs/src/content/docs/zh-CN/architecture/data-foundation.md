@@ -151,6 +151,16 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 - Neo4j 使用固定参数化 `MERGE`；
 - pgSTAC 写 STAC 1.1 Collection/Item，asset href 指向受控 API 下载入口。
 
+### 中文与中英混合检索合同
+
+正文以中文为主、允许英文与中英混合，但三个检索投影不重复承担同一信号：
+
+- **OpenSearch 是正文词法主召回。** `wiser-evidence-v2` 对同一 `content` 建立三个受控字段：ICU 主字段先做 `nfkc_cf` Unicode 兼容归一化，再执行 `icu_tokenizer` 与 `icu_folding`；官方 SmartCN 字段补充简体中文词典/HMM 边界；低权重 CJK 字段用重叠双字词兜底分词歧义。查询固定组合 ICU `3`、SmartCN `2`、CJK `0.75` 与 ICU phrase `4`，至少一路命中；权重只是在建立 judgment set 前的受治理基线，不能替代 Recall/NDCG 评测。通用 n-gram、非官方 IK 与未经审阅的同义词文件不进入默认生产路径。参见 [OpenSearch ICU analyzer](https://docs.opensearch.org/latest/analyzers/language-analyzers/icu/)、[CJK analyzer](https://docs.opensearch.org/latest/analyzers/language-analyzers/cjk/)与[官方插件清单](https://docs.opensearch.org/latest/install-and-configure/additional-plugins/)。
+- **Weaviate 是纯向量语义召回。** `WiserEvidenceChunkV2` 继续使用 Worker 提供的版本化向量，但 `semantic` channel 改用 `nearVector`，不再在内部重复 BM25；因此 OpenSearch lexical 不会在外层 RRF 中重复投票。正文只存储、不建倒排索引；Tenant/Project/Version、安全、发布与 channel 等字段使用 `field` tokenization 并只为实际过滤建立索引。查询与写入向量必须精确匹配配置维度，租户由受控写入显式创建，`autoTenantCreation` 关闭。参见 [Weaviate bring-your-own vectors](https://docs.weaviate.io/weaviate/concepts/search/vector-search#bring-your-own-vector) 与 [multi-tenancy](https://docs.weaviate.io/weaviate/manage-collections/multi-tenancy)。
+- **Neo4j 是图种子召回。** Worker 在写图前幂等创建并等待 `wiser_entity_name_cjk_v1` ONLINE；该全文索引对 `WiserEntity.name` 使用官方 `cjk` analyzer、同步更新，再按 Lucene score 排序并沿 `EVIDENCED_BY` 回到 Evidence。用户查询只允许 NFKC 后最多 64 个 literal term，所有 Lucene 特殊字符由服务端转义；Tenant、Project、安全、policy、验收与发布条件同时复核 entity、relation 与 evidence。内置 CJK 是双字词 analyzer，不处理简繁转换、拼音、领域词典，也不能可靠召回长文本中的单汉字，因此 Neo4j 不替代 OpenSearch 正文检索。参见 [Neo4j full-text indexes](https://neo4j.com/docs/cypher-manual/current/indexes/semantic-indexes/full-text-indexes/)。
+
+每个 backend 先形成独立排名；`SearchOrchestrator` 再执行固定 `RRF k=60`，不直接相加 OpenSearch BM25、Weaviate distance 与 Neo4j Lucene score。OpenSearch analyzer、Weaviate schema 或 Neo4j analyzer 变化都使用新版本物理索引/collection，从 data-postgres 权威事实重放投影并完成中文、英文、中英混合 golden queries 后切读；不能让 `IF NOT EXISTS` 或一次 schema `200` 掩盖旧索引语义。测试/CI/本机 smoke 仍使用确定性 fake embedding；生产语义召回必须另行选择并锁定一个经过中文/英文评测的 embedding model、版本和维度。
+
 对应 query adapter 下推 Tenant、Project、Version、security、policy version、acceptance、publication、domain 与 channel filter。`SearchOrchestrator` 并行召回，固定 `RRF k=60`，按 DataItem+Version 去重，再逐条授权并脱敏 excerpt。
 
 ## 协议与产品面

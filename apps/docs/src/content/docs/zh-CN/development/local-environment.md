@@ -37,6 +37,7 @@ lastReviewedCommit: 009852bdcfd26240fa31553e7d0e2254400aaf67
 - 完整 Data profile 会同时运行数据库、ClamAV、搜索、图谱与 GIS，资源上限以 `compose.yaml` 为准；启动前确认 Docker 可用容量与磁盘，而不是依赖一个未经仓库验证的“最低配置”数字。
 - 部分镜像在 Apple Silicon 上使用显式 `linux/amd64` 模拟，首次拉取、初始化和健康检查会更久。
 - 安装和首次构建需要访问 npm registry 与容器 registry。
+- OpenSearch one-shot init 会下载并校验与 3.8.0 精确匹配的官方 `analysis-icu` 与 `analysis-smartcn` 插件；readiness 要求两者同时出现。插件使用独立命名卷，版本或 checksum 变化时应在可丢弃环境执行确认式 Data reset，再从权威数据重建版本化检索投影。
 - 确认下表端口没有被其他进程或旧 Compose project 占用；端口冲突时先定位占用者，不要随意改一端而遗漏相关回调、CORS 或 smoke 配置。
 
 ## 主要端口

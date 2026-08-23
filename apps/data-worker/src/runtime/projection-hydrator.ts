@@ -441,11 +441,12 @@ export function createProjectionTargets(options: {
   readonly postgis: PutProjection;
   readonly weaviate: PutProjection & { ensureCollection(): Promise<void> };
   readonly opensearch: PutProjection & { ensureIndex(): Promise<void> };
-  readonly neo4j: PutProjection;
+  readonly neo4j: PutProjection & { ensureIndexes(): Promise<void> };
   readonly stac: PutProjection;
 }): readonly ProjectionTarget[] {
   let weaviateReady: Promise<void> | undefined;
   let openSearchReady: Promise<void> | undefined;
+  let neo4jReady: Promise<void> | undefined;
   return Object.freeze([
     {
       kind: 'POSTGIS',
@@ -489,6 +490,13 @@ export function createProjectionTargets(options: {
     {
       kind: 'NEO4J',
       project: async (event) => {
+        const ready = (neo4jReady ??= options.neo4j.ensureIndexes());
+        try {
+          await ready;
+        } catch (error) {
+          if (neo4jReady === ready) neo4jReady = undefined;
+          throw error;
+        }
         const input = await options.hydrator.hydrate(event);
         for (const graph of input.graph) await options.neo4j.put(graph);
       },

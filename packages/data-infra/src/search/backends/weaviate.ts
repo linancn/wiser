@@ -22,6 +22,7 @@ export interface WeaviateSearchBackendOptions {
   readonly endpoint: string;
   readonly apiKey: string;
   readonly collectionName: string;
+  readonly vectorDimensions: number;
   readonly embed: SearchEmbeddingPort;
   readonly fetch?: SearchBackendFetch;
   readonly timeoutMs?: number;
@@ -67,6 +68,7 @@ export class WeaviateSearchBackend implements SearchBackendPort {
   readonly #url: URL;
   readonly #apiKey: string;
   readonly #collectionName: string;
+  readonly #vectorDimensions: number;
   readonly #embed: SearchEmbeddingPort;
   readonly #fetch: SearchBackendFetch;
   readonly #timeoutMs: number;
@@ -75,13 +77,17 @@ export class WeaviateSearchBackend implements SearchBackendPort {
     const endpoint = safeEndpoint(options.endpoint);
     if (
       options.collectionName !== WEAVIATE_EVIDENCE_COLLECTION ||
-      typeof options.embed !== 'function'
+      typeof options.embed !== 'function' ||
+      !Number.isSafeInteger(options.vectorDimensions) ||
+      options.vectorDimensions < 1 ||
+      options.vectorDimensions > 4_096
     ) {
       throw adapterError('INVALID_CONFIGURATION');
     }
     this.#url = new URL('v1/graphql', endpoint);
     this.#apiKey = requiredSecret(options.apiKey);
     this.#collectionName = options.collectionName;
+    this.#vectorDimensions = options.vectorDimensions;
     this.#embed = options.embed;
     this.#fetch = requiredFetch(options.fetch ?? globalThis.fetch);
     this.#timeoutMs = options.timeoutMs ?? 15_000;
@@ -106,8 +112,7 @@ export class WeaviateSearchBackend implements SearchBackendPort {
     }
     if (
       !Array.isArray(vector) ||
-      vector.length < 1 ||
-      vector.length > 4_096 ||
+      vector.length !== this.#vectorDimensions ||
       !(vector as readonly unknown[]).every(
         (value) => typeof value === 'number' && Number.isFinite(value),
       )
@@ -125,10 +130,9 @@ export class WeaviateSearchBackend implements SearchBackendPort {
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          query: `query WiserSearch($tenant: String!, $query: String!, $vector: [Float!]!) { Get { ${this.#collectionName}(tenant: $tenant hybrid: { query: $query vector: $vector alpha: 0.5 fusionType: relativeScoreFusion } where: ${whereGraphQl(request)} limit: ${request.limit}) { tenantId projectId dataItemId versionId evidenceId qualityGrade acceptanceStatus publicationStatus securityLevel policyVersion content limitations _additional { score } } } }`,
+          query: `query WiserSearch($tenant: String!, $vector: [Float!]!) { Get { ${this.#collectionName}(tenant: $tenant nearVector: { vector: $vector } where: ${whereGraphQl(request)} limit: ${request.limit}) { tenantId projectId dataItemId versionId evidenceId qualityGrade acceptanceStatus publicationStatus securityLevel policyVersion content limitations _additional { distance } } } }`,
           variables: {
             tenant: tenantName(request),
-            query: request.query,
             vector,
           },
         }),

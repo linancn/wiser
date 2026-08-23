@@ -12,6 +12,7 @@ const PROJECT_ID = 'b2000000-0000-4000-8000-000000000001';
 const UPLOAD_SESSION_ID = 'a1000000-0000-4000-8000-000000000001';
 const GEO_ASSET_ID = 'a1000000-0000-4000-8000-000000000002';
 const EVIDENCE_ASSET_ID = 'a1000000-0000-4000-8000-000000000003';
+const ZH_EVIDENCE_ASSET_ID = 'a1000000-0000-4000-8000-000000000007';
 const INGESTION_ID = 'a1000000-0000-4000-8000-000000000004';
 const OPERATION_ID = 'a1000000-0000-4000-8000-000000000005';
 const VERSION_ID = 'a1000000-0000-4000-8000-000000000006';
@@ -33,12 +34,12 @@ function authorityEvidence() {
     operationStatus: 'SUCCEEDED',
     itemPublicationStatus: 'PUBLISHED',
     versionPublicationStatus: 'PUBLISHED',
-    assetCount: 2,
-    scannedAssetCount: 2,
-    fingerprintedAssetCount: 2,
-    rawAssetCount: 2,
-    contentBlobCount: 2,
-    rawBlobCount: 2,
+    assetCount: 3,
+    scannedAssetCount: 3,
+    fingerprintedAssetCount: 3,
+    rawAssetCount: 3,
+    contentBlobCount: 3,
+    rawBlobCount: 3,
     agentRunCount: 2,
     agentActionCount: 2,
     transformPlanCount: 2,
@@ -47,7 +48,7 @@ function authorityEvidence() {
     qualityScorecardCount: 1,
     dataItemCount: 1,
     versionCount: 1,
-    evidenceCount: 2,
+    evidenceCount: 3,
     spatialCount: 1,
     lineageCount: 1,
     outboxCount: 1,
@@ -119,7 +120,7 @@ function createHarness() {
         {
           uploadSession: {
             uploadSessionId: UPLOAD_SESSION_ID,
-            assetIds: [GEO_ASSET_ID, EVIDENCE_ASSET_ID],
+            assetIds: [GEO_ASSET_ID, EVIDENCE_ASSET_ID, ZH_EVIDENCE_ASSET_ID],
             status: 'OPEN',
             version: 1,
           },
@@ -136,6 +137,12 @@ function createHarness() {
               uploadUrl: 'https://upload.invalid/evidence',
               headers: { 'content-type': 'text/markdown' },
             },
+            {
+              assetId: ZH_EVIDENCE_ASSET_ID,
+              method: 'PRESIGNED_PUT',
+              uploadUrl: 'https://upload.invalid/evidence-zh',
+              headers: { 'content-type': 'text/markdown' },
+            },
           ],
         },
         { status: 201 },
@@ -148,7 +155,7 @@ function createHarness() {
       return jsonResponse({
         uploadSession: {
           uploadSessionId: UPLOAD_SESSION_ID,
-          assetIds: [GEO_ASSET_ID, EVIDENCE_ASSET_ID],
+          assetIds: [GEO_ASSET_ID, EVIDENCE_ASSET_ID, ZH_EVIDENCE_ASSET_ID],
           status: 'COMPLETED',
           version: 2,
         },
@@ -299,7 +306,7 @@ test('executes the exact 18-step authenticated vertical slice and proves replay 
   const createUpload = harness.requests.find(
     ({ url }) => url.pathname === '/api/data/v1/upload-sessions',
   );
-  assert.equal(JSON.parse(createUpload.init.body).objects.length, 2);
+  assert.equal(JSON.parse(createUpload.init.body).objects.length, 3);
   assert.equal(
     harness.requests.filter(
       ({ url }) =>

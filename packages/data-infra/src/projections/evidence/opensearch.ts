@@ -16,7 +16,7 @@ import {
   validateUsername,
 } from './validation.js';
 
-export const OPENSEARCH_EVIDENCE_INDEX = 'wiser-evidence-v1';
+export const OPENSEARCH_EVIDENCE_INDEX = 'wiser-evidence-v2';
 
 const keywordProperties = [
   'projectionId',
@@ -46,17 +46,41 @@ const keywordProperties = [
 export const OPENSEARCH_EVIDENCE_MAPPING = Object.freeze({
   settings: Object.freeze({
     analysis: Object.freeze({
+      char_filter: Object.freeze({
+        wiser_nfkc_cf: Object.freeze({
+          type: 'icu_normalizer',
+          name: 'nfkc_cf',
+          mode: 'compose',
+        }),
+      }),
+      filter: Object.freeze({
+        wiser_cjk_bigrams: Object.freeze({
+          type: 'cjk_bigram',
+          output_unigrams: false,
+        }),
+      }),
       analyzer: Object.freeze({
-        wiser_icu_zh: Object.freeze({
+        wiser_icu_multilingual: Object.freeze({
           type: 'custom',
+          char_filter: Object.freeze(['wiser_nfkc_cf']),
           tokenizer: 'icu_tokenizer',
-          filter: Object.freeze(['icu_folding', 'lowercase']),
+          filter: Object.freeze(['icu_folding']),
+        }),
+        wiser_cjk_recall: Object.freeze({
+          type: 'custom',
+          tokenizer: 'standard',
+          filter: Object.freeze([
+            'cjk_width',
+            'lowercase',
+            'wiser_cjk_bigrams',
+          ]),
         }),
       }),
     }),
   }),
   mappings: Object.freeze({
     dynamic: 'strict',
+    _meta: Object.freeze({ analysisSchemaVersion: 'wiser-multilingual-v2' }),
     properties: Object.freeze({
       ...Object.fromEntries(
         keywordProperties.map((name) => [
@@ -64,7 +88,24 @@ export const OPENSEARCH_EVIDENCE_MAPPING = Object.freeze({
           Object.freeze({ type: 'keyword' }),
         ]),
       ),
-      content: Object.freeze({ type: 'text', analyzer: 'wiser_icu_zh' }),
+      content: Object.freeze({
+        type: 'text',
+        analyzer: 'wiser_icu_multilingual',
+        search_analyzer: 'wiser_icu_multilingual',
+        search_quote_analyzer: 'wiser_icu_multilingual',
+        fields: Object.freeze({
+          smartcn: Object.freeze({
+            type: 'text',
+            analyzer: 'smartcn',
+            search_analyzer: 'smartcn',
+          }),
+          cjk: Object.freeze({
+            type: 'text',
+            analyzer: 'wiser_cjk_recall',
+            search_analyzer: 'wiser_cjk_recall',
+          }),
+        }),
+      }),
       policyVersion: Object.freeze({ type: 'long' }),
     }),
   }),

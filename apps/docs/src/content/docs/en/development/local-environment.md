@@ -37,6 +37,7 @@ lastReviewedCommit: 009852bdcfd26240fa31553e7d0e2254400aaf67
 - The complete Data profile runs databases, ClamAV, search, graph, and GIS together. `compose.yaml` is authoritative for resource bounds; confirm adequate Docker capacity and disk instead of relying on an unverified “minimum machine” number.
 - Some images use explicit `linux/amd64` emulation on Apple Silicon, so the first pull, initialization, and health checks take longer.
 - Installation and the first build need access to npm and container registries.
+- The OpenSearch one-shot init downloads and verifies the official `analysis-icu` and `analysis-smartcn` plugins at the exact 3.8.0 version; readiness requires both. Each plugin uses a named volume. A plugin version or checksum change is applied through a confirmation-gated Data reset in disposable state, followed by rebuilding the versioned search projections from authority.
 - Confirm the ports below are free from another process or old Compose project. When a port conflicts, identify the owner rather than changing one side and leaving callback, CORS, or smoke configuration inconsistent.
 
 ## Primary ports

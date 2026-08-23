@@ -218,6 +218,7 @@ const defaultFactories: DataFoundationRuntimeFactories = {
         endpoint: config.weaviate.url,
         apiKey: config.weaviate.apiKey,
         collectionName: WEAVIATE_EVIDENCE_COLLECTION,
+        vectorDimensions: config.fakeEmbeddingDimensions,
         embed: (text) => embedding.embed(text),
       }),
       neo4j: new Neo4jSearchBackend({

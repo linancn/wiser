@@ -79,6 +79,17 @@ const FIXTURES = Object.freeze([
     expectedSha256:
       '123afced4bc8e32ced1065c9d3d28d3118387f0a36b84e146cbbbbee861db930',
   },
+  {
+    key: 'evidenceZh',
+    fileName: 'sample-evidence-zh.md',
+    mediaType: 'text/markdown',
+    path: join(
+      ROOT_DIRECTORY,
+      'tests/fixtures/data-foundation/sample-evidence-zh.md',
+    ),
+    expectedSha256:
+      '742dd1806e4d5ee3d4641120d78a177bd53571501ad6995a504a8b4b5fc34d10',
+  },
 ]);
 
 export class VerticalSmokeError extends Error {
@@ -896,12 +907,12 @@ async function readAuthorityEvidence(
     evidence.operationStatus !== 'SUCCEEDED' ||
     evidence.itemPublicationStatus !== 'PUBLISHED' ||
     evidence.versionPublicationStatus !== 'PUBLISHED' ||
-    count(evidence, 'assetCount', stepId) !== 2 ||
-    count(evidence, 'scannedAssetCount', stepId) !== 2 ||
-    count(evidence, 'fingerprintedAssetCount', stepId) !== 2 ||
-    count(evidence, 'rawAssetCount', stepId) !== 2 ||
-    count(evidence, 'contentBlobCount', stepId) !== 2 ||
-    count(evidence, 'rawBlobCount', stepId) !== 2 ||
+    count(evidence, 'assetCount', stepId) !== FIXTURES.length ||
+    count(evidence, 'scannedAssetCount', stepId) !== FIXTURES.length ||
+    count(evidence, 'fingerprintedAssetCount', stepId) !== FIXTURES.length ||
+    count(evidence, 'rawAssetCount', stepId) !== FIXTURES.length ||
+    count(evidence, 'contentBlobCount', stepId) !== FIXTURES.length ||
+    count(evidence, 'rawBlobCount', stepId) !== FIXTURES.length ||
     count(evidence, 'agentRunCount', stepId) < 1 ||
     count(evidence, 'agentActionCount', stepId) < 1 ||
     count(evidence, 'transformPlanCount', stepId) < 1 ||
@@ -910,7 +921,7 @@ async function readAuthorityEvidence(
     count(evidence, 'qualityScorecardCount', stepId) !== 1 ||
     count(evidence, 'dataItemCount', stepId) !== 1 ||
     count(evidence, 'versionCount', stepId) !== 1 ||
-    count(evidence, 'evidenceCount', stepId) !== 2 ||
+    count(evidence, 'evidenceCount', stepId) !== FIXTURES.length ||
     count(evidence, 'spatialCount', stepId) < 1 ||
     count(evidence, 'lineageCount', stepId) !== 1 ||
     count(evidence, 'outboxCount', stepId) !== 1 ||
@@ -1079,6 +1090,22 @@ async function queryRest(runtime, auth, apiOrigin, dataItemId, versionId) {
     },
   );
   assertSearchResult(search, dataItemId, versionId, stepId);
+  const chineseFullText = await apiJson(
+    runtime,
+    auth,
+    apiOrigin,
+    stepId,
+    '/api/data/v1/search',
+    {
+      method: 'POST',
+      body: {
+        query: '永定河流域水生态治理 OpenSearch',
+        sources: ['fulltext'],
+        first: 50,
+      },
+    },
+  );
+  assertSearchResult(chineseFullText, dataItemId, versionId, stepId);
   return projection;
 }
 

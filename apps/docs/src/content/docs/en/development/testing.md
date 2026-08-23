@@ -159,7 +159,7 @@ The API command spec uses a temporary non-bypass role to prove illegal Operation
 
 Data Foundation CI completes the vertical smoke and saves its machine-readable report first, runs the authenticated Data browser suite against that same stack, then runs the API and Worker deep tests, and finally removes that job's Data volumes unconditionally. The order is `smoke → authenticated browser → API/Worker deep tests → always cleanup`; cleanup must still run after any earlier failure. Never point these commands at a shared database or a local volume whose data must be retained.
 
-On a clean environment, `pnpm stack:full:up` converges Supabase startup, the Data profile, migrations, seed, and `data:smoke`. A passing smoke proves the fixed sequence across upload, scanning, fingerprinting, fake Agent, deterministic transformation, quality/review, authority commit, Outbox, five completion targets, REST, GraphQL, MCP, and authenticated Web. It also verifies that Outbox replay does not duplicate target facts.
+On a clean environment, `pnpm stack:full:up` converges Supabase startup, the Data profile, migrations, seed, and `data:smoke`. A passing smoke proves the fixed sequence across upload, scanning, fingerprinting, fake Agent, deterministic transformation, quality/review, authority commit, Outbox, five completion targets, REST, GraphQL, MCP, and authenticated Web. It also verifies that Outbox replay does not duplicate target facts. The upload bundle contains both English and `zh-CN` Markdown; the REST phase additionally sends a Chinese domain phrase plus an English product name with only the `fulltext` source selected, proving that the versioned OpenSearch multi-analyzer projection recalls the document and still passes authorization review.
 
 ## Playwright
 

@@ -15,7 +15,7 @@ import {
   validateSecret,
 } from './validation.js';
 
-export const WEAVIATE_EVIDENCE_COLLECTION = 'WiserEvidenceChunk';
+export const WEAVIATE_EVIDENCE_COLLECTION = 'WiserEvidenceChunkV2';
 
 const PROPERTY_NAMES = [
   'tenantId',
@@ -45,28 +45,54 @@ const ARRAY_PROPERTY_NAMES = [
   'limitations',
 ] as const;
 
+const FILTERABLE_PROPERTY_NAMES = new Set<string>([
+  'tenantId',
+  'projectId',
+  'dataItemId',
+  'versionId',
+  'evidenceId',
+  'securityLevel',
+  'acceptanceStatus',
+  'publicationStatus',
+  'businessDomains',
+  'channels',
+]);
+
+function exactTextProperty(name: string, dataType: 'text' | 'text[]') {
+  return Object.freeze({
+    name,
+    dataType: Object.freeze([dataType]),
+    tokenization: 'field',
+    indexFilterable: FILTERABLE_PROPERTY_NAMES.has(name),
+    indexSearchable: false,
+  });
+}
+
 export const WEAVIATE_EVIDENCE_SCHEMA = Object.freeze({
   class: WEAVIATE_EVIDENCE_COLLECTION,
-  description: 'WISER governed evidence chunks with worker-supplied vectors.',
+  description:
+    'WISER governed evidence chunks for pure worker-supplied vector recall.',
   vectorizer: 'none',
   multiTenancyConfig: Object.freeze({
     enabled: true,
-    autoTenantCreation: true,
+    autoTenantCreation: false,
   }),
   properties: Object.freeze([
-    ...PROPERTY_NAMES.map((name) =>
-      Object.freeze({ name, dataType: ['text'] }),
-    ),
-    ...ARRAY_PROPERTY_NAMES.map((name) =>
-      Object.freeze({ name, dataType: ['text[]'] }),
-    ),
-    Object.freeze({ name: 'policyVersion', dataType: ['int'] }),
+    ...PROPERTY_NAMES.map((name) => exactTextProperty(name, 'text')),
+    ...ARRAY_PROPERTY_NAMES.map((name) => exactTextProperty(name, 'text[]')),
+    Object.freeze({
+      name: 'policyVersion',
+      dataType: Object.freeze(['int']),
+      indexFilterable: true,
+      indexRangeFilters: true,
+    }),
   ]),
 });
 
 export interface WeaviateEvidenceProjectionOptions {
   readonly baseUrl: string;
   readonly apiKey: string;
+  readonly vectorDimensions: number;
   readonly http: ProjectionHttpClient;
 }
 
@@ -74,6 +100,7 @@ export class WeaviateEvidenceProjection {
   readonly #baseUrl: string;
   readonly #headers: Readonly<Record<string, string>>;
   readonly #http: ProjectionHttpClient;
+  readonly #vectorDimensions: number;
 
   constructor(options: WeaviateEvidenceProjectionOptions) {
     if (options.http === null || typeof options.http?.request !== 'function') {
@@ -82,8 +109,19 @@ export class WeaviateEvidenceProjection {
         'Weaviate HTTP client is invalid.',
       );
     }
+    if (
+      !Number.isSafeInteger(options.vectorDimensions) ||
+      options.vectorDimensions < 1 ||
+      options.vectorDimensions > 4_096
+    ) {
+      throw new EvidenceProjectionError(
+        'INVALID_EVIDENCE_PROJECTION_CONFIG',
+        'Weaviate vector dimensions are invalid.',
+      );
+    }
     this.#baseUrl = validateBaseUrl(options.baseUrl);
     this.#http = options.http;
+    this.#vectorDimensions = options.vectorDimensions;
     this.#headers = Object.freeze({
       Accept: 'application/json',
       Authorization: `Bearer ${validateSecret(options.apiKey, 'Weaviate API key')}`,
@@ -110,6 +148,12 @@ export class WeaviateEvidenceProjection {
 
   async put(value: unknown): Promise<EvidenceProjectionResult> {
     const input = validateEvidenceProjectionInput(value);
+    if (input.vector.length !== this.#vectorDimensions) {
+      throw new EvidenceProjectionError(
+        'INVALID_EVIDENCE_PROJECTION_INPUT',
+        'Evidence projection vector dimensions do not match the collection.',
+      );
+    }
     const projectionId = deterministicEvidenceProjectionId(input);
     const tenant = encodeURIComponent(input.tenantId);
     const tenantResponse = await requestProjectionBackend(this.#http, {

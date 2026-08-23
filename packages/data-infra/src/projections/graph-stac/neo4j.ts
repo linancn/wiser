@@ -11,6 +11,20 @@ import {
   validateGraphInput,
 } from './validation.js';
 
+export const NEO4J_ENTITY_FULLTEXT_INDEX = 'wiser_entity_name_cjk_v1';
+
+const CREATE_ENTITY_FULLTEXT_INDEX = `
+CREATE FULLTEXT INDEX $indexName IF NOT EXISTS
+FOR (entity:WiserEntity) ON EACH [entity.name]
+OPTIONS {indexConfig: {
+  \`fulltext.analyzer\`: 'cjk',
+  \`fulltext.eventually_consistent\`: false
+}}
+`.trim();
+
+const AWAIT_ENTITY_FULLTEXT_INDEX =
+  'CALL db.awaitIndex($indexName, $timeoutSeconds)';
+
 const MERGE_GRAPH_STATEMENT = `
 MERGE (entity:WiserEntity {projectionId: $projectionId})
 SET entity.entityId = $entityId,
@@ -104,6 +118,44 @@ export class Neo4jKnowledgeGraphProjection {
       `${options.username}:${options.password}`,
     ).toString('base64')}`;
     this.#http = options.http;
+  }
+
+  async ensureIndexes(): Promise<void> {
+    for (const body of [
+      {
+        statement: CREATE_ENTITY_FULLTEXT_INDEX,
+        parameters: { indexName: NEO4J_ENTITY_FULLTEXT_INDEX },
+      },
+      {
+        statement: AWAIT_ENTITY_FULLTEXT_INDEX,
+        parameters: {
+          indexName: NEO4J_ENTITY_FULLTEXT_INDEX,
+          timeoutSeconds: 30,
+        },
+      },
+    ]) {
+      let response;
+      try {
+        response = await this.#http.request({
+          method: 'POST',
+          url: this.#url,
+          headers: {
+            Authorization: this.#authorization,
+            'Content-Type': 'application/json',
+          },
+          body,
+        });
+      } catch {
+        throw new GraphStacProjectionError('PROJECTION_UNAVAILABLE');
+      }
+      if (
+        response.status < 200 ||
+        response.status >= 300 ||
+        hasErrors(response.body)
+      ) {
+        throw new GraphStacProjectionError('PROJECTION_UNAVAILABLE');
+      }
+    }
   }
 
   async put(input: unknown): Promise<{ projectionId: string }> {

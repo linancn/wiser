@@ -140,44 +140,47 @@ describe('OpenSearchSearchBackend', () => {
     );
     expect(init?.method).toBe('POST');
     expect(new Headers(init?.headers).get('authorization')).toMatch(/^Basic /);
-    expect(body).toMatchObject({
-      size: 25,
-      query: {
-        bool: {
-          must: [
-            {
-              bool: {
-                minimum_should_match: 1,
-                should: expect.arrayContaining([
-                  {
-                    match: {
-                      content: {
-                        query: '永定河 WaterGPT evidence',
-                        boost: 3,
-                      },
-                    },
-                  },
-                  {
-                    match: {
-                      'content.smartcn': {
-                        query: '永定河 WaterGPT evidence',
-                        boost: 2,
-                      },
-                    },
-                  },
-                  {
-                    match: {
-                      'content.cjk': {
-                        query: '永定河 WaterGPT evidence',
-                        boost: 0.75,
-                      },
-                    },
-                  },
-                ]),
+    expect(body['size']).toBe(25);
+    const lexical = record(
+      (record(record(body['query'])['bool'])['must'] as readonly unknown[])[0],
+    );
+    expect(lexical).toEqual({
+      bool: {
+        minimum_should_match: 1,
+        should: [
+          {
+            match: {
+              content: {
+                query: '永定河 WaterGPT evidence',
+                boost: 3,
               },
             },
-          ],
-        },
+          },
+          {
+            match: {
+              'content.smartcn': {
+                query: '永定河 WaterGPT evidence',
+                boost: 2,
+              },
+            },
+          },
+          {
+            match: {
+              'content.cjk': {
+                query: '永定河 WaterGPT evidence',
+                boost: 0.75,
+              },
+            },
+          },
+          {
+            match_phrase: {
+              content: {
+                query: '永定河 WaterGPT evidence',
+                boost: 4,
+              },
+            },
+          },
+        ],
       },
     });
     const filters = record(record(body['query'])['bool'])['filter'];
@@ -194,7 +197,7 @@ describe('OpenSearchSearchBackend', () => {
 });
 
 describe('WeaviateSearchBackend', () => {
-  it('uses a fixed hybrid GraphQL document, derived tenant, injected vector, and structured where filter', async () => {
+  it('uses a fixed pure-vector GraphQL document, derived tenant, and structured where filter', async () => {
     const embed = vi.fn(() => Promise.resolve([0.25, 0.5, 0.75]));
     const fetch = mockFetch(() =>
       jsonResponse({
@@ -302,6 +305,55 @@ describe('Neo4jSearchBackend', () => {
       policyVersion: 7,
       limit: 25,
     });
+  });
+
+  it('turns user text into bounded literal Lucene terms', async () => {
+    const fields = [
+      'tenantId',
+      'projectId',
+      'dataItemId',
+      'versionId',
+      'evidenceId',
+      'qualityGrade',
+      'acceptanceStatus',
+      'publicationStatus',
+      'securityLevel',
+      'policyVersion',
+      'excerptFragments',
+      'limitations',
+    ];
+    const fetch = mockFetch(() =>
+      jsonResponse({ queryType: 'r', data: { fields, values: [] } }, 202),
+    );
+    const backend = new Neo4jSearchBackend({
+      endpoint: 'http://neo4j.internal:7474',
+      database: 'neo4j',
+      username: 'neo4j',
+      password: 'private-neo4j-password',
+      fetch,
+    });
+
+    await backend.search(
+      request({ query: 'name:永定河 OR *:*', channels: ['graph'] }),
+    );
+
+    const { body } = firstFetchCall(fetch);
+    expect(record(body['parameters'])['query']).toBe(
+      '"name\\:永定河" OR "OR" OR "\\*\\:\\*"',
+    );
+    expect(body['statement']).not.toEqual(
+      expect.stringContaining('name:永定河 OR *:*'),
+    );
+
+    await expect(
+      backend.search(
+        request({ query: Array.from({ length: 65 }, () => '词').join(' ') }),
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      expectAdapterCode(error, 'INVALID_REQUEST');
+      return true;
+    });
+    expect(fetch).toHaveBeenCalledOnce();
   });
 });
 
@@ -455,7 +507,7 @@ describe('controlled search backend boundaries', () => {
 
     const backend = new OpenSearchSearchBackend({
       endpoint: 'https://opensearch.internal:9200',
-      indexName: 'wiser-evidence-v1',
+      indexName: 'wiser-evidence-v2',
       username: 'wiser',
       password: 'private',
       fetch: mockFetch(() => jsonResponse({ hits: { hits: [] } })),
@@ -472,7 +524,7 @@ describe('controlled search backend boundaries', () => {
     const secret = 'must-not-leak-private-password';
     const unavailable = new OpenSearchSearchBackend({
       endpoint: 'https://opensearch.internal:9200',
-      indexName: 'wiser-evidence-v1',
+      indexName: 'wiser-evidence-v2',
       username: 'wiser',
       password: secret,
       fetch: mockFetch(() => Promise.reject(new Error(secret))),
@@ -488,7 +540,7 @@ describe('controlled search backend boundaries', () => {
 
     const malformed = new OpenSearchSearchBackend({
       endpoint: 'https://opensearch.internal:9200',
-      indexName: 'wiser-evidence-v1',
+      indexName: 'wiser-evidence-v2',
       username: 'wiser',
       password: 'private',
       fetch: mockFetch(() =>
@@ -516,7 +568,8 @@ describe('controlled search backend boundaries', () => {
     const backend = new WeaviateSearchBackend({
       endpoint: 'http://weaviate.internal:8080',
       apiKey: 'private-weaviate-key',
-      collectionName: 'WiserEvidenceChunk',
+      collectionName: 'WiserEvidenceChunkV2',
+      vectorDimensions: 3,
       embed: () => Promise.reject(new Error(secret)),
       fetch,
     });
@@ -528,6 +581,22 @@ describe('controlled search backend boundaries', () => {
     }
     expectAdapterCode(caught, 'EMBEDDING_UNAVAILABLE');
     expect((caught as Error).message).not.toContain(secret);
+    expect(fetch).not.toHaveBeenCalled();
+
+    const wrongDimensions = new WeaviateSearchBackend({
+      endpoint: 'http://weaviate.internal:8080',
+      apiKey: 'private-weaviate-key',
+      collectionName: 'WiserEvidenceChunkV2',
+      vectorDimensions: 3,
+      embed: () => Promise.resolve([0.25, 0.5]),
+      fetch,
+    });
+    await expect(
+      wrongDimensions.search(request({ channels: ['semantic'] })),
+    ).rejects.toSatisfy((error: unknown) => {
+      expectAdapterCode(error, 'EMBEDDING_UNAVAILABLE');
+      return true;
+    });
     expect(fetch).not.toHaveBeenCalled();
   });
 });

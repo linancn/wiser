@@ -39,6 +39,7 @@ export const DATA_VOLUME_KEYS = Object.freeze([
   'opensearch-data',
   'opensearch-dashboards-data',
   'opensearch-icu-plugin',
+  'opensearch-smartcn-plugin',
   'neo4j-data',
   'geoserver-data',
   'clamav-data',

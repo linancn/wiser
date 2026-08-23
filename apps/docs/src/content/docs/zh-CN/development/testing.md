@@ -159,7 +159,7 @@ API command spec 通过临时非 bypass role 证明 Operation、Ingestion、Job 
 
 Data Foundation CI 先完成纵向 smoke 并保存机器可读报告，再对同一套栈运行登录态 Data 浏览器套件，然后运行 API、Worker 两个深度测试，最后无条件删除该 job 的 Data volumes。固定顺序是 `smoke → 登录态浏览器 → API/Worker 深度测试 → always cleanup`；前序任一步失败也必须执行清理。不要把这些命令指向共享数据库或需要保留的本机 volume。
 
-在干净环境中，`pnpm stack:full:up` 会执行启动 Supabase、启动 Data profile、migration、seed 和 `data:smoke` 的收敛流程。Smoke 的成功证明固定步骤跨越上传、扫描、指纹、fake Agent、确定性转换、质量/审核、权威提交、Outbox、五个 completion target、REST、GraphQL、MCP 和登录 Web，并验证 Outbox 重放不重复创建 target facts。
+在干净环境中，`pnpm stack:full:up` 会执行启动 Supabase、启动 Data profile、migration、seed 和 `data:smoke` 的收敛流程。Smoke 的成功证明固定步骤跨越上传、扫描、指纹、fake Agent、确定性转换、质量/审核、权威提交、Outbox、五个 completion target、REST、GraphQL、MCP 和登录 Web，并验证 Outbox 重放不重复创建 target facts。上传 bundle 同时包含英文与 `zh-CN` Markdown；REST 阶段还会用中文领域短语加英文产品名、仅选择 `fulltext` source，证明版本化 OpenSearch 多 analyzer 投影可以召回并通过权限复核。
 
 ## Playwright
 

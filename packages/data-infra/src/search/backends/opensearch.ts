@@ -101,10 +101,36 @@ export class OpenSearchSearchBackend implements SearchBackendPort {
         bool: {
           must: [
             {
-              multi_match: {
-                query: request.query,
-                fields: ['content'],
-                type: 'best_fields',
+              bool: {
+                minimum_should_match: 1,
+                should: [
+                  {
+                    match: {
+                      content: { query: request.query, boost: 3 },
+                    },
+                  },
+                  {
+                    match: {
+                      'content.smartcn': {
+                        query: request.query,
+                        boost: 2,
+                      },
+                    },
+                  },
+                  {
+                    match: {
+                      'content.cjk': {
+                        query: request.query,
+                        boost: 0.75,
+                      },
+                    },
+                  },
+                  {
+                    match_phrase: {
+                      content: { query: request.query, boost: 4 },
+                    },
+                  },
+                ],
               },
             },
           ],

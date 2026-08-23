@@ -138,6 +138,7 @@ export function createDefaultDataWorkerRuntime(
     weaviate: new WeaviateEvidenceProjection({
       baseUrl: config.projection.weaviateBaseUrl,
       apiKey: config.projection.weaviateApiKey,
+      vectorDimensions: config.projection.embeddingDimensions,
       http,
     }),
     opensearch: new OpenSearchEvidenceProjection({
