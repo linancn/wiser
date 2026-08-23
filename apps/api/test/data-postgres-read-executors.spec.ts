@@ -93,6 +93,11 @@ const versionRow = {
   supersedes_version_id: null,
 };
 
+const spatialExtentRow = {
+  bbox: [115.6078, 39.8496, 116.2186, 40.2217],
+  crs: 'EPSG:4490',
+};
+
 const ingestionId = '66666666-6666-4666-8666-666666666666';
 
 const qualityIssueRow = {
@@ -134,6 +139,7 @@ class FakeClient implements PostgresDataReadClient {
   }> = [];
   notFound = false;
   emptyIngestionSummaries = false;
+  internalOperationEvent = false;
   released = false;
 
   query(
@@ -153,6 +159,9 @@ class FakeClient implements PostgresDataReadClient {
               },
             ],
       });
+    }
+    if (/data\.catalog\.item\.spatial-extent/.test(text)) {
+      return Promise.resolve({ rows: [spatialExtentRow] });
     }
     if (/data\.catalog\.item/.test(text)) {
       return Promise.resolve({ rows: this.notFound ? [] : [itemRow] });
@@ -240,7 +249,9 @@ class FakeClient implements PostgresDataReadClient {
             event_id: '88888888-8888-4888-8888-888888888888',
             operation_id: '77777777-7777-4777-8777-777777777777',
             sequence_number: '1',
-            event_type: 'SUCCEEDED',
+            event_type: this.internalOperationEvent
+              ? 'PROJECTION_COMPLETED'
+              : 'SUCCEEDED',
             to_status: 'SUCCEEDED',
             progress_percent: 100,
             operation_version: '3',
@@ -383,6 +394,32 @@ describe('data-postgres RLS read executors', () => {
     ).toBe(true);
   });
 
+  it('returns the selected version canonical spatial envelope in catalog detail', async () => {
+    const pool = new FakePool();
+    const runtime = createPostgresDataReadRuntime(pool);
+    const get = (await executor(runtime, 'data.catalog.get').execute(
+      {
+        dataItemId: itemRow.data_item_id,
+        versionId: versionRow.version_id,
+      },
+      context,
+    )) as { readonly item: { readonly spatialExtent?: unknown } };
+
+    expect(get.item.spatialExtent).toEqual({
+      bbox: spatialExtentRow.bbox,
+      crs: 'EPSG:4490',
+    });
+    const extent = pool.client.queries.find(({ text }) =>
+      /data\.catalog\.item\.spatial-extent/.test(text),
+    );
+    expect(extent?.values).toEqual([
+      itemRow.data_item_id,
+      versionRow.version_id,
+    ]);
+    expect(extent?.text).toContain('ST_Extent(canonical_geometry)');
+    expect(extent?.text).toContain('version_id is null');
+  });
+
   it('maps ingestion, operation, and append-only event reads to exact DTOs', async () => {
     const runtime = createPostgresDataReadRuntime(new FakePool());
     const ingestion = await executor(runtime, 'data.ingestion.get').execute(
@@ -458,6 +495,24 @@ describe('data-postgres RLS read executors', () => {
         operation,
       ).success,
     ).toBe(true);
+    expect(
+      DATA_CAPABILITY_REGISTRY['data.operation.events'].outputSchema.safeParse(
+        events,
+      ).success,
+    ).toBe(true);
+  });
+
+  it('normalizes internal projection milestones into public progress events', async () => {
+    const pool = new FakePool();
+    pool.client.internalOperationEvent = true;
+    const runtime = createPostgresDataReadRuntime(pool);
+
+    const events = (await executor(runtime, 'data.operation.events').execute(
+      { operationId: '77777777-7777-4777-8777-777777777777', first: 10 },
+      context,
+    )) as { readonly items: readonly { readonly eventType: string }[] };
+
+    expect(events.items[0]?.eventType).toBe('PROGRESS_REPORTED');
     expect(
       DATA_CAPABILITY_REGISTRY['data.operation.events'].outputSchema.safeParse(
         events,
