@@ -265,4 +265,59 @@ describe('evaluation worker', () => {
       ready: false,
     });
   });
+
+  it('waits for a claim already in progress before closing the repository', async () => {
+    const repository = new FakeRepository();
+    let claimStarted: (() => void) | undefined;
+    let releaseClaim: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      claimStarted = resolve;
+    });
+    const pendingClaim = new Promise<void>((resolve) => {
+      releaseClaim = resolve;
+    });
+    repository.claim = async () => {
+      repository.events.push('claim');
+      claimStarted?.();
+      await pendingClaim;
+      const claimed = repository.jobs;
+      repository.jobs = [];
+      return claimed;
+    };
+    const worker = new EvaluationWorker({
+      repository,
+      logger: new MemoryLogger(),
+      workerId: 'worker-claim-drain',
+      claimLimit: 1,
+      leaseMs: 120_000,
+      pollIntervalMs: 10,
+    });
+
+    const processing = worker.processOnce();
+    await started;
+    const stopping = worker.stop();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    expect(repository.events).not.toContain('close');
+    expect(worker.health().phase).toBe('draining');
+
+    releaseClaim?.();
+    await expect(processing).resolves.toBe(1);
+    await stopping;
+
+    expect(repository.events).toEqual([
+      'recover',
+      'claim',
+      'load',
+      'complete',
+      'close',
+    ]);
+    expect(worker.health()).toMatchObject({
+      phase: 'stopped',
+      live: false,
+      ready: false,
+      completedJobs: 1,
+      inFlightJobs: 0,
+    });
+  });
 });
