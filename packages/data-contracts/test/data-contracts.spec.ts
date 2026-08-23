@@ -7,6 +7,7 @@ import {
   AcceptanceStatusSchema,
   CapabilityDefinitionSchema,
   CompletedUploadObjectSchema,
+  DATA_CAPABILITY_ARCHIVE,
   DATA_CAPABILITY_IDS,
   DATA_CAPABILITY_REGISTRY,
   DataItemSchema,
@@ -935,6 +936,39 @@ describe('Data Foundation capability registry', () => {
       }).toEqual(expectedCapabilityMappings[capabilityId]);
     }
     expect(DATA_CAPABILITY_REGISTRY['data.geo.query'].version).toBe('1.1.0');
+  });
+
+  it('retains immutable historical Capability definitions and schema hashes', () => {
+    const historical = DATA_CAPABILITY_ARCHIVE['data.geo.query'];
+    expect(historical).toHaveLength(1);
+    const definition = historical?.[0];
+    expect(definition).toBeDefined();
+    expect(Object.isFrozen(historical)).toBe(true);
+    expect(definition).toMatchObject({
+      id: 'data.geo.query',
+      version: '1.0.0',
+      restMapping: { path: '/api/data/v1/geo/query' },
+    });
+    expect(
+      definition?.inputSchema.safeParse({
+        geometry: point,
+        predicates: ['INTERSECTS'],
+        first: 10,
+      }).success,
+    ).toBe(true);
+    expect(
+      definition?.inputSchema.safeParse({
+        geometry: point,
+        predicates: ['INTERSECTS'],
+        versionId: VERSION_ID,
+        first: 10,
+      }).success,
+    ).toBe(false);
+    expect(
+      definition === undefined
+        ? undefined
+        : jsonSchemaHash(definition.inputSchema),
+    ).toBe('2036d4561ed61bc9fab314ae85485e3f6663570ecbd6aee136dd72ef3ce26acb');
   });
 
   it('validates every capability input strictly', () => {

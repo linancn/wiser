@@ -26,6 +26,7 @@ const EVIDENCE_ID = 'e1000000-0000-4000-8000-000000000005';
 const FEATURE_ID_A = 'e1000000-0000-4000-8000-000000000006';
 const FEATURE_ID_B = 'e1000000-0000-4000-8000-000000000007';
 const FEATURE_ID_C = 'e1000000-0000-4000-8000-000000000008';
+const GEO_SNAPSHOT_AT = '2026-08-23T10:00:00.000000Z';
 
 class FakePgClient implements QueryAdapterPgClient {
   readonly calls: { text: string; values: readonly unknown[] }[] = [];
@@ -80,6 +81,7 @@ function geoRow(featureId: string, distanceMeters: number) {
     source_crs: 'EPSG:4326',
     properties: { distanceMeters },
     sort_distance: distanceMeters,
+    snapshot_at: GEO_SNAPSHOT_AT,
   };
 }
 
@@ -508,6 +510,8 @@ describe('PostGIS geo query port', () => {
     expect(secondPage).not.toHaveProperty('nextCursor');
     expect(client.calls[6]!.text).toMatch(/spatial_extent_id\s*>/i);
     expect(JSON.stringify(client.calls[6]!.values)).toContain(FEATURE_ID_B);
+    expect(client.calls[6]!.values).toContain(GEO_SNAPSHOT_AT);
+    expect(client.calls[6]!.text).toContain('created_at <=');
   });
 
   it('rejects changed, cross-query, and cross-scope cursors before connecting', async () => {

@@ -17,8 +17,8 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - packages/data-contracts/src/capability/**
   - skills/wiser-data-foundation/**
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
+lastReviewedAt: 2026-08-23
+lastReviewedCommit: 2597535dc53d5ca7d9faa65be1bb699c345c0b57
 ---
 
 ## HTTP adapter only
@@ -129,7 +129,7 @@ GET Tools encode only boolean, number, string, or string-array queries, and URL-
 4. inspect each result's `versionId`, `evidenceId`, security, quality, acceptance, and limitations;
 5. never treat a search score as quality or authorization.
 
-`data_geo_query` accepts one optional `versionId`. Omitting it selects extents from each DataItem's latest visible committed version; supplying it selects extents from that exact immutable version. Each response remains bounded by `first`; `dataItemIds` intersects either selection, and a hidden or absent exact version returns an empty result set.
+`data_geo_query` accepts one optional `versionId`. Omitting it selects extents from each DataItem's latest visible committed version; supplying it selects extents from that exact immutable version. Each response remains bounded by `first` and continues with a snapshot/query/scope-bound opaque `nextCursor`; `dataItemIds` intersects either selection, and a hidden or absent exact version returns an empty result set.
 
 ### Ingestion
 
@@ -154,6 +154,8 @@ Gateway registers five templates. Every read reauthorizes through the same Data 
 | `operation://{operationId}`                        | Current Operation state                       |
 | `schema://capabilities/{capabilityId}/{version}`   | Fixed Capability schema/mapping               |
 | `stac://collections/{collectionId}/items/{itemId}` | Authorized STAC Item with governed asset href |
+
+The Capability registry lists the current version of every operation. A versioned `schema://` Resource is an immutable archive: publishing a compatible newer schema does not remove or rewrite an older URI.
 
 URI segments accept only safe alphanumerics plus `._:-`; slash, traversal, query, and credentials are forbidden. Evidence and STAC Resources use real `/evidence/fragments/:evidenceId` and `/stac/collections/:collectionId/items/:itemId` GETs that reapply scopes, RLS, authority reconciliation, and audit; STAC assets point only to the short-lived governed download route. Resources return `application/json`. Invalid references or downstream unavailability use safe error objects and never echo internal HTTP/database bodies.
 

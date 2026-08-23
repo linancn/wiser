@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 84af0422a311bb23eb88867697447565f1f4298a
+lastReviewedCommit: 2597535dc53d5ca7d9faa65be1bb699c345c0b57
 ---
 
 ## Protocol boundary
@@ -122,7 +122,7 @@ Structured query accepts only allowlisted fields and operators:
 
 - `data.query`: selected fields and `EQ/NE/GT/GTE/LT/LTE/IN/CONTAINS` filters;
 - graph: entity IDs, relation types, and bounded depth;
-- `data.geo.query`: supported GeoJSON geometry, explicit CRS, `INTERSECTS/WITHIN/CONTAINS/NEAREST`, and an optional singular `versionId`. Without `versionId`, each bounded response selects extents from every DataItem's latest visible committed version; with it, the response selects extents from that exact immutable version. `dataItemIds` intersects either selection, and a hidden or absent exact version returns an empty result set;
+- `data.geo.query`: supported GeoJSON geometry, explicit CRS, `INTERSECTS/WITHIN/CONTAINS/NEAREST`, and an optional singular `versionId`. Without `versionId`, each bounded response selects extents from every DataItem's latest visible committed version; with it, the response selects extents from that exact immutable version. Continue with the returned snapshot/query/scope-bound opaque `nextCursor`; `dataItemIds` intersects either selection, and a hidden or absent exact version returns an empty result set;
 - federated search: an allowlist of catalog/fulltext/semantic/graph/geo/stac sources.
 
 SearchOrchestrator pushes authorization and publication filters into backends, applies fixed `RRF k=60`, deduplicates by DataItem+Version, and reauthorizes every hit.

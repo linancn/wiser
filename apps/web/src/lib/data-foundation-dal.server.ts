@@ -37,6 +37,9 @@ const PURPOSE_PATTERN = /^[a-z][a-z0-9-]{0,95}$/;
 const MAX_ACCESS_TOKEN_BYTES = 16_384;
 const DEFAULT_TIMEOUT_MS = 8_000;
 const DEFAULT_RESPONSE_LIMIT_BYTES = 4_194_304;
+const GEO_PAGE_SIZE = 100;
+const MAX_GEO_FEATURES = 10_000;
+const MAX_GEO_PAGES = 101;
 
 function hasControlCharacter(value: string): boolean {
   return [...value].some((character) => {
@@ -570,21 +573,49 @@ export function createDataFoundationDal(
         parseGraphResult,
       );
     },
-    geo: ({ geometry, versionId }) => {
+    geo: async ({ geometry, versionId }) => {
       if (versionId !== undefined) validateUuid(versionId);
-      return parsed(
-        () =>
-          call('/api/data/v1/geo/query', {
-            method: 'POST',
-            body: {
-              geometry,
-              predicates: ['INTERSECTS'],
-              ...(versionId === undefined ? {} : { versionId }),
-              first: 100,
-            },
-          }),
-        parseGeoQuery,
-      );
+      const query = {
+        geometry,
+        predicates: ['INTERSECTS'],
+        ...(versionId === undefined ? {} : { versionId }),
+        first: GEO_PAGE_SIZE,
+      };
+      const features: GeoQueryDto['features'][number][] = [];
+      const seenCursors = new Set<string>();
+      let after: string | undefined;
+      for (let pageNumber = 0; pageNumber < MAX_GEO_PAGES; pageNumber += 1) {
+        const page = await parsed(
+          () =>
+            call('/api/data/v1/geo/query', {
+              method: 'POST',
+              body: {
+                ...query,
+                ...(after === undefined ? {} : { after }),
+              },
+            }),
+          parseGeoQuery,
+        );
+        if (
+          page.features.length > GEO_PAGE_SIZE ||
+          features.length + page.features.length > MAX_GEO_FEATURES
+        ) {
+          throw new DataFoundationApiError('contract', 502);
+        }
+        features.push(...page.features);
+        const nextCursor = page.nextCursor;
+        if (nextCursor === undefined) return { features };
+        if (
+          page.features.length === 0 ||
+          features.length >= MAX_GEO_FEATURES ||
+          seenCursors.has(nextCursor)
+        ) {
+          throw new DataFoundationApiError('contract', 502);
+        }
+        seenCursors.add(nextCursor);
+        after = nextCursor;
+      }
+      throw new DataFoundationApiError('contract', 502);
     },
     stacItems: (input = {}) => {
       const search = new URLSearchParams({ limit: '100' });

@@ -17,8 +17,8 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - packages/data-contracts/src/capability/**
   - skills/wiser-data-foundation/**
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: 76f3f6d4967c0f7fc13b06ca1480244121a90272
+lastReviewedAt: 2026-08-23
+lastReviewedCommit: 2597535dc53d5ca7d9faa65be1bb699c345c0b57
 ---
 
 ## 只做 HTTP 适配
@@ -129,7 +129,7 @@ GET Tool 只编码 boolean、number、string 或 string array query；path param
 4. 检查每个结果的 `versionId`、`evidenceId`、security、quality、acceptance 与 limitations；
 5. 不把搜索 score 当作质量或授权结论。
 
-`data_geo_query` 接受一个可选的 `versionId`。省略时，从每个 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent。每次响应仍受 `first` 限制；`dataItemIds` 与两种选择均取交集，版本不可见或不存在时返回空结果集。
+`data_geo_query` 接受一个可选的 `versionId`。省略时，从每个 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent。每次响应受 `first` 限制，并以绑定 snapshot/query/scope 的不透明 `nextCursor` 继续；`dataItemIds` 与两种选择均取交集，版本不可见或不存在时返回空结果集。
 
 ### 入库
 
@@ -154,6 +154,8 @@ Gateway 注册五类模板；每次读取都通过同一个 Data API bearer、Te
 | `operation://{operationId}`                        | Operation 当前状态                     |
 | `schema://capabilities/{capabilityId}/{version}`   | 固定 Capability schema/mapping         |
 | `stac://collections/{collectionId}/items/{itemId}` | 受授权 STAC Item 与治理后的 asset href |
+
+Capability Registry 只列出各操作的当前版本；带版本的 `schema://` Resource 是不可变归档，发布兼容的新 schema 不会删除或改写旧 URI。
 
 URI segment 只接受安全字母数字与 `._:-`，不允许斜线、遍历、query 或 credential。Evidence 与 STAC Resource 分别经真实 `/evidence/fragments/:evidenceId` 和 `/stac/collections/:collectionId/items/:itemId` GET 重新执行 Scope、RLS、权威复核与 audit；STAC asset 只指向短期授权下载路由。Resource 返回 `application/json`；无效引用或下游不可用使用安全错误对象，不回显内部 HTTP/数据库正文。
 

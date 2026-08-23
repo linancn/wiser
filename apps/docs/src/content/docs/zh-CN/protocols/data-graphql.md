@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/graphql-module.ts
   - packages/data-contracts/src/capability/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 84af0422a311bb23eb88867697447565f1f4298a
+lastReviewedCommit: 2597535dc53d5ca7d9faa65be1bb699c345c0b57
 ---
 
 ## 入口与权威契约
@@ -76,7 +76,7 @@ Idempotency-Key: <uuid>
 
 Connection 返回 `nodes` 与 `pageInfo { endCursor hasNextPage }`。其余分页结果保留 `nextCursor`。Cursor 是不透明、scope-bound 的；不能从 REST、另一个 Tenant/Project 或旧授权版本复制。
 
-`geoQuery(input: GeoQueryInput!)` 接受一个可选的 `versionId`。省略时，每个有界响应从各 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent。可选 `dataItemIds` 与两种选择均取交集。版本不可见或不存在时返回空结果集，不泄露其存在性。
+`geoQuery(input: GeoQueryInput!)` 接受一个可选的 `versionId`。省略时，每个有界响应从各 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent，并以绑定 snapshot/query/scope 的不透明 `nextCursor` 继续。可选 `dataItemIds` 与两种选择均取交集。版本不可见或不存在时返回空结果集，不泄露其存在性。
 
 ## Mutation fields
 

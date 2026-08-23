@@ -445,6 +445,35 @@ describe('PostGIS geo query PostgreSQL integration', () => {
           [...primaryExtentIds].toSorted(),
         );
 
+        const firstExactPage = (await port.query(
+          request(visibleScope, {
+            versionId: primaryVersionOneId,
+            first: 1,
+          }),
+        )) as {
+          readonly features: readonly { readonly featureId: string }[];
+          readonly nextCursor?: string;
+        };
+        expect(firstExactPage.features).toHaveLength(1);
+        expect(firstExactPage.nextCursor).toEqual(expect.any(String));
+        const secondExactPage = (await port.query(
+          request(visibleScope, {
+            versionId: primaryVersionOneId,
+            first: 1,
+            after: firstExactPage.nextCursor,
+          }),
+        )) as {
+          readonly features: readonly { readonly featureId: string }[];
+          readonly nextCursor?: string;
+        };
+        expect(secondExactPage.features).toHaveLength(1);
+        expect(secondExactPage).not.toHaveProperty('nextCursor');
+        expect(
+          [...firstExactPage.features, ...secondExactPage.features]
+            .map(({ featureId }) => featureId)
+            .toSorted(),
+        ).toEqual([...primaryExtentIds].toSorted());
+
         const matchingIntersection = await port.query(
           request(visibleScope, {
             dataItemIds: [primaryDataItemId],

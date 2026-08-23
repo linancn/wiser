@@ -115,7 +115,10 @@ limit $7::integer
 const GEO_QUERY_SQL = `
 /* data.geo.query fixed PostGIS query */
 with input as (
-  select ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($5), $6::integer), 4490) as geometry
+  select ST_Transform(
+    ST_SetSRID(ST_GeomFromGeoJSON($5), $6::integer), 4490
+  ) as geometry,
+  coalesce($12::timestamptz, statement_timestamp()) as snapshot_at
 ), ranked_version as (
   select version.*, dense_rank() over (
     partition by version.data_item_id
@@ -124,6 +127,8 @@ with input as (
   from catalog.data_item_version as version
   where version.tenant_id = $1::uuid and version.project_id = $2::uuid
     and version.committed_at is not null
+    and version.committed_at <= (select snapshot_at from input)
+    and version.created_at <= (select snapshot_at from input)
     and version.policy_version <= $3::bigint
     and security.security_rank(version.security_level) <= security.security_rank($4)
     and ($7::uuid[] is null or version.data_item_id = any($7))
@@ -131,14 +136,22 @@ with input as (
 ), selected_version as (
   select * from ranked_version as version
   where ($8::uuid is not null or version.version_rank = 1)
-)
-select extent.spatial_extent_id::text as feature_id,
+), matched_extent as (
+select extent.spatial_extent_id,
   extent.data_item_id, extent.version_id,
   ST_AsGeoJSON(extent.source_geometry)::jsonb as geometry,
   extent.source_crs,
   jsonb_build_object('distanceMeters',
     ST_Distance(extent.canonical_geometry::geography, input.geometry::geography)
-  ) as properties
+  ) as properties,
+  case when 'NEAREST' = any($9::text[])
+    then extent.canonical_geometry <-> input.geometry
+    else 0::double precision
+  end as sort_distance,
+  to_char(
+    input.snapshot_at at time zone 'UTC',
+    'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
+  ) as snapshot_at
 from selected_version as version
 join catalog.spatial_extent as extent
   on extent.tenant_id = version.tenant_id
@@ -147,6 +160,7 @@ join catalog.spatial_extent as extent
  and extent.version_id = version.version_id
 cross join input
 where extent.policy_version <= $3::bigint
+  and extent.created_at <= input.snapshot_at
   and security.security_rank(extent.security_level) <= security.security_rank($4)
   and not exists (
     select 1 from unnest($9::text[]) as predicate
@@ -158,10 +172,18 @@ where extent.policy_version <= $3::bigint
       else false
     end
   )
-order by case when 'NEAREST' = any($9::text[])
-  then extent.canonical_geometry <-> input.geometry else 0 end,
-  extent.spatial_extent_id
-limit $10::integer
+)
+select extent.spatial_extent_id::text as feature_id,
+  extent.data_item_id, extent.version_id, extent.geometry,
+  extent.source_crs, extent.properties, extent.sort_distance,
+  extent.snapshot_at
+from matched_extent as extent
+where $10::double precision is null
+  or extent.sort_distance > $10::double precision
+  or (extent.sort_distance = $10::double precision
+    and extent.spatial_extent_id > $11::uuid)
+order by extent.sort_distance, extent.spatial_extent_id
+limit $13::integer
 `;
 
 const GEO_INTERSECT_SQL = `
@@ -332,12 +354,26 @@ function boundedText(value: unknown, maximum = 256): string {
   return value;
 }
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function uuid(value: unknown, optional = false): string | null {
   if (optional && value === undefined) return null;
-  if (typeof value !== 'string' || !/^[0-9a-f-]{36}$/i.test(value)) {
+  if (typeof value !== 'string' || !UUID_PATTERN.test(value)) {
     throw adapterError('INVALID_QUERY');
   }
   return value;
+}
+
+function optionalUuids(
+  value: unknown,
+  maximum: number,
+): readonly string[] | null {
+  if (value === undefined) return null;
+  if (!Array.isArray(value) || value.length > maximum) {
+    throw adapterError('INVALID_QUERY');
+  }
+  return value.map((entry) => uuid(entry)!);
 }
 
 function queryFingerprint(
@@ -369,10 +405,92 @@ function decodeCursor(value: unknown, fingerprint: string): string | null {
     if (
       cursor?.['fingerprint'] !== fingerprint ||
       typeof id !== 'string' ||
-      !/^[0-9a-f-]{36}$/i.test(id)
+      !UUID_PATTERN.test(id)
     )
       throw adapterError('INVALID_CURSOR');
     return id;
+  } catch (error) {
+    if (error instanceof QueryAdapterError) throw error;
+    throw adapterError('INVALID_CURSOR');
+  }
+}
+
+interface GeoCursor {
+  readonly sortDistance: number;
+  readonly featureId: string;
+  readonly snapshotAt: string;
+}
+
+const GEO_SNAPSHOT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/;
+
+function geoCursorChecksum(
+  fingerprint: string,
+  sortDistance: number,
+  featureId: string,
+  snapshotAt: string,
+): string {
+  return createHash('sha256')
+    .update(
+      `${fingerprint}\0${String(sortDistance)}\0${featureId}\0${snapshotAt}`,
+    )
+    .digest('hex');
+}
+
+function encodeGeoCursor(
+  fingerprint: string,
+  sortDistance: number,
+  featureId: string,
+  snapshotAt: string,
+): string {
+  return Buffer.from(
+    JSON.stringify({
+      fingerprint,
+      sortDistance,
+      featureId,
+      snapshotAt,
+      checksum: geoCursorChecksum(
+        fingerprint,
+        sortDistance,
+        featureId,
+        snapshotAt,
+      ),
+    }),
+  ).toString('base64url');
+}
+
+function decodeGeoCursor(
+  value: unknown,
+  fingerprint: string,
+): GeoCursor | null {
+  if (value === undefined) return null;
+  if (typeof value !== 'string' || value.length < 1 || value.length > 2_048) {
+    throw adapterError('INVALID_CURSOR');
+  }
+  try {
+    const decoded = Buffer.from(value, 'base64url').toString('utf8');
+    if (Buffer.from(decoded).toString('base64url') !== value) {
+      throw adapterError('INVALID_CURSOR');
+    }
+    const cursor = record(JSON.parse(decoded) as unknown);
+    const sortDistance = cursor?.['sortDistance'];
+    const featureId = cursor?.['featureId'];
+    const snapshotAt = cursor?.['snapshotAt'];
+    if (
+      cursor?.['fingerprint'] !== fingerprint ||
+      typeof sortDistance !== 'number' ||
+      !Number.isFinite(sortDistance) ||
+      sortDistance < 0 ||
+      typeof featureId !== 'string' ||
+      !UUID_PATTERN.test(featureId) ||
+      typeof snapshotAt !== 'string' ||
+      !GEO_SNAPSHOT_PATTERN.test(snapshotAt) ||
+      !Number.isFinite(Date.parse(snapshotAt)) ||
+      cursor?.['checksum'] !==
+        geoCursorChecksum(fingerprint, sortDistance, featureId, snapshotAt)
+    ) {
+      throw adapterError('INVALID_CURSOR');
+    }
+    return { sortDistance, featureId, snapshotAt };
   } catch (error) {
     if (error instanceof QueryAdapterError) throw error;
     throw adapterError('INVALID_CURSOR');
@@ -747,6 +865,7 @@ export class PostgisGeoQueryPort implements GeoQueryPort {
   query(request: ScopedSpecialQueryRequest): Promise<unknown> {
     const geometry = validateGeometry(request.input['geometry']);
     const predicates = strings(request.input['predicates'], 4);
+    const dataItemIds = optionalUuids(request.input['dataItemIds'], 256);
     const versionId = uuid(request.input['versionId'], true);
     if (
       predicates.some(
@@ -762,6 +881,18 @@ export class PostgisGeoQueryPort implements GeoQueryPort {
         ? this.#nearestLimit
         : this.#maximumFeatures,
     );
+    const sourceEpsg = epsg(geometry['crs']);
+    const fingerprint = queryFingerprint(request, {
+      geometry: {
+        type: geometry['type'],
+        coordinates: geometry['coordinates'],
+        crs: geometry['crs'],
+      },
+      predicates,
+      dataItemIds,
+      versionId,
+    });
+    const after = decodeGeoCursor(request.input['after'], fingerprint);
     return transaction(this.#pool, request, async (client) => {
       const result = await client.query(GEO_QUERY_SQL, [
         request.scope.tenantId,
@@ -772,15 +903,42 @@ export class PostgisGeoQueryPort implements GeoQueryPort {
           type: geometry['type'],
           coordinates: geometry['coordinates'],
         }),
-        epsg(geometry['crs']),
-        Array.isArray(request.input['dataItemIds'])
-          ? request.input['dataItemIds']
-          : null,
+        sourceEpsg,
+        dataItemIds,
         versionId,
         predicates,
-        first,
+        after?.sortDistance ?? null,
+        after?.featureId ?? null,
+        after?.snapshotAt ?? null,
+        first + 1,
       ]);
-      return geoOutput(result.rows);
+      const selected = result.rows.slice(0, first);
+      const output = geoOutput(selected);
+      if (result.rows.length <= first) return output;
+      const last = selected.at(-1);
+      const sortDistance = last?.['sort_distance'];
+      const featureId = last?.['feature_id'];
+      const snapshotAt = last?.['snapshot_at'];
+      if (
+        typeof sortDistance !== 'number' ||
+        !Number.isFinite(sortDistance) ||
+        sortDistance < 0 ||
+        typeof featureId !== 'string' ||
+        !UUID_PATTERN.test(featureId) ||
+        typeof snapshotAt !== 'string' ||
+        !GEO_SNAPSHOT_PATTERN.test(snapshotAt)
+      ) {
+        throw adapterError('INVALID_BACKEND_RESULT');
+      }
+      return {
+        ...output,
+        nextCursor: encodeGeoCursor(
+          fingerprint,
+          sortDistance,
+          featureId,
+          snapshotAt,
+        ),
+      };
     });
   }
 

@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 31a24f699fc863eb666743321bbd7fedefc9a1a1
+lastReviewedCommit: 2597535dc53d5ca7d9faa65be1bb699c345c0b57
 ---
 
 ## Authority boundary
@@ -161,7 +161,7 @@ Matching query adapters push down Tenant, Project, Version, security, policy ver
 - Skill: `skills/wiser-data-foundation` documents discovery, query, upload, ingestion, Operation, and security workflows.
 - Web: 14 Data routes in the existing Next.js app with server-only DAL, real Supabase session, both locales/themes, immutable-version selection, and four MapLibre layers: PostGIS authority GeoJSON, STAC extents, governed vector MVT, and raster.
 
-DataItem detail `?version=<uuid>` sends the requested version to API and verifies `selectedVersion`; version links use `aria-current` and can open the governed map. Map query is `?bbox=minx,miny,maxx,maxy&version=<uuid>&crs=EPSG:4326|EPSG:4490`, with independent layer controls plus pinned Version and `source CRS → EPSG:3857`. For `data.geo.query`, omitting the singular `versionId` selects extents from the latest visible committed version of each DataItem, while supplying it selects extents from that exact immutable version; each response remains bounded by `first`. `dataItemIds`, when present, intersects either selection, and a hidden or absent exact version yields an empty result set. The Map server forwards the selected `versionId` into the authoritative PostGIS query before version ranking; it never filters a latest-version result afterward. The browser calls only same-origin `/api/data-foundation/geo/...`; Next server uses the freshly verified short-lived Supabase Session and adds Tenant/Project/Purpose before forwarding to Fastify. Bearers and internal GIS origins never reach the client.
+DataItem detail `?version=<uuid>` sends the requested version to API and verifies `selectedVersion`; version links use `aria-current` and can open the governed map. Map query is `?bbox=minx,miny,maxx,maxy&version=<uuid>&crs=EPSG:4326|EPSG:4490`, with independent layer controls plus pinned Version and `source CRS → EPSG:3857`. For `data.geo.query`, omitting the singular `versionId` selects extents from the latest visible committed version of each DataItem, while supplying it selects extents from that exact immutable version; each response remains bounded by `first` and continues through a snapshot/query/scope-bound opaque `nextCursor`. `dataItemIds`, when present, intersects either selection, and a hidden or absent exact version yields an empty result set. The Map server forwards the selected `versionId` into the authoritative PostGIS query before version ranking, drains governed pages up to 10,000 features, and fails closed on repeated cursors or overflow; it never filters a latest-version result afterward. The browser calls only same-origin `/api/data-foundation/geo/...`; Next server uses the freshly verified short-lived Supabase Session and adds Tenant/Project/Purpose before forwarding to Fastify. Bearers and internal GIS origins never reach the client.
 
 Web governs and queries; it never performs file parsing, vectorization, GIS transformation, or projection in a Server Action or Route Handler. Its same-origin GIS Route Handler is only a bounded authenticated proxy. Mutations enter through REST, GraphQL, MCP, or the Skill.
 

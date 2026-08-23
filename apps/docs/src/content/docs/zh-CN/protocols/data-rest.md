@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 84af0422a311bb23eb88867697447565f1f4298a
+lastReviewedCommit: 2597535dc53d5ca7d9faa65be1bb699c345c0b57
 ---
 
 ## 协议边界
@@ -122,7 +122,7 @@ If-Match: "v3"
 
 - `data.query`：受控字段、`EQ/NE/GT/GTE/LT/LTE/IN/CONTAINS` filter；
 - graph：实体 ID、关系类型和最大深度；
-- `data.geo.query`：受支持 GeoJSON geometry、显式 CRS、`INTERSECTS/WITHIN/CONTAINS/NEAREST` 与可选的单数 `versionId`。省略 `versionId` 时，每个有界响应从各 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent。`dataItemIds` 与两种选择均取交集；版本不可见或不存在时返回空结果集；
+- `data.geo.query`：受支持 GeoJSON geometry、显式 CRS、`INTERSECTS/WITHIN/CONTAINS/NEAREST` 与可选的单数 `versionId`。省略 `versionId` 时，每个有界响应从各 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent。使用返回的、绑定 snapshot/query/scope 的不透明 `nextCursor` 继续；`dataItemIds` 与两种选择均取交集，版本不可见或不存在时返回空结果集；
 - federated search：catalog/fulltext/semantic/graph/geo/stac source allowlist。
 
 SearchOrchestrator 在后端下推权限与发布过滤，固定 `RRF k=60`，按 DataItem+Version 去重，再逐条重新授权。

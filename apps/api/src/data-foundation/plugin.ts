@@ -2,8 +2,10 @@ import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 
 import {
+  DATA_CAPABILITY_ARCHIVE,
   DATA_CAPABILITY_IDS,
   DATA_CAPABILITY_REGISTRY,
+  type CapabilityDefinition,
 } from '@wiser/data-contracts';
 
 import type { WiserApiModule } from '../platform/modules.js';
@@ -27,35 +29,46 @@ function setNoStore(reply: FastifyReply): void {
   reply.header('Pragma', 'no-cache');
 }
 
+function capabilityResource(definition: CapabilityDefinition) {
+  return Object.freeze({
+    id: definition.id,
+    version: definition.version,
+    kind: definition.kind,
+    requiredScopes: definition.requiredScopes,
+    maxSecurityLevel: definition.maxSecurityLevel,
+    executionMode: definition.executionMode,
+    timeout: definition.timeout,
+    idempotent: definition.idempotent,
+    auditLevel: definition.auditLevel,
+    restMapping: definition.restMapping,
+    graphqlMapping: definition.graphqlMapping,
+    mcpMapping: definition.mcpMapping,
+    skillMapping: definition.skillMapping,
+    inputSchema: z.toJSONSchema(definition.inputSchema, {
+      target: 'draft-7',
+    }),
+    outputSchema: z.toJSONSchema(definition.outputSchema, {
+      target: 'draft-7',
+    }),
+  });
+}
+
 const capabilities = Object.freeze(
-  DATA_CAPABILITY_IDS.map((id) => {
-    const definition = DATA_CAPABILITY_REGISTRY[id];
-    return Object.freeze({
-      id: definition.id,
-      version: definition.version,
-      kind: definition.kind,
-      requiredScopes: definition.requiredScopes,
-      maxSecurityLevel: definition.maxSecurityLevel,
-      executionMode: definition.executionMode,
-      timeout: definition.timeout,
-      idempotent: definition.idempotent,
-      auditLevel: definition.auditLevel,
-      restMapping: definition.restMapping,
-      graphqlMapping: definition.graphqlMapping,
-      mcpMapping: definition.mcpMapping,
-      skillMapping: definition.skillMapping,
-      inputSchema: z.toJSONSchema(definition.inputSchema, {
-        target: 'draft-7',
-      }),
-      outputSchema: z.toJSONSchema(definition.outputSchema, {
-        target: 'draft-7',
-      }),
-    });
-  }),
+  DATA_CAPABILITY_IDS.map((id) =>
+    capabilityResource(DATA_CAPABILITY_REGISTRY[id]),
+  ),
 );
-const capabilityById: ReadonlyMap<string, (typeof capabilities)[number]> =
+const historicalCapabilities = Object.freeze(
+  DATA_CAPABILITY_IDS.flatMap((id) =>
+    (DATA_CAPABILITY_ARCHIVE[id] ?? []).map(capabilityResource),
+  ),
+);
+const capabilityByVersion: ReadonlyMap<string, (typeof capabilities)[number]> =
   new Map(
-    capabilities.map((capability) => [capability.id, capability] as const),
+    [...capabilities, ...historicalCapabilities].map((capability) => [
+      `${capability.id}@${capability.version}`,
+      capability,
+    ]),
   );
 const capabilityResourceParams = z.strictObject({
   capabilityId: z.string().min(1).max(128),
@@ -114,13 +127,11 @@ export function createDataFoundationModule(
           setNoStore(reply);
           const parsed = capabilityResourceParams.safeParse(request.params);
           const capability = parsed.success
-            ? capabilityById.get(parsed.data.capabilityId)
+            ? capabilityByVersion.get(
+                `${parsed.data.capabilityId}@${parsed.data.version}`,
+              )
             : undefined;
-          if (
-            capability === undefined ||
-            !parsed.success ||
-            capability.version !== parsed.data.version
-          ) {
+          if (capability === undefined || !parsed.success) {
             return reply.status(404).send({
               code: 'CAPABILITY_SCHEMA_NOT_FOUND',
               message:

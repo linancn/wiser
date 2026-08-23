@@ -218,13 +218,22 @@ export const GeoTargetSchema = z.union([
   z.strictObject({ geometry: GeoJsonGeometrySchema }),
 ]);
 
-export const GeoQueryInputSchema = z.strictObject({
+const GeoQueryInputBaseFields = {
   geometry: GeoJsonGeometrySchema,
   predicates: z
     .array(z.enum(['INTERSECTS', 'WITHIN', 'CONTAINS', 'NEAREST']))
     .min(1)
     .max(4),
   dataItemIds: z.array(PlatformUuidSchema).max(256).optional(),
+} as const;
+
+export const GeoQueryInputV1Schema = z.strictObject({
+  ...GeoQueryInputBaseFields,
+  ...PageRequestFields,
+});
+
+export const GeoQueryInputSchema = z.strictObject({
+  ...GeoQueryInputBaseFields,
   versionId: PlatformUuidSchema.optional(),
   ...PageRequestFields,
 });
@@ -829,3 +838,35 @@ const capabilityRegistry = {
 export const DATA_CAPABILITY_REGISTRY: Readonly<
   Record<DataCapabilityId, Readonly<CapabilityDefinition>>
 > = Object.freeze(capabilityRegistry);
+
+const capabilityArchive = {
+  'data.geo.query': Object.freeze([
+    defineCapability({
+      id: 'data.geo.query',
+      version: '1.0.0',
+      kind: 'query',
+      inputSchema: GeoQueryInputV1Schema,
+      outputSchema: GeoQueryOutputSchema,
+      requiredScopes: ['data.geo.read'],
+      maxSecurityLevel: 'L3_CONFIDENTIAL',
+      executionMode: 'SYNCHRONOUS',
+      timeout: 60_000,
+      idempotent: true,
+      auditLevel: 'DETAILED',
+      restMapping: {
+        method: 'POST',
+        path: '/api/data/v1/geo/query',
+        successStatus: 200,
+      },
+      graphqlMapping: { operationType: 'query', field: 'geoQuery' },
+      mcpMapping: { toolName: 'data_geo_query' },
+      skillMapping: { operation: 'data.geo.query' },
+    }),
+  ]),
+} satisfies Partial<
+  Record<DataCapabilityId, readonly Readonly<CapabilityDefinition>[]>
+>;
+
+export const DATA_CAPABILITY_ARCHIVE: Readonly<
+  Partial<Record<DataCapabilityId, readonly Readonly<CapabilityDefinition>[]>>
+> = Object.freeze(capabilityArchive);
