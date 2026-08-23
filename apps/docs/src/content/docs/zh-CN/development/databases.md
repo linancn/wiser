@@ -119,6 +119,8 @@ Data Foundation 的部署脚本创建四个明确角色：
 
 Data 的每个数据库事务必须以 transaction-local `set_config` 设置并验证 `wiser.tenant_id`、`wiser.project_id`、`wiser.max_security_level` 和 `wiser.policy_version`。缺少或不匹配上下文时应返回零行或失败，不能退化为无租户查询。所有角色保持 `NOSUPERUSER`、`NOBYPASSRLS`，应用不得使用 migration owner 作为 runtime 连接。
 
+表级 grant 不代表可以绕过领域权威。`service.operation`、`ingestion.session`、`ingestion.job` 与 `ingestion.transform_plan` 的数据库 trigger 检查每一次整行更新，而不只检查显式写出状态列的语句；非法生命周期边、identity/scope 重绑、policy 修改、安全降级、终态结果或冻结计划修改、不合法的同态 lease/content 变化，以及不等于 `old.row_version + 1` 的乐观版本变化都会被拒绝。合法转换变化时必须同步 application/core policy 与这些数据库 guard。
+
 ## 事务、并发与 Outbox
 
 需要同时成立的权威变化必须放在一个明确的 PostgreSQL 事务中：设置授权上下文，锁定或检查版本，写业务状态，追加 Event/Audit/Outbox，然后提交；任何一步失败都回滚。

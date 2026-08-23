@@ -71,16 +71,17 @@ The local `data-steward` Role seed grants only the scopes needed by the demonstr
 
 Data SQL never enters the Supabase migration history. `infrastructure/data-foundation/postgres/migrations` is canonical:
 
-| Migration                                | Content                                                                                   |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `0001_bootstrap.sql`                     | pgcrypto, PostGIS, btree_gist, unaccent, eight business schemas, migration ledger         |
-| `0002_authority_model.sql`               | catalog, asset, ingestion, quality, lineage, knowledge, Operation, security, Outbox model |
-| `0003_security_jobs_events.sql`          | RLS, authorization session settings, append-only guards, job/event security               |
-| `0004_job_lifecycle.sql`                 | claim/heartbeat/settle/fail/recover/cancel and atomic Operation/Outbox transitions        |
-| `0005_content_blob_model.sql`            | separate content and asset identity, backfill, immutable storage references               |
-| `0006_content_lifecycle_constraints.sql` | structural `QUARANTINED → FINGERPRINTED → RAW` lifecycle                                  |
-| `0007_version_publication_lifecycle.sql` | the sole one-time `UNPUBLISHED → PUBLISHED` change with content fixed                     |
-| `0008_governed_gis_tiles.sql`            | one Martin-discoverable governed MVT function with five fixed scope parameters            |
+| Migration                                    | Content                                                                                                                          |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `0001_bootstrap.sql`                         | pgcrypto, PostGIS, btree_gist, unaccent, eight business schemas, migration ledger                                                |
+| `0002_authority_model.sql`                   | catalog, asset, ingestion, quality, lineage, knowledge, Operation, security, Outbox model                                        |
+| `0003_security_jobs_events.sql`              | RLS, authorization session settings, append-only guards, job/event security                                                      |
+| `0004_job_lifecycle.sql`                     | claim/heartbeat/settle/fail/recover/cancel and atomic Operation/Outbox transitions                                               |
+| `0005_content_blob_model.sql`                | separate content and asset identity, backfill, immutable storage references                                                      |
+| `0006_content_lifecycle_constraints.sql`     | structural `QUARANTINED → FINGERPRINTED → RAW` lifecycle                                                                         |
+| `0007_version_publication_lifecycle.sql`     | the sole one-time `UNPUBLISHED → PUBLISHED` change with content fixed                                                            |
+| `0008_governed_gis_tiles.sql`                | one Martin-discoverable governed MVT function with five fixed scope parameters                                                   |
+| `0009_authority_state_transition_guards.sql` | legal Operation, Ingestion, Job, and Transform Plan transitions with immutable authority scope and exact row-version advancement |
 
 The TS7 runner sorts four-digit versions, runs each file transactionally under one session advisory lock, and records filename plus SHA-256. Missing, renamed, modified, or non-prefix applied history fails closed. pgSTAC uses official pyPgSTAC 0.9.12 migrations rather than pretending to be a PostgreSQL extension.
 
@@ -90,7 +91,7 @@ Martin uses an isolated `wiser_data_gis` login: `NOSUPERUSER`, `NOBYPASSRLS`, no
 
 API vector tiles RLS-authorize the Version/spatial extent before injecting those five values into the function. Raster tiles select only a visible RAW TIFF/GeoTIFF COG, validate its `tenants/.../versions/{versionId}/sha256/{hash}` content-addressed key, and only then construct the internal S3 URI for TiTiler server-side. Browsers cannot select an object or upstream.
 
-Triggers reject invalid UPDATE/DELETE on Operation, Audit, Outbox, content, and version history. Complex transitions use explicit transactions, row locks or optimistic versions, unique constraints, and append-only facts.
+Triggers reject invalid UPDATE/DELETE on Operation, Audit, Outbox, content, and version history. Operation, Ingestion Session, Job, and Transform Plan updates are guarded at the database boundary: legal lifecycle edges, immutable identity/scope/policy facts, non-decreasing upload security, immutable frozen plans, and exactly one `row_version` increment are enforced even for a runtime role with table `UPDATE`. Terminal Operation content cannot be rewritten. The narrow same-state cases used for non-terminal Operation progress aggregation, a running Job heartbeat/cancellation request, and a fully identical Transform Plan replay remain legal. Multi-Job aggregation may move an Operation between the two waiting states; direct upload completion is capability-scoped in both Core and PostgreSQL. Complex transitions use explicit transactions, row locks or optimistic versions, unique constraints, and append-only facts.
 
 ## Authority objects and commit
 
@@ -138,7 +139,7 @@ Quality reads deterministic checks only; one failed blocking rule prevents passa
 
 ## Durable jobs, Outbox, and projections
 
-Worker uses PostgreSQL `FOR UPDATE SKIP LOCKED`, lease owner/expiry, heartbeat, priority, attempt count, deterministic exponential backoff, cancellation, waiting-input/review, timeout recovery, and dead letter. Native Node HTTP exposes `/health/live`, `/health/ready`, and Prometheus `/metrics`. Graceful shutdown stops claiming and drains in-flight handlers.
+Worker uses PostgreSQL `FOR UPDATE SKIP LOCKED`, lease owner/expiry, heartbeat, priority, attempt count, deterministic exponential backoff, cancellation, waiting-input/review, timeout recovery, and dead letter. The timestamped claim function records the selected row's actual previous status before mutation; the superseded claim function without Job Attempt/Event/Outbox semantics is removed from the database. Native Node HTTP exposes `/health/live`, `/health/ready`, and Prometheus `/metrics`. Graceful shutdown stops claiming and drains in-flight handlers.
 
 `ProjectionOutboxConsumer` reads after a monotonic checkpoint. Per-target `PENDING/RUNNING/SUCCEEDED/FAILED` ledger survives crashes; an external write that completed before ledger update can be retried safely, while a succeeded target is skipped. Projection identity derives from authoritative DataItem/Version/Evidence IDs:
 

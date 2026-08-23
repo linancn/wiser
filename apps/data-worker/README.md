@@ -66,6 +66,8 @@ pnpm --filter @wiser/data-worker dev
 
 运行时 DSN 必须使用 Data Foundation 的受限 Worker role，不得使用迁移 owner；Supabase 仍是唯一身份权威，Worker 只接收 Tenant/Project 等 scoped references。 / The runtime DSN must use the restricted Data Worker role, never the migration owner. Supabase remains the sole identity authority; this process receives only scoped Tenant/Project references.
 
+Worker 的 authority 写入必须沿合法状态边且每次精确推进一个 `row_version`；review checkpoint 只有在 ID、plan、hash、状态、批准者、安全等级和 policy 全部相同时才允许幂等重放，批准转换使用独立的受控 SQL。数据库 trigger 会对 runtime role 再次执行这些约束。 / Worker authority writes must follow legal state edges and advance exactly one `row_version`. Review checkpoints permit idempotent replay only when identity, plan, hash, status, approver, security level, and policy all match; approval uses its dedicated guarded SQL. Database triggers enforce the same boundary for the runtime role.
+
 ## Health and metrics / 健康与指标
 
 - `GET /health/live`: scheduler 未停止时为成功。 / Succeeds while the scheduler is not stopped.

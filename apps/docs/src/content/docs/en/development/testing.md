@@ -140,6 +140,8 @@ WISER_DATA_PG_INTEGRATION=1 DATA_TEST_DATABASE_URL='<owner-dsn>' pnpm test:postg
 DATA_WORKER_PG_SMOKE_URL='<worker-dsn>' pnpm test:postgres:data-worker
 ```
 
+The API deep test uses the temporary non-bypass role to prove illegal Operation, Ingestion, Job, and Transform Plan transitions fail with stable PostgreSQL errors. It also proves authority identity/content, terminal and running same-state protection, capability-scoped upload completion, exact row versions, retirement of the legacy claim path, accurate wake-to-claim event history, and legal heartbeat/wait aggregation. Its positive fixture advances through the legal lifecycle rather than inserting an impossible intermediate state. The Worker deep test then proves the guarded schema still accepts the complete ingestion commit path.
+
 Data Foundation CI completes the vertical smoke first, then runs the API and Worker deep tests, and finally removes that job's Data volumes unconditionally. Never point these commands at a shared database or a local volume whose data must be retained.
 
 On a clean environment, `pnpm stack:full:up` converges Supabase startup, the Data profile, migrations, seed, and `data:smoke`. A passing smoke proves the fixed sequence across upload, scanning, fingerprinting, fake Agent, deterministic transformation, quality/review, authority commit, Outbox, five completion targets, REST, GraphQL, MCP, and authenticated Web. It also verifies that Outbox replay does not duplicate target facts.

@@ -239,8 +239,16 @@ insert into ingestion.transform_plan (
   $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::bigint,
   $6::jsonb, decode($7, 'hex'), $8, $9, $10::bigint, 1
 ) on conflict (tenant_id, project_id, ingestion_id, plan_version)
-do update set status = excluded.status
-where ingestion.transform_plan.plan_hash = excluded.plan_hash
+do update set row_version = ingestion.transform_plan.row_version + 1,
+  updated_at = clock_timestamp()
+where ingestion.transform_plan.transform_plan_id = excluded.transform_plan_id
+  and ingestion.transform_plan.plan is not distinct from excluded.plan
+  and ingestion.transform_plan.plan_hash = excluded.plan_hash
+  and ingestion.transform_plan.status = excluded.status
+  and ingestion.transform_plan.approved_by_actor_id
+    is not distinct from excluded.approved_by_actor_id
+  and ingestion.transform_plan.security_level = excluded.security_level
+  and ingestion.transform_plan.policy_version = excluded.policy_version
 returning transform_plan_id
 `;
 

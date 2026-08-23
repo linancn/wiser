@@ -119,6 +119,8 @@ Data Foundation provisioning creates four explicit roles:
 
 Every Data database transaction sets and validates transaction-local `wiser.tenant_id`, `wiser.project_id`, `wiser.max_security_level`, and `wiser.policy_version` values with `set_config`. Missing or mismatched context returns no rows or fails; it must never degrade into an unscoped query. All roles remain `NOSUPERUSER` and `NOBYPASSRLS`, and applications never connect as the migration owner at runtime.
 
+Table grants are not permission to bypass domain authority. Database triggers on `service.operation`, `ingestion.session`, `ingestion.job`, and `ingestion.transform_plan` validate every row update, not only statements that explicitly name the state column. They reject illegal lifecycle edges, identity or scope rebinding, policy mutation, security downgrade, terminal-result or frozen-plan mutation, invalid same-state lease/content changes, and any optimistic version change other than `old.row_version + 1`. Keep application/core transition policies and these database guards synchronized whenever a legal edge changes.
+
 ## Transactions, concurrency, and Outbox
 
 Authoritative changes that must hold together belong in one explicit PostgreSQL transaction: set authorization context, lock the row or check its version, write business state, append Event/Audit/Outbox facts, and commit. Any failure rolls the transaction back.

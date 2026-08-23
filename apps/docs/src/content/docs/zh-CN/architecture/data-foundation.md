@@ -71,16 +71,17 @@ Registry 覆盖 catalog/version、query/search、knowledge/graph、geo、upload/
 
 Data Foundation 不把 SQL 放进 Supabase migration。`infrastructure/data-foundation/postgres/migrations` 是唯一 canonical 历史：
 
-| Migration                                | 内容                                                                         |
-| ---------------------------------------- | ---------------------------------------------------------------------------- |
-| `0001_bootstrap.sql`                     | pgcrypto、PostGIS、btree_gist、unaccent、8 个业务 schema 与 migration ledger |
-| `0002_authority_model.sql`               | 目录、资产、入库、质量、血缘、知识、Operation、安全、Outbox 主模型           |
-| `0003_security_jobs_events.sql`          | RLS、授权 Session 参数、append-only guard、任务与事件安全                    |
-| `0004_job_lifecycle.sql`                 | claim/heartbeat/settle/fail/recover/cancel 与 Operation/Outbox 原子转换      |
-| `0005_content_blob_model.sql`            | 内容 blob 与资产身份分离、已存在数据回填、不可变存储引用                     |
-| `0006_content_lifecycle_constraints.sql` | `QUARANTINED → FINGERPRINTED → RAW` 结构约束                                 |
-| `0007_version_publication_lifecycle.sql` | 内容不可变前提下唯一允许一次 `UNPUBLISHED → PUBLISHED`                       |
-| `0008_governed_gis_tiles.sql`            | Martin 可发现的单一受控 MVT function；五个 scope 参数固定且不创建第二套身份  |
+| Migration                                    | 内容                                                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `0001_bootstrap.sql`                         | pgcrypto、PostGIS、btree_gist、unaccent、8 个业务 schema 与 migration ledger                     |
+| `0002_authority_model.sql`                   | 目录、资产、入库、质量、血缘、知识、Operation、安全、Outbox 主模型                               |
+| `0003_security_jobs_events.sql`              | RLS、授权 Session 参数、append-only guard、任务与事件安全                                        |
+| `0004_job_lifecycle.sql`                     | claim/heartbeat/settle/fail/recover/cancel 与 Operation/Outbox 原子转换                          |
+| `0005_content_blob_model.sql`                | 内容 blob 与资产身份分离、已存在数据回填、不可变存储引用                                         |
+| `0006_content_lifecycle_constraints.sql`     | `QUARANTINED → FINGERPRINTED → RAW` 结构约束                                                     |
+| `0007_version_publication_lifecycle.sql`     | 内容不可变前提下唯一允许一次 `UNPUBLISHED → PUBLISHED`                                           |
+| `0008_governed_gis_tiles.sql`                | Martin 可发现的单一受控 MVT function；五个 scope 参数固定且不创建第二套身份                      |
+| `0009_authority_state_transition_guards.sql` | Operation、Ingestion、Job 与 Transform Plan 的合法转换、权威 scope 不可变及精确 row-version 推进 |
 
 TS7 runner 按四位版本排序，在 session advisory lock 下逐文件事务执行，并记录文件名和 SHA-256。已执行文件缺失、改名、内容漂移或非前缀历史会失败关闭。pgSTAC 使用官方 pyPgSTAC 0.9.12 migration，不伪造成 PostgreSQL extension。
 
@@ -90,7 +91,7 @@ Martin 使用隔离的 `wiser_data_gis` 登录：`NOSUPERUSER`、`NOBYPASSRLS`�
 
 API 矢量瓦片先对 Version/spatial extent 做 RLS 授权，再给该 function 注入五项上下文。栅格瓦片只从可见 RAW asset 中选择 TIFF/GeoTIFF COG，验证 `tenants/.../versions/{versionId}/sha256/{hash}` 内容寻址 key 后，才在服务端生成 TiTiler 使用的内部 S3 URI；浏览器不能选择对象或 upstream。
 
-Operation event、Audit event、Outbox、content/version 历史由 trigger 拒绝不合法的 UPDATE/DELETE。复杂转换使用显式事务、行锁/乐观版本、唯一约束与 append-only 事实。
+Operation event、Audit event、Outbox、content/version 历史由 trigger 拒绝不合法的 UPDATE/DELETE。Operation、Ingestion Session、Job 与 Transform Plan 的数据库边界还强制合法生命周期边、identity/scope/policy 不可变、上传安全等级不可降低、冻结计划内容不可改，以及每次只允许 `row_version` 增加一；即使 runtime role 拥有表级 `UPDATE` 也不能绕过，Operation 终态内容也不能重写。仅保留非终态 Operation 进度聚合、运行中 Job 的 heartbeat/取消请求、所有确定性事实都相同的 Transform Plan 重放所需的窄同态更新。多 Job 聚合可让 Operation 在两个等待状态间转换；上传直接完成在 Core 与 PostgreSQL 中都限定到对应 Capability。复杂转换使用显式事务、行锁/乐观版本、唯一约束与 append-only 事实。
 
 ## 权威对象与提交
 
@@ -138,7 +139,7 @@ Agent 只提出解释与计划，不能修改原始数据、静默纠正字段�
 
 ## 持久任务、Outbox 与投影
 
-Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbeat、priority、attempt count、确定性指数退避、取消、等待输入/审核、超时回收和 dead letter。Native Node HTTP 暴露 `/health/live`、`/health/ready` 与 Prometheus `/metrics`，优雅关闭先停止领取并等待 in-flight Handler。
+Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbeat、priority、attempt count、确定性指数退避、取消、等待输入/审核、超时回收和 dead letter。带时间参数的 claim function 在更新前保留被选中行的真实 previous status；缺少 Job Attempt/Event/Outbox 语义的旧 claim function 已从数据库删除。Native Node HTTP 暴露 `/health/live`、`/health/ready` 与 Prometheus `/metrics`，优雅关闭先停止领取并等待 in-flight Handler。
 
 `ProjectionOutboxConsumer` 读取单调 checkpoint。每个 target 的 `PENDING/RUNNING/SUCCEEDED/FAILED` ledger 跨崩溃保留；外部写成功但 ledger 尚未更新时可安全重试，已成功 target 会跳过。投影 identity 由 DataItem/Version/Evidence 等权威 ID 派生：
 

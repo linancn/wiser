@@ -1385,6 +1385,7 @@ describe('PostgreSQL Data Foundation command executors', () => {
           `grant execute on all functions in schema ingestion, security, event to ${roleName}`,
         );
         const guardOperationId = randomUUID();
+        const guardUploadOperationId = randomUUID();
         const guardIngestionId = randomUUID();
         const guardJobId = randomUUID();
         const guardPlanId = randomUUID();
@@ -1409,6 +1410,16 @@ describe('PostgreSQL Data Foundation command executors', () => {
              'RECEIVED', array['integration'], 1, 'L1_INTERNAL',
              'L1_INTERNAL', 1, 1)`,
           [guardIngestionId, TENANT_ID, PROJECT_ID, guardOperationId],
+        );
+        await guardClient.query(
+          `insert into service.operation (
+             operation_id, tenant_id, project_id, capability_id, actor_id,
+             status, progress_percent, request_payload, security_level,
+             policy_version, row_version
+           ) values ($1::uuid, $2::uuid, $3::uuid,
+             'data.uploadSession.create', $4::uuid, 'WAITING_INPUT', 0,
+             '{"asset":"safe"}'::jsonb, 'L2_RESTRICTED', 1, 1)`,
+          [guardUploadOperationId, TENANT_ID, PROJECT_ID, ACTOR_ID],
         );
         await guardClient.query(
           `insert into ingestion.job (
@@ -1450,6 +1461,14 @@ describe('PostgreSQL Data Foundation command executors', () => {
              set_config('wiser.policy_version', '1', true)`,
           [TENANT_ID, PROJECT_ID],
         );
+        const legacyClaim = await guardClient.query<{
+          readonly retired: boolean;
+        }>(
+          `select to_regprocedure(
+             'ingestion.claim_jobs(uuid,uuid,text,interval,integer)'
+           ) is null as retired`,
+        );
+        expect(legacyClaim.rows[0]?.retired).toBe(true);
         const expectTransitionRejected = async (
           savepoint: string,
           query: () => Promise<unknown>,
@@ -1524,6 +1543,32 @@ describe('PostgreSQL Data Foundation command executors', () => {
                  row_version = row_version + 1
                where operation_id = $1::uuid`,
               [guardOperationId],
+            ),
+          '42501',
+        );
+        await expectTransitionRejected('upload_payload_guard', () =>
+          guardClient!.query(
+            `update service.operation
+             set status = 'SUCCEEDED',
+               request_payload =
+                 '{"asset":"tampered","completionClaims":{}}'::jsonb,
+               row_version = row_version + 1
+             where operation_id = $1::uuid`,
+            [guardUploadOperationId],
+          ),
+        );
+        await expectTransitionRejected(
+          'upload_security_downgrade_guard',
+          () =>
+            guardClient!.query(
+              `update service.operation
+               set status = 'SUCCEEDED',
+                 request_payload = request_payload ||
+                   '{"completionClaims":{}}'::jsonb,
+                 security_level = 'L1_INTERNAL',
+                 row_version = row_version + 1
+               where operation_id = $1::uuid`,
+              [guardUploadOperationId],
             ),
           '42501',
         );
@@ -1674,17 +1719,161 @@ describe('PostgreSQL Data Foundation command executors', () => {
           [TENANT_ID, PROJECT_ID],
         );
         expect(claimedAfterReview.rows).toHaveLength(1);
+        const heartbeatAfterReview = await guardClient.query<{
+          readonly row_version: string;
+        }>(
+          `select (ingestion.heartbeat_job(
+             $1::uuid, $2::uuid, $3::uuid, 'worker-second', 5,
+             interval '5 minutes', clock_timestamp()
+           )).row_version::text as row_version`,
+          [TENANT_ID, PROJECT_ID, guardJobId],
+        );
+        expect(Number(heartbeatAfterReview.rows[0]?.row_version)).toBe(6);
+        const siblingJobId = randomUUID();
+        await guardClient.query(
+          `insert into ingestion.job (
+             job_id, tenant_id, project_id, ingestion_id, operation_id,
+             job_type, status, idempotency_key, payload, lease_owner,
+             lease_expires_at, heartbeat_at, attempt_count, security_level,
+             policy_version, row_version
+           ) values ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
+             'data.ingestion.sibling', 'RUNNING', $6, '{}'::jsonb,
+             'worker-sibling', clock_timestamp() + interval '5 minutes',
+             clock_timestamp(), 1, 'L1_INTERNAL', 1, 1)`,
+          [
+            siblingJobId,
+            TENANT_ID,
+            PROJECT_ID,
+            guardIngestionId,
+            guardOperationId,
+            `guard-sibling:${siblingJobId}`,
+          ],
+        );
+        await guardClient.query(
+          `select ingestion.settle_job(
+             $1::uuid, $2::uuid, $3::uuid, 'worker-second', 6,
+             'WAITING_REVIEW', '{}'::jsonb, clock_timestamp()
+           )`,
+          [TENANT_ID, PROJECT_ID, guardJobId],
+        );
+        const reviewAggregate = await guardClient.query<{
+          readonly status: string;
+        }>(
+          `select status from service.operation
+           where operation_id = $1::uuid`,
+          [guardOperationId],
+        );
+        expect(reviewAggregate.rows[0]?.status).toBe('WAITING_REVIEW');
+        await guardClient.query(
+          `select ingestion.settle_job(
+             $1::uuid, $2::uuid, $3::uuid, 'worker-sibling', 1,
+             'WAITING_INPUT', '{}'::jsonb, clock_timestamp()
+           )`,
+          [TENANT_ID, PROJECT_ID, siblingJobId],
+        );
+        const inputAggregate = await guardClient.query<{
+          readonly status: string;
+        }>(
+          `select status from service.operation
+           where operation_id = $1::uuid`,
+          [guardOperationId],
+        );
+        expect(inputAggregate.rows[0]?.status).toBe('WAITING_INPUT');
+        await guardClient.query(
+          `update ingestion.job
+           set status = 'PENDING', row_version = row_version + 1
+           where job_id = $1::uuid`,
+          [siblingJobId],
+        );
+        const siblingClaim = await guardClient.query(
+          `select claimed.job_id
+           from ingestion.claim_jobs_at(
+             $1::uuid, $2::uuid, 'worker-sibling-2', interval '5 minutes', 1,
+             clock_timestamp()
+           ) as claimed`,
+          [TENANT_ID, PROJECT_ID],
+        );
+        expect(siblingClaim.rows).toEqual([{ job_id: siblingJobId }]);
+        const backToReviewAggregate = await guardClient.query<{
+          readonly status: string;
+        }>(
+          `select status from service.operation
+           where operation_id = $1::uuid`,
+          [guardOperationId],
+        );
+        expect(backToReviewAggregate.rows[0]?.status).toBe('WAITING_REVIEW');
         const claimEvent = await guardClient.query<{
           readonly previous_job_status: string;
         }>(
           `select payload ->> 'previousJobStatus' as previous_job_status
            from service.operation_event
            where operation_id = $1::uuid
+             and payload ->> 'jobId' = $2
+             and payload ->> 'jobStatus' = 'RUNNING'
            order by sequence_number desc
            limit 1`,
-          [guardOperationId],
+          [guardOperationId, guardJobId],
         );
         expect(claimEvent.rows[0]?.previous_job_status).toBe('PENDING');
+        const lateSiblingJobId = randomUUID();
+        await guardClient.query(
+          `insert into ingestion.job (
+             job_id, tenant_id, project_id, ingestion_id, operation_id,
+             job_type, status, idempotency_key, payload, lease_owner,
+             lease_expires_at, heartbeat_at, attempt_count, security_level,
+             policy_version, row_version
+           ) values ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
+             'data.ingestion.late-sibling', 'RUNNING', $6, '{}'::jsonb,
+             'worker-late', clock_timestamp() + interval '5 minutes',
+             clock_timestamp(), 1, 'L1_INTERNAL', 1, 1)`,
+          [
+            lateSiblingJobId,
+            TENANT_ID,
+            PROJECT_ID,
+            guardIngestionId,
+            guardOperationId,
+            `guard-late-sibling:${lateSiblingJobId}`,
+          ],
+        );
+        await guardClient.query(
+          `select ingestion.fail_job(
+             $1::uuid, $2::uuid, $3::uuid, 'worker-sibling-2', 4,
+             'SIBLING_FAILURE', false, '{"message":"expected"}'::jsonb,
+             clock_timestamp()
+           )`,
+          [TENANT_ID, PROJECT_ID, siblingJobId],
+        );
+        const terminalBeforeLateSibling = await guardClient.query(
+          `select status, progress_percent, result_payload, error_code,
+             error_message, error_retryable, completed_at, row_version
+           from service.operation
+           where operation_id = $1::uuid`,
+          [guardOperationId],
+        );
+        expect(terminalBeforeLateSibling.rows[0]).toMatchObject({
+          status: 'FAILED',
+          error_code: 'SIBLING_FAILURE',
+          error_message: 'expected',
+          error_retryable: false,
+        });
+        await guardClient.query(
+          `select ingestion.settle_job(
+             $1::uuid, $2::uuid, $3::uuid, 'worker-late', 1,
+             'SUCCEEDED', '{"result":{"tampered":true}}'::jsonb,
+             clock_timestamp()
+           )`,
+          [TENANT_ID, PROJECT_ID, lateSiblingJobId],
+        );
+        const terminalAfterLateSibling = await guardClient.query(
+          `select status, progress_percent, result_payload, error_code,
+             error_message, error_retryable, completed_at, row_version
+           from service.operation
+           where operation_id = $1::uuid`,
+          [guardOperationId],
+        );
+        expect(terminalAfterLateSibling.rows[0]).toEqual(
+          terminalBeforeLateSibling.rows[0],
+        );
         await guardClient.query('rollback');
         guardClient.release();
         guardClient = null;

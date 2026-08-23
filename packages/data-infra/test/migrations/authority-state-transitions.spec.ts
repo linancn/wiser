@@ -12,6 +12,16 @@ function migration(): string {
   return readFileSync(migrationPath, 'utf8');
 }
 
+function functionDefinition(sql: string, qualifiedName: string): string {
+  const marker = `create or replace function ${qualifiedName}`;
+  const start = sql.indexOf(marker);
+  const end = sql.indexOf('$$;', start);
+  if (start < 0 || end < 0) {
+    throw new Error(`Missing SQL function definition for ${qualifiedName}.`);
+  }
+  return sql.slice(start, end + 3);
+}
+
 describe('authority state transition guards', () => {
   it('guards Operation, Ingestion, Job, and Transform Plan mutations', () => {
     const sql = migration();
@@ -55,20 +65,36 @@ describe('authority state transition guards', () => {
 
   it('protects authority identity, security context, and optimistic versions', () => {
     const sql = migration();
+    const guards = [
+      functionDefinition(sql, 'service.guard_operation_status_transition'),
+      functionDefinition(sql, 'ingestion.guard_session_state_transition'),
+      functionDefinition(sql, 'ingestion.guard_job_status_transition'),
+      functionDefinition(
+        sql,
+        'ingestion.guard_transform_plan_status_transition',
+      ),
+    ];
 
-    for (const immutableField of [
-      'new.tenant_id is distinct from old.tenant_id',
-      'new.project_id is distinct from old.project_id',
-      'new.policy_version is distinct from old.policy_version',
-      'new.created_at is distinct from old.created_at',
-    ]) {
-      expect(sql).toContain(immutableField);
+    for (const guard of guards) {
+      for (const immutableField of [
+        'new.tenant_id is distinct from old.tenant_id',
+        'new.project_id is distinct from old.project_id',
+        'new.policy_version is distinct from old.policy_version',
+        'new.created_at is distinct from old.created_at',
+      ]) {
+        expect(guard).toContain(immutableField);
+      }
+      expect(guard).toMatch(
+        /new\.row_version is distinct from old\.row_version \+ 1/,
+      );
+      expect(guard).toContain("errcode = '40001'");
     }
-    expect(sql).toContain('security.security_rank(new.security_level)');
-    expect(sql).toMatch(
-      /new\.row_version is distinct from old\.row_version \+ 1/,
-    );
-    expect(sql).toContain("errcode = '40001'");
+    expect(guards[0]).toContain('security.security_rank(new.security_level)');
+    for (const guard of guards.slice(1)) {
+      expect(guard).toContain(
+        'new.security_level is distinct from old.security_level',
+      );
+    }
     expect(sql).toContain("errcode = '42501'");
     for (const constraint of [
       'operation_authority_versions_positive',
@@ -82,14 +108,20 @@ describe('authority state transition guards', () => {
 
   it('retires the legacy claim path and records the actual previous job status', () => {
     const sql = migration();
+    const claim = functionDefinition(sql, 'ingestion.claim_jobs_at');
+    const record = functionDefinition(sql, 'ingestion.record_job_transition');
 
     expect(sql).toMatch(
       /drop function if exists ingestion\.claim_jobs\(uuid, uuid, text, interval, integer\)/i,
     );
     expect(sql).toMatch(/create or replace function ingestion\.claim_jobs_at/i);
-    expect(sql).toContain('previous_job_status');
-    expect(sql).not.toContain(
+    expect(claim).toContain('candidate.status as previous_job_status');
+    expect(claim).toContain('claimed_record.previous_job_status');
+    expect(claim).not.toContain(
       "case when claimed_job.attempt_count = 1 then 'PENDING' else 'RETRY_SCHEDULED' end",
+    );
+    expect(record).toContain(
+      "if operation_row.status not in ('SUCCEEDED', 'FAILED', 'CANCELLED') then",
     );
   });
 

@@ -140,6 +140,8 @@ WISER_DATA_PG_INTEGRATION=1 DATA_TEST_DATABASE_URL='<owner-dsn>' pnpm test:postg
 DATA_WORKER_PG_SMOKE_URL='<worker-dsn>' pnpm test:postgres:data-worker
 ```
 
+API 深度测试通过临时非 bypass role 证明 Operation、Ingestion、Job 与 Transform Plan 的非法转换会以稳定 PostgreSQL 错误失败，并验证权威 identity/content、终态与运行中同态保护、Capability 限定的上传完成、精确 row version、旧 claim 路径移除、审核唤醒后准确的 claim event 历史，以及合法 heartbeat/等待态聚合；其正向 fixture 沿合法生命周期逐步推进，不直接插入不可能的中间状态。随后 Worker 深度测试证明完整 ingestion commit 路径仍可通过受保护 schema。
+
 Data Foundation CI 先完成纵向 smoke，再运行 API、Worker 两个深度测试，最后无条件删除该 job 的 Data volumes。不要把这些命令指向共享数据库或需要保留的本机 volume。
 
 在干净环境中，`pnpm stack:full:up` 会执行启动 Supabase、启动 Data profile、migration、seed 和 `data:smoke` 的收敛流程。Smoke 的成功证明固定步骤跨越上传、扫描、指纹、fake Agent、确定性转换、质量/审核、权威提交、Outbox、五个 completion target、REST、GraphQL、MCP 和登录 Web，并验证 Outbox 重放不重复创建 target facts。

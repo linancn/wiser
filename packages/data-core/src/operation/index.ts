@@ -1,4 +1,4 @@
-import type { OperationStatus } from '@wiser/data-contracts';
+import type { DataCapabilityId, OperationStatus } from '@wiser/data-contracts';
 
 import { DataFoundationDomainError } from '../domain-error.js';
 
@@ -21,9 +21,15 @@ export const OPERATION_TRANSITION_POLICY = Object.freeze({
     'FAILED',
     'CANCELLED',
   ]),
-  WAITING_INPUT: Object.freeze(['RUNNING', 'FAILED', 'CANCELLED']),
+  WAITING_INPUT: Object.freeze([
+    'RUNNING',
+    'WAITING_REVIEW',
+    'FAILED',
+    'CANCELLED',
+  ]),
   WAITING_REVIEW: Object.freeze([
     'RUNNING',
+    'WAITING_INPUT',
     'SUCCEEDED',
     'FAILED',
     'CANCELLED',
@@ -32,6 +38,22 @@ export const OPERATION_TRANSITION_POLICY = Object.freeze({
   FAILED: Object.freeze([]),
   CANCELLED: Object.freeze([]),
 } satisfies OperationTransitionPolicy);
+
+export interface OperationTransitionContext {
+  readonly capabilityId?: DataCapabilityId;
+}
+
+function isUploadCompletionTransition(
+  from: OperationStatus,
+  to: OperationStatus,
+  context: OperationTransitionContext,
+): boolean {
+  return (
+    context.capabilityId === 'data.uploadSession.create' &&
+    from === 'WAITING_INPUT' &&
+    to === 'SUCCEEDED'
+  );
+}
 
 export class InvalidOperationTransitionError extends DataFoundationDomainError {
   constructor(
@@ -49,17 +71,21 @@ export class InvalidOperationTransitionError extends DataFoundationDomainError {
 export function canTransitionOperationStatus(
   from: OperationStatus,
   to: OperationStatus,
+  context: OperationTransitionContext = {},
 ): boolean {
   const destinations: readonly OperationStatus[] =
     OPERATION_TRANSITION_POLICY[from];
-  return destinations.includes(to);
+  return (
+    destinations.includes(to) || isUploadCompletionTransition(from, to, context)
+  );
 }
 
 export function transitionOperationStatus(
   from: OperationStatus,
   to: OperationStatus,
+  context: OperationTransitionContext = {},
 ): OperationStatus {
-  if (!canTransitionOperationStatus(from, to)) {
+  if (!canTransitionOperationStatus(from, to, context)) {
     throw new InvalidOperationTransitionError(from, to);
   }
 
