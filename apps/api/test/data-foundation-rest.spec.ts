@@ -91,6 +91,7 @@ const validInputs = {
   'data.geo.query': {
     geometry: point,
     predicates: ['INTERSECTS'],
+    versionId: VERSION_ID,
     first: 10,
   },
   'data.geo.intersect': {

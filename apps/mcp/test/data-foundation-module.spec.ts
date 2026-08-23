@@ -127,6 +127,20 @@ describe('Data Foundation MCP module', () => {
       name: 'data_catalog_search',
       arguments: { query: '永定河', first: 10 },
     });
+    http.next = { features: [] };
+    await client.callTool({
+      name: 'data_geo_query',
+      arguments: {
+        geometry: {
+          type: 'Point',
+          coordinates: [116.2, 39.8],
+          crs: 'EPSG:4490',
+        },
+        predicates: ['INTERSECTS'],
+        versionId: VERSION_ID,
+        first: 10,
+      },
+    });
     http.next = {
       operation: {
         operationId: 'a1000000-0000-4000-8000-000000000007',
@@ -153,6 +167,25 @@ describe('Data Foundation MCP module', () => {
           'X-Wiser-Purpose': 'analysis',
         },
         query: { query: '永定河', first: 10 },
+      },
+      {
+        method: 'POST',
+        path: '/geo/query',
+        headers: {
+          'X-Wiser-Tenant-Id': TENANT_ID,
+          'X-Wiser-Project-Id': PROJECT_ID,
+          'X-Wiser-Purpose': 'analysis',
+        },
+        body: {
+          geometry: {
+            type: 'Point',
+            coordinates: [116.2, 39.8],
+            crs: 'EPSG:4490',
+          },
+          predicates: ['INTERSECTS'],
+          versionId: VERSION_ID,
+          first: 10,
+        },
       },
       {
         method: 'POST',

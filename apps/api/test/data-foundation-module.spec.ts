@@ -84,7 +84,7 @@ describe('Data Foundation HTTP composition module', () => {
       }>;
     }>();
 
-    expect(body.registryVersion).toBe('1.0.0');
+    expect(body.registryVersion).toBe('1.1.0');
     expect(body.capabilities.map(({ id }) => id)).toEqual(DATA_CAPABILITY_IDS);
     for (const capability of body.capabilities) {
       expect(capability.inputSchema).toMatchObject({

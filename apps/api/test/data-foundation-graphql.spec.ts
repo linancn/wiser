@@ -182,6 +182,7 @@ describe('Data Foundation schema-first GraphQL transport', () => {
       DATA_CAPABILITY_IDS.length,
     );
     expect(DATA_FOUNDATION_GRAPHQL_SCHEMA).not.toMatch(/SQL|Cypher|DSL/);
+    expect(DATA_FOUNDATION_GRAPHQL_SCHEMA).toContain('versionId: ID');
     expect(
       readFileSync(
         new URL('../src/data-foundation/schema.graphql', import.meta.url),
@@ -232,6 +233,39 @@ describe('Data Foundation schema-first GraphQL transport', () => {
     expect(vi.mocked(handler.execute)).toHaveBeenCalledWith({
       capabilityId: 'data.catalog.search',
       input: { query: 'station', first: 2, after: 'cursor-1' },
+      requestContext,
+    });
+  });
+
+  it('forwards an immutable geo version from GraphQL variables', async () => {
+    const { app, handler } = appWith();
+    const input = {
+      geometry: {
+        type: 'Point',
+        coordinates: [116.2, 39.8],
+        crs: 'EPSG:4490',
+      },
+      predicates: ['INTERSECTS'],
+      versionId: VERSION_ID,
+      first: 10,
+    };
+    const response = await app.inject({
+      method: 'POST',
+      url: '/graphql',
+      headers: headers(),
+      payload: {
+        query: `query Geo($input: GeoQueryInput!) {
+          geoQuery(input: $input) { features nextCursor }
+        }`,
+        variables: { input },
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(responseErrors(response)).toBeUndefined();
+    expect(vi.mocked(handler.execute)).toHaveBeenCalledWith({
+      capabilityId: 'data.geo.query',
+      input,
       requestContext,
     });
   });

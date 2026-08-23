@@ -389,8 +389,15 @@ describe('PostGIS geo query port', () => {
     expect(sql).toContain('<->');
     expect(sql).toContain('dense_rank() over');
     expect(sql).not.toContain('row_number() over');
-    expect(sql).toContain('$8::uuid is null or extent.version_id = $8');
-    expect(sql).toContain('$8::uuid is not null or extent.version_rank = 1');
+    expect(sql).toMatch(
+      /ranked_version as \([\s\S]+from catalog\.data_item_version as version/,
+    );
+    expect(sql).toContain('$8::uuid is null or version.version_id = $8');
+    expect(sql).toContain(
+      '$8::uuid is not null or version.version_rank = 1',
+    );
+    expect(sql).toContain('join catalog.spatial_extent as extent');
+    expect(sql).not.toContain('ranked_extent as');
     expect(sql).toContain('unnest($9::text[])');
     expect(sql).toContain(
       'security.security_rank(extent.security_level) <= security.security_rank($4)',
@@ -422,6 +429,27 @@ describe('PostGIS geo query port', () => {
     );
 
     expect(client.calls[2]!.values[7]).toBeNull();
+  });
+
+  it('rejects an invalid immutable version before acquiring PostgreSQL state', async () => {
+    const client = new FakePgClient();
+    const port = new PostgisGeoQueryPort({ pool: new FakePool(client) });
+
+    expect(() =>
+      port.query(
+        request({
+          geometry: {
+            type: 'Point',
+            coordinates: [116.2, 39.8],
+            crs: 'EPSG:4326',
+          },
+          predicates: ['INTERSECTS'],
+          versionId: 'not-a-uuid',
+          first: 10,
+        }),
+      ),
+    ).toThrowError(QueryAdapterError);
+    expect(client.calls).toHaveLength(0);
   });
 
   it('uses optional item version filters for intersection targets', async () => {
