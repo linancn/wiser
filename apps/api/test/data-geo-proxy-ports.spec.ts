@@ -275,7 +275,7 @@ describe('Postgres GIS authority and audit port', () => {
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
-  it('selects an authorized COG even when an earlier version asset is non-raster', async () => {
+  it('filters conflicting content addresses before LIMIT so they cannot shadow an authorized COG', async () => {
     const validStorageKey =
       `tenants/${TENANT_ID}/projects/${PROJECT_ID}` +
       `/versions/${VERSION_ID}/sha256/${HASH}`;
@@ -285,8 +285,8 @@ describe('Postgres GIS authority and audit port', () => {
         {
           version_id: VERSION_ID,
           storage_key: validStorageKey.replace(HASH, 'b'.repeat(64)),
-          content_hash: 'b'.repeat(64),
-          media_type: 'application/geo+json',
+          content_hash: HASH,
+          media_type: 'image/tiff; application=geotiff',
         },
         {
           version_id: VERSION_ID,
@@ -311,6 +311,25 @@ describe('Postgres GIS authority and audit port', () => {
         /data\.geo-authority\.raster/i.test(text),
       )?.text,
     ).toMatch(/split_part\(asset\.media_type/i);
+    const rasterSql = client.queries.find(({ text }) =>
+      /data\.geo-authority\.raster/i.test(text),
+    )!.text;
+    const storageFilterIndex = rasterSql.search(
+      /\band\s+asset\.storage_key\s*=/i,
+    );
+    const limitIndex = rasterSql.search(/\blimit\s+1\b/i);
+    expect(storageFilterIndex).toBeGreaterThan(-1);
+    expect(storageFilterIndex).toBeLessThan(limitIndex);
+    const contentAddressFilter = rasterSql.slice(
+      storageFilterIndex,
+      limitIndex,
+    );
+    expect(contentAddressFilter).toMatch(/asset\.tenant_id::text/i);
+    expect(contentAddressFilter).toMatch(/asset\.project_id::text/i);
+    expect(contentAddressFilter).toMatch(/asset\.version_id::text/i);
+    expect(contentAddressFilter).toMatch(
+      /encode\(asset\.content_hash, 'hex'\)/i,
+    );
   });
 
   it('writes authenticated read and denial audit facts without raw paths or credentials', async () => {

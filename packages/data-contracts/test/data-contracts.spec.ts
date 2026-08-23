@@ -111,6 +111,10 @@ const dataItemVersion = {
   acceptanceStatus: 'PASSED',
   publicationStatus: 'PUBLISHED',
   securityLevel: 'L1_INTERNAL',
+  tileAvailability: {
+    vector: true,
+    raster: false,
+  },
   createdAt: '2026-08-22T01:00:00Z',
   committedAt: '2026-08-22T01:04:00Z',
   publishedAt: '2026-08-22T01:05:00Z',
@@ -871,6 +875,10 @@ describe('Data Foundation DTO contracts', () => {
     delete dataItemWithoutName.name;
     const versionWithoutId: Record<string, unknown> = { ...dataItemVersion };
     delete versionWithoutId.versionId;
+    const versionWithoutTileAvailability: Record<string, unknown> = {
+      ...dataItemVersion,
+    };
+    delete versionWithoutTileAvailability.tileAvailability;
     const operationWithoutStatus: Record<string, unknown> = { ...operation };
     delete operationWithoutStatus.status;
 
@@ -878,9 +886,37 @@ describe('Data Foundation DTO contracts', () => {
     expect(DataItemVersionSchema.safeParse(versionWithoutId).success).toBe(
       false,
     );
+    expect(
+      DataItemVersionSchema.safeParse(versionWithoutTileAvailability).success,
+    ).toBe(false);
     expect(OperationSchema.safeParse(operationWithoutStatus).success).toBe(
       false,
     );
+  });
+
+  it('requires exact vector and raster tile availability flags', () => {
+    expect(
+      DataItemVersionSchema.safeParse({
+        ...dataItemVersion,
+        tileAvailability: { vector: 'yes', raster: false },
+      }).success,
+    ).toBe(false);
+    expect(
+      DataItemVersionSchema.safeParse({
+        ...dataItemVersion,
+        tileAvailability: { vector: true },
+      }).success,
+    ).toBe(false);
+    expect(
+      DataItemVersionSchema.safeParse({
+        ...dataItemVersion,
+        tileAvailability: {
+          vector: true,
+          raster: false,
+          upstreamHealthy: true,
+        },
+      }).success,
+    ).toBe(false);
   });
 });
 

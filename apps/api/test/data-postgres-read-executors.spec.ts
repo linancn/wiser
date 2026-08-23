@@ -87,6 +87,8 @@ const versionRow = {
   acceptance_status: 'PASSED',
   publication_status: 'PUBLISHED',
   security_level: 'L2_RESTRICTED',
+  vector_tile_available: true,
+  raster_tile_available: false,
   created_at: '2026-08-22T00:00:00.000Z',
   committed_at: '2026-08-22T00:01:00.000Z',
   published_at: '2026-08-22T00:02:00.000Z',
@@ -399,6 +401,80 @@ describe('data-postgres RLS read executors', () => {
         'data.catalog.versions.get'
       ].outputSchema.safeParse(version).success,
     ).toBe(true);
+  });
+
+  it('derives selected-version tile availability from scoped authority rows', async () => {
+    const pool = new FakePool();
+    const runtime = createPostgresDataReadRuntime(pool);
+    const catalog = (await executor(runtime, 'data.catalog.get').execute(
+      { dataItemId: itemRow.data_item_id },
+      context,
+    )) as {
+      readonly selectedVersion: {
+        readonly tileAvailability: {
+          readonly vector: boolean;
+          readonly raster: boolean;
+        };
+      };
+    };
+    const listed = (await executor(
+      runtime,
+      'data.catalog.versions.list',
+    ).execute({ dataItemId: itemRow.data_item_id, first: 10 }, context)) as {
+      readonly items: readonly {
+        readonly tileAvailability: {
+          readonly vector: boolean;
+          readonly raster: boolean;
+        };
+      }[];
+    };
+    const selected = (await executor(
+      runtime,
+      'data.catalog.versions.get',
+    ).execute(
+      { dataItemId: itemRow.data_item_id, versionId: versionRow.version_id },
+      context,
+    )) as {
+      readonly version: {
+        readonly tileAvailability: {
+          readonly vector: boolean;
+          readonly raster: boolean;
+        };
+      };
+    };
+
+    expect(catalog.selectedVersion.tileAvailability).toEqual({
+      vector: true,
+      raster: false,
+    });
+    expect(listed.items[0]?.tileAvailability).toEqual({
+      vector: true,
+      raster: false,
+    });
+    expect(selected.version.tileAvailability).toEqual({
+      vector: true,
+      raster: false,
+    });
+
+    const versionQueries = pool.client.queries.filter(({ text }) =>
+      /data\.catalog\.version\.(?:get|list)/.test(text),
+    );
+    expect(versionQueries).toHaveLength(3);
+    for (const { text: sql } of versionQueries) {
+      expect(sql).toMatch(
+        /version\.committed_at is not null[\s\S]*exists\s*\([\s\S]*from catalog\.spatial_extent as available_extent[\s\S]*available_extent\.version_id = version\.version_id[\s\S]*\) as vector_tile_available/i,
+      );
+      expect(sql).not.toMatch(/available_extent\.version_id is null/i);
+      expect(sql).toMatch(
+        /version\.committed_at is not null[\s\S]*exists\s*\([\s\S]*from catalog\.asset as raster_asset[\s\S]*join ingestion\.input_asset as raster_input[\s\S]*raster_asset\.lifecycle_state = 'RAW'[\s\S]*raster_asset\.content_hash is not null[\s\S]*raster_asset\.content_blob_id is not null[\s\S]*\) as raster_tile_available/i,
+      );
+      expect(sql).toMatch(
+        /split_part\(raster_asset\.media_type[\s\S]*'image\/tiff'[\s\S]*'image\/geotiff'/i,
+      );
+      expect(sql).toMatch(
+        /raster_asset\.storage_key\s*=[\s\S]*raster_asset\.tenant_id::text[\s\S]*raster_asset\.project_id::text[\s\S]*(?:raster_asset|version)\.version_id::text[\s\S]*encode\(raster_asset\.content_hash, 'hex'\)/i,
+      );
+    }
   });
 
   it('returns the selected version canonical spatial envelope in catalog detail', async () => {
