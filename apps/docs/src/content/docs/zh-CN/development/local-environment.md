@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 70f4baadcfdb7683a2d4cfa1eb0f1c968f0e783e
+lastReviewedCommit: e1952416a8fcf9a64dd74165656d05fdbb09233a
 ---
 
 ## 运行模式

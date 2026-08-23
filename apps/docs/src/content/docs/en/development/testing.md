@@ -23,7 +23,7 @@ checkPaths:
   - examples/agent-excon/**
   - .github/workflows/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 70f4baadcfdb7683a2d4cfa1eb0f1c968f0e783e
+lastReviewedCommit: e1952416a8fcf9a64dd74165656d05fdbb09233a
 ---
 
 ## Red → Green → Refactor
@@ -128,12 +128,20 @@ On a clean environment, `pnpm stack:full:up` converges Supabase startup, the Dat
 
 ## Playwright
 
+Run both reference browser suites together:
+
+```bash
+pnpm test:e2e:reference
+```
+
+Or run only the affected application:
+
 ```bash
 pnpm --filter @wiser/web test:e2e
 pnpm --filter @wiser/docs test:e2e
 ```
 
-Both Playwright configurations start their own development servers: Web uses `127.0.0.1:3100`, while Docs uses `127.0.0.1:4321`. These tests prove browser routing, language, theme, and interaction. Unless a test explicitly connects to the complete stack, they do not replace unified-Auth or database vertical smoke.
+Both Playwright configurations start isolated development servers: Web uses `127.0.0.1:3100`, while Docs uses `127.0.0.1:4322`. The CI browser job runs the same root command after `pnpm verify` and retains screenshots, traces, and the HTML report only on failure. The standard suites use reference/Auth-off configuration to prove browser routing, language, theme, and interaction; they do not replace unified-Auth or database vertical smoke.
 
 Every visible UI change covers Chinese-default and equivalent English states, and checks light/dark themes, keyboard focus, narrow screens, and failure/unavailable states. When repairing locators, prefer roles, labels, visible text, or stable test ids.
 

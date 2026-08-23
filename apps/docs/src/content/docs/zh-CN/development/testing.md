@@ -23,7 +23,7 @@ checkPaths:
   - examples/agent-excon/**
   - .github/workflows/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 70f4baadcfdb7683a2d4cfa1eb0f1c968f0e783e
+lastReviewedCommit: e1952416a8fcf9a64dd74165656d05fdbb09233a
 ---
 
 ## Red → Green → Refactor
@@ -128,12 +128,20 @@ pnpm supabase:stop
 
 ## Playwright
 
+同时运行两套 reference 浏览器测试：
+
+```bash
+pnpm test:e2e:reference
+```
+
+也可以只运行受影响的应用：
+
 ```bash
 pnpm --filter @wiser/web test:e2e
 pnpm --filter @wiser/docs test:e2e
 ```
 
-两个 Playwright 配置都会启动自己的开发服务器：Web 使用 `127.0.0.1:3100`，Docs 使用 `127.0.0.1:4321`。这些测试证明浏览器中的路由、语言、主题和交互；除非测试显式连接完整栈，否则它们不能替代统一 Auth 或数据库纵向 smoke。
+两个 Playwright 配置都会启动自己的隔离开发服务器：Web 使用 `127.0.0.1:3100`，Docs 使用 `127.0.0.1:4322`。CI 的 browser job 在 `pnpm verify` 通过后运行同一根命令，只在失败时保留 screenshot、trace 和 HTML report。标准套件使用 reference/Auth-off 配置，证明浏览器中的路由、语言、主题和交互；它不能替代统一 Auth 或数据库纵向 smoke。
 
 任何可见 UI 变化都要同时覆盖中文默认与英文等价状态，并检查浅色/深色、键盘焦点、窄屏和失败/不可用状态。修复定位器时优先使用 role、label、可见文本或稳定 test id。
 

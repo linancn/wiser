@@ -21,6 +21,7 @@
     "prelint": "pnpm --filter @wiser/docs generate",
     "lint": "oxlint --type-aware",
     "test": "pnpm test:unit && pnpm test:ops",
+    "test:e2e:reference": "pnpm --workspace-concurrency=1 --no-bail --filter @wiser/web --filter @wiser/docs run test:e2e",
     "test:unit": "vitest run && pnpm --recursive --if-present --filter './apps/*' test",
     "test:ops": "node --test scripts/data-foundation/*.test.mjs",
     "test:watch": "vitest",

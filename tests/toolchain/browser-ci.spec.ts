@@ -20,7 +20,7 @@ describe('reference browser CI', () => {
     const scripts = manifest.scripts as Record<string, string>;
 
     expect(scripts['test:e2e:reference']).toBe(
-      'pnpm --parallel --filter @wiser/web --filter @wiser/docs test:e2e',
+      'pnpm --workspace-concurrency=1 --no-bail --filter @wiser/web --filter @wiser/docs run test:e2e',
     );
   });
 
@@ -30,10 +30,20 @@ describe('reference browser CI', () => {
       'apps/docs/playwright.config.ts',
     ]) {
       const config = read(path);
+      expect(config, path).toContain('forbidOnly: Boolean(process.env.CI)');
       expect(config, path).toContain("screenshot: 'only-on-failure'");
       expect(config, path).toContain("trace: 'retain-on-failure'");
       expect(config, path).toContain("['html', { open: 'never' }]");
     }
+  });
+
+  it('starts isolated Next servers without inheriting conflicting script ports', () => {
+    expect(read('apps/web/playwright.config.ts')).toContain(
+      "command: 'pnpm exec next dev --hostname 127.0.0.1 --port 3100'",
+    );
+    expect(read('apps/docs/playwright.config.ts')).toContain(
+      "command: 'pnpm exec next dev --hostname 127.0.0.1 --port 4322'",
+    );
   });
 
   it('runs the reference suites after verify and retains only failed-run artifacts', () => {
@@ -57,7 +67,17 @@ describe('reference browser CI', () => {
     expect(browser).toContain('apps/docs/test-results/');
     expect(browser).toContain('apps/web/playwright-report/');
     expect(browser).toContain('apps/docs/playwright-report/');
+    expect(browser).toContain('if-no-files-found: warn');
     expect(browser).toContain('retention-days: 7');
+    for (const duplicateGate of [
+      'run: pnpm verify',
+      'pnpm data:',
+      'pnpm supabase:',
+      'docker compose',
+      'pnpm build',
+    ]) {
+      expect(browser).not.toContain(duplicateGate);
+    }
   });
 
   it('documents the real isolated ports and the reference-only boundary', () => {
