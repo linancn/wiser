@@ -483,6 +483,24 @@ describe('Postgres ingestion authority adapter', () => {
     });
     const sql = runtime.pool.client.queries.map(({ text }) => text).join('\n');
     expect(sql).toContain('ingestion.runtime.review-checkpoint');
+    const checkpointSql = runtime.pool.client.queries.find(({ text }) =>
+      /ingestion\.runtime\.review-checkpoint/.test(text),
+    )?.text;
+    expect(checkpointSql).toMatch(
+      /transform_plan\.transform_plan_id = excluded\.transform_plan_id/i,
+    );
+    expect(checkpointSql).toMatch(
+      /transform_plan\.plan is not distinct from excluded\.plan/i,
+    );
+    expect(checkpointSql).toMatch(
+      /transform_plan\.approved_by_actor_id\s+is not distinct from excluded\.approved_by_actor_id/i,
+    );
+    expect(checkpointSql).toMatch(
+      /transform_plan\.security_level = excluded\.security_level/i,
+    );
+    expect(checkpointSql).toMatch(
+      /transform_plan\.policy_version = excluded\.policy_version/i,
+    );
     expect(sql).toContain('quality.check_run');
     expect(sql).toContain('quality.scorecard');
     expect(sql).toContain('lineage.process_run');

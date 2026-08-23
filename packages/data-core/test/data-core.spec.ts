@@ -114,10 +114,11 @@ const LEGAL_OPERATION_TRANSITIONS = [
   ['RUNNING', 'FAILED'],
   ['RUNNING', 'CANCELLED'],
   ['WAITING_INPUT', 'RUNNING'],
-  ['WAITING_INPUT', 'SUCCEEDED'],
+  ['WAITING_INPUT', 'WAITING_REVIEW'],
   ['WAITING_INPUT', 'FAILED'],
   ['WAITING_INPUT', 'CANCELLED'],
   ['WAITING_REVIEW', 'RUNNING'],
+  ['WAITING_REVIEW', 'WAITING_INPUT'],
   ['WAITING_REVIEW', 'SUCCEEDED'],
   ['WAITING_REVIEW', 'FAILED'],
   ['WAITING_REVIEW', 'CANCELLED'],
@@ -474,6 +475,25 @@ describe('operation state policy', () => {
   it.each(LEGAL_OPERATION_TRANSITIONS)('allows %s -> %s', (from, to) => {
     expect(canTransitionOperationStatus(from, to)).toBe(true);
     expect(transitionOperationStatus(from, to)).toBe(to);
+  });
+
+  it('allows only upload-session creation to complete directly from waiting input', () => {
+    const upload = { capabilityId: 'data.uploadSession.create' as const };
+
+    expect(
+      canTransitionOperationStatus('WAITING_INPUT', 'SUCCEEDED', upload),
+    ).toBe(true);
+    expect(
+      transitionOperationStatus('WAITING_INPUT', 'SUCCEEDED', upload),
+    ).toBe('SUCCEEDED');
+    expect(canTransitionOperationStatus('WAITING_INPUT', 'SUCCEEDED')).toBe(
+      false,
+    );
+    expect(
+      canTransitionOperationStatus('WAITING_INPUT', 'SUCCEEDED', {
+        capabilityId: 'data.ingestion.create',
+      }),
+    ).toBe(false);
   });
 
   it('rejects every transition not present in the explicit policy', () => {

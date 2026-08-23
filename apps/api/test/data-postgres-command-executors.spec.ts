@@ -1464,35 +1464,227 @@ describe('PostgreSQL Data Foundation command executors', () => {
         };
         await expectTransitionRejected('operation_guard', () =>
           guardClient!.query(
-            `update service.operation set status = 'SUCCEEDED'
+            `update service.operation
+             set status = 'SUCCEEDED', row_version = row_version + 1
              where operation_id = $1::uuid`,
             [guardOperationId],
           ),
         );
         await expectTransitionRejected('session_guard', () =>
           guardClient!.query(
-            `update ingestion.session set state = 'PUBLISHED'
+            `update ingestion.session
+             set state = 'PUBLISHED', row_version = row_version + 1
              where ingestion_id = $1::uuid`,
             [guardIngestionId],
           ),
         );
         await expectTransitionRejected('job_guard', () =>
           guardClient!.query(
-            `update ingestion.job set status = 'SUCCEEDED'
+            `update ingestion.job
+             set status = 'SUCCEEDED', row_version = row_version + 1
              where job_id = $1::uuid`,
             [guardJobId],
           ),
         );
+        await expectTransitionRejected('transform_plan_guard', () =>
+          guardClient!.query(
+            `update ingestion.transform_plan
+               set status = 'UNSAFE', row_version = row_version + 1
+               where transform_plan_id = $1::uuid`,
+            [guardPlanId],
+          ),
+        );
         await expectTransitionRejected(
-          'transform_plan_guard',
+          'transform_plan_insert_check',
           () =>
             guardClient!.query(
-              `update ingestion.transform_plan set status = 'UNSAFE'
-               where transform_plan_id = $1::uuid`,
-              [guardPlanId],
+              `insert into ingestion.transform_plan (
+                 transform_plan_id, tenant_id, project_id, ingestion_id,
+                 plan_version, plan, plan_hash, status, security_level,
+                 policy_version, row_version
+               ) values ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 2,
+                 '{}'::jsonb, decode($5, 'hex'), 'UNSAFE',
+                 'L1_INTERNAL', 1, 1)`,
+              [
+                randomUUID(),
+                TENANT_ID,
+                PROJECT_ID,
+                guardIngestionId,
+                'e'.repeat(64),
+              ],
             ),
           '23514',
         );
+        await expectTransitionRejected(
+          'operation_identity_guard',
+          () =>
+            guardClient!.query(
+              `update service.operation
+               set capability_id = 'data.catalog.create',
+                 row_version = row_version + 1
+               where operation_id = $1::uuid`,
+              [guardOperationId],
+            ),
+          '42501',
+        );
+        await expectTransitionRejected(
+          'session_version_guard',
+          () =>
+            guardClient!.query(
+              `update ingestion.session set state = 'QUARANTINED'
+               where ingestion_id = $1::uuid`,
+              [guardIngestionId],
+            ),
+          '40001',
+        );
+        await expectTransitionRejected(
+          'job_identity_guard',
+          () =>
+            guardClient!.query(
+              `update ingestion.job
+               set job_type = 'data.ingestion.unsafe',
+                 row_version = row_version + 1
+               where job_id = $1::uuid`,
+              [guardJobId],
+            ),
+          '42501',
+        );
+        await expectTransitionRejected('transform_plan_content_guard', () =>
+          guardClient!.query(
+            `update ingestion.transform_plan
+               set status = 'REVIEW_REQUIRED', plan = '{"unsafe":true}'::jsonb,
+                 row_version = row_version + 1
+               where transform_plan_id = $1::uuid`,
+            [guardPlanId],
+          ),
+        );
+        await expectTransitionRejected('operation_guard_without_version', () =>
+          guardClient!.query(
+            `update service.operation set status = 'SUCCEEDED'
+             where operation_id = $1::uuid`,
+            [guardOperationId],
+          ),
+        );
+        await guardClient.query('savepoint operation_cross_wait');
+        try {
+          await guardClient.query(
+            `update service.operation
+             set status = 'WAITING_INPUT', row_version = row_version + 1
+             where operation_id = $1::uuid`,
+            [guardOperationId],
+          );
+          await expect(
+            guardClient.query(
+              `update service.operation
+               set status = 'WAITING_REVIEW', row_version = row_version + 1
+               where operation_id = $1::uuid`,
+              [guardOperationId],
+            ),
+          ).resolves.toMatchObject({ rowCount: 1 });
+          await expect(
+            guardClient.query(
+              `update service.operation
+               set status = 'WAITING_INPUT', row_version = row_version + 1
+               where operation_id = $1::uuid`,
+              [guardOperationId],
+            ),
+          ).resolves.toMatchObject({ rowCount: 1 });
+        } finally {
+          await guardClient.query('rollback to savepoint operation_cross_wait');
+        }
+        await expectTransitionRejected(
+          'terminal_operation_content_guard',
+          async () => {
+            await guardClient!.query(
+              `update service.operation
+               set status = 'RUNNING', row_version = row_version + 1
+               where operation_id = $1::uuid`,
+              [guardOperationId],
+            );
+            await guardClient!.query(
+              `update service.operation
+               set status = 'SUCCEEDED', progress_percent = 100,
+                 result_payload = '{"safe":true}'::jsonb,
+                 completed_at = clock_timestamp(),
+                 row_version = row_version + 1
+               where operation_id = $1::uuid`,
+              [guardOperationId],
+            );
+            return guardClient!.query(
+              `update service.operation
+               set result_payload = '{"tampered":true}'::jsonb,
+                 row_version = row_version + 1
+               where operation_id = $1::uuid`,
+              [guardOperationId],
+            );
+          },
+        );
+        await expectTransitionRejected(
+          'running_job_content_guard',
+          async () => {
+            await guardClient!.query(
+              `update ingestion.job
+               set status = 'RUNNING', attempt_count = attempt_count + 1,
+                 lease_owner = 'worker-safe',
+                 lease_expires_at = clock_timestamp() + interval '5 minutes',
+                 heartbeat_at = clock_timestamp(),
+                 row_version = row_version + 1
+               where job_id = $1::uuid`,
+              [guardJobId],
+            );
+            return guardClient!.query(
+              `update ingestion.job
+               set lease_owner = 'worker-attacker',
+                 row_version = row_version + 1
+               where job_id = $1::uuid`,
+              [guardJobId],
+            );
+          },
+        );
+        await guardClient.query(
+          `update ingestion.job
+           set status = 'RUNNING', attempt_count = attempt_count + 1,
+             lease_owner = 'worker-first',
+             lease_expires_at = clock_timestamp() + interval '5 minutes',
+             heartbeat_at = clock_timestamp(),
+             row_version = row_version + 1
+           where job_id = $1::uuid`,
+          [guardJobId],
+        );
+        await guardClient.query(
+          `update ingestion.job
+           set status = 'WAITING_REVIEW', lease_owner = null,
+             lease_expires_at = null, heartbeat_at = null,
+             row_version = row_version + 1
+           where job_id = $1::uuid`,
+          [guardJobId],
+        );
+        await guardClient.query(
+          `update ingestion.job
+           set status = 'PENDING', row_version = row_version + 1
+           where job_id = $1::uuid`,
+          [guardJobId],
+        );
+        const claimedAfterReview = await guardClient.query(
+          `select claimed.job_id
+           from ingestion.claim_jobs_at(
+             $1::uuid, $2::uuid, 'worker-second', interval '5 minutes', 1,
+             clock_timestamp()
+           ) as claimed`,
+          [TENANT_ID, PROJECT_ID],
+        );
+        expect(claimedAfterReview.rows).toHaveLength(1);
+        const claimEvent = await guardClient.query<{
+          readonly previous_job_status: string;
+        }>(
+          `select payload ->> 'previousJobStatus' as previous_job_status
+           from service.operation_event
+           where operation_id = $1::uuid
+           order by sequence_number desc
+           limit 1`,
+          [guardOperationId],
+        );
+        expect(claimEvent.rows[0]?.previous_job_status).toBe('PENDING');
         await guardClient.query('rollback');
         guardClient.release();
         guardClient = null;
@@ -1923,22 +2115,39 @@ describe('PostgreSQL Data Foundation command executors', () => {
         });
 
         const reviewJobId = randomUUID();
-        await preparedClient.query(
-          `update ingestion.session set state = 'REVIEW_REQUIRED', row_version = 2
-           where ingestion_id = $1::uuid`,
-          [pipelineIngestionId],
-        );
-        await preparedClient.query(
-          `update service.operation set status = 'WAITING_REVIEW', row_version = 2
-           where operation_id = $1::uuid`,
-          [pipelineOperationId],
-        );
+        for (const state of [
+          'QUARANTINED',
+          'SECURITY_SCANNED',
+          'FINGERPRINTED',
+          'PROFILED',
+          'CLASSIFIED',
+          'SCHEMA_MAPPED',
+          'SEMANTIC_MAPPED',
+          'VALIDATED',
+          'SPATIOTEMPORAL_ALIGNED',
+          'REVIEW_REQUIRED',
+        ]) {
+          await preparedClient.query(
+            `update ingestion.session
+             set state = $2, row_version = row_version + 1
+             where ingestion_id = $1::uuid`,
+            [pipelineIngestionId, state],
+          );
+        }
+        for (const status of ['RUNNING', 'WAITING_REVIEW']) {
+          await preparedClient.query(
+            `update service.operation
+             set status = $2, row_version = row_version + 1
+             where operation_id = $1::uuid`,
+            [pipelineOperationId, status],
+          );
+        }
         await preparedClient.query(
           `insert into ingestion.transform_plan (
              transform_plan_id, tenant_id, project_id, ingestion_id,
              plan_version, plan, plan_hash, status, security_level,
              policy_version, row_version
-           ) values ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 1,
+           ) values ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 11,
              jsonb_build_object('reviewHash', $5::text), decode($5, 'hex'),
              'REVIEW_REQUIRED', 'L1_INTERNAL', 1, 1)`,
           [
@@ -1953,10 +2162,10 @@ describe('PostgreSQL Data Foundation command executors', () => {
           `insert into ingestion.job (
              job_id, tenant_id, project_id, ingestion_id, operation_id,
              job_type, status, idempotency_key, payload, security_level,
-             policy_version, row_version
+             policy_version, row_version, attempt_count
            ) values ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
              'data.ingestion.process', 'WAITING_REVIEW', $6, $7::jsonb,
-             'L1_INTERNAL', 1, 1)`,
+             'L1_INTERNAL', 1, 1, 1)`,
           [
             reviewJobId,
             TENANT_ID,
@@ -1979,13 +2188,13 @@ describe('PostgreSQL Data Foundation command executors', () => {
           { clock: () => NOW, idFactory: randomUUID },
         );
         await executor(approvalRuntime, 'data.ingestion.approve').execute(
-          { ingestionId: pipelineIngestionId, expectedVersion: 2 },
+          { ingestionId: pipelineIngestionId, expectedVersion: 11 },
           { ...context, idempotencyKey: randomUUID() },
         );
         expect(approvalPool.capturedJobPayload).toEqual({
           ingestionId: pipelineIngestionId,
           expectedState: 'APPROVED',
-          expectedVersion: 3,
+          expectedVersion: 12,
         });
         await approvalRuntime.close();
         await preparedClient.query('reset role');
@@ -2016,14 +2225,22 @@ describe('PostgreSQL Data Foundation command executors', () => {
         const runningLeaseExpiresAt = '2026-08-22T05:05:00.000Z';
         await preparedClient.query(
           `update ingestion.job
-           set status = 'RUNNING', attempt_count = 2, lease_owner = 'worker-1',
+           set status = 'PENDING', row_version = row_version + 1
+           where job_id = $1::uuid`,
+          [reviewJobId],
+        );
+        await preparedClient.query(
+          `update ingestion.job
+           set status = 'RUNNING', attempt_count = attempt_count + 1,
+             lease_owner = 'worker-1',
              lease_expires_at = $2::timestamptz, heartbeat_at = $3::timestamptz,
-             row_version = 2
+             row_version = row_version + 1
            where job_id = $1::uuid`,
           [reviewJobId, runningLeaseExpiresAt, NOW.toISOString()],
         );
         await preparedClient.query(
-          `update service.operation set status = 'RUNNING', row_version = 2
+          `update service.operation
+           set status = 'RUNNING', row_version = row_version + 1
            where operation_id = $1::uuid`,
           [pipelineOperationId],
         );
@@ -2040,7 +2257,7 @@ describe('PostgreSQL Data Foundation command executors', () => {
           cancellationRuntime,
           'data.operation.cancel',
         ).execute(
-          { operationId: pipelineOperationId, expectedVersion: 2 },
+          { operationId: pipelineOperationId, expectedVersion: 4 },
           { ...context, idempotencyKey: randomUUID() },
         )) as { readonly status: string };
         expect(cancellation.status).toBe('RUNNING');
@@ -2050,7 +2267,7 @@ describe('PostgreSQL Data Foundation command executors', () => {
           attempt_count: 2,
           lease_owner: 'worker-1',
         });
-        expect(Number(cancellationPool.capturedJob?.['row_version'])).toBe(3);
+        expect(Number(cancellationPool.capturedJob?.['row_version'])).toBe(4);
         expect(
           cancellationPool.capturedJob?.['cancel_requested_at'],
         ).not.toBeNull();
