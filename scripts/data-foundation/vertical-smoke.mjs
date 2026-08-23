@@ -1106,6 +1106,38 @@ async function queryRest(runtime, auth, apiOrigin, dataItemId, versionId) {
     },
   );
   assertSearchResult(chineseFullText, dataItemId, versionId, stepId);
+  const semantic = await apiJson(
+    runtime,
+    auth,
+    apiOrigin,
+    stepId,
+    '/api/data/v1/search',
+    {
+      method: 'POST',
+      body: {
+        query: '永定河流域水生态治理 OpenSearch',
+        sources: ['semantic'],
+        first: 50,
+      },
+    },
+  );
+  assertSearchResult(semantic, dataItemId, versionId, stepId);
+  const graph = await apiJson(
+    runtime,
+    auth,
+    apiOrigin,
+    stepId,
+    '/api/data/v1/search',
+    {
+      method: 'POST',
+      body: {
+        query: `Ingestion ${dataItemId}`,
+        sources: ['graph'],
+        first: 50,
+      },
+    },
+  );
+  assertSearchResult(graph, dataItemId, versionId, stepId);
   return projection;
 }
 

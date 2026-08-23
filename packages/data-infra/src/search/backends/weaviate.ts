@@ -119,6 +119,7 @@ export class WeaviateSearchBackend implements SearchBackendPort {
     ) {
       throw adapterError('EMBEDDING_UNAVAILABLE');
     }
+    const serializedVector = JSON.stringify(vector);
     const response = await fetchJson(
       this.#fetch,
       this.#url,
@@ -130,10 +131,9 @@ export class WeaviateSearchBackend implements SearchBackendPort {
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          query: `query WiserSearch($tenant: String!, $vector: [Float!]!) { Get { ${this.#collectionName}(tenant: $tenant nearVector: { vector: $vector } where: ${whereGraphQl(request)} limit: ${request.limit}) { tenantId projectId dataItemId versionId evidenceId qualityGrade acceptanceStatus publicationStatus securityLevel policyVersion content limitations _additional { distance } } } }`,
+          query: `query WiserSearch($tenant: String!) { Get { ${this.#collectionName}(tenant: $tenant nearVector: { vector: ${serializedVector} } where: ${whereGraphQl(request)} limit: ${request.limit}) { tenantId projectId dataItemId versionId evidenceId qualityGrade acceptanceStatus publicationStatus securityLevel policyVersion content limitations _additional { distance } } } }`,
           variables: {
             tenant: tenantName(request),
-            vector,
           },
         }),
       },
