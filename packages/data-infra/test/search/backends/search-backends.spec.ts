@@ -226,10 +226,9 @@ describe('WeaviateSearchBackend', () => {
     const { url, body } = firstFetchCall(fetch);
     expect(url).toBe('http://weaviate.internal:8080/v1/graphql');
     expect(body['query']).toEqual(expect.stringContaining('nearVector'));
+    expect(body['query']).not.toEqual(expect.stringContaining('$vector'));
     expect(body['query']).toEqual(
-      expect.stringContaining(
-        '$vector: GetObjectsWiserEvidenceChunkV2NearVectorVectorScalar!',
-      ),
+      expect.stringContaining('nearVector: { vector: [0.25,0.5,0.75] }'),
     );
     expect(body['query']).not.toEqual(expect.stringContaining('hybrid'));
     expect(body['query']).toEqual(expect.stringContaining('tenant: $tenant'));
@@ -241,9 +240,9 @@ describe('WeaviateSearchBackend', () => {
     );
     expect(body['variables']).toMatchObject({
       tenant: TENANT_ID,
-      vector: [0.25, 0.5, 0.75],
     });
     expect(record(body['variables'])).not.toHaveProperty('where');
+    expect(record(body['variables'])).not.toHaveProperty('vector');
   });
 });
 
