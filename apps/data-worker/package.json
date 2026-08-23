@@ -21,6 +21,8 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/pg": "8.23.1",
+    "pg": "8.23.0",
     "tsx": "4.23.12",
     "typescript": "catalog:",
     "vitest": "4.1.11"

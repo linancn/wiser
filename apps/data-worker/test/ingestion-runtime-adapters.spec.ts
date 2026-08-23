@@ -1,5 +1,6 @@
-import { createRequire } from 'node:module';
+import { randomUUID } from 'node:crypto';
 
+import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -675,36 +676,23 @@ const pgSmoke = pgSmokeUrl === undefined ? it.skip : it;
 pgSmoke(
   'commits one frozen checkpoint against an isolated real PostgreSQL database',
   async () => {
-    interface SmokePool extends IngestionRuntimePool {
-      query(
-        text: string,
-        values?: readonly unknown[],
-      ): Promise<{ readonly rows: readonly Record<string, unknown>[] }>;
-      end(): Promise<void>;
+    if (pgSmokeUrl === undefined) {
+      throw new Error('DATA_WORKER_PG_SMOKE_URL is required.');
     }
-    type PoolConstructor = new (options: {
-      readonly connectionString: string;
-      readonly max: number;
-    }) => SmokePool;
-    const require = createRequire(import.meta.url);
-    const pgModule: unknown = require('../../../packages/data-infra/node_modules/pg');
-    if (
-      pgModule === null ||
-      typeof pgModule !== 'object' ||
-      typeof Reflect.get(pgModule, 'Pool') !== 'function' ||
-      pgSmokeUrl === undefined
-    ) {
-      throw new Error('PostgreSQL smoke dependency is unavailable.');
-    }
-    const Pool = Reflect.get(pgModule, 'Pool') as PoolConstructor;
-    const pool = new Pool({ connectionString: pgSmokeUrl, max: 3 });
-    const smokeTenant = 'a1111111-1111-4111-8111-111111111111';
-    const smokeProject = 'a2222222-2222-4222-8222-222222222222';
-    const smokeIngestion = 'a3333333-3333-4333-8333-333333333333';
-    const smokeOperation = 'a4444444-4444-4444-8444-444444444444';
-    const smokeActor = 'a5555555-5555-4555-8555-555555555555';
-    const smokeAsset = 'a6666666-6666-4666-8666-666666666666';
-    const smokeUpload = 'a7777777-7777-4777-8777-777777777777';
+    const pool = new Pool({
+      connectionString: pgSmokeUrl,
+      max: 3,
+      connectionTimeoutMillis: 5_000,
+      query_timeout: 30_000,
+      statement_timeout: 30_000,
+    });
+    const smokeTenant = randomUUID();
+    const smokeProject = randomUUID();
+    const smokeIngestion = randomUUID();
+    const smokeOperation = randomUUID();
+    const smokeActor = randomUUID();
+    const smokeAsset = randomUUID();
+    const smokeUpload = randomUUID();
     const smokeHash = 'c'.repeat(64);
     const objectRef = `tenants/${smokeTenant}/projects/${smokeProject}/quarantine/${smokeUpload}/object`;
     const scopeSql = `select set_config('wiser.tenant_id', $1, true),
@@ -805,7 +793,13 @@ pgSmoke(
         return {
           async query(text, values) {
             try {
-              return await client.query(text, values);
+              const result =
+                values === undefined
+                  ? await client.query<Record<string, unknown>>(text)
+                  : await client.query<Record<string, unknown>>(text, [
+                      ...values,
+                    ]);
+              return { rows: result.rows };
             } catch (error) {
               const marker =
                 /\/\*\s*([^*]+)\*\//.exec(text)?.[1]?.trim() ??
@@ -924,50 +918,67 @@ pgSmoke(
         policyVersion: 1,
       });
       const verify = await pool.connect();
-      await verify.query('BEGIN');
-      await verify.query(scopeSql, [smokeTenant, smokeProject]);
-      const verified = await verify.query(
-        `select session.state, operation.status,
-        version.asset_manifest::text as manifest, asset.storage_key,
-        encode(asset.content_hash, 'hex') as asset_hash,
-        blob.lifecycle_state as blob_state, blob.raw_storage_key,
-        (select count(*)::integer from knowledge.evidence_fragment
-          where version_id = version.version_id) as evidence_count,
-        (select count(*)::integer from event.outbox_event
-          where aggregate_id = version.version_id::text) as outbox_count
-      from ingestion.session as session
-      join service.operation as operation
-        on operation.operation_id = session.operation_id
-      join catalog.data_item_version as version
-        on version.data_item_id = session.ingestion_id
-      join ingestion.input_asset as input
-        on input.ingestion_id = session.ingestion_id
-      join catalog.asset as asset on asset.asset_id = input.asset_id
-      join catalog.content_blob as blob
-        on blob.content_blob_id = asset.content_blob_id
-      where session.ingestion_id = $1`,
-        [smokeIngestion],
-      );
-      await verify.query('ROLLBACK');
-      verify.release();
-      expect(verified.rows[0]).toMatchObject({
-        state: 'COMMITTED',
-        status: 'RUNNING',
-        evidence_count: 1,
-        outbox_count: 1,
-        asset_hash: smokeHash,
-        blob_state: 'RAW',
-      });
-      expect(String(verified.rows[0]?.manifest)).not.toContain('quarantine/');
-      expect(String(verified.rows[0]?.storage_key)).toContain('versions/');
-      expect(String(verified.rows[0]?.raw_storage_key)).toBe(
-        `raw/${smokeHash}`,
-      );
+      try {
+        await verify.query('BEGIN');
+        await verify.query(scopeSql, [smokeTenant, smokeProject]);
+        const verified = await verify.query<{
+          readonly state: string;
+          readonly status: string;
+          readonly manifest: string;
+          readonly storage_key: string;
+          readonly asset_hash: string;
+          readonly blob_state: string;
+          readonly raw_storage_key: string;
+          readonly evidence_count: number;
+          readonly outbox_count: number;
+        }>(
+          `select session.state, operation.status,
+          version.asset_manifest::text as manifest, asset.storage_key,
+          encode(asset.content_hash, 'hex') as asset_hash,
+          blob.lifecycle_state as blob_state, blob.raw_storage_key,
+          (select count(*)::integer from knowledge.evidence_fragment
+            where version_id = version.version_id) as evidence_count,
+          (select count(*)::integer from event.outbox_event
+            where aggregate_id = version.version_id::text) as outbox_count
+        from ingestion.session as session
+        join service.operation as operation
+          on operation.operation_id = session.operation_id
+        join catalog.data_item_version as version
+          on version.data_item_id = session.ingestion_id
+        join ingestion.input_asset as input
+          on input.ingestion_id = session.ingestion_id
+        join catalog.asset as asset on asset.asset_id = input.asset_id
+        join catalog.content_blob as blob
+          on blob.content_blob_id = asset.content_blob_id
+        where session.ingestion_id = $1`,
+          [smokeIngestion],
+        );
+        expect(verified.rows[0]).toMatchObject({
+          state: 'COMMITTED',
+          status: 'RUNNING',
+          evidence_count: 1,
+          outbox_count: 1,
+          asset_hash: smokeHash,
+          blob_state: 'RAW',
+        });
+        expect(String(verified.rows[0]?.manifest)).not.toContain('quarantine/');
+        expect(String(verified.rows[0]?.storage_key)).toContain('versions/');
+        expect(String(verified.rows[0]?.raw_storage_key)).toBe(
+          `raw/${smokeHash}`,
+        );
+      } finally {
+        try {
+          await verify.query('ROLLBACK');
+        } finally {
+          verify.release();
+        }
+      }
       expect(committed.versionId).toMatch(/^[0-9a-f-]{36}$/);
     } finally {
       await pool.end();
     }
   },
+  60_000,
 );
 
 describe('ClamAV and Tika ingestion clients', () => {

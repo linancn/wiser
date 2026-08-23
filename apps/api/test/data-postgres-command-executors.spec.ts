@@ -1344,10 +1344,19 @@ describe('PostgreSQL Data Foundation command executors', () => {
   realPostgresTest(
     'executes fixed SQL as a non-BYPASSRLS role and proves rollback isolation',
     async () => {
-      const connectionString =
-        process.env['DATA_TEST_DATABASE_URL'] ??
-        'postgresql://wiser_data:wiser-local-data-4f8c71b0f3e947d4@127.0.0.1:55432/wiser_data';
-      const admin = new Pool({ connectionString, max: 2 });
+      const connectionString = process.env['DATA_TEST_DATABASE_URL'];
+      if (connectionString === undefined) {
+        throw new Error(
+          'DATA_TEST_DATABASE_URL is required when WISER_DATA_PG_INTEGRATION=1.',
+        );
+      }
+      const admin = new Pool({
+        connectionString,
+        max: 2,
+        connectionTimeoutMillis: 5_000,
+        query_timeout: 30_000,
+        statement_timeout: 30_000,
+      });
       const suffix = `${process.pid}_${Date.now().toString(36)}`;
       const roleName = `wiser_command_test_${suffix}`;
       const hiddenTenantId = randomUUID();
@@ -1996,6 +2005,6 @@ describe('PostgreSQL Data Foundation command executors', () => {
         await admin.end();
       }
     },
-    30_000,
+    60_000,
   );
 });
