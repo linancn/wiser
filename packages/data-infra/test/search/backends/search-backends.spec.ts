@@ -226,6 +226,11 @@ describe('WeaviateSearchBackend', () => {
     const { url, body } = firstFetchCall(fetch);
     expect(url).toBe('http://weaviate.internal:8080/v1/graphql');
     expect(body['query']).toEqual(expect.stringContaining('nearVector'));
+    expect(body['query']).toEqual(
+      expect.stringContaining(
+        '$vector: GetObjectsWiserEvidenceChunkV2NearVectorVectorScalar!',
+      ),
+    );
     expect(body['query']).not.toEqual(expect.stringContaining('hybrid'));
     expect(body['query']).toEqual(expect.stringContaining('tenant: $tenant'));
     expect(body['query']).toEqual(expect.stringContaining('limit: 25'));
