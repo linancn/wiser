@@ -136,9 +136,12 @@ select ok(
     where rolname = 'wiser_excon_runtime'
       and not rolsuper
       and not rolbypassrls
+      and not rolcreatedb
+      and not rolcreaterole
+      and not rolreplication
       and not rolcanlogin
   ),
-  'the runtime group is non-superuser, non-bypassrls, and cannot log in'
+  'the runtime group is unprivileged and cannot log in'
 );
 select ok(
   exists (
@@ -147,9 +150,12 @@ select ok(
     where rolname = 'wiser_excon_api'
       and not rolsuper
       and not rolbypassrls
+      and not rolcreatedb
+      and not rolcreaterole
+      and not rolreplication
       and rolcanlogin
   ),
-  'the API runtime role is non-superuser and cannot bypass RLS'
+  'the API runtime login has no privileged database capabilities'
 );
 select ok(
   pg_has_role('wiser_excon_api', 'wiser_excon_runtime', 'member'),

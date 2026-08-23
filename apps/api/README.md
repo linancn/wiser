@@ -67,7 +67,7 @@ pnpm --filter @wiser/api dev
 
 - `API_HOST`, `API_PORT`, and `API_CORS_ORIGIN` configure only the HTTP process boundary.
 - `WISER_AUTH_MODE` selects unified Auth; Supabase URL/key and the control-plane database remain server-only.
-- `EXCON_V2_MODE` selects the EXCON runtime; persistent journal and lease-key settings remain server-only.
+- `EXCON_V2_MODE` selects the EXCON runtime; persistent journal and lease-key settings remain server-only. PostgreSQL mode rejects runtime logins with superuser, RLS-bypass, database/role-creation, or replication capability before journal replay.
 - `DATA_FOUNDATION_MODE` enables Data Foundation only with unified Auth and its complete database, object-store, Worker, and internal-service configuration.
 - `.env.example`, `compose.yaml`, and runtime config loaders are the variable sources of truth; do not copy secrets, version pins, or persistence algorithms into this README.
 
@@ -75,6 +75,7 @@ pnpm --filter @wiser/api dev
 
 ```bash
 pnpm --filter @wiser/api test
+EXCON_JOURNAL_TEST_ADMIN_URL='<loopback-admin-dsn>' pnpm --filter @wiser/api test:postgres:excon-v2
 pnpm --filter @wiser/api typecheck
 pnpm --filter @wiser/api build
 pnpm verify

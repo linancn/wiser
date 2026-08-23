@@ -69,7 +69,7 @@ describe('Agent EXCON PostgreSQL journal CI', () => {
     expect(job.slice(journalStep, stop)).not.toContain(
       'EXCON_JOURNAL_DATABASE_URL',
     );
-    expect(job.slice(stop)).toContain('if: always()');
+    expect(job.slice(journal, stop)).toContain('if: always()');
   });
 
   it('documents the disposable database boundary in both locales', () => {

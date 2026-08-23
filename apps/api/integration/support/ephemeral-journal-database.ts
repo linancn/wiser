@@ -60,6 +60,10 @@ function combinedFailure(message: string, failures: readonly unknown[]) {
   return new AggregateError(failures, message);
 }
 
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
 function databaseUrl(
   baseUrl: string,
   databaseName: string,
@@ -414,8 +418,9 @@ export class EphemeralJournalDatabase {
 
     if (this.#databaseCreated) {
       try {
+        await this.#waitForDatabaseConnectionsToClose();
         await this.#maintenancePool.query(
-          `drop database ${quoteIdentifier(this.databaseName)} with (force)`,
+          `drop database ${quoteIdentifier(this.databaseName)}`,
         );
         this.#databaseCreated = false;
       } catch (error) {
@@ -505,6 +510,24 @@ export class EphemeralJournalDatabase {
     const migration = await readFile(JOURNAL_MIGRATION_URL, 'utf8');
     await this.#adminQuery(migration);
     this.#runtimeLogin = await this.createRuntimeLogin();
+  }
+
+  async #waitForDatabaseConnectionsToClose(): Promise<void> {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const result = await this.#maintenancePool.query<{
+        readonly connection_count: number;
+      }>(
+        `select count(*)::integer as connection_count
+         from pg_catalog.pg_stat_activity
+         where datname = $1`,
+        [this.databaseName],
+      );
+      if (result.rows[0]?.connection_count === 0) return;
+      await wait(20);
+    }
+    throw new Error(
+      'Ephemeral journal database retained an unexpected live connection.',
+    );
   }
 
   async #adminQuery<Row extends QueryResultRow = QueryResultRow>(

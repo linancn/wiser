@@ -147,6 +147,11 @@ jobs:
       - name: Verify migrations, pgTAP, lint, and advisors
         run: pnpm supabase:verify
 
+      - name: Verify durable Agent EXCON journal against real PostgreSQL
+        env:
+          EXCON_JOURNAL_TEST_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:56322/postgres
+        run: pnpm test:postgres:excon-v2
+
       - name: Stop local Supabase
         if: always()
         run: pnpm supabase:stop || true

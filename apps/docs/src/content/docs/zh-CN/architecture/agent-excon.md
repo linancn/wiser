@@ -78,13 +78,13 @@ Supabase JWT / wdc1 delegated credential
                     authenticated OTLP ───────────► Collector / OTel backends
 ```
 
-`EXCON_V2_MODE=memory` 只用于显式本机 Lab 和测试。完整栈与生产模式使用非超级用户 PostgreSQL append-only command journal，并在提供 readiness 之前确定性重放全部命令。
+`EXCON_V2_MODE=memory` 只用于显式本机 Lab 和测试。完整栈与生产模式使用无特权 PostgreSQL append-only command journal，并在提供 readiness 之前确定性重放全部命令；具备超级用户、RLS bypass、创建数据库/角色或 replication 能力的 runtime role 会在重放前被拒绝。
 
 每条 mutation 先追加 immutable intent，保存 command、canonical request hash、最小 principal projection、参数与生成/lease key 标识；完成后追加 immutable outcome，保存成功或稳定拒绝、result hash，以及重放所需的 UUID、时间和 lease counter tape。Task lease 明文只存在于响应与调用方状态，journal 只保留带历史 key id 的 HMAC secret reference。
 
 启动流程必须：
 
-1. 拒绝超级用户运行角色；
+1. 拒绝拥有任一数据库特权能力的运行角色；
 2. 获取唯一 advisory writer lock；
 3. 按 sequence 校验 intent/outcome、hash、稳定错误与 key reference；
 4. 将生成值 tape 注入纯 service 并逐条重放；

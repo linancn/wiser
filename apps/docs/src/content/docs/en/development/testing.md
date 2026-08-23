@@ -82,6 +82,7 @@ Use the narrowest command during development, then return to root verification b
 | Agent EXCON contracts/core/infra | `pnpm exec vitest run packages/contracts/test packages/core/test packages/infra/test` |
 | Platform contracts/auth          | `pnpm exec vitest run packages/platform-contracts/test packages/platform-auth/test`   |
 | API composition                  | `pnpm --filter @wiser/api test`                                                       |
+| Agent EXCON durable journal      | `pnpm test:postgres:excon-v2`                                                         |
 | EXCON v1 compatibility Worker    | `pnpm --filter @agent-excon/worker test`                                              |
 | Data Worker                      | `pnpm --filter @wiser/data-worker test`                                               |
 | MCP composition                  | `pnpm --filter @wiser/mcp test`                                                       |
@@ -113,6 +114,14 @@ pnpm supabase:stop
 ```
 
 `supabase:verify` resets local Supabase before running pgTAP, lint, and advisors. Back up any local data that must be retained.
+
+The Agent EXCON journal deep suite runs only against a verified local Supabase PostgreSQL server and requires an explicit loopback administrator URL:
+
+```bash
+EXCON_JOURNAL_TEST_ADMIN_URL='<loopback-admin-dsn>' pnpm test:postgres:excon-v2
+```
+
+The suite never resets the shared `postgres` database. Each of its seven serial cases creates one exact ephemeral database and login role, applies the canonical journal migration, exercises the production runtime, closes every service and pool, and drops only those tracked objects. It proves least-privilege restart/replay, pending-outcome recovery, one-writer locking, result drift, intent corruption, historical HMAC-key loss, and rejection of runtime roles with RLS-bypass, database/role-creation, or replication capability. CI runs it after `supabase:verify` and before the unconditional Supabase stop step.
 
 For Data package, migration-runner, or Compose contract changes, first run:
 

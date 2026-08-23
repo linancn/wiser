@@ -24,7 +24,7 @@ lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
 
 HTTP is the only business protocol foundation. Web, Skills, MCP, and future SDKs call HTTP rather than domain tables. The default development base is `/api/v2`; `/api/v1` is only for an explicitly assigned Episode and is never an automatic fallback after a v2 failure.
 
-`/api/v2` has two explicit runtimes. Non-production protocol tests may select `EXCON_V2_MODE=memory`. The complete stack and production use `postgres`: a non-superuser appends mutation intent/outcome rows to a Supabase PostgreSQL journal, then verifies deterministic startup replay through UUID/time/lease generation tapes and result hashes. One advisory-lock writer owns the journal; corruption, replay drift, unknown HMAC keys, and incomplete outcomes fail closed. This survives restart, but it is not one normalized repository per v2 aggregate. The tables below list registered routes only.
+`/api/v2` has two explicit runtimes. Non-production protocol tests may select `EXCON_V2_MODE=memory`. The complete stack and production use `postgres`: a login without superuser, RLS-bypass, database/role-creation, or replication capability appends mutation intent/outcome rows to a Supabase PostgreSQL journal, then verifies deterministic startup replay through UUID/time/lease generation tapes and result hashes. One advisory-lock writer owns the journal; corruption, replay drift, unknown HMAC keys, incomplete outcomes, and privileged runtime roles fail closed. This survives restart, but it is not one normalized repository per v2 aggregate. The tables below list registered routes only.
 
 ## Position in the shared host
 

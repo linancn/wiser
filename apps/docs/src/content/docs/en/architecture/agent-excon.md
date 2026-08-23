@@ -78,13 +78,13 @@ external Agent + Skill ── HTTP/MCP ──► Fastify /api/v2
                     authenticated OTLP ───────────► Collector / OTel backends
 ```
 
-`EXCON_V2_MODE=memory` exists only for explicit local labs and tests. Complete-stack and production modes use a non-superuser PostgreSQL append-only command journal and deterministically replay every command before reporting readiness.
+`EXCON_V2_MODE=memory` exists only for explicit local labs and tests. Complete-stack and production modes use an unprivileged PostgreSQL append-only command journal and deterministically replay every command before reporting readiness. Startup rejects roles with superuser, RLS-bypass, database/role-creation, or replication capability.
 
 Each mutation first appends an immutable intent containing command, canonical request hash, minimal principal projection, arguments, and generation/lease-key identifiers. Completion appends an immutable outcome with success or stable rejection, result hash, and the UUID, time, and lease-counter tape needed for replay. Plain Task lease tokens exist only in the response and caller state. The journal retains a historical-key-id HMAC secret reference.
 
 Startup must:
 
-1. reject a superuser runtime role;
+1. reject any runtime role with privileged database capabilities;
 2. acquire the sole advisory writer lock;
 3. validate intents/outcomes, hashes, stable errors, and key references in sequence;
 4. inject the generation tape and replay through the pure service;

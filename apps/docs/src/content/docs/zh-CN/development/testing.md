@@ -82,6 +82,7 @@ pnpm verify
 | Agent EXCON contracts/core/infra | `pnpm exec vitest run packages/contracts/test packages/core/test packages/infra/test` |
 | Platform contracts/auth          | `pnpm exec vitest run packages/platform-contracts/test packages/platform-auth/test`   |
 | API composition                  | `pnpm --filter @wiser/api test`                                                       |
+| Agent EXCON 持久 journal         | `pnpm test:postgres:excon-v2`                                                         |
 | EXCON v1 compatibility Worker    | `pnpm --filter @agent-excon/worker test`                                              |
 | Data Worker                      | `pnpm --filter @wiser/data-worker test`                                               |
 | MCP composition                  | `pnpm --filter @wiser/mcp test`                                                       |
@@ -113,6 +114,14 @@ pnpm supabase:stop
 ```
 
 `supabase:verify` 会重置本机 Supabase，然后运行 pgTAP、lint 和 advisor。需要保留的数据必须提前备份。
+
+Agent EXCON journal 深度测试只允许连接已经验证的本机 Supabase PostgreSQL，并要求显式提供 loopback 管理员 URL：
+
+```bash
+EXCON_JOURNAL_TEST_ADMIN_URL='<loopback-admin-dsn>' pnpm test:postgres:excon-v2
+```
+
+该套件不会 reset 共享的 `postgres` 数据库。七个串行用例分别创建一个精确跟踪的临时数据库和 login role，应用 canonical journal migration，经过生产 runtime 后关闭所有 service/pool，并只删除自己记录的对象。它验证最小权限下的重启/回放、pending outcome 恢复、唯一 writer、result drift、intent corruption、历史 HMAC key 丢失，以及拒绝具备 RLS bypass、创建数据库/角色或 replication 能力的 runtime role。CI 在 `supabase:verify` 之后、无条件停止 Supabase 之前运行它。
 
 Data package、migration runner 或 Compose 合同变化时先运行：
 

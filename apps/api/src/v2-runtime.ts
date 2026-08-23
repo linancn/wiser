@@ -164,13 +164,29 @@ function createRuntimePool(options: V2RuntimePoolOptions): V2JournalPool {
     async connect() {
       const client = await pool.connect();
       try {
-        const role = await client.query<{ readonly rolsuper: boolean }>(`
-          select role.rolsuper
+        const role = await client.query<{
+          readonly rolsuper: boolean;
+          readonly rolbypassrls: boolean;
+          readonly rolcreatedb: boolean;
+          readonly rolcreaterole: boolean;
+          readonly rolreplication: boolean;
+        }>(`
+          select role.rolsuper, role.rolbypassrls, role.rolcreatedb,
+            role.rolcreaterole, role.rolreplication
           from pg_catalog.pg_roles as role
           where role.rolname = current_user
         `);
-        if (role.rows.length !== 1 || role.rows[0]?.rolsuper !== false) {
-          throw new Error('Agent EXCON journal requires a non-superuser role.');
+        const currentRole = role.rows[0];
+        if (
+          role.rows.length !== 1 ||
+          currentRole === undefined ||
+          currentRole.rolsuper !== false ||
+          currentRole.rolbypassrls !== false ||
+          currentRole.rolcreatedb !== false ||
+          currentRole.rolcreaterole !== false ||
+          currentRole.rolreplication !== false
+        ) {
+          throw new Error('Agent EXCON journal requires an unprivileged role.');
         }
         return journalClient(client);
       } catch (error) {
