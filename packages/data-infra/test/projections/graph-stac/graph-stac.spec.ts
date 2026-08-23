@@ -449,6 +449,19 @@ describe('Graph/STAC projection input boundaries', () => {
     expect(http.requests).toHaveLength(0);
   });
 
+  it('rejects more than 100,000 positions without an HTTP request', async () => {
+    const http = new FakeHttpClient();
+    const coordinates = Array.from({ length: 100_001 }, () => [116, 40]);
+
+    await expect(
+      stacProjection(http).put({
+        ...stacInput,
+        geometry: { type: 'MultiPoint', coordinates },
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_PROJECTION_INPUT' });
+    expect(http.requests).toHaveLength(0);
+  });
+
   it.each([
     { type: 'Point', coordinates: [116, 40] },
     {
@@ -511,6 +524,32 @@ describe('Graph/STAC projection input boundaries', () => {
     expect(http.requests[1]?.body).toMatchObject({ geometry });
   });
 
+  it('accepts a three-dimensional geometry with a six-value bbox', async () => {
+    const http = new FakeHttpClient();
+    const geometry = { type: 'Point', coordinates: [116, 40, 12] } as const;
+
+    const result = await stacProjection(http).put({
+      ...stacInput,
+      geometry,
+      bbox: [116, 40, 12, 116, 40, 12],
+    });
+    expect(result.itemId).toMatch(/^wiser-[a-f0-9]{48}$/);
+    expect(http.requests).toHaveLength(2);
+  });
+
+  it('rejects a bbox whose dimensionality differs from its geometry', async () => {
+    const http = new FakeHttpClient();
+
+    await expect(
+      stacProjection(http).put({
+        ...stacInput,
+        geometry: { type: 'Point', coordinates: [116, 40, 12] },
+        bbox: [116, 40, 116, 40],
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_PROJECTION_INPUT' });
+    expect(http.requests).toHaveLength(0);
+  });
+
   it.each(['2026-02-31T00:00:00Z', '2025-02-29T00:00:00.000Z'])(
     'rejects an impossible calendar timestamp: %s',
     async (validFrom) => {
@@ -562,6 +601,7 @@ describe('Graph/STAC projection input boundaries', () => {
   it('projects one immutable validated snapshot despite caller mutation', async () => {
     const http = new DeferredFirstHttpClient();
     const bbox = [115.5, 39.5, 116.5, 40.5];
+    const businessDomains = ['water-monitoring'];
     const firstPosition = [115.5, 39.5];
     const geometry = {
       type: 'Polygon' as const,
@@ -572,11 +612,13 @@ describe('Graph/STAC projection input boundaries', () => {
     const putting = stacProjection(http).put({
       ...stacInput,
       bbox,
+      businessDomains,
       geometry,
     });
     await http.firstRequestStarted;
 
     bbox[0] = 0;
+    businessDomains[0] = 'mutated-after-validation';
     firstPosition[0] = 0;
     http.releaseFirst();
     await putting;
@@ -597,6 +639,7 @@ describe('Graph/STAC projection input boundaries', () => {
           ],
         ],
       },
+      properties: { businessDomains: ['water-monitoring'] },
     });
   });
 });

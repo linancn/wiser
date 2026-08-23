@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 84af0422a311bb23eb88867697447565f1f4298a
+lastReviewedCommit: f7820b06ad01c425d526389ec20f94f3403b4705
 ---
 
 ## Authority boundary
