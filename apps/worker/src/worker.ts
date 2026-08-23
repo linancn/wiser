@@ -57,6 +57,7 @@ export class EvaluationWorker {
   private completedJobs = 0;
   private failedJobs = 0;
   private recoveredLeases = 0;
+  private readonly activePolls = new Set<Promise<number>>();
   private readonly inFlight = new Set<Promise<void>>();
   private wakePoll: (() => void) | undefined;
   private stopping: Promise<void> | undefined;
@@ -113,9 +114,19 @@ export class EvaluationWorker {
     };
   }
 
-  async processOnce(): Promise<number> {
+  processOnce(): Promise<number> {
     this.startIfIdle();
-    if (this.phase !== 'running') return 0;
+    if (this.phase !== 'running') return Promise.resolve(0);
+    const poll = this.pollOnce();
+    this.activePolls.add(poll);
+    void poll.then(
+      () => this.activePolls.delete(poll),
+      () => this.activePolls.delete(poll),
+    );
+    return poll;
+  }
+
+  private async pollOnce(): Promise<number> {
     this.lastPollAt = this.timestamp();
     try {
       const recovered = await this.repository.recoverExpiredLeases();
@@ -244,6 +255,7 @@ export class EvaluationWorker {
       workerId: this.workerId,
       inFlightJobs: this.inFlight.size,
     });
+    await Promise.allSettled([...this.activePolls]);
     await Promise.allSettled([...this.inFlight]);
     await this.repository.close();
     this.phase = 'stopped';
