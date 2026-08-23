@@ -19,8 +19,8 @@ checkPaths:
   - apps/mcp/src/data-foundation/**
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: 283879984de8a5d65d71c384bef90da2cd5ca541
+lastReviewedAt: 2026-08-23
+lastReviewedCommit: 84af0422a311bb23eb88867697447565f1f4298a
 ---
 
 ## 权威边界

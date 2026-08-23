@@ -18,6 +18,8 @@ checkPaths:
   - apps/*/package.json
   - apps/*/vitest.config.ts
   - apps/*/playwright.config.ts
+  - apps/*/playwright.*.config.ts
+  - apps/*/e2e*/**
   - scripts/data-foundation/**
   - infrastructure/observability/**
   - examples/agent-excon/**
@@ -151,7 +153,7 @@ DATA_WORKER_PG_SMOKE_URL='<worker-dsn>' pnpm test:postgres:data-worker
 
 The API deep test uses the temporary non-bypass role to prove illegal Operation, Ingestion, Job, and Transform Plan transitions fail with stable PostgreSQL errors. It also proves authority identity/content, terminal and running same-state protection, capability-scoped upload completion, exact row versions, retirement of the legacy claim path, accurate wake-to-claim event history, and legal heartbeat/wait aggregation. Its positive fixture advances through the legal lifecycle rather than inserting an impossible intermediate state. The Worker deep test then proves the guarded schema still accepts the complete ingestion commit path.
 
-Data Foundation CI completes the vertical smoke first, then runs the API and Worker deep tests, and finally removes that job's Data volumes unconditionally. Never point these commands at a shared database or a local volume whose data must be retained.
+Data Foundation CI completes the vertical smoke and saves its machine-readable report first, runs the authenticated Data browser suite against that same stack, then runs the API and Worker deep tests, and finally removes that job's Data volumes unconditionally. The order is `smoke → authenticated browser → API/Worker deep tests → always cleanup`; cleanup must still run after any earlier failure. Never point these commands at a shared database or a local volume whose data must be retained.
 
 On a clean environment, `pnpm stack:full:up` converges Supabase startup, the Data profile, migrations, seed, and `data:smoke`. A passing smoke proves the fixed sequence across upload, scanning, fingerprinting, fake Agent, deterministic transformation, quality/review, authority commit, Outbox, five completion targets, REST, GraphQL, MCP, and authenticated Web. It also verifies that Outbox replay does not duplicate target facts.
 
@@ -171,6 +173,29 @@ pnpm --filter @wiser/docs test:e2e
 ```
 
 Both Playwright configurations start isolated development servers: Web uses `127.0.0.1:3100`, while Docs uses `127.0.0.1:4322`. The CI browser job runs the same root command after `pnpm verify` and retains screenshots, traces, and the HTML report only on failure. The standard suites use reference/Auth-off configuration to prove browser routing, language, theme, and interaction; they do not replace unified-Auth or database vertical smoke.
+
+### Authenticated Data live suite
+
+After a disposable loopback stack has already completed Data migration, seed, and smoke, run the protected browser flow against that same stack:
+
+```bash
+WISER_WEB_LIVE_BASE_URL='http://127.0.0.1:3000' \
+WISER_WEB_LIVE_SMOKE_REPORT='<absolute-path-to-successful-smoke-report.json>' \
+WISER_WEB_LIVE_EMAIL='<seeded-local-email>' \
+WISER_WEB_LIVE_PASSWORD='<seeded-local-password>' \
+pnpm test:e2e:data-live
+```
+
+| Variable                      | Contract                                                                                                       |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `WISER_WEB_LIVE_BASE_URL`     | Loopback origin of the already-running Web application; shared, staging, and production origins are forbidden. |
+| `WISER_WEB_LIVE_SMOKE_REPORT` | Absolute path to the successful machine-readable `data:smoke` report produced by this same stack.              |
+| `WISER_WEB_LIVE_EMAIL`        | Seeded local fixture identity used through the sign-in UI.                                                     |
+| `WISER_WEB_LIVE_PASSWORD`     | Password for that local fixture identity; never print or persist it in diagnostics.                            |
+
+This command is a test consumer, not a stack orchestrator: it does not start or stop services, apply migrations or seed, run smoke, or reset any authority. It must reuse an already migrated, seeded, smoke-verified loopback stack whose data and volumes are disposable. Unlike the reference/Auth-off suite, it signs in through a real Supabase session and verifies protected Data Web/API behavior; a passing reference suite cannot satisfy this identity boundary.
+
+The live Playwright configuration disables traces and video and captures screenshots only on failure. CI may upload the failed-run screenshots and live HTML report, with restricted access and short retention; it must not publish the four environment values, auth cookies or storage state, request headers, DSNs, the smoke report, service logs, or downloaded user content. Treat even the permitted failure diagnostics as sensitive before sharing them outside the CI run.
 
 Every visible UI change covers Chinese-default and equivalent English states, and checks light/dark themes, keyboard focus, narrow screens, and failure/unavailable states. When repairing locators, prefer roles, labels, visible text, or stable test ids.
 

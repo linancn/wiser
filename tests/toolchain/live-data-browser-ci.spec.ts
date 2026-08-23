@@ -30,6 +30,8 @@ describe('authenticated Data browser CI', () => {
     const webScripts = web.scripts as Record<string, string>;
     const referenceConfig = read('apps/web/playwright.config.ts');
     const liveConfig = read('apps/web/playwright.live.config.ts');
+    const nextConfig = read('apps/web/next.config.ts');
+    const gitignore = read('.gitignore');
 
     expect(rootScripts['test:e2e:data-live']).toBe(
       'pnpm --filter @wiser/web test:e2e:data-live',
@@ -49,6 +51,11 @@ describe('authenticated Data browser CI', () => {
     expect(liveConfig).toContain("trace: 'off'");
     expect(liveConfig).toContain("video: 'off'");
     expect(liveConfig).not.toContain('webServer:');
+    expect(nextConfig).toContain(
+      "allowedDevOrigins: ['127.0.0.1', 'localhost']",
+    );
+    expect(gitignore).toContain('playwright-report-live/');
+    expect(gitignore).toContain('test-results-live/');
   });
 
   it('reuses the Data stack after smoke and retains failure diagnostics', () => {
@@ -57,7 +64,9 @@ describe('authenticated Data browser CI', () => {
       'name: Install Chromium for authenticated Data browser checks',
     );
     const start = job.indexOf('run: pnpm data:up');
-    const smoke = job.indexOf('run: pnpm data:smoke');
+    const smoke = job.indexOf(
+      'run: pnpm --silent data:smoke > "$RUNNER_TEMP/wiser-data-smoke.json"',
+    );
     const browserStep = job.indexOf(
       'name: Verify authenticated Data browser flow',
     );
@@ -72,6 +81,7 @@ describe('authenticated Data browser CI', () => {
 
     expect(install).toBeGreaterThan(-1);
     expect(install).toBeLessThan(start);
+    expect(smoke).toBeGreaterThan(-1);
     expect(browserStep).toBeGreaterThan(smoke);
     expect(browser).toBeGreaterThan(browserStep);
     expect(api).toBeGreaterThan(browser);
@@ -92,7 +102,9 @@ describe('authenticated Data browser CI', () => {
     expect(job).toContain(
       'pnpm --silent data:smoke > "$RUNNER_TEMP/wiser-data-smoke.json"',
     );
-    expect(job.slice(artifact, cleanup)).toContain('if: failure()');
+    expect(job.slice(artifact, cleanup)).toContain(
+      "if: failure() && steps.authenticated_data_browser.outcome == 'failure'",
+    );
     expect(job.slice(artifact, cleanup)).toContain(
       'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a',
     );

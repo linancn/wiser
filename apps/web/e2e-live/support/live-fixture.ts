@@ -86,12 +86,18 @@ export function loadLiveDataFixture(): LiveDataFixture {
     });
   }
   const vertical = record(parsed.vertical) as VerticalReport | null;
-  if (
-    parsed.status !== 'ok' ||
-    vertical?.status !== 'ok' ||
-    !Array.isArray(vertical.steps) ||
-    JSON.stringify(vertical.steps) !== JSON.stringify(EXPECTED_STEPS)
-  ) {
+  const validSteps =
+    Array.isArray(vertical?.steps) &&
+    vertical.steps.length === EXPECTED_STEPS.length &&
+    vertical.steps.every((value, index) => {
+      const step = record(value);
+      return (
+        step?.number === index + 1 &&
+        step.id === EXPECTED_STEPS[index] &&
+        step.status === 'ok'
+      );
+    });
+  if (parsed.status !== 'ok' || vertical?.status !== 'ok' || !validSteps) {
     throw new Error('Data smoke report is incomplete or untrusted.');
   }
   return Object.freeze({

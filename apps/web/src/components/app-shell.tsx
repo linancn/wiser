@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { Suspense, type ReactNode } from 'react';
 
-import { getDictionary, switchLocalePath, type Locale } from '@/lib/i18n';
+import { getDictionary, switchLocaleHref, type Locale } from '@/lib/i18n';
 import {
   activeSystemForPath,
   contextRoutesForPath,
@@ -25,6 +25,30 @@ function RiverMark() {
   );
 }
 
+function LocaleSwitch({
+  label,
+  locale,
+  pathname,
+  text,
+}: {
+  readonly label: string;
+  readonly locale: Locale;
+  readonly pathname: string;
+  readonly text: string;
+}) {
+  const search = useSearchParams();
+  return (
+    <Link
+      className={styles.language}
+      href={switchLocaleHref(pathname, search.toString(), locale)}
+      hrefLang={locale}
+      aria-label={label}
+    >
+      {text}
+    </Link>
+  );
+}
+
 export function AppShell({
   authControl,
   children,
@@ -37,7 +61,6 @@ export function AppShell({
   const dictionary = getDictionary(locale);
   const pathname = usePathname();
   const otherLocale: Locale = locale === 'zh-CN' ? 'en' : 'zh-CN';
-  const languageHref = switchLocalePath(pathname, otherLocale);
   const activeSystem = activeSystemForPath(pathname);
   const contextRoutes = contextRoutesForPath(pathname);
   const contextLabel =
@@ -77,14 +100,20 @@ export function AppShell({
         <div className={styles.actions}>
           {authControl}
           <ThemeToggle locale={locale} />
-          <Link
-            className={styles.language}
-            href={languageHref}
-            hrefLang={otherLocale}
-            aria-label={`${dictionary.shell.language}：${dictionary.shell.otherLanguage}`}
+          <Suspense
+            fallback={
+              <span className={styles.language} aria-hidden="true">
+                {dictionary.shell.otherLanguage}
+              </span>
+            }
           >
-            {dictionary.shell.otherLanguage}
-          </Link>
+            <LocaleSwitch
+              label={`${dictionary.shell.language}：${dictionary.shell.otherLanguage}`}
+              locale={otherLocale}
+              pathname={pathname}
+              text={dictionary.shell.otherLanguage}
+            />
+          </Suspense>
         </div>
       </header>
       {contextRoutes.length === 0 ? null : (

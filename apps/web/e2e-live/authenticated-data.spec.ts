@@ -50,6 +50,7 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
 
     await page.getByRole('link', { name: 'English' }).click();
     const englishTarget = detailPath('en');
+    await expect(page).toHaveURL(/\/en\/login\?/);
     url = new URL(page.url());
     expect(url.pathname).toBe('/en/login');
     expect(url.searchParams.get('next')).toBe(englishTarget);
@@ -57,18 +58,23 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
 
     await page.getByLabel('Email').fill(credentials.email);
     await page.getByLabel('Password').fill(credentials.password);
-    const navigation = page.waitForResponse(
-      (response) =>
-        response.url().includes(englishTarget) &&
-        response.request().isNavigationRequest(),
-    );
+    const navigation = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
+      return (
+        `${responseUrl.pathname}${responseUrl.search}` === englishTarget &&
+        response.request().isNavigationRequest()
+      );
+    });
     await page.getByRole('button', { name: 'Sign in' }).click();
     const response = await navigation;
     await expect(page).toHaveURL(new RegExp(`${fixture.dataItemId}.*version=`));
     await expect(
       page.getByLabel(`Signed in: ${credentials.email}`),
     ).toBeVisible();
-    expect(response.headers()['cache-control']).toContain('no-store');
+    expect(response.headers()['cache-control']).toMatch(/no-store|no-cache/);
+    expect(response.headers()['cache-control']).not.toMatch(
+      /public|max-age=[1-9]/,
+    );
     await expect(page.locator('main')).toContainText(fixture.dataItemId);
     await expect(page.locator('main')).not.toContainText(unsafeNarrative);
   });
@@ -95,7 +101,7 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
     await page.goto(`/zh-CN/data-foundation/ingestions/${fixture.ingestionId}`);
     await expect(page.getByRole('heading', { name: '接入任务' })).toBeVisible();
     await expect(
-      page.getByText(fixture.ingestionId, { exact: true }),
+      page.getByText(fixture.ingestionId, { exact: true }).first(),
     ).toBeVisible();
     await expect(
       page.getByText('已发布', { exact: true }).first(),
@@ -108,7 +114,7 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
     await operation.click();
     await expect(page.getByRole('heading', { name: '任务进度' })).toBeVisible();
     await expect(
-      page.getByText(fixture.operationId, { exact: true }),
+      page.getByText(fixture.operationId, { exact: true }).first(),
     ).toBeVisible();
     await expect(page.getByText('100%', { exact: true })).toBeVisible();
     await expect(
@@ -117,6 +123,10 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
     await expect(page.getByRole('heading', { name: '进度记录' })).toBeVisible();
 
     await page.getByRole('button', { name: '切换至深色模式' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem('wiser-theme')))
+      .toBe('dark');
     await page.getByRole('link', { name: 'English' }).click();
     await expect(page).toHaveURL(
       new RegExp(`/en/data-foundation/operations/${fixture.operationId}$`),
@@ -130,9 +140,18 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
     ).toBeVisible();
 
     await page.goto(detailPath('en'));
-    await page
-      .getByRole('link', { name: 'View this version on the map' })
-      .click();
+    const mapLink = page.getByRole('link', {
+      name: 'View this version on the map',
+    });
+    const mapHref = await mapLink.getAttribute('href');
+    expect(mapHref).not.toBeNull();
+    const mapUrl = new URL(mapHref!, page.url());
+    expect(mapUrl.searchParams.get('version')).toBe(fixture.versionId);
+    expect(mapUrl.searchParams.get('bbox')).toBe(
+      '115.6078,39.8496,116.2186,40.2217',
+    );
+    expect(mapUrl.searchParams.get('crs')).toBe('EPSG:4490');
+    await mapLink.click();
     await expect(
       page.getByRole('heading', { name: 'Map preview' }),
     ).toBeVisible();
@@ -150,7 +169,7 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
       `/api/data-foundation/geo/tiles/vector/versions/${fixture.versionId}/0/0/0.pbf`,
       { maxRedirects: 0 },
     );
-    expect(vector.status()).toBeLessThan(400);
+    expect(vector.status()).toBe(200);
     expect(vector.headers()['content-type']).toMatch(
       /application\/(?:vnd\.mapbox-vector-tile|x-protobuf|octet-stream)/,
     );

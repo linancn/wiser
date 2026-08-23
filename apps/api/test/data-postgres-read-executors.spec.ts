@@ -140,6 +140,7 @@ class FakeClient implements PostgresDataReadClient {
   notFound = false;
   emptyIngestionSummaries = false;
   internalOperationEvent = false;
+  pointSpatialExtent = false;
   released = false;
 
   query(
@@ -161,7 +162,13 @@ class FakeClient implements PostgresDataReadClient {
       });
     }
     if (/data\.catalog\.item\.spatial-extent/.test(text)) {
-      return Promise.resolve({ rows: [spatialExtentRow] });
+      return Promise.resolve({
+        rows: [
+          this.pointSpatialExtent
+            ? { bbox: [116.2, 39.8, 116.2, 39.8], crs: 'EPSG:4490' }
+            : spatialExtentRow,
+        ],
+      });
     }
     if (/data\.catalog\.item/.test(text)) {
       return Promise.resolve({ rows: this.notFound ? [] : [itemRow] });
@@ -418,6 +425,21 @@ describe('data-postgres RLS read executors', () => {
     ]);
     expect(extent?.text).toContain('ST_Extent(canonical_geometry)');
     expect(extent?.text).toContain('version_id is null');
+  });
+
+  it('preserves a valid point-sized canonical spatial envelope', async () => {
+    const pool = new FakePool();
+    pool.client.pointSpatialExtent = true;
+    const runtime = createPostgresDataReadRuntime(pool);
+    const get = (await executor(runtime, 'data.catalog.get').execute(
+      { dataItemId: itemRow.data_item_id, versionId: versionRow.version_id },
+      context,
+    )) as { readonly item: { readonly spatialExtent?: unknown } };
+
+    expect(get.item.spatialExtent).toEqual({
+      bbox: [116.2, 39.8, 116.2, 39.8],
+      crs: 'EPSG:4490',
+    });
   });
 
   it('maps ingestion, operation, and append-only event reads to exact DTOs', async () => {

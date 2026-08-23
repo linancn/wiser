@@ -1976,3 +1976,32 @@ export function switchLocalePath(pathname: string, locale: Locale): string {
   }
   return `/${locale}`;
 }
+
+function switchLocalizedTarget(value: string, locale: Locale): string | null {
+  try {
+    const target = new URL(value, 'https://wiser.invalid');
+    if (target.origin !== 'https://wiser.invalid') return null;
+    const currentLocale = target.pathname.split('/')[1] ?? '';
+    if (!isLocale(currentLocale)) return null;
+    return `${switchLocalePath(target.pathname, locale)}${target.search}${target.hash}`;
+  } catch {
+    return null;
+  }
+}
+
+export function switchLocaleHref(
+  pathname: string,
+  search: string,
+  locale: Locale,
+): string {
+  const path = switchLocalePath(pathname, locale);
+  const parameters = new URLSearchParams(search);
+  const next = parameters.get('next');
+  if (next !== null) {
+    const localizedNext = switchLocalizedTarget(next, locale);
+    if (localizedNext === null) parameters.delete('next');
+    else parameters.set('next', localizedNext);
+  }
+  const query = parameters.toString();
+  return query.length === 0 ? path : `${path}?${query}`;
+}

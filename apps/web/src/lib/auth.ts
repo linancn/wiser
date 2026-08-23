@@ -132,11 +132,12 @@ export async function readVerifiedAuthViewer(
 }
 
 function redirectResponse(request: Request, target: string): Response {
+  void request;
   return new Response(null, {
     status: 303,
     headers: {
       ...NO_STORE_HEADERS,
-      Location: new URL(target, request.url).toString(),
+      Location: target,
     },
   });
 }

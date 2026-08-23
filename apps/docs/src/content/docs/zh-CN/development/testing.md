@@ -18,6 +18,8 @@ checkPaths:
   - apps/*/package.json
   - apps/*/vitest.config.ts
   - apps/*/playwright.config.ts
+  - apps/*/playwright.*.config.ts
+  - apps/*/e2e*/**
   - scripts/data-foundation/**
   - infrastructure/observability/**
   - examples/agent-excon/**
@@ -151,7 +153,7 @@ DATA_WORKER_PG_SMOKE_URL='<worker-dsn>' pnpm test:postgres:data-worker
 
 API 深度测试通过临时非 bypass role 证明 Operation、Ingestion、Job 与 Transform Plan 的非法转换会以稳定 PostgreSQL 错误失败，并验证权威 identity/content、终态与运行中同态保护、Capability 限定的上传完成、精确 row version、旧 claim 路径移除、审核唤醒后准确的 claim event 历史，以及合法 heartbeat/等待态聚合；其正向 fixture 沿合法生命周期逐步推进，不直接插入不可能的中间状态。随后 Worker 深度测试证明完整 ingestion commit 路径仍可通过受保护 schema。
 
-Data Foundation CI 先完成纵向 smoke，再运行 API、Worker 两个深度测试，最后无条件删除该 job 的 Data volumes。不要把这些命令指向共享数据库或需要保留的本机 volume。
+Data Foundation CI 先完成纵向 smoke 并保存机器可读报告，再对同一套栈运行登录态 Data 浏览器套件，然后运行 API、Worker 两个深度测试，最后无条件删除该 job 的 Data volumes。固定顺序是 `smoke → 登录态浏览器 → API/Worker 深度测试 → always cleanup`；前序任一步失败也必须执行清理。不要把这些命令指向共享数据库或需要保留的本机 volume。
 
 在干净环境中，`pnpm stack:full:up` 会执行启动 Supabase、启动 Data profile、migration、seed 和 `data:smoke` 的收敛流程。Smoke 的成功证明固定步骤跨越上传、扫描、指纹、fake Agent、确定性转换、质量/审核、权威提交、Outbox、五个 completion target、REST、GraphQL、MCP 和登录 Web，并验证 Outbox 重放不重复创建 target facts。
 
@@ -171,6 +173,29 @@ pnpm --filter @wiser/docs test:e2e
 ```
 
 两个 Playwright 配置都会启动自己的隔离开发服务器：Web 使用 `127.0.0.1:3100`，Docs 使用 `127.0.0.1:4322`。CI 的 browser job 在 `pnpm verify` 通过后运行同一根命令，只在失败时保留 screenshot、trace 和 HTML report。标准套件使用 reference/Auth-off 配置，证明浏览器中的路由、语言、主题和交互；它不能替代统一 Auth 或数据库纵向 smoke。
+
+### 登录态 Data live 套件
+
+一套可丢弃的 loopback 栈已经完成 Data migration、seed 和 smoke 后，对同一套栈运行受保护浏览器流程：
+
+```bash
+WISER_WEB_LIVE_BASE_URL='http://127.0.0.1:3000' \
+WISER_WEB_LIVE_SMOKE_REPORT='<成功-smoke-report.json-的绝对路径>' \
+WISER_WEB_LIVE_EMAIL='<本机-seed-账号>' \
+WISER_WEB_LIVE_PASSWORD='<本机-seed-密码>' \
+pnpm test:e2e:data-live
+```
+
+| 变量                          | 合同                                                                          |
+| ----------------------------- | ----------------------------------------------------------------------------- |
+| `WISER_WEB_LIVE_BASE_URL`     | 已运行 Web 应用的 loopback origin；禁止指向共享、staging 或 production 环境。 |
+| `WISER_WEB_LIVE_SMOKE_REPORT` | 同一套栈刚生成且成功的机器可读 `data:smoke` 报告绝对路径。                    |
+| `WISER_WEB_LIVE_EMAIL`        | 通过登录界面使用的本机 seed fixture 身份。                                    |
+| `WISER_WEB_LIVE_PASSWORD`     | 该本机 fixture 身份的密码；不得打印，也不得持久化进诊断产物。                 |
+
+这个命令只消费既有测试栈，不负责编排：它不会启动或停止服务，不会应用 migration 或 seed，不会运行 smoke，也不会 reset 任何权威存储。它必须复用已经 migrate、seed、smoke 验证过的 loopback 可丢弃栈，且该栈的数据和 volumes 都允许清理。与 reference/Auth-off 套件不同，它通过真实 Supabase Session 登录并验证受保护的 Data Web/API 行为；reference 套件通过不能替代这条身份边界。
+
+Live Playwright 配置关闭 trace 和 video，只在失败时截图。CI 只允许上传失败运行的 screenshot 与 live HTML report，并设置受限访问和短保留期；不得发布四个环境变量、Auth cookie 或 storage state、请求头、DSN、smoke 报告、服务日志或下载的用户内容。即使是允许保留的失败诊断，向 CI 之外分享前也必须按敏感产物处理。
 
 任何可见 UI 变化都要同时覆盖中文默认与英文等价状态，并检查浅色/深色、键盘焦点、窄屏和失败/不可用状态。修复定位器时优先使用 role、label、可见文本或稳定 test id。
 

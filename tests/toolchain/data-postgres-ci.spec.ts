@@ -63,7 +63,9 @@ describe('Data PostgreSQL CI', () => {
 
   it('runs both real adapters after the vertical smoke and before cleanup', () => {
     const job = dataFoundationJob();
-    const smoke = job.indexOf('run: pnpm data:smoke');
+    const smoke = job.indexOf(
+      'run: pnpm --silent data:smoke > "$RUNNER_TEMP/wiser-data-smoke.json"',
+    );
     const apiStep = job.indexOf(
       'name: Verify Data API commands against real PostgreSQL',
     );

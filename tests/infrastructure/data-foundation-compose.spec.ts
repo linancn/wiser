@@ -234,7 +234,9 @@ describe('Data Foundation operations contract', () => {
     expect(job).toContain('pnpm install --frozen-lockfile');
     expect(job).toContain('pnpm data:up');
     expect(job).toContain('pnpm data:migrate');
-    expect(job).toContain('pnpm data:smoke');
+    expect(job).toContain(
+      'pnpm --silent data:smoke > "$RUNNER_TEMP/wiser-data-smoke.json"',
+    );
     expect(job).toContain('if: failure()');
     expect(job).toContain(
       'docker compose --profile data-foundation logs --no-color --tail=300',

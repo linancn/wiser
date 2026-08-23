@@ -90,6 +90,33 @@ order by version.version_number desc, version.version_id desc
 limit 1
 `;
 
+const ITEM_SPATIAL_EXTENT_SQL = `
+/* data.catalog.item.spatial-extent */
+with candidates as (
+  select canonical_geometry,
+    case when version_id = $2::uuid then 0 else 1 end as priority
+  from catalog.spatial_extent
+  where data_item_id = $1::uuid
+    and (version_id = $2::uuid or version_id is null)
+), chosen as (
+  select canonical_geometry
+  from candidates
+  where priority = (select min(priority) from candidates)
+), bounds as (
+  select ST_Extent(canonical_geometry) as extent
+  from chosen
+)
+select array[
+  ST_XMin(extent)::double precision,
+  ST_YMin(extent)::double precision,
+  ST_XMax(extent)::double precision,
+  ST_YMax(extent)::double precision
+] as bbox,
+  'EPSG:4490'::text as crs
+from bounds
+where extent is not null
+`;
+
 const VERSION_LIST_SQL = `
 /* data.catalog.version.list */
 select ${VERSION_COLUMNS}
@@ -502,6 +529,32 @@ function dataItem(row: Record<string, unknown>): DataItemDto {
   };
 }
 
+function spatialExtent(
+  row: Record<string, unknown>,
+): NonNullable<DataItemDto['spatialExtent']> {
+  const value = row.bbox;
+  if (!Array.isArray(value) || value.length !== 4) {
+    throw new TypeError('Invalid database field bbox.');
+  }
+  const bbox = value.map(Number);
+  const [minimumX, minimumY, maximumX, maximumY] = bbox;
+  if (
+    minimumX === undefined ||
+    minimumY === undefined ||
+    maximumX === undefined ||
+    maximumY === undefined ||
+    !bbox.every(Number.isFinite) ||
+    minimumX > maximumX ||
+    minimumY > maximumY
+  ) {
+    throw new TypeError('Invalid database field bbox.');
+  }
+  return {
+    bbox: [minimumX, minimumY, maximumX, maximumY],
+    crs: text(row, 'crs'),
+  };
+}
+
 function version(row: Record<string, unknown>): DataItemVersionDto {
   return {
     tenantId: text(row, 'tenant_id'),
@@ -649,12 +702,31 @@ function operation(row: Record<string, unknown>): OperationDto {
   };
 }
 
+const PUBLIC_OPERATION_EVENT_TYPES = new Set([
+  'CREATED',
+  'STARTED',
+  'PROGRESS_REPORTED',
+  'WAITING_INPUT',
+  'WAITING_REVIEW',
+  'SUCCEEDED',
+  'FAILED',
+  'CANCELLED',
+]);
+
+function publicOperationEventType(
+  value: string,
+): OperationEventDto['eventType'] {
+  return PUBLIC_OPERATION_EVENT_TYPES.has(value)
+    ? (value as OperationEventDto['eventType'])
+    : 'PROGRESS_REPORTED';
+}
+
 function operationEvent(row: Record<string, unknown>): OperationEventDto {
   return {
     eventId: text(row, 'event_id'),
     operationId: text(row, 'operation_id'),
     sequence: integer(row, 'sequence_number'),
-    eventType: text(row, 'event_type') as OperationEventDto['eventType'],
+    eventType: publicOperationEventType(text(row, 'event_type')),
     status: text(row, 'to_status') as OperationEventDto['status'],
     progressPercent: integer(row, 'progress_percent'),
     operationVersion: integer(row, 'operation_version'),
@@ -883,11 +955,26 @@ export function createPostgresDataReadRuntime(
         ) {
           throw new PostgresDataReadNotFoundError();
         }
+        const selectedVersionRow = versionResult.rows[0];
+        const spatialExtentResult = await client.query(
+          ITEM_SPATIAL_EXTENT_SQL,
+          [
+            input.dataItemId,
+            selectedVersionRow === undefined
+              ? null
+              : text(selectedVersionRow, 'version_id'),
+          ],
+        );
         return {
-          item,
-          ...(versionResult.rows[0] === undefined
+          item: {
+            ...item,
+            ...(spatialExtentResult.rows[0] === undefined
+              ? {}
+              : { spatialExtent: spatialExtent(spatialExtentResult.rows[0]) }),
+          },
+          ...(selectedVersionRow === undefined
             ? {}
-            : { selectedVersion: version(versionResult.rows[0]) }),
+            : { selectedVersion: version(selectedVersionRow) }),
         };
       });
     }),

@@ -7,7 +7,9 @@ out/
 .astro/
 coverage/
 playwright-report/
+playwright-report-live/
 test-results/
+test-results-live/
 *.tsbuildinfo
 next-env.d.ts
 skills/*-workspace/

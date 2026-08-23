@@ -129,6 +129,8 @@ with input as (
     and version.committed_at is not null
     and extent.policy_version <= $3::bigint
     and version.policy_version <= $3::bigint
+    and security.security_rank(extent.security_level) <= security.security_rank($4)
+    and security.security_rank(version.security_level) <= security.security_rank($4)
     and ($7::uuid[] is null or extent.data_item_id = any($7))
 )
 select extent.spatial_extent_id::text as feature_id,

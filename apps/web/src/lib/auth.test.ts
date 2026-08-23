@@ -142,7 +142,7 @@ describe('WISER auth HTTP workflows', () => {
     expect(getClaims).toHaveBeenCalledOnce();
     expect(response.status).toBe(303);
     expect(response.headers.get('location')).toBe(
-      'http://wiser.test/zh-CN/data-foundation?view=catalog',
+      '/zh-CN/data-foundation?view=catalog',
     );
     expect(response.headers.get('cache-control')).toContain('no-store');
     expect(response.headers.get('pragma')).toBe('no-cache');
@@ -173,7 +173,7 @@ describe('WISER auth HTTP workflows', () => {
     expect(signOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(response.status).toBe(303);
     expect(response.headers.get('location')).toBe(
-      'http://wiser.test/zh-CN/login?reason=session',
+      '/zh-CN/login?reason=session',
     );
   });
 
@@ -197,7 +197,7 @@ describe('WISER auth HTTP workflows', () => {
     expect(exchangeCodeForSession).toHaveBeenCalledWith('pkce-code');
     expect(getClaims).toHaveBeenCalledOnce();
     expect(response.status).toBe(303);
-    expect(response.headers.get('location')).toBe('http://wiser.test/en');
+    expect(response.headers.get('location')).toBe('/en');
     expect(response.headers.get('cache-control')).toContain('no-store');
   });
 
@@ -214,7 +214,7 @@ describe('WISER auth HTTP workflows', () => {
       'en',
     );
     expect(unavailable.headers.get('location')).toBe(
-      'http://wiser.test/en/login?reason=configuration',
+      '/en/login?reason=configuration',
     );
 
     const signOut = vi.fn(() => Promise.resolve({ error: null }));
@@ -229,9 +229,7 @@ describe('WISER auth HTTP workflows', () => {
     );
     expect(signOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(signedOut.status).toBe(303);
-    expect(signedOut.headers.get('location')).toBe(
-      'http://wiser.test/en/login?signedOut=1',
-    );
+    expect(signedOut.headers.get('location')).toBe('/en/login?signedOut=1');
     expect(signedOut.headers.get('cache-control')).toContain('no-store');
   });
 });
