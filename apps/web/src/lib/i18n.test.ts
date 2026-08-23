@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_LOCALE, dictionaries, isLocale, LOCALES } from './i18n';
+import {
+  DEFAULT_LOCALE,
+  dictionaries,
+  isLocale,
+  LOCALES,
+  switchLocaleHref,
+} from './i18n';
 import { scenarios } from './platform';
 
 function keysOf(value: unknown, prefix = ''): string[] {
@@ -33,6 +39,19 @@ describe('bilingual product contract', () => {
     expect(isLocale('zh-CN')).toBe(true);
     expect(isLocale('en')).toBe(true);
     expect(isLocale('en-US')).toBe(false);
+  });
+
+  it('preserves and localizes a protected login destination', () => {
+    expect(
+      switchLocaleHref(
+        '/zh-CN/login',
+        'next=%2Fzh-CN%2Fdata-foundation%2Fcatalog%3Fq%3Dwater',
+        'en',
+      ),
+    ).toBe('/en/login?next=%2Fen%2Fdata-foundation%2Fcatalog%3Fq%3Dwater');
+    expect(switchLocaleHref('/zh-CN/scenarios', '', 'en')).toBe(
+      '/en/scenarios',
+    );
   });
 
   it('keeps every visible message present in both dictionaries', () => {

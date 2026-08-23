@@ -125,7 +125,10 @@ test('offers the same unified identity surface in Chinese and English', async ({
   });
 
   await page.getByRole('link', { name: 'English' }).click();
-  await expect(page).toHaveURL(/\/en\/login$/);
+  await expect(page).toHaveURL(/\/en\/login\?next=%2Fen%2Fdata-foundation$/);
+  await expect(page.locator('input[name="next"]')).toHaveValue(
+    '/en/data-foundation',
+  );
   await expect(
     page.getByRole('heading', { name: 'Sign in to WISER' }),
   ).toBeVisible();
