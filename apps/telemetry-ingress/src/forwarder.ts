@@ -35,10 +35,15 @@ export class OtlpHttpForwarder implements TelemetryForwarder {
         signal: AbortSignal.timeout(this.#timeoutMs),
       },
     );
-    if (!response.ok) {
-      throw new Error(
-        `Collector rejected ${signal} with HTTP ${response.status}.`,
-      );
+    const accepted = response.ok;
+    const status = response.status;
+    try {
+      await response.body?.cancel();
+    } catch {
+      // Collector cleanup must not replace the authoritative HTTP outcome.
+    }
+    if (!accepted) {
+      throw new Error(`Collector rejected ${signal} with HTTP ${status}.`);
     }
   }
 }

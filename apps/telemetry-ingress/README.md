@@ -14,8 +14,8 @@ checkPaths:
   - apps/telemetry-ingress/**
   - infrastructure/observability/**
   - compose.yaml
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: ed36c7913b5dd2b2542adf1aa1ce1e5d9a70029f
+lastReviewedAt: 2026-08-23
+lastReviewedCommit: 6f70dba2505daf1286a33563bc3cd7db52f9508e
 ---
 
 # WISER Telemetry Ingress / 参与者遥测入口

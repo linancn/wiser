@@ -24,7 +24,7 @@ function collectorFetch(
   handler: (call: {
     readonly url: URL;
     readonly init: RequestInit;
-  }) => Promise<Response>,
+  }) => Response | Promise<Response>,
 ) {
   const calls: Array<{ readonly url: URL; readonly init: RequestInit }> = [];
   const fetchSpy = vi.fn(
@@ -32,9 +32,9 @@ function collectorFetch(
       if (!(input instanceof URL)) {
         throw new Error('expected the forwarder to pass a URL target');
       }
-      const call = { url: input, init: (init ?? {}) as RequestInit };
+      const call = { url: input, init: init ?? {} };
       calls.push(call);
-      return handler(call);
+      return Promise.resolve(handler(call));
     },
   );
   const fetch: typeof globalThis.fetch = fetchSpy;
@@ -88,7 +88,7 @@ describe('OtlpHttpForwarder', () => {
       'posts %s as JSON to the versioned OTLP path with an abort signal',
       async (signal) => {
         const body = otlpBody(signal);
-        const collector = collectorFetch(async () => statusResponse(200));
+        const collector = collectorFetch(() => statusResponse(200));
         const instance = forwarder(collector.fetch);
 
         await expect(instance.forward(signal, body)).resolves.toBeUndefined();
@@ -134,7 +134,7 @@ describe('OtlpHttpForwarder', () => {
     ])(
       'keeps the configured base path for endpoint %s',
       async (endpoint, expectedHref) => {
-        const collector = collectorFetch(async () => statusResponse(200));
+        const collector = collectorFetch(() => statusResponse(200));
         const instance = forwarder(collector.fetch, endpoint);
         const signal: TelemetrySignal = /logs$/.test(expectedHref)
           ? 'logs'
@@ -149,7 +149,7 @@ describe('OtlpHttpForwarder', () => {
 
   describe('collector responses', () => {
     it.each([200, 201, 204, 299])('accepts HTTP %i', async (status) => {
-      const collector = collectorFetch(async () => statusResponse(status));
+      const collector = collectorFetch(() => statusResponse(status));
       const instance = forwarder(collector.fetch);
 
       await expect(
@@ -166,7 +166,7 @@ describe('OtlpHttpForwarder', () => {
     ] as const)(
       'fails safely on HTTP %i for %s without leaking the response body',
       async (status, signal) => {
-        const collector = collectorFetch(async () =>
+        const collector = collectorFetch(() =>
           statusResponse(status, COLLECTOR_INTERNAL_SECRET),
         );
         const instance = forwarder(collector.fetch);
@@ -191,13 +191,39 @@ describe('OtlpHttpForwarder', () => {
       async (status) => {
         const cancel = vi.fn();
         const collector = collectorFetch(
-          async () => new Response(new ReadableStream({ cancel }), { status }),
+          () => new Response(new ReadableStream({ cancel }), { status }),
         );
         const instance = forwarder(collector.fetch);
 
         const completion = instance.forward('logs', otlpBody('logs'));
         if (status < 300) await expect(completion).resolves.toBeUndefined();
         else await expect(completion).rejects.toThrow(/HTTP 503/);
+        expect(cancel).toHaveBeenCalledOnce();
+      },
+    );
+
+    it.each([200, 503])(
+      'preserves HTTP %i semantics when response cancellation fails',
+      async (status) => {
+        const cancellationSecret = 'collector-cancel-internal-detail';
+        const cancel = vi.fn(() =>
+          Promise.reject(new Error(cancellationSecret)),
+        );
+        const collector = collectorFetch(
+          () => new Response(new ReadableStream({ cancel }), { status }),
+        );
+        const instance = forwarder(collector.fetch);
+
+        const completion = instance.forward('traces', otlpBody('traces'));
+        if (status < 300) await expect(completion).resolves.toBeUndefined();
+        else {
+          const error = await completion.catch((caught: unknown) => caught);
+          expect(error).toBeInstanceOf(Error);
+          expect((error as Error).message).toBe(
+            'Collector rejected traces with HTTP 503.',
+          );
+          expect((error as Error).message).not.toContain(cancellationSecret);
+        }
         expect(cancel).toHaveBeenCalledOnce();
       },
     );
@@ -219,7 +245,12 @@ describe('OtlpHttpForwarder', () => {
         (call) =>
           new Promise<Response>((_resolve, reject) => {
             call.init.signal?.addEventListener('abort', () => {
-              reject(call.init.signal?.reason);
+              reject(
+                new DOMException(
+                  'Collector request timed out.',
+                  'TimeoutError',
+                ),
+              );
             });
           }),
       );
@@ -231,7 +262,7 @@ describe('OtlpHttpForwarder', () => {
     });
 
     it('arms an independent abort signal per forwarded request', async () => {
-      const collector = collectorFetch(async () => statusResponse(200));
+      const collector = collectorFetch(() => statusResponse(200));
       const instance = forwarder(collector.fetch);
 
       await instance.forward('traces', otlpBody('traces'));
