@@ -14,6 +14,7 @@ const TENANT_ID = '11111111-1111-4111-8111-111111111111';
 const PROJECT_ID = '22222222-2222-4222-8222-222222222222';
 const USER_ID = '33333333-3333-4333-8333-333333333333';
 const SESSION_ID = '44444444-4444-4444-8444-444444444444';
+const GEO_VERSION_ID = '55555555-5555-4555-8555-555555555555';
 
 function accessToken(): string {
   const encode = (value: object) =>
@@ -51,6 +52,20 @@ function authClient(order: string[]): DataFoundationAuthClient {
         });
       },
     },
+  };
+}
+
+function geoFeature(featureId: string) {
+  return {
+    featureId,
+    dataItemId: PROJECT_ID,
+    versionId: GEO_VERSION_ID,
+    geometry: {
+      type: 'Point',
+      coordinates: [116.2, 39.8],
+      crs: 'EPSG:4490',
+    },
+    properties: {},
   };
 }
 
@@ -209,26 +224,26 @@ describe('Data Foundation server-only HTTP DAL', () => {
     });
   });
 
-  it('forwards one selected immutable version in a governed geo query', async () => {
-    const versionId = '55555555-5555-4555-8555-555555555555';
+  it('collects every governed geo page with the same immutable query', async () => {
+    const bodies: unknown[] = [];
     const fetch = vi.fn((_url: string | URL | Request, init?: RequestInit) => {
       if (typeof init?.body !== 'string') {
         throw new Error('expected the geo request body to be serialized JSON');
       }
-      expect(JSON.parse(init.body)).toEqual({
-        geometry: {
-          type: 'Point',
-          coordinates: [116.2, 39.8],
-          crs: 'EPSG:4490',
-        },
-        predicates: ['INTERSECTS'],
-        versionId,
-        first: 100,
-      });
+      bodies.push(JSON.parse(init.body) as unknown);
+      const page = bodies.length;
       return Promise.resolve(
-        new Response(JSON.stringify({ features: [] }), {
-          headers: { 'content-type': 'application/json' },
-        }),
+        new Response(
+          JSON.stringify(
+            page === 1
+              ? {
+                  features: [geoFeature('extent-a')],
+                  nextCursor: 'cursor-1',
+                }
+              : { features: [geoFeature('extent-b')] },
+          ),
+          { headers: { 'content-type': 'application/json' } },
+        ),
       );
     });
     const dal = createDataFoundationDal({
@@ -251,9 +266,43 @@ describe('Data Foundation server-only HTTP DAL', () => {
           coordinates: [116.2, 39.8],
           crs: 'EPSG:4490',
         },
-        versionId,
+        versionId: GEO_VERSION_ID,
       }),
-    ).resolves.toEqual({ features: [] });
+    ).resolves.toEqual({
+      features: [
+        {
+          featureId: 'extent-a',
+          dataItemId: PROJECT_ID,
+          versionId: GEO_VERSION_ID,
+          geometry: {
+            type: 'Point',
+            coordinates: [116.2, 39.8],
+            crs: 'EPSG:4490',
+          },
+        },
+        {
+          featureId: 'extent-b',
+          dataItemId: PROJECT_ID,
+          versionId: GEO_VERSION_ID,
+          geometry: {
+            type: 'Point',
+            coordinates: [116.2, 39.8],
+            crs: 'EPSG:4490',
+          },
+        },
+      ],
+    });
+    const query = {
+      geometry: {
+        type: 'Point',
+        coordinates: [116.2, 39.8],
+        crs: 'EPSG:4490',
+      },
+      predicates: ['INTERSECTS'],
+      versionId: GEO_VERSION_ID,
+      first: 100,
+    };
+    expect(bodies).toEqual([query, { ...query, after: 'cursor-1' }]);
     await expect(
       Promise.resolve().then(() =>
         dal.geo({
@@ -266,7 +315,89 @@ describe('Data Foundation server-only HTTP DAL', () => {
         }),
       ),
     ).rejects.toMatchObject({ kind: 'invalid-request' });
-    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('fails closed instead of following a repeated geo cursor forever', async () => {
+    const fetch = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            features: [geoFeature('extent-loop')],
+            nextCursor: 'cursor-loop',
+          }),
+          { headers: { 'content-type': 'application/json' } },
+        ),
+      ),
+    );
+    const dal = createDataFoundationDal({
+      config: {
+        apiOrigin: 'http://api:3001',
+        tenantId: TENANT_ID,
+        projectId: PROJECT_ID,
+        purpose: 'data-steward-console',
+        requestTimeoutMs: 5_000,
+        responseLimitBytes: 32_768,
+      },
+      createAuthClient: () => Promise.resolve(authClient([])),
+      fetch,
+    });
+
+    await expect(
+      dal.geo({
+        geometry: {
+          type: 'Point',
+          coordinates: [116.2, 39.8],
+          crs: 'EPSG:4490',
+        },
+        versionId: GEO_VERSION_ID,
+      }),
+    ).rejects.toMatchObject({ kind: 'contract' });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects a paged geo result that cannot fit the 10,000 feature map bound', async () => {
+    const features = Array.from({ length: 100 }, (_, index) =>
+      geoFeature(`extent-${index}`),
+    );
+    let page = 0;
+    const fetch = vi.fn(() => {
+      page += 1;
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            features,
+            nextCursor: `cursor-${page}`,
+          }),
+          { headers: { 'content-type': 'application/json' } },
+        ),
+      );
+    });
+    const dal = createDataFoundationDal({
+      config: {
+        apiOrigin: 'http://api:3001',
+        tenantId: TENANT_ID,
+        projectId: PROJECT_ID,
+        purpose: 'data-steward-console',
+        requestTimeoutMs: 5_000,
+        responseLimitBytes: 1_000_000,
+      },
+      createAuthClient: () => Promise.resolve(authClient([])),
+      fetch,
+    });
+
+    await expect(
+      dal.geo({
+        geometry: {
+          type: 'Point',
+          coordinates: [116.2, 39.8],
+          crs: 'EPSG:4490',
+        },
+        versionId: GEO_VERSION_ID,
+      }),
+    ).rejects.toMatchObject({ kind: 'contract' });
+    expect(fetch.mock.calls.length).toBeGreaterThanOrEqual(100);
+    expect(fetch.mock.calls.length).toBeLessThanOrEqual(101);
   });
 
   it('keeps browser tile requests same-origin while forwarding Supabase credentials only server-side', async () => {

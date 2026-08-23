@@ -23,6 +23,9 @@ const scope = {
 const DATA_ITEM_ID = 'e1000000-0000-4000-8000-000000000003';
 const VERSION_ID = 'e1000000-0000-4000-8000-000000000004';
 const EVIDENCE_ID = 'e1000000-0000-4000-8000-000000000005';
+const FEATURE_ID_A = 'e1000000-0000-4000-8000-000000000006';
+const FEATURE_ID_B = 'e1000000-0000-4000-8000-000000000007';
+const FEATURE_ID_C = 'e1000000-0000-4000-8000-000000000008';
 
 class FakePgClient implements QueryAdapterPgClient {
   readonly calls: { text: string; values: readonly unknown[] }[] = [];
@@ -46,8 +49,11 @@ class FakePgClient implements QueryAdapterPgClient {
 }
 
 class FakePool implements QueryAdapterPgPool {
+  connectCalls = 0;
+
   constructor(readonly client: FakePgClient) {}
   connect(): Promise<QueryAdapterPgClient> {
+    this.connectCalls += 1;
     return Promise.resolve(this.client);
   }
 }
@@ -63,6 +69,24 @@ class FakeHttp implements QueryAdapterHttpClient {
 
 function request(input: Record<string, unknown>): ScopedSpecialQueryRequest {
   return { scope, input, signal: new AbortController().signal };
+}
+
+function geoRow(featureId: string, distanceMeters: number) {
+  return {
+    feature_id: featureId,
+    data_item_id: DATA_ITEM_ID,
+    version_id: VERSION_ID,
+    geometry: { type: 'Point', coordinates: [116.2, 39.8] },
+    source_crs: 'EPSG:4326',
+    properties: { distanceMeters },
+    sort_distance: distanceMeters,
+  };
+}
+
+function changeOpaqueCursor(cursor: string): string {
+  const index = Math.floor(cursor.length / 2);
+  const replacement = cursor[index] === 'A' ? 'B' : 'A';
+  return `${cursor.slice(0, index)}${replacement}${cursor.slice(index + 1)}`;
 }
 
 describe('Postgres structured authority query port', () => {
@@ -427,6 +451,169 @@ describe('PostGIS geo query port', () => {
     );
 
     expect(client.calls[2]!.values[7]).toBeNull();
+  });
+
+  it('reads first plus one and continues after a stable feature-order cursor', async () => {
+    const client = new FakePgClient();
+    client.results.push(
+      { rows: [] },
+      {
+        rows: [
+          geoRow(FEATURE_ID_A, 0),
+          geoRow(FEATURE_ID_B, 0),
+          geoRow(FEATURE_ID_C, 0),
+        ],
+      },
+      { rows: [] },
+      { rows: [geoRow(FEATURE_ID_C, 0)] },
+    );
+    const port = new PostgisGeoQueryPort({
+      pool: new FakePool(client),
+      maximumFeatures: 100,
+    });
+    const input = {
+      geometry: {
+        type: 'Point',
+        coordinates: [116.2, 39.8],
+        crs: 'EPSG:4326',
+      },
+      predicates: ['INTERSECTS'],
+      versionId: VERSION_ID,
+      first: 2,
+    };
+
+    const firstPage = (await port.query(request(input))) as {
+      features: readonly { featureId: string }[];
+      nextCursor?: string;
+    };
+
+    expect(firstPage.features.map(({ featureId }) => featureId)).toEqual([
+      FEATURE_ID_A,
+      FEATURE_ID_B,
+    ]);
+    expect(firstPage.nextCursor).toEqual(expect.any(String));
+    expect(firstPage.nextCursor).not.toContain(FEATURE_ID_B);
+    expect(client.calls[2]!.values.at(-1)).toBe(3);
+
+    const secondPage = (await port.query(
+      request({ ...input, after: firstPage.nextCursor }),
+    )) as {
+      features: readonly { featureId: string }[];
+      nextCursor?: string;
+    };
+
+    expect(secondPage).toMatchObject({
+      features: [{ featureId: FEATURE_ID_C }],
+    });
+    expect(secondPage).not.toHaveProperty('nextCursor');
+    expect(client.calls[6]!.text).toMatch(/spatial_extent_id\s*>/i);
+    expect(JSON.stringify(client.calls[6]!.values)).toContain(FEATURE_ID_B);
+  });
+
+  it('rejects changed, cross-query, and cross-scope cursors before connecting', async () => {
+    const client = new FakePgClient();
+    client.results.push(
+      { rows: [] },
+      { rows: [geoRow(FEATURE_ID_A, 0), geoRow(FEATURE_ID_B, 0)] },
+    );
+    const pool = new FakePool(client);
+    const port = new PostgisGeoQueryPort({ pool, maximumFeatures: 100 });
+    const input = {
+      geometry: {
+        type: 'Point',
+        coordinates: [116.2, 39.8],
+        crs: 'EPSG:4326',
+      },
+      predicates: ['INTERSECTS'],
+      versionId: VERSION_ID,
+      first: 1,
+    };
+    const firstPage = (await port.query(request(input))) as {
+      nextCursor?: string;
+    };
+    expect(firstPage.nextCursor).toEqual(expect.any(String));
+    const cursor = firstPage.nextCursor!;
+    expect(pool.connectCalls).toBe(1);
+
+    await expect(
+      Promise.resolve().then(() =>
+        port.query(
+          request({
+            ...input,
+            geometry: { ...input.geometry, coordinates: [117, 40] },
+            after: cursor,
+          }),
+        ),
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_CURSOR' });
+    await expect(
+      Promise.resolve().then(() =>
+        port.query({
+          scope: {
+            ...scope,
+            projectId: 'e1000000-0000-4000-8000-000000000009',
+          },
+          input: { ...input, after: cursor },
+          signal: new AbortController().signal,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_CURSOR' });
+    await expect(
+      Promise.resolve().then(() =>
+        port.query(request({ ...input, after: changeOpaqueCursor(cursor) })),
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_CURSOR' });
+    expect(pool.connectCalls).toBe(1);
+  });
+
+  it('continues NEAREST pages by distance and feature id without ties drifting', async () => {
+    const client = new FakePgClient();
+    client.results.push(
+      { rows: [] },
+      {
+        rows: [
+          geoRow(FEATURE_ID_A, 10),
+          geoRow(FEATURE_ID_B, 10),
+          geoRow(FEATURE_ID_C, 20),
+        ],
+      },
+      { rows: [] },
+      { rows: [geoRow(FEATURE_ID_C, 20)] },
+    );
+    const port = new PostgisGeoQueryPort({
+      pool: new FakePool(client),
+      nearestLimit: 25,
+    });
+    const input = {
+      geometry: {
+        type: 'Point',
+        coordinates: [116.2, 39.8],
+        crs: 'EPSG:4326',
+      },
+      predicates: ['NEAREST'],
+      versionId: VERSION_ID,
+      first: 2,
+    };
+    const firstPage = (await port.query(request(input))) as {
+      features: readonly { featureId: string }[];
+      nextCursor?: string;
+    };
+    expect(firstPage.features.map(({ featureId }) => featureId)).toEqual([
+      FEATURE_ID_A,
+      FEATURE_ID_B,
+    ]);
+    expect(firstPage.nextCursor).toEqual(expect.any(String));
+
+    const secondPage = (await port.query(
+      request({ ...input, after: firstPage.nextCursor }),
+    )) as { features: readonly { featureId: string }[] };
+
+    expect(secondPage.features.map(({ featureId }) => featureId)).toEqual([
+      FEATURE_ID_C,
+    ]);
+    expect(client.calls[6]!.text).toContain('<->');
+    expect(JSON.stringify(client.calls[6]!.values)).toContain(FEATURE_ID_B);
+    expect(JSON.stringify(client.calls[6]!.values)).toContain('10');
   });
 
   it('rejects an invalid immutable version before acquiring PostgreSQL state', () => {
