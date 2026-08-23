@@ -99,6 +99,7 @@ describe('PostGIS spatial projection identity and validation', () => {
 
   it.each([
     { ...input, sourceCrs: 'EPSG:4326; drop table catalog.spatial_extent' },
+    { ...input, sourceCrs: 'EPSG:999999' },
     {
       ...input,
       sourceGeoJson: { type: 'Feature', geometry: input.sourceGeoJson },
@@ -108,6 +109,30 @@ describe('PostGIS spatial projection identity and validation', () => {
       sourceGeoJson: { type: 'Point', coordinates: [1, Number.NaN] },
     },
     { ...input, sourceGeoJson: { type: 'Polygon', coordinates: [[[0, 0]]] } },
+    {
+      ...input,
+      sourceGeoJson: {
+        type: 'LineString',
+        coordinates: [
+          [116, 40],
+          [117, 41, 12],
+        ],
+      },
+    },
+    {
+      ...input,
+      sourceGeoJson: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [116, 40],
+            [116, 40],
+            [116, 40],
+            [116, 40],
+          ],
+        ],
+      },
+    },
     { ...input, policyVersion: 0 },
     { ...input, securityLevel: 'PUBLIC' },
     { ...input, sql: 'select * from catalog.spatial_extent' },
@@ -122,6 +147,81 @@ describe('PostGIS spatial projection identity and validation', () => {
       expect(pool.client.queries).toHaveLength(0);
     },
   );
+
+  it.each([
+    { type: 'Point', coordinates: [116, 40] },
+    {
+      type: 'MultiPoint',
+      coordinates: [
+        [116, 40],
+        [117, 41],
+      ],
+    },
+    {
+      type: 'LineString',
+      coordinates: [
+        [116, 40],
+        [117, 41],
+      ],
+    },
+    {
+      type: 'MultiLineString',
+      coordinates: [
+        [
+          [116, 40],
+          [117, 41],
+        ],
+      ],
+    },
+    {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [116, 40],
+          [117, 40],
+          [117, 41],
+          [116, 40],
+        ],
+      ],
+    },
+    {
+      type: 'MultiPolygon',
+      coordinates: [
+        [
+          [
+            [116, 40],
+            [117, 40],
+            [117, 41],
+            [116, 40],
+          ],
+        ],
+      ],
+    },
+  ] as const)('accepts a valid $type geometry', async (sourceGeoJson) => {
+    const pool = new FakePool();
+
+    await expect(
+      new PostgisSpatialProjection(pool).put({ ...input, sourceGeoJson }),
+    ).resolves.toMatchObject({ replayed: false });
+    expect(pool.client.queries.some(({ text }) => /COMMIT/.test(text))).toBe(
+      true,
+    );
+  });
+
+  it.each([
+    ['EPSG:4326', 4326],
+    ['EPSG:4490', 4490],
+    ['EPSG:3857', 3857],
+  ] as const)('accepts governed CRS %s', async (sourceCrs, sourceSrid) => {
+    const pool = new FakePool();
+
+    await new PostgisSpatialProjection(pool).put({ ...input, sourceCrs });
+
+    const insert = pool.client.queries.find(({ text }) =>
+      /insert into catalog\.spatial_extent/i.test(text),
+    );
+    expect(insert?.values?.[6]).toBe(sourceSrid);
+  });
 });
 
 describe('PostGIS spatial projection transaction', () => {
