@@ -133,6 +133,60 @@ describe('Data Foundation HTTP composition module', () => {
     });
   });
 
+  it('preserves immutable historical Capability schemas after a compatible input extension', async () => {
+    const app = appWith(() =>
+      Promise.resolve({ database: true, objectStore: true, worker: true }),
+    );
+    const historical = await app.inject({
+      method: 'GET',
+      url: '/api/data/v1/capabilities/data.geo.query/1.0.0',
+    });
+    const current = await app.inject({
+      method: 'GET',
+      url: '/api/data/v1/capabilities/data.geo.query/1.1.0',
+    });
+    const unknown = await app.inject({
+      method: 'GET',
+      url: '/api/data/v1/capabilities/data.geo.query/9.9.9',
+    });
+
+    expect(current.statusCode).toBe(200);
+    expect(current.json()).toMatchObject({
+      id: 'data.geo.query',
+      version: '1.1.0',
+      inputSchema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: { versionId: { type: 'string', format: 'uuid' } },
+      },
+    });
+    expect(
+      current.json<{ inputSchema: { required?: string[] } }>().inputSchema
+        .required ?? [],
+    ).not.toContain('versionId');
+
+    expect(unknown.statusCode).toBe(404);
+    expect(unknown.json()).toEqual({
+      code: 'CAPABILITY_SCHEMA_NOT_FOUND',
+      message:
+        '数据能力版本不存在。 / The Data Capability version does not exist.',
+    });
+
+    expect(historical.statusCode).toBe(200);
+    expect(historical.json()).toMatchObject({
+      id: 'data.geo.query',
+      version: '1.0.0',
+      inputSchema: {
+        type: 'object',
+        additionalProperties: false,
+      },
+    });
+    expect(
+      historical.json<{ inputSchema: { properties: object } }>().inputSchema
+        .properties,
+    ).not.toHaveProperty('versionId');
+  });
+
   it('keeps existing Agent EXCON routes mounted beside Data Foundation', async () => {
     const app = appWith(() =>
       Promise.resolve({ database: true, objectStore: true, worker: true }),
