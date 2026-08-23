@@ -393,9 +393,7 @@ describe('PostGIS geo query port', () => {
       /ranked_version as \([\s\S]+from catalog\.data_item_version as version/,
     );
     expect(sql).toContain('$8::uuid is null or version.version_id = $8');
-    expect(sql).toContain(
-      '$8::uuid is not null or version.version_rank = 1',
-    );
+    expect(sql).toContain('$8::uuid is not null or version.version_rank = 1');
     expect(sql).toContain('join catalog.spatial_extent as extent');
     expect(sql).not.toContain('ranked_extent as');
     expect(sql).toContain('unnest($9::text[])');
@@ -431,7 +429,7 @@ describe('PostGIS geo query port', () => {
     expect(client.calls[2]!.values[7]).toBeNull();
   });
 
-  it('rejects an invalid immutable version before acquiring PostgreSQL state', async () => {
+  it('rejects an invalid immutable version before acquiring PostgreSQL state', () => {
     const client = new FakePgClient();
     const port = new PostgisGeoQueryPort({ pool: new FakePool(client) });
 

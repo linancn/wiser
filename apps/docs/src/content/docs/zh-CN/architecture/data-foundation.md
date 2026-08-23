@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 75f50fea4f6407b70832931e4d06960cdb00f729
+lastReviewedCommit: 31a24f699fc863eb666743321bbd7fedefc9a1a1
 ---
 
 ## 权威边界
@@ -161,7 +161,7 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 - Skill：`skills/wiser-data-foundation` 定义发现、查询、上传、入库、Operation 与安全解释流程。
 - Web：现有 Next.js 应用中的 14 个 Data route，server-only DAL、真实 Supabase Session、双语/主题、不可变版本选择，以及 MapLibre 的 PostGIS authority GeoJSON、STAC extent、受控 vector MVT 与 raster 四图层。
 
-DataItem detail 的 `?version=<uuid>` 会把指定版本送入 API 并核对 `selectedVersion`，版本列表以 `aria-current` 切换并可打开受控地图。地图查询为 `?bbox=minx,miny,maxx,maxy&version=<uuid>&crs=EPSG:4326|EPSG:4490`，可分别切换四图层，显示固定 Version 与 `source CRS → EPSG:3857`。浏览器只请求同源 `/api/data-foundation/geo/...`；Next server 使用刚验证的 Supabase 短期 Session 追加 Tenant/Project/Purpose 后转发 Fastify，Bearer 和内部 GIS origin 永不进入客户端。
+DataItem detail 的 `?version=<uuid>` 会把指定版本送入 API 并核对 `selectedVersion`，版本列表以 `aria-current` 切换并可打开受控地图。地图查询为 `?bbox=minx,miny,maxx,maxy&version=<uuid>&crs=EPSG:4326|EPSG:4490`，可分别切换四图层，显示固定 Version 与 `source CRS → EPSG:3857`。对 `data.geo.query`，省略单数 `versionId` 时，从每个 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent；每次响应仍受 `first` 限制。若同时给出 `dataItemIds`，它与上述版本选择取交集；版本不可见或不存在时返回空结果集。Map server 必须在权威 PostGIS 版本排名之前把选定的 `versionId` 传入查询，不能先取最新版本再做事后过滤。浏览器只请求同源 `/api/data-foundation/geo/...`；Next server 使用刚验证的 Supabase 短期 Session 追加 Tenant/Project/Purpose 后转发 Fastify，Bearer 和内部 GIS origin 永不进入客户端。
 
 Web 负责治理与查询，不在 Server Action 或 Route Handler 执行文件解析、向量化、GIS 转换或投影。其同源 GIS Route Handler 只是有界认证代理；mutation 由 REST、GraphQL、MCP 或 Skill 发起。
 

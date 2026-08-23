@@ -122,7 +122,7 @@ If-Match: "v3"
 
 - `data.query`：受控字段、`EQ/NE/GT/GTE/LT/LTE/IN/CONTAINS` filter；
 - graph：实体 ID、关系类型和最大深度；
-- geo：受支持 GeoJSON geometry、显式 CRS 和 `INTERSECTS/WITHIN/CONTAINS/NEAREST`；
+- `data.geo.query`：受支持 GeoJSON geometry、显式 CRS、`INTERSECTS/WITHIN/CONTAINS/NEAREST` 与可选的单数 `versionId`。省略 `versionId` 时，每个有界响应从各 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent。`dataItemIds` 与两种选择均取交集；版本不可见或不存在时返回空结果集；
 - federated search：catalog/fulltext/semantic/graph/geo/stac source allowlist。
 
 SearchOrchestrator 在后端下推权限与发布过滤，固定 `RRF k=60`，按 DataItem+Version 去重，再逐条重新授权。

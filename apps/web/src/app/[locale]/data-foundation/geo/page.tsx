@@ -58,7 +58,7 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
       );
       if (!capabilityAvailable) throw dataPageFailure('contract', 502);
     } else {
-      result = await dal.geo(bboxGeometry(bbox));
+      result = await dal.geo({ geometry: bboxGeometry(bbox) });
     }
   } catch (error) {
     failure = handleDataPageError(error, locale, route);

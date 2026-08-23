@@ -125,9 +125,11 @@ GET Tool 只编码 boolean、number、string 或 string array query；path param
 
 1. 用 `data_catalog_search` 获取已授权 DataItem 和 cursor；
 2. 用 `data_catalog_get`/`data_catalog_version_get` 固定不可变 `versionId`；
-3. 选择 `data_query`、`data_search_federated`、`data_knowledge_search`、graph 或 geo Tool；
+3. 查询精确或历史地图时，把该单数 `versionId` 传给 `data_geo_query`；其他情况按需选择 `data_query`、`data_search_federated`、`data_knowledge_search`、graph 或 geo Tool；
 4. 检查每个结果的 `versionId`、`evidenceId`、security、quality、acceptance 与 limitations；
 5. 不把搜索 score 当作质量或授权结论。
+
+`data_geo_query` 接受一个可选的 `versionId`。省略时，从每个 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent。每次响应仍受 `first` 限制；`dataItemIds` 与两种选择均取交集，版本不可见或不存在时返回空结果集。
 
 ### 入库
 

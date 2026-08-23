@@ -28,7 +28,7 @@ describe('Data PostgreSQL CI', () => {
     const scripts = manifest.scripts as Record<string, string>;
 
     expect(scripts['test:postgres:data-api']).toBe(
-      'pnpm --filter @wiser/api exec vitest run --config vitest.config.ts test/data-postgres-command-executors.spec.ts',
+      'pnpm --filter @wiser/api exec vitest run --config vitest.config.ts test/data-postgres-command-executors.spec.ts test/data-postgres-geo-query.spec.ts',
     );
     expect(scripts['test:postgres:data-worker']).toBe(
       'pnpm --filter @wiser/data-worker exec vitest run --config vitest.config.ts test/ingestion-runtime-adapters.spec.ts',
@@ -61,13 +61,13 @@ describe('Data PostgreSQL CI', () => {
     expect(job).not.toContain('wiser-local-worker-');
   });
 
-  it('runs both real adapters after the vertical smoke and before cleanup', () => {
+  it('runs the API and Worker PostgreSQL gates after the vertical smoke and before cleanup', () => {
     const job = dataFoundationJob();
     const smoke = job.indexOf(
       'run: pnpm --silent data:smoke > "$RUNNER_TEMP/wiser-data-smoke.json"',
     );
     const apiStep = job.indexOf(
-      'name: Verify Data API commands against real PostgreSQL',
+      'name: Verify Data API commands and geo queries against real PostgreSQL',
     );
     const api = job.indexOf('run: pnpm test:postgres:data-api');
     const worker = job.indexOf('run: pnpm test:postgres:data-worker');

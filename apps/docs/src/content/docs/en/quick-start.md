@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: fe2598f9a3e0a3b00d5a8ac971da2a92bbc2c9e7
+lastReviewedCommit: 5e253f1123d2b2b625077ac9544a34378e8d64b2
 ---
 
 This page covers the first complete run only. See the [local development environment](/en/development/local-environment/) for standalone frontend/backend commands, every port, environment variables, and troubleshooting.

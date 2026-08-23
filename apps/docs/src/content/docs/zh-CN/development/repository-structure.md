@@ -23,7 +23,7 @@ checkPaths:
   - skills/**
   - examples/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: fe2598f9a3e0a3b00d5a8ac971da2a92bbc2c9e7
+lastReviewedCommit: 5e253f1123d2b2b625077ac9544a34378e8d64b2
 ---
 
 ## 先建立心智模型

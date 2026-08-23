@@ -64,6 +64,7 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
       : search.crs === 'EPSG:4326' || search.crs === 'EPSG:4490'
         ? search.crs
         : null;
+  const selectedVersionId = versionId ?? undefined;
   let result: GeoQueryDto | undefined;
   let stac: StacFeatureCollectionDto = { extents: [] };
   let capabilityAvailable = false;
@@ -81,14 +82,18 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
       if (!capabilityAvailable) throw dataPageFailure('contract', 502);
     } else {
       [result, stac] = await Promise.all([
-        dal.geo(bboxGeometry(bbox, crs)),
+        dal.geo({
+          geometry: bboxGeometry(bbox, crs),
+          ...(selectedVersionId === undefined
+            ? {}
+            : { versionId: selectedVersionId }),
+        }),
         dal.stacItems({ bbox }),
       ]);
     }
   } catch (error) {
     failure = handleDataPageError(error, locale, route);
   }
-  const selectedVersionId = versionId ?? undefined;
   const versionFeatures =
     result?.features.filter(
       (feature) =>

@@ -259,7 +259,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Verify Data API commands against real PostgreSQL
+      - name: Verify Data API commands and geo queries against real PostgreSQL
         env:
           WISER_DATA_PG_INTEGRATION: '1'
         run: pnpm test:postgres:data-api

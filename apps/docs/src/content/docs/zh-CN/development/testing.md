@@ -25,7 +25,7 @@ checkPaths:
   - examples/agent-excon/**
   - .github/workflows/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 8cbabd4d8583181a5f9b88b9043d13c407c3366a
+lastReviewedCommit: 5e253f1123d2b2b625077ac9544a34378e8d64b2
 ---
 
 ## Red → Green → Refactor
@@ -148,14 +148,14 @@ pnpm data:down
 pnpm supabase:stop
 ```
 
-两个真实 PostgreSQL adapter 测试只允许指向 CI 或明确可丢弃的隔离 Data 数据库。API 测试需要 migration owner DSN 来创建临时非 bypass role；Worker 测试使用真实 `wiser_data_worker` 登录并会提交随机 authority fixture：
+两个真实 PostgreSQL adapter 门禁只允许指向 CI 或明确可丢弃的隔离 Data 数据库。API 门禁同时运行 command 与 PostGIS query spec，需要 migration owner DSN 来创建临时非 bypass role；Worker 门禁使用真实 `wiser_data_worker` 登录并会提交随机 authority fixture：
 
 ```bash
 WISER_DATA_PG_INTEGRATION=1 DATA_TEST_DATABASE_URL='<owner-dsn>' pnpm test:postgres:data-api
 DATA_WORKER_PG_SMOKE_URL='<worker-dsn>' pnpm test:postgres:data-worker
 ```
 
-API 深度测试通过临时非 bypass role 证明 Operation、Ingestion、Job 与 Transform Plan 的非法转换会以稳定 PostgreSQL 错误失败，并验证权威 identity/content、终态与运行中同态保护、Capability 限定的上传完成、精确 row version、旧 claim 路径移除、审核唤醒后准确的 claim event 历史，以及合法 heartbeat/等待态聚合；其正向 fixture 沿合法生命周期逐步推进，不直接插入不可能的中间状态。随后 Worker 深度测试证明完整 ingestion commit 路径仍可通过受保护 schema。
+API command spec 通过临时非 bypass role 证明 Operation、Ingestion、Job 与 Transform Plan 的非法转换会以稳定 PostgreSQL 错误失败，并验证权威 identity/content、终态与运行中同态保护、Capability 限定的上传完成、精确 row version、旧 claim 路径移除、审核唤醒后准确的 claim event 历史，以及合法 heartbeat/等待态聚合；其正向 fixture 沿合法生命周期逐步推进，不直接插入不可能的中间状态。API PostGIS spec 另行证明权威的最新/精确不可变版本选择、同版本多个 extent 不丢失、DataItem 交集，以及 Tenant、安全等级和策略边界全部 fail closed。随后 Worker 深度测试证明完整 ingestion commit 路径仍可通过受保护 schema。
 
 Data Foundation CI 先完成纵向 smoke 并保存机器可读报告，再对同一套栈运行登录态 Data 浏览器套件，然后运行 API、Worker 两个深度测试，最后无条件删除该 job 的 Data volumes。固定顺序是 `smoke → 登录态浏览器 → API/Worker 深度测试 → always cleanup`；前序任一步失败也必须执行清理。不要把这些命令指向共享数据库或需要保留的本机 volume。
 

@@ -546,7 +546,7 @@ const expectedJsonSchemaHashes = {
     output: 'f441e464b240788a240a2e06cb585f6762dcaa78fa76f3e523c063c964dadaef',
   },
   'data.geo.query': {
-    input: '2036d4561ed61bc9fab314ae85485e3f6663570ecbd6aee136dd72ef3ce26acb',
+    input: '627fbc2c8d61eabc3a1553d61ed481f02406150059ab914e0b1c0c35b8195bbb',
     output: 'dc587a390c429b04bdaecc5ea2facc37b323400e31a9a63e5db3f018f8673047',
   },
   'data.geo.intersect': {

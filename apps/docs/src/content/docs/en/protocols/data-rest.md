@@ -122,7 +122,7 @@ Structured query accepts only allowlisted fields and operators:
 
 - `data.query`: selected fields and `EQ/NE/GT/GTE/LT/LTE/IN/CONTAINS` filters;
 - graph: entity IDs, relation types, and bounded depth;
-- geo: supported GeoJSON geometry, explicit CRS, and `INTERSECTS/WITHIN/CONTAINS/NEAREST`;
+- `data.geo.query`: supported GeoJSON geometry, explicit CRS, `INTERSECTS/WITHIN/CONTAINS/NEAREST`, and an optional singular `versionId`. Without `versionId`, each bounded response selects extents from every DataItem's latest visible committed version; with it, the response selects extents from that exact immutable version. `dataItemIds` intersects either selection, and a hidden or absent exact version returns an empty result set;
 - federated search: an allowlist of catalog/fulltext/semantic/graph/geo/stac sources.
 
 SearchOrchestrator pushes authorization and publication filters into backends, applies fixed `RRF k=60`, deduplicates by DataItem+Version, and reauthorizes every hit.

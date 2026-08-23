@@ -105,7 +105,10 @@ export interface DataFoundationDal {
   search(query: string): Promise<SearchPageDto>;
   knowledge(query: string): Promise<SearchPageDto>;
   graph(entityId: string): Promise<GraphResultDto>;
-  geo(geometry: GeoGeometryDto): Promise<GeoQueryDto>;
+  geo(input: {
+    readonly geometry: GeoGeometryDto;
+    readonly versionId?: string;
+  }): Promise<GeoQueryDto>;
   stacItems(input?: {
     readonly bbox?: readonly [number, number, number, number];
   }): Promise<StacFeatureCollectionDto>;
@@ -567,15 +570,22 @@ export function createDataFoundationDal(
         parseGraphResult,
       );
     },
-    geo: (geometry) =>
-      parsed(
+    geo: ({ geometry, versionId }) => {
+      if (versionId !== undefined) validateUuid(versionId);
+      return parsed(
         () =>
           call('/api/data/v1/geo/query', {
             method: 'POST',
-            body: { geometry, predicates: ['INTERSECTS'], first: 100 },
+            body: {
+              geometry,
+              predicates: ['INTERSECTS'],
+              ...(versionId === undefined ? {} : { versionId }),
+              first: 100,
+            },
           }),
         parseGeoQuery,
-      ),
+      );
+    },
     stacItems: (input = {}) => {
       const search = new URLSearchParams({ limit: '100' });
       if (input.bbox !== undefined) {

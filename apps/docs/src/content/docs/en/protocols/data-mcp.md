@@ -125,9 +125,11 @@ GET Tools encode only boolean, number, string, or string-array queries, and URL-
 
 1. use `data_catalog_search` to obtain authorized DataItems and a cursor;
 2. pin immutable `versionId` through `data_catalog_get` or `data_catalog_version_get`;
-3. select `data_query`, `data_search_federated`, `data_knowledge_search`, graph, or geo Tools;
+3. for an exact or historical map, pass that singular `versionId` to `data_geo_query`; otherwise select `data_query`, `data_search_federated`, `data_knowledge_search`, graph, or geo Tools as required;
 4. inspect each result's `versionId`, `evidenceId`, security, quality, acceptance, and limitations;
 5. never treat a search score as quality or authorization.
+
+`data_geo_query` accepts one optional `versionId`. Omitting it selects extents from each DataItem's latest visible committed version; supplying it selects extents from that exact immutable version. Each response remains bounded by `first`; `dataItemIds` intersects either selection, and a hidden or absent exact version returns an empty result set.
 
 ### Ingestion
 

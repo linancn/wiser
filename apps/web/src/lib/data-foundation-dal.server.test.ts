@@ -211,25 +211,26 @@ describe('Data Foundation server-only HTTP DAL', () => {
 
   it('forwards one selected immutable version in a governed geo query', async () => {
     const versionId = '55555555-5555-4555-8555-555555555555';
-    const fetch = vi.fn(
-      (_url: string | URL | Request, init?: RequestInit) => {
-        expect(JSON.parse(String(init?.body))).toEqual({
-          geometry: {
-            type: 'Point',
-            coordinates: [116.2, 39.8],
-            crs: 'EPSG:4490',
-          },
-          predicates: ['INTERSECTS'],
-          versionId,
-          first: 100,
-        });
-        return Promise.resolve(
-          new Response(JSON.stringify({ features: [] }), {
-            headers: { 'content-type': 'application/json' },
-          }),
-        );
-      },
-    );
+    const fetch = vi.fn((_url: string | URL | Request, init?: RequestInit) => {
+      if (typeof init?.body !== 'string') {
+        throw new Error('expected the geo request body to be serialized JSON');
+      }
+      expect(JSON.parse(init.body)).toEqual({
+        geometry: {
+          type: 'Point',
+          coordinates: [116.2, 39.8],
+          crs: 'EPSG:4490',
+        },
+        predicates: ['INTERSECTS'],
+        versionId,
+        first: 100,
+      });
+      return Promise.resolve(
+        new Response(JSON.stringify({ features: [] }), {
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+    });
     const dal = createDataFoundationDal({
       config: {
         apiOrigin: 'http://api:3001',

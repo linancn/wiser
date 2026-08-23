@@ -225,6 +225,7 @@ export const GeoQueryInputSchema = z.strictObject({
     .min(1)
     .max(4),
   dataItemIds: z.array(PlatformUuidSchema).max(256).optional(),
+  versionId: PlatformUuidSchema.optional(),
   ...PageRequestFields,
 });
 
@@ -488,7 +489,7 @@ const capabilityRegistry = {
   }),
   'data.geo.query': defineCapability({
     id: 'data.geo.query',
-    version: '1.0.0',
+    version: '1.1.0',
     kind: 'query',
     inputSchema: GeoQueryInputSchema,
     outputSchema: GeoQueryOutputSchema,

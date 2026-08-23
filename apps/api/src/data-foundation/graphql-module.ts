@@ -99,6 +99,8 @@ input GraphExpandInput {
 input GeoQueryInput {
   geometry: JSON!
   predicates: [String!]!
+  dataItemIds: [ID!]
+  versionId: ID
   first: Int
   after: String
 }

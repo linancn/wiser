@@ -116,22 +116,21 @@ const GEO_QUERY_SQL = `
 /* data.geo.query fixed PostGIS query */
 with input as (
   select ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($5), $6::integer), 4490) as geometry
-), ranked_extent as (
-  select extent.*, row_number() over (
-    partition by extent.data_item_id order by version.version_number desc
+), ranked_version as (
+  select version.*, dense_rank() over (
+    partition by version.data_item_id
+    order by version.version_number desc, version.version_id desc
   ) as version_rank
-  from catalog.spatial_extent as extent
-  join catalog.data_item_version as version
-    on version.tenant_id = extent.tenant_id
-   and version.project_id = extent.project_id
-   and version.version_id = extent.version_id
-  where extent.tenant_id = $1::uuid and extent.project_id = $2::uuid
+  from catalog.data_item_version as version
+  where version.tenant_id = $1::uuid and version.project_id = $2::uuid
     and version.committed_at is not null
-    and extent.policy_version <= $3::bigint
     and version.policy_version <= $3::bigint
-    and security.security_rank(extent.security_level) <= security.security_rank($4)
     and security.security_rank(version.security_level) <= security.security_rank($4)
-    and ($7::uuid[] is null or extent.data_item_id = any($7))
+    and ($7::uuid[] is null or version.data_item_id = any($7))
+    and ($8::uuid is null or version.version_id = $8)
+), selected_version as (
+  select * from ranked_version as version
+  where ($8::uuid is not null or version.version_rank = 1)
 )
 select extent.spatial_extent_id::text as feature_id,
   extent.data_item_id, extent.version_id,
@@ -140,10 +139,17 @@ select extent.spatial_extent_id::text as feature_id,
   jsonb_build_object('distanceMeters',
     ST_Distance(extent.canonical_geometry::geography, input.geometry::geography)
   ) as properties
-from ranked_extent as extent cross join input
-where extent.version_rank = 1
+from selected_version as version
+join catalog.spatial_extent as extent
+  on extent.tenant_id = version.tenant_id
+ and extent.project_id = version.project_id
+ and extent.data_item_id = version.data_item_id
+ and extent.version_id = version.version_id
+cross join input
+where extent.policy_version <= $3::bigint
+  and security.security_rank(extent.security_level) <= security.security_rank($4)
   and not exists (
-    select 1 from unnest($8::text[]) as predicate
+    select 1 from unnest($9::text[]) as predicate
     where not case predicate
       when 'INTERSECTS' then ST_Intersects(extent.canonical_geometry, input.geometry)
       when 'WITHIN' then ST_Within(extent.canonical_geometry, input.geometry)
@@ -152,10 +158,10 @@ where extent.version_rank = 1
       else false
     end
   )
-order by case when 'NEAREST' = any($8::text[])
+order by case when 'NEAREST' = any($9::text[])
   then extent.canonical_geometry <-> input.geometry else 0 end,
   extent.spatial_extent_id
-limit $9::integer
+limit $10::integer
 `;
 
 const GEO_INTERSECT_SQL = `
@@ -199,8 +205,9 @@ with left_item as (
     substring($6::jsonb -> 'geometry' ->> 'crs' from '[0-9]+$')::integer), 4490)
   where $6::jsonb ? 'geometry'
 ), ranked_extent as (
-  select extent.*, row_number() over (
-    partition by extent.data_item_id order by version.version_number desc
+  select extent.*, dense_rank() over (
+    partition by extent.data_item_id
+    order by version.version_number desc, version.version_id desc
   ) as version_rank
   from catalog.spatial_extent as extent
   join catalog.data_item_version as version
@@ -740,6 +747,7 @@ export class PostgisGeoQueryPort implements GeoQueryPort {
   query(request: ScopedSpecialQueryRequest): Promise<unknown> {
     const geometry = validateGeometry(request.input['geometry']);
     const predicates = strings(request.input['predicates'], 4);
+    const versionId = uuid(request.input['versionId'], true);
     if (
       predicates.some(
         (item) =>
@@ -768,6 +776,7 @@ export class PostgisGeoQueryPort implements GeoQueryPort {
         Array.isArray(request.input['dataItemIds'])
           ? request.input['dataItemIds']
           : null,
+        versionId,
         predicates,
         first,
       ]);
