@@ -1366,6 +1366,7 @@ describe('PostgreSQL Data Foundation command executors', () => {
       let commandRuntime: ReturnType<
         typeof createPostgresDataCommandRuntime
       > | null = null;
+      let guardClient: PoolClient | null = null;
       let preparedClient: PoolClient | null = null;
       try {
         await admin.query(
@@ -1383,6 +1384,118 @@ describe('PostgreSQL Data Foundation command executors', () => {
         await admin.query(
           `grant execute on all functions in schema ingestion, security, event to ${roleName}`,
         );
+        const guardOperationId = randomUUID();
+        const guardIngestionId = randomUUID();
+        const guardJobId = randomUUID();
+        const guardPlanId = randomUUID();
+        guardClient = await admin.connect();
+        await guardClient.query('begin');
+        await guardClient.query(
+          `insert into service.operation (
+             operation_id, tenant_id, project_id, capability_id, actor_id,
+             status, progress_percent, request_payload, security_level,
+             policy_version, row_version
+           ) values ($1::uuid, $2::uuid, $3::uuid, 'data.ingestion.create',
+             $4::uuid, 'PENDING', 0, '{}'::jsonb, 'L1_INTERNAL', 1, 1)`,
+          [guardOperationId, TENANT_ID, PROJECT_ID, ACTOR_ID],
+        );
+        await guardClient.query(
+          `insert into ingestion.session (
+             ingestion_id, tenant_id, project_id, operation_id,
+             owner_project_id, state, intended_uses, expected_version,
+             requested_security_level, security_level, policy_version,
+             row_version
+           ) values ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $3::uuid,
+             'RECEIVED', array['integration'], 1, 'L1_INTERNAL',
+             'L1_INTERNAL', 1, 1)`,
+          [guardIngestionId, TENANT_ID, PROJECT_ID, guardOperationId],
+        );
+        await guardClient.query(
+          `insert into ingestion.job (
+             job_id, tenant_id, project_id, ingestion_id, operation_id,
+             job_type, status, idempotency_key, payload, security_level,
+             policy_version, row_version
+           ) values ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
+             'data.ingestion.process', 'PENDING', $6, '{}'::jsonb,
+             'L1_INTERNAL', 1, 1)`,
+          [
+            guardJobId,
+            TENANT_ID,
+            PROJECT_ID,
+            guardIngestionId,
+            guardOperationId,
+            `guard:${guardJobId}`,
+          ],
+        );
+        await guardClient.query(
+          `insert into ingestion.transform_plan (
+             transform_plan_id, tenant_id, project_id, ingestion_id,
+             plan_version, plan, plan_hash, status, security_level,
+             policy_version, row_version
+           ) values ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 1,
+             '{}'::jsonb, decode($5, 'hex'), 'DRAFT', 'L1_INTERNAL', 1, 1)`,
+          [
+            guardPlanId,
+            TENANT_ID,
+            PROJECT_ID,
+            guardIngestionId,
+            'f'.repeat(64),
+          ],
+        );
+        await guardClient.query(`set local role ${roleName}`);
+        await guardClient.query(
+          `select set_config('wiser.tenant_id', $1, true),
+             set_config('wiser.project_id', $2, true),
+             set_config('wiser.max_security_level', 'L3_CONFIDENTIAL', true),
+             set_config('wiser.policy_version', '1', true)`,
+          [TENANT_ID, PROJECT_ID],
+        );
+        const expectTransitionRejected = async (
+          savepoint: string,
+          query: () => Promise<unknown>,
+          code = '55000',
+        ) => {
+          await guardClient!.query(`savepoint ${savepoint}`);
+          try {
+            await expect(query()).rejects.toMatchObject({ code });
+          } finally {
+            await guardClient!.query(`rollback to savepoint ${savepoint}`);
+          }
+        };
+        await expectTransitionRejected('operation_guard', () =>
+          guardClient!.query(
+            `update service.operation set status = 'SUCCEEDED'
+             where operation_id = $1::uuid`,
+            [guardOperationId],
+          ),
+        );
+        await expectTransitionRejected('session_guard', () =>
+          guardClient!.query(
+            `update ingestion.session set state = 'PUBLISHED'
+             where ingestion_id = $1::uuid`,
+            [guardIngestionId],
+          ),
+        );
+        await expectTransitionRejected('job_guard', () =>
+          guardClient!.query(
+            `update ingestion.job set status = 'SUCCEEDED'
+             where job_id = $1::uuid`,
+            [guardJobId],
+          ),
+        );
+        await expectTransitionRejected(
+          'transform_plan_guard',
+          () =>
+            guardClient!.query(
+              `update ingestion.transform_plan set status = 'UNSAFE'
+               where transform_plan_id = $1::uuid`,
+              [guardPlanId],
+            ),
+          '23514',
+        );
+        await guardClient.query('rollback');
+        guardClient.release();
+        guardClient = null;
         const fixtureSql = `
           insert into service.operation (
             operation_id, tenant_id, project_id, capability_id, actor_id,
@@ -1984,6 +2097,10 @@ describe('PostgreSQL Data Foundation command executors', () => {
         preparedClient.release();
         preparedClient = null;
       } finally {
+        if (guardClient !== null) {
+          await guardClient.query('rollback').catch(() => undefined);
+          guardClient.release();
+        }
         if (commandRuntime !== null) {
           await commandRuntime.close().catch(() => undefined);
         }
