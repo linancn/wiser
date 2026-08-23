@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import * as dataFoundation from './data-foundation';
 import {
   DATA_FOUNDATION_ROUTES,
   ingestionStepState,
   isMapDisplayableFeature,
   parseDataCatalogPage,
+  parseDataItemVersionPage,
   parseDataRouteUuid,
   parseGeoQuery,
   parseIngestion,
@@ -13,6 +15,52 @@ import {
 } from './data-foundation';
 
 const UUID = '11111111-1111-4111-8111-111111111111';
+const VERSION_ID = '22222222-2222-4222-8222-222222222222';
+const OTHER_VERSION_ID = '33333333-3333-4333-8333-333333333333';
+const MISSING_TILE_AVAILABILITY = Symbol('missing-tile-availability');
+
+function dataItemVersion(
+  tileAvailability: unknown = MISSING_TILE_AVAILABILITY,
+) {
+  return {
+    tenantId: UUID,
+    dataItemId: UUID,
+    versionId: VERSION_ID,
+    version: 1,
+    assetIds: ['44444444-4444-4444-8444-444444444444'],
+    sourceHash: 'a'.repeat(64),
+    metadataHash: 'b'.repeat(64),
+    processingStage: 'STANDARDIZED',
+    generationMethod: 'OBSERVED',
+    qualityGrade: 'A',
+    acceptanceStatus: 'PASSED',
+    publicationStatus: 'PUBLISHED',
+    securityLevel: 'L1_INTERNAL',
+    createdAt: '2026-08-21T08:00:00.000Z',
+    committedAt: '2026-08-21T08:01:00.000Z',
+    publishedAt: '2026-08-21T08:02:00.000Z',
+    ...(tileAvailability === MISSING_TILE_AVAILABILITY
+      ? {}
+      : { tileAvailability }),
+  };
+}
+
+type ParseMapVersionSelection = (
+  dataItem: string | string[] | undefined,
+  version: string | string[] | undefined,
+) =>
+  | { readonly dataItemId: string; readonly versionId: string }
+  | null
+  | undefined;
+
+type ResolveMapTileUrls = (
+  selection:
+    { readonly dataItemId: string; readonly versionId: string } | undefined,
+  authoritativeVersion: unknown,
+) => {
+  readonly vectorTileUrl?: string;
+  readonly rasterTileUrl?: string;
+};
 
 describe('Data Foundation browser-safe contracts', () => {
   it('declares every required localized management route', () => {
@@ -100,6 +148,104 @@ describe('Data Foundation browser-safe contracts', () => {
         items: [{ dataItemId: UUID, name: 'Missing authority fields' }],
       }),
     ).toThrow(/catalog response/i);
+  });
+
+  it('projects explicit version-level tile availability without leaking internal fields', () => {
+    const page = parseDataItemVersionPage({
+      items: [
+        dataItemVersion({
+          vector: true,
+          raster: false,
+          internalProjectionState: 'must-not-cross-the-DAL',
+        }),
+      ],
+    });
+
+    expect(page.items[0]).toMatchObject({
+      dataItemId: UUID,
+      versionId: VERSION_ID,
+      tileAvailability: { vector: true, raster: false },
+    });
+    expect(page.items[0]).not.toHaveProperty(
+      'tileAvailability.internalProjectionState',
+    );
+  });
+
+  it('rejects versions whose tile availability is absent or malformed', () => {
+    expect(() =>
+      parseDataItemVersionPage({ items: [dataItemVersion()] }),
+    ).toThrow(/data item version page response/i);
+    expect(() =>
+      parseDataItemVersionPage({
+        items: [dataItemVersion({ vector: 'yes', raster: false })],
+      }),
+    ).toThrow(/data item version page response/i);
+    expect(() =>
+      parseDataItemVersionPage({
+        items: [dataItemVersion({ vector: true })],
+      }),
+    ).toThrow(/data item version page response/i);
+  });
+
+  it('accepts a map version only as a complete canonical DataItem/version pair', () => {
+    const parse = Reflect.get(dataFoundation, 'parseMapVersionSelection') as
+      ParseMapVersionSelection | undefined;
+    expect(parse).toBeTypeOf('function');
+    if (parse === undefined) return;
+
+    expect(parse(undefined, undefined)).toBeUndefined();
+    expect(parse(UUID, VERSION_ID)).toEqual({
+      dataItemId: UUID,
+      versionId: VERSION_ID,
+    });
+    expect(parse(UUID, undefined)).toBeNull();
+    expect(parse(undefined, VERSION_ID)).toBeNull();
+    expect(parse('not-a-uuid', VERSION_ID)).toBeNull();
+    expect(parse(UUID, ['duplicate', VERSION_ID])).toBeNull();
+  });
+
+  it('emits same-origin tile URLs only for the matching authoritative version and available layer', () => {
+    const resolve = Reflect.get(dataFoundation, 'resolveMapTileUrls') as
+      ResolveMapTileUrls | undefined;
+    expect(resolve).toBeTypeOf('function');
+    if (resolve === undefined) return;
+
+    const selection = { dataItemId: UUID, versionId: VERSION_ID };
+    const authoritativeVersion = parseDataItemVersionPage({
+      items: [dataItemVersion({ vector: true, raster: false })],
+    }).items[0];
+    const vectorOnly = resolve(selection, authoritativeVersion);
+    expect(vectorOnly.vectorTileUrl).toBe(
+      `/api/data-foundation/geo/tiles/vector/versions/${VERSION_ID}/{z}/{x}/{y}.pbf`,
+    );
+    expect(vectorOnly.rasterTileUrl).toBeUndefined();
+
+    const rasterOnly = resolve(
+      selection,
+      parseDataItemVersionPage({
+        items: [dataItemVersion({ vector: false, raster: true })],
+      }).items[0],
+    );
+    expect(rasterOnly.vectorTileUrl).toBeUndefined();
+    expect(rasterOnly.rasterTileUrl).toBe(
+      `/api/data-foundation/geo/tiles/raster/versions/${VERSION_ID}/WebMercatorQuad/{z}/{x}/{y}.png`,
+    );
+
+    for (const unavailable of [
+      resolve(undefined, authoritativeVersion),
+      resolve(selection, undefined),
+      resolve(selection, {
+        ...authoritativeVersion,
+        versionId: OTHER_VERSION_ID,
+      }),
+      resolve(selection, {
+        ...authoritativeVersion,
+        dataItemId: '55555555-5555-4555-8555-555555555555',
+      }),
+    ]) {
+      expect(unavailable.vectorTileUrl).toBeUndefined();
+      expect(unavailable.rasterTileUrl).toBeUndefined();
+    }
   });
 
   it('accepts only structurally valid, display-safe GeoJSON for MapLibre', () => {

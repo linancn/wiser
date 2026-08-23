@@ -83,9 +83,14 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
     page,
   }) => {
     const browserOrigins = new Set<string>();
-    page.on('request', (request) =>
-      browserOrigins.add(new URL(request.url()).origin),
-    );
+    const rasterRequests: string[] = [];
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      browserOrigins.add(url.origin);
+      if (url.pathname.includes('/geo/tiles/raster/versions/')) {
+        rasterRequests.push(url.pathname);
+      }
+    });
     await login(page, 'zh-CN', detailPath('zh-CN'));
 
     await expect(
@@ -146,6 +151,7 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
     const mapHref = await mapLink.getAttribute('href');
     expect(mapHref).not.toBeNull();
     const mapUrl = new URL(mapHref!, page.url());
+    expect(mapUrl.searchParams.get('dataItem')).toBe(fixture.dataItemId);
     expect(mapUrl.searchParams.get('version')).toBe(fixture.versionId);
     expect(mapUrl.searchParams.get('bbox')).toBe(
       '115.6078,39.8496,116.2186,40.2217',
@@ -161,9 +167,12 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
     await expect(
       page.getByRole('checkbox', { name: 'Vector layer' }),
     ).toBeEnabled();
-    expect(new URL(page.url()).searchParams.get('version')).toBe(
-      fixture.versionId,
-    );
+    await expect(
+      page.getByRole('checkbox', { name: 'Raster layer' }),
+    ).toBeDisabled();
+    const currentMapUrl = new URL(page.url());
+    expect(currentMapUrl.searchParams.get('dataItem')).toBe(fixture.dataItemId);
+    expect(currentMapUrl.searchParams.get('version')).toBe(fixture.versionId);
 
     const vector = await page.request.get(
       `/api/data-foundation/geo/tiles/vector/versions/${fixture.versionId}/0/0/0.pbf`,
@@ -179,6 +188,7 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
         'http://host.docker.internal:56321',
       ]),
     );
+    expect(rasterRequests).toEqual([]);
     await expect(page.locator('main')).not.toContainText(unsafeNarrative);
   });
 

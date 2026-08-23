@@ -73,11 +73,28 @@ describe('Data Foundation management routes', () => {
     expect(source).toContain('DataFoundationMap');
     expect(source).toContain('getDataFoundationDal');
     expect(source).toContain('stacItems');
-    expect(source).toContain('versionId: selectedVersionId');
+    expect(source).toContain(
+      'parseMapVersionSelection(search.dataItem, search.version)',
+    );
+    expect(source).toContain('resolveMapTileUrls');
+    expect(source).toMatch(
+      /dal\.dataItem\(\s*[^,]*\.dataItemId\s*,\s*[^)]*\.versionId\s*\)/s,
+    );
     expect(source).toContain('vectorTileUrl');
     expect(source).toContain('rasterTileUrl');
     expect(source).not.toContain('baseLayerGap');
     expect(source).not.toMatch(/fixture|mock|sample/i);
+  });
+
+  it('preserves the authoritative DataItem when a pinned map form is resubmitted', async () => {
+    const source = await readFile(
+      new URL('../components/data-foundation-workspace.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(source).toMatch(
+      /<input(?=[^>]*type="hidden")(?=[^>]*name="dataItem")(?=[^>]*value=\{dataItem\})[^>]*\/>/s,
+    );
   });
 
   it('round-trips immutable DataItem version selection through the API', async () => {
@@ -93,6 +110,7 @@ describe('Data Foundation management routes', () => {
     expect(source).toContain('dal.dataItem(dataItemId, versionId)');
     expect(source).toContain('detail.selectedVersion');
     expect(source).toContain('selectedVersionId');
+    expect(source).toContain("mapSearch.set('dataItem', item.dataItemId)");
     await access(
       new URL(
         'api/data-foundation/geo/[...path]/route.ts',
