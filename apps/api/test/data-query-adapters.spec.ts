@@ -641,7 +641,7 @@ describe('PostGIS geo query port', () => {
     expect(client.calls).toHaveLength(0);
   });
 
-  it('uses optional item version filters for intersection targets', async () => {
+  it('selects target and candidate versions before collecting their extents', async () => {
     const client = new FakePgClient();
     client.results.push({ rows: [] }, { rows: [] });
     const port = new PostgisGeoQueryPort({ pool: new FakePool(client) });
@@ -658,10 +658,178 @@ describe('PostGIS geo query port', () => {
         first: 10,
       }),
     );
-    expect(client.calls[2]!.text).toContain("->> 'versionId'");
-    expect(client.calls[2]!.text).toContain('version_number desc');
-    expect(client.calls[2]!.text).toContain('dense_rank() over');
-    expect(client.calls[2]!.text).not.toContain('row_number() over');
+    const sql = client.calls[2]!.text;
+    expect(sql).toContain("->> 'versionId'");
+    expect(sql).toContain('version_number desc');
+    expect(sql).toContain('left_ranked_version as');
+    expect(sql).toContain('left_selected_version as');
+    expect(sql).toContain('right_ranked_version as');
+    expect(sql).toContain('right_selected_version as');
+    expect(sql).toContain('ranked_candidate_version as');
+    expect(sql).toContain('selected_candidate_version as');
+    expect(sql).toContain('statement_timestamp()');
+    expect(sql).toContain('version.committed_at <=');
+    expect(sql).toContain('version.created_at <=');
+    expect(sql).toContain('extent.created_at <=');
+    expect(sql).toMatch(
+      /ranked_candidate_version as \([\s\S]+from catalog\.data_item_version as version/,
+    );
+    expect(sql).toMatch(
+      /from selected_candidate_version as version\s+join catalog\.spatial_extent as extent/,
+    );
+    expect(sql).not.toContain('ranked_extent as');
+    expect(sql.match(/dense_rank\(\) over/g)).toHaveLength(3);
+    expect(sql).not.toContain('row_number() over');
+    expect(
+      sql.match(/extent\.tenant_id\s*=\s*version\.tenant_id/g),
+    ).toHaveLength(3);
+    expect(
+      sql.match(/extent\.project_id\s*=\s*version\.project_id/g),
+    ).toHaveLength(3);
+    expect(
+      sql.match(/extent\.data_item_id\s*=\s*version\.data_item_id/g),
+    ).toHaveLength(3);
+    expect(
+      sql.match(/extent\.version_id\s*=\s*version\.version_id/g),
+    ).toHaveLength(3);
+    expect(
+      sql.match(
+        /security\.security_rank\(version\.security_level\)\s*<=\s*security\.security_rank\(\$4\)/g,
+      ),
+    ).toHaveLength(3);
+    expect(
+      sql.match(
+        /security\.security_rank\(extent\.security_level\)\s*<=\s*security\.security_rank\(\$4\)/g,
+      ),
+    ).toHaveLength(3);
+    expect(sql.match(/ST_UnaryUnion\s*\(\s*ST_Collect\s*\(/g)).toHaveLength(2);
     expect(String(client.calls[2]!.values[4])).toContain(VERSION_ID);
+  });
+
+  it('reads first plus one and continues intersections from a snapshot-bound feature cursor', async () => {
+    const client = new FakePgClient();
+    client.results.push(
+      { rows: [] },
+      {
+        rows: [
+          geoRow(FEATURE_ID_A, 0),
+          geoRow(FEATURE_ID_B, 0),
+          geoRow(FEATURE_ID_C, 0),
+        ],
+      },
+      { rows: [] },
+      { rows: [geoRow(FEATURE_ID_C, 0)] },
+    );
+    const port = new PostgisGeoQueryPort({
+      pool: new FakePool(client),
+      maximumFeatures: 100,
+    });
+    const input = {
+      left: { dataItemId: DATA_ITEM_ID, versionId: VERSION_ID },
+      right: {
+        geometry: {
+          type: 'Point',
+          coordinates: [116.2, 39.8],
+          crs: 'EPSG:4326',
+        },
+      },
+      first: 2,
+    };
+
+    const firstPage = (await port.intersect(request(input))) as {
+      features: readonly { featureId: string }[];
+      nextCursor?: string;
+    };
+
+    expect(firstPage.features.map(({ featureId }) => featureId)).toEqual([
+      FEATURE_ID_A,
+      FEATURE_ID_B,
+    ]);
+    expect(firstPage.nextCursor).toEqual(expect.any(String));
+    expect(firstPage.nextCursor).not.toContain(FEATURE_ID_B);
+    expect(client.calls[2]!.values.at(-1)).toBe(3);
+
+    const secondPage = (await port.intersect(
+      request({ ...input, after: firstPage.nextCursor }),
+    )) as {
+      features: readonly { featureId: string }[];
+      nextCursor?: string;
+    };
+
+    expect(secondPage).toMatchObject({
+      features: [{ featureId: FEATURE_ID_C }],
+    });
+    expect(secondPage).not.toHaveProperty('nextCursor');
+    expect(client.calls[6]!.text).toMatch(/spatial_extent_id\s*>/i);
+    expect(client.calls[6]!.text).toMatch(
+      /order by\s+extent\.spatial_extent_id/i,
+    );
+    expect(JSON.stringify(client.calls[6]!.values)).toContain(FEATURE_ID_B);
+    expect(client.calls[6]!.values).toContain(GEO_SNAPSHOT_AT);
+    expect(client.calls[6]!.text).toContain('created_at <=');
+  });
+
+  it('rejects changed, cross-scope, and tampered intersection cursors before connecting', async () => {
+    const client = new FakePgClient();
+    client.results.push(
+      { rows: [] },
+      { rows: [geoRow(FEATURE_ID_A, 0), geoRow(FEATURE_ID_B, 0)] },
+    );
+    const pool = new FakePool(client);
+    const port = new PostgisGeoQueryPort({ pool, maximumFeatures: 100 });
+    const input = {
+      left: { dataItemId: DATA_ITEM_ID, versionId: VERSION_ID },
+      right: {
+        geometry: {
+          type: 'Point',
+          coordinates: [116.2, 39.8],
+          crs: 'EPSG:4326',
+        },
+      },
+      first: 1,
+    };
+    const firstPage = (await port.intersect(request(input))) as {
+      nextCursor?: string;
+    };
+    expect(firstPage.nextCursor).toEqual(expect.any(String));
+    const cursor = firstPage.nextCursor!;
+    expect(pool.connectCalls).toBe(1);
+
+    await expect(
+      Promise.resolve().then(() =>
+        port.intersect(
+          request({
+            ...input,
+            right: {
+              geometry: {
+                ...input.right.geometry,
+                coordinates: [117, 40],
+              },
+            },
+            after: cursor,
+          }),
+        ),
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_CURSOR' });
+    await expect(
+      Promise.resolve().then(() =>
+        port.intersect({
+          scope: {
+            ...scope,
+            projectId: 'e1000000-0000-4000-8000-000000000009',
+          },
+          input: { ...input, after: cursor },
+          signal: new AbortController().signal,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_CURSOR' });
+    await expect(
+      Promise.resolve().then(() =>
+        port.intersect(
+          request({ ...input, after: changeOpaqueCursor(cursor) }),
+        ),
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_CURSOR' });
+    expect(pool.connectCalls).toBe(1);
   });
 });

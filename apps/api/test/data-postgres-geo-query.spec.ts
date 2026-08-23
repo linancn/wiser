@@ -221,6 +221,21 @@ function request(
   };
 }
 
+function intersectRequest(
+  scope: FixtureScope,
+  input: Record<string, unknown>,
+): ScopedSpecialQueryRequest {
+  return {
+    scope: {
+      ...scope,
+      maxSecurityLevel: 'L1_INTERNAL',
+      maximumPolicyVersion: 1,
+    },
+    input: { first: 20, ...input },
+    signal: new AbortController().signal,
+  };
+}
+
 function featureIds(output: unknown): readonly string[] {
   const features = (output as { readonly features: readonly unknown[] })
     .features;
@@ -261,6 +276,9 @@ describe('PostGIS geo query PostgreSQL integration', () => {
       const secondaryDataItemId = randomUUID();
       const secondaryVersionId = randomUUID();
       const secondaryExtentId = randomUUID();
+      const candidateDataItemId = randomUUID();
+      const candidateVersionId = randomUUID();
+      const candidateExtentIds = [randomUUID(), randomUUID()] as const;
       const crossTenantDataItemId = randomUUID();
       const crossTenantVersionId = randomUUID();
       const highSecurityDataItemId = randomUUID();
@@ -315,6 +333,14 @@ describe('PostGIS geo query PostgreSQL integration', () => {
           securityLevel: 'L1_INTERNAL',
           policyVersion: 1,
         };
+        const candidateVersion: VersionFixture = {
+          ...visibleScope,
+          dataItemId: candidateDataItemId,
+          versionId: candidateVersionId,
+          versionNumber: 1,
+          securityLevel: 'L1_INTERNAL',
+          policyVersion: 1,
+        };
         const crossTenantVersion: VersionFixture = {
           ...crossTenantScope,
           dataItemId: crossTenantDataItemId,
@@ -357,6 +383,14 @@ describe('PostGIS geo query PostgreSQL integration', () => {
           policyVersion: 1,
         });
         await insertDataItem(fixtureClient, {
+          ...visibleScope,
+          dataItemId: candidateDataItemId,
+          name: 'Geo integration intersection candidate',
+          version: 1,
+          securityLevel: 'L1_INTERNAL',
+          policyVersion: 1,
+        });
+        await insertDataItem(fixtureClient, {
           ...crossTenantScope,
           dataItemId: crossTenantDataItemId,
           name: 'Geo integration cross tenant',
@@ -385,6 +419,7 @@ describe('PostGIS geo query PostgreSQL integration', () => {
           primaryVersionOne,
           primaryVersionTwo,
           secondaryVersion,
+          candidateVersion,
           crossTenantVersion,
           highSecurityVersion,
           futurePolicyVersion,
@@ -408,6 +443,18 @@ describe('PostGIS geo query PostgreSQL integration', () => {
           spatialExtentId: secondaryExtentId,
           longitude: 116.5,
           latitude: 39.7,
+        });
+        await insertExtent(fixtureClient, {
+          ...candidateVersion,
+          spatialExtentId: candidateExtentIds[0],
+          longitude: 116.1,
+          latitude: 39.8,
+        });
+        await insertExtent(fixtureClient, {
+          ...candidateVersion,
+          spatialExtentId: candidateExtentIds[1],
+          longitude: 116.3,
+          latitude: 39.9,
         });
         await insertExtent(fixtureClient, {
           ...crossTenantVersion,
@@ -494,6 +541,40 @@ describe('PostGIS geo query PostgreSQL integration', () => {
           request(visibleScope, { dataItemIds: [secondaryDataItemId] }),
         );
         expect(featureIds(secondaryLatest)).toEqual([secondaryExtentId]);
+
+        const coveringGeometry = {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [115, 38],
+              [118, 38],
+              [118, 41],
+              [115, 41],
+              [115, 38],
+            ],
+          ],
+          crs: 'EPSG:4490',
+        } as const;
+        const latestTargetWithoutExtent = await port.intersect(
+          intersectRequest(visibleScope, {
+            left: { dataItemId: primaryDataItemId },
+            right: { geometry: coveringGeometry },
+          }),
+        );
+        expect(latestTargetWithoutExtent).toEqual({ features: [] });
+
+        const collectedSiblingTarget = await port.intersect(
+          intersectRequest(visibleScope, {
+            left: {
+              dataItemId: primaryDataItemId,
+              versionId: primaryVersionOneId,
+            },
+            right: { geometry: coveringGeometry },
+          }),
+        );
+        expect(featureIds(collectedSiblingTarget)).toEqual(
+          [...candidateExtentIds].toSorted(),
+        );
 
         const absent = await port.query(
           request(visibleScope, { versionId: absentVersionId }),
