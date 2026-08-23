@@ -23,7 +23,7 @@ checkPaths:
   - examples/agent-excon/**
   - .github/workflows/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: e1952416a8fcf9a64dd74165656d05fdbb09233a
+lastReviewedCommit: edd97b4d3215c55d272ae2721b7843286e6f4286
 ---
 
 ## Red → Green → Refactor
@@ -63,7 +63,7 @@ pnpm verify
 1. `prettier --check .`，检查整个仓库的格式；
 2. 生成 Fumadocs 内容后运行 type-aware Oxlint；
 3. 对所有声明了 `typecheck` 的 workspace 运行 TypeScript 检查；
-4. `pnpm test:unit` 先用根 Vitest 运行 `packages/**/*.spec.ts` 与 `tests/**/*.spec.ts`，再运行所有 `apps/*` 中存在的 `test` 脚本；
+4. `pnpm test:unit` 使用一次 Vitest projects 运行：各 app project 可并行执行，名为 `repository` 的根 project 串行运行 `packages/**/*.spec.ts` 与 `tests/**/*.spec.ts`；
 5. `pnpm test:ops` 用 Node test runner 运行 `scripts/data-foundation/*.test.mjs`，验证运维编排、runtime role、Supabase 状态解析和纵向 smoke 合同；
 6. 对所有声明了 `build` 的 workspace 构建；
 7. 运行 `docker compose config --quiet` 验证默认 Compose 配置。
@@ -77,6 +77,7 @@ pnpm verify
 | 范围                             | 命令                                                                                  |
 | -------------------------------- | ------------------------------------------------------------------------------------- |
 | 单个根或 package spec            | `pnpm exec vitest run <path-to-spec>`                                                 |
+| 全部 unit coverage               | `pnpm test:coverage`                                                                  |
 | Data Foundation 运维合同         | `pnpm test:ops`                                                                       |
 | Agent EXCON contracts/core/infra | `pnpm exec vitest run packages/contracts/test packages/core/test packages/infra/test` |
 | Platform contracts/auth          | `pnpm exec vitest run packages/platform-contracts/test packages/platform-auth/test`   |
@@ -91,7 +92,15 @@ pnpm verify
 | Data infrastructure              | `pnpm --filter @wiser/data-infra test`                                                |
 | EXCON scenario assets            | `pnpm --filter @agent-excon/scenarios test`                                           |
 
-`pnpm test` 明确组合 `test:unit` 与 `test:ops`。`@agent-excon/contracts`、`@agent-excon/core`、`@agent-excon/infra`、`@wiser/platform-contracts` 和 `@wiser/platform-auth` 没有独立 `test` script，它们的 spec 由根 Vitest 配置收集，因此使用表中的路径命令。不要把 `pnpm --filter <package> test` 的无脚本结果误认为测试已经运行。
+`pnpm test` 明确组合 `test:unit` 与 `test:ops`。`@agent-excon/contracts`、`@agent-excon/core`、`@agent-excon/infra`、`@wiser/platform-contracts` 和 `@wiser/platform-auth` 没有独立 `test` script，它们的 spec 由 `repository` project 收集，因此使用表中的路径命令。不要把 `pnpm --filter <package> test` 的无脚本结果误认为测试已经运行。
+
+## 覆盖率
+
+```bash
+pnpm test:coverage
+```
+
+该命令在同一次 Vitest projects 运行中合并 packages 与具有 unit suite 的 apps，显式纳入尚未被测试 import 的 TypeScript/TSX 源文件，并生成文本、`coverage/lcov.info` 与 `coverage/coverage-summary.json`。Docs 仍由 build/Playwright 验证，不进入 unit coverage。长运行进程的 bootstrap 文件显式排除；CLI、barrel 和 Web 页面保留在报告中。当前里程碑只建立可信基线，不设置未经验证的百分比阈值。
 
 ## Supabase 与 Data Foundation
 

@@ -23,7 +23,7 @@ checkPaths:
   - examples/agent-excon/**
   - .github/workflows/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: e1952416a8fcf9a64dd74165656d05fdbb09233a
+lastReviewedCommit: edd97b4d3215c55d272ae2721b7843286e6f4286
 ---
 
 ## Red → Green → Refactor
@@ -63,7 +63,7 @@ It performs, in order:
 1. `prettier --check .` across the repository;
 2. Fumadocs content generation followed by type-aware Oxlint;
 3. TypeScript checks for every workspace that declares `typecheck`;
-4. `pnpm test:unit`, which runs root Vitest over `packages/**/*.spec.ts` and `tests/**/*.spec.ts`, followed by every existing `test` script under `apps/*`;
+4. `pnpm test:unit`, which uses one Vitest projects run: app projects may run in parallel, while the root project named `repository` serializes `packages/**/*.spec.ts` and `tests/**/*.spec.ts`;
 5. `pnpm test:ops`, which uses the Node test runner over `scripts/data-foundation/*.test.mjs` to verify operations orchestration, runtime roles, Supabase status parsing, and the vertical-smoke contract;
 6. builds for every workspace that declares `build`;
 7. `docker compose config --quiet` for the default Compose configuration.
@@ -77,6 +77,7 @@ Use the narrowest command during development, then return to root verification b
 | Scope                            | Command                                                                               |
 | -------------------------------- | ------------------------------------------------------------------------------------- |
 | One root or package spec         | `pnpm exec vitest run <path-to-spec>`                                                 |
+| Complete unit coverage           | `pnpm test:coverage`                                                                  |
 | Data Foundation operations       | `pnpm test:ops`                                                                       |
 | Agent EXCON contracts/core/infra | `pnpm exec vitest run packages/contracts/test packages/core/test packages/infra/test` |
 | Platform contracts/auth          | `pnpm exec vitest run packages/platform-contracts/test packages/platform-auth/test`   |
@@ -91,7 +92,15 @@ Use the narrowest command during development, then return to root verification b
 | Data infrastructure              | `pnpm --filter @wiser/data-infra test`                                                |
 | EXCON scenario assets            | `pnpm --filter @agent-excon/scenarios test`                                           |
 
-`pnpm test` explicitly composes `test:unit` and `test:ops`. `@agent-excon/contracts`, `@agent-excon/core`, `@agent-excon/infra`, `@wiser/platform-contracts`, and `@wiser/platform-auth` have no standalone `test` script. Their specs are collected by root Vitest, so use the path commands in the table. Do not mistake a no-script result from `pnpm --filter <package> test` for an executed test suite.
+`pnpm test` explicitly composes `test:unit` and `test:ops`. `@agent-excon/contracts`, `@agent-excon/core`, `@agent-excon/infra`, `@wiser/platform-contracts`, and `@wiser/platform-auth` have no standalone `test` script. Their specs are collected by the `repository` project, so use the path commands in the table. Do not mistake a no-script result from `pnpm --filter <package> test` for an executed test suite.
+
+## Coverage
+
+```bash
+pnpm test:coverage
+```
+
+This command merges packages and every app with a unit suite in one Vitest projects run, explicitly includes TypeScript/TSX source files that no test imported, and emits text, `coverage/lcov.info`, and `coverage/coverage-summary.json`. Docs remains build/Playwright-gated and is outside unit coverage. Long-running process bootstrap files are explicitly excluded; CLIs, barrels, and Web pages remain visible in the report. This milestone establishes a trustworthy baseline without inventing percentage thresholds first.
 
 ## Supabase and Data Foundation
 
