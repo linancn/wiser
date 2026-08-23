@@ -17,7 +17,11 @@ const INPUT_KEYS = Object.freeze([
 ]);
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const CRS = /^EPSG:([1-9]\d{0,5})$/;
+const CRS = new Map([
+  ['EPSG:4326', 4326],
+  ['EPSG:4490', 4490],
+  ['EPSG:3857', 3857],
+]);
 const SECURITY_LEVELS = new Set([
   'L0_PUBLIC',
   'L1_INTERNAL',
@@ -58,9 +62,17 @@ function uuid(value: unknown, field: string): string {
   return value;
 }
 
-function position(value: unknown, counter: { count: number }): GeoJsonPosition {
+interface CoordinateCounter {
+  count: number;
+  dimensions: 2 | 3 | undefined;
+}
+
+function position(value: unknown, counter: CoordinateCounter): GeoJsonPosition {
   if (!Array.isArray(value) || (value.length !== 2 && value.length !== 3)) {
     invalid('GeoJSON position must contain two or three ordinates.');
+  }
+  if (counter.dimensions !== undefined && counter.dimensions !== value.length) {
+    invalid('GeoJSON positions must use one coordinate dimension.');
   }
   const ordinates: number[] = [];
   for (const ordinate of value as unknown[]) {
@@ -69,6 +81,7 @@ function position(value: unknown, counter: { count: number }): GeoJsonPosition {
     }
     ordinates.push(ordinate);
   }
+  counter.dimensions = value.length;
   counter.count += 1;
   if (counter.count > 100_000) invalid('GeoJSON geometry is too large.');
   return ordinates as unknown as GeoJsonPosition;
@@ -77,7 +90,7 @@ function position(value: unknown, counter: { count: number }): GeoJsonPosition {
 function positions(
   value: unknown,
   minimum: number,
-  counter: { count: number },
+  counter: CoordinateCounter,
 ): readonly GeoJsonPosition[] {
   if (!Array.isArray(value) || value.length < minimum) {
     invalid('GeoJSON coordinate sequence is invalid.');
@@ -87,14 +100,15 @@ function positions(
 
 function ring(
   value: unknown,
-  counter: { count: number },
+  counter: CoordinateCounter,
 ): readonly GeoJsonPosition[] {
   const result = positions(value, 4, counter);
   const first = result[0]!;
   const last = result.at(-1)!;
   if (
     first.length !== last.length ||
-    first.some((ordinate, index) => ordinate !== last[index])
+    first.some((ordinate, index) => ordinate !== last[index]) ||
+    new Set(result.slice(0, -1).map((entry) => entry.join(','))).size < 3
   ) {
     invalid('GeoJSON polygon rings must be closed.');
   }
@@ -104,7 +118,7 @@ function ring(
 function geometry(value: unknown): SupportedGeoJsonGeometry {
   const candidate = object(value, 'sourceGeoJson');
   exactKeys(candidate, ['type', 'coordinates'], 'sourceGeoJson');
-  const counter = { count: 0 };
+  const counter: CoordinateCounter = { count: 0, dimensions: undefined };
   switch (candidate.type) {
     case 'Point':
       return {
@@ -202,9 +216,8 @@ export function validateSpatialProjectionInput(
   if (typeof candidate.sourceCrs !== 'string') {
     invalid('sourceCrs is invalid.');
   }
-  const crsMatch = CRS.exec(candidate.sourceCrs);
-  if (crsMatch?.[1] === undefined) invalid('sourceCrs is invalid.');
-  const sourceSrid = Number(crsMatch[1]);
+  const sourceSrid = CRS.get(candidate.sourceCrs);
+  if (sourceSrid === undefined) invalid('sourceCrs is invalid.');
 
   return Object.freeze({
     ...(candidate.spatialExtentId === undefined
