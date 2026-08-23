@@ -16,7 +16,7 @@ checkPaths:
   - supabase/migrations/**
   - supabase/schemas/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: b3f0068d8af6c5597e0387840045436b9ad39a6d
+lastReviewedCommit: 8cbabd4d8583181a5f9b88b9043d13c407c3366a
 ---
 
 # Agent EXCON v1 Compatibility Worker / v1 兼容 Worker

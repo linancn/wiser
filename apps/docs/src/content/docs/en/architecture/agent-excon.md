@@ -24,7 +24,7 @@ checkPaths:
   - supabase/**
   - infrastructure/observability/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: b3f0068d8af6c5597e0387840045436b9ad39a6d
+lastReviewedCommit: 8cbabd4d8583181a5f9b88b9043d13c407c3366a
 ---
 
 Agent EXCON compiles water-system work into versioned, concurrent, adjudicable, and replayable multi-agent environments. It shares WISER Auth, API, Web, MCP, and documentation hosts with Data Foundation, but the two systems do not share domain state machines or authoritative facts.

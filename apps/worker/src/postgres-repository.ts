@@ -550,7 +550,10 @@ export class PostgresEvaluationRepository implements EvaluationRepository {
         ],
       );
 
-      const nextState = item.isFinal ? 'completed' : 'feedback_available';
+      const nextState =
+        item.isFinal && result.verdict === 'pass'
+          ? 'completed'
+          : 'feedback_available';
       await client.query(
         `
           update public.episodes
