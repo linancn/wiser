@@ -366,6 +366,7 @@ describe('PostGIS geo query port', () => {
           crs: 'EPSG:4326',
         },
         predicates: ['INTERSECTS', 'NEAREST'],
+        versionId: VERSION_ID,
         first: 10,
       }),
     );
@@ -386,7 +387,11 @@ describe('PostGIS geo query port', () => {
     expect(sql).toContain('4490');
     expect(sql).toContain('source_geometry');
     expect(sql).toContain('<->');
-    expect(sql).toContain('unnest($8::text[])');
+    expect(sql).toContain('dense_rank() over');
+    expect(sql).not.toContain('row_number() over');
+    expect(sql).toContain('$8::uuid is null or extent.version_id = $8');
+    expect(sql).toContain('$8::uuid is not null or extent.version_rank = 1');
+    expect(sql).toContain('unnest($9::text[])');
     expect(sql).toContain(
       'security.security_rank(extent.security_level) <= security.security_rank($4)',
     );
@@ -394,8 +399,29 @@ describe('PostGIS geo query port', () => {
       'security.security_rank(version.security_level) <= security.security_rank($4)',
     );
     expect(client.calls[2]!.values[3]).toBe(scope.maxSecurityLevel);
-    expect(client.calls[2]!.values[7]).toEqual(['INTERSECTS', 'NEAREST']);
+    expect(client.calls[2]!.values[7]).toBe(VERSION_ID);
+    expect(client.calls[2]!.values[8]).toEqual(['INTERSECTS', 'NEAREST']);
     expect(sql).not.toContain('116.2');
+  });
+
+  it('uses latest-visible-version semantics when no immutable version is requested', async () => {
+    const client = new FakePgClient();
+    client.results.push({ rows: [] }, { rows: [] });
+    const port = new PostgisGeoQueryPort({ pool: new FakePool(client) });
+
+    await port.query(
+      request({
+        geometry: {
+          type: 'Point',
+          coordinates: [116.2, 39.8],
+          crs: 'EPSG:4326',
+        },
+        predicates: ['INTERSECTS'],
+        first: 10,
+      }),
+    );
+
+    expect(client.calls[2]!.values[7]).toBeNull();
   });
 
   it('uses optional item version filters for intersection targets', async () => {
@@ -417,6 +443,8 @@ describe('PostGIS geo query port', () => {
     );
     expect(client.calls[2]!.text).toContain("->> 'versionId'");
     expect(client.calls[2]!.text).toContain('version_number desc');
+    expect(client.calls[2]!.text).toContain('dense_rank() over');
+    expect(client.calls[2]!.text).not.toContain('row_number() over');
     expect(String(client.calls[2]!.values[4])).toContain(VERSION_ID);
   });
 });

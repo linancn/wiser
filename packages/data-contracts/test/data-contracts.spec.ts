@@ -171,6 +171,7 @@ const validCapabilityInputs = {
   'data.geo.query': {
     geometry: point,
     predicates: ['INTERSECTS'],
+    versionId: VERSION_ID,
     first: 10,
   },
   'data.geo.intersect': {
@@ -933,6 +934,7 @@ describe('Data Foundation capability registry', () => {
         skillMapping: definition.skillMapping,
       }).toEqual(expectedCapabilityMappings[capabilityId]);
     }
+    expect(DATA_CAPABILITY_REGISTRY['data.geo.query'].version).toBe('1.1.0');
   });
 
   it('validates every capability input strictly', () => {
@@ -981,6 +983,12 @@ describe('Data Foundation capability registry', () => {
     expect(
       DATA_CAPABILITY_REGISTRY['data.search.federated'].inputSchema.safeParse({
         opensearchDsl: { query: { match_all: {} } },
+      }).success,
+    ).toBe(false);
+    expect(
+      DATA_CAPABILITY_REGISTRY['data.geo.query'].inputSchema.safeParse({
+        ...validCapabilityInputs['data.geo.query'],
+        versionIds: [VERSION_ID],
       }).success,
     ).toBe(false);
   });

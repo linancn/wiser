@@ -73,6 +73,7 @@ describe('Data Foundation management routes', () => {
     expect(source).toContain('DataFoundationMap');
     expect(source).toContain('getDataFoundationDal');
     expect(source).toContain('stacItems');
+    expect(source).toContain('versionId: selectedVersionId');
     expect(source).toContain('vectorTileUrl');
     expect(source).toContain('rasterTileUrl');
     expect(source).not.toContain('baseLayerGap');
