@@ -103,7 +103,11 @@ Use the narrowest command during development, then return to root verification b
 pnpm test:coverage
 ```
 
-This command merges packages and every app with a unit suite in one Vitest projects run, explicitly includes TypeScript/TSX source files that no test imported, and emits text, `coverage/lcov.info`, and `coverage/coverage-summary.json`. Docs remains build/Playwright-gated and is outside unit coverage. Long-running process bootstrap files are explicitly excluded; CLIs, barrels, and Web pages remain visible in the report. This milestone establishes a trustworthy baseline without inventing percentage thresholds first.
+This command merges packages and every app with a unit suite in one Vitest projects run, explicitly includes TypeScript/TSX source files that no test imported, and emits text, `coverage/lcov.info`, and `coverage/coverage-summary.json`. Docs remains build/Playwright-gated and is outside unit coverage. Long-running process bootstrap files are explicitly excluded; CLIs, barrels, and Web pages remain visible in the report.
+
+The verified coverage ratchet enforces global floors of 73% statements, 67% branches, 75% functions, and 76% lines. Higher scoped floors protect pure Core v2, its shared deterministic helpers, the OTLP Collector forwarder, and Graph/STAC/PostGIS input validation. CI runs this command after `pnpm verify` and retains LCOV plus the JSON summary for seven days. Thresholds never auto-update: a future increase is an explicit reviewed change based on a fresh Green report.
+
+These figures measure only the Vitest manifest. Playwright, pgTAP, real PostgreSQL integration, operations smoke, and browser-visible Next.js pages remain separate proof layers and are not merged into the unit percentage. Do not lower a threshold merely to accommodate untested code or interpret the global number as product-level coverage.
 
 ## Supabase and Data Foundation
 

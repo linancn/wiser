@@ -103,7 +103,11 @@ pnpm verify
 pnpm test:coverage
 ```
 
-该命令在同一次 Vitest projects 运行中合并 packages 与具有 unit suite 的 apps，显式纳入尚未被测试 import 的 TypeScript/TSX 源文件，并生成文本、`coverage/lcov.info` 与 `coverage/coverage-summary.json`。Docs 仍由 build/Playwright 验证，不进入 unit coverage。长运行进程的 bootstrap 文件显式排除；CLI、barrel 和 Web 页面保留在报告中。当前里程碑只建立可信基线，不设置未经验证的百分比阈值。
+该命令在同一次 Vitest projects 运行中合并 packages 与具有 unit suite 的 apps，显式纳入尚未被测试 import 的 TypeScript/TSX 源文件，并生成文本、`coverage/lcov.info` 与 `coverage/coverage-summary.json`。Docs 仍由 build/Playwright 验证，不进入 unit coverage。长运行进程的 bootstrap 文件显式排除；CLI、barrel 和 Web 页面保留在报告中。
+
+经过实测的覆盖率棘轮设置全局下限：statement 73%、branch 67%、function 75%、line 76%。纯 Core v2、共享确定性 helper、OTLP Collector forwarder，以及 Graph/STAC/PostGIS 输入校验使用更高的分层下限。CI 在 `pnpm verify` 后运行该命令，并保留 LCOV 与 JSON summary 7 天。阈值禁止自动更新；后续上调必须基于新的 Green 报告显式评审。
+
+这些数字只衡量 Vitest manifest。Playwright、pgTAP、真实 PostgreSQL integration、运维 smoke 与浏览器可见的 Next.js 页面仍是独立证明层，不会合并进 unit 百分比。不得为了容纳未测试代码而下调阈值，也不能把全局数字解释成产品级覆盖率。
 
 ## Supabase 与 Data Foundation
 
