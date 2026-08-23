@@ -24,7 +24,7 @@ checkPaths:
   - supabase/**
   - infrastructure/observability/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 8cbabd4d8583181a5f9b88b9043d13c407c3366a
+lastReviewedCommit: 334c995ea21d39535fc93e398bda354957331968
 ---
 
 Agent EXCON（智能体演练场 / 导调中枢）把水系统任务编译成可版本化、可并行、可裁决、可回放的多智能体环境。它与 Data Foundation 共用 WISER 的 Auth、API、Web、MCP 和文档宿主，但不共享领域状态机或权威事实。

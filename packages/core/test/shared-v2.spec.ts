@@ -22,6 +22,8 @@ describe('v2 shared deterministic boundaries', () => {
     '2023-03-22T07:00:00.000Z',
     '2023-03-22T15:00:00.000+08:00',
     '2023-03-22T01:30:00.000-05:30',
+    '2020-02-29T06:15Z',
+    '2020-01-01T06:15:00.123456Z',
   ])('accepts an ISO 8601 timestamp with an explicit offset: %s', (value) => {
     expect(createRunAt(value).virtualTime).toBe(value);
   });
@@ -31,6 +33,12 @@ describe('v2 shared deterministic boundaries', () => {
     '123',
     '2023-02-30T00:00:00.000Z',
     '2023-03-22T07:00:00.000',
+    '2022-02-29T00:00:00Z',
+    '2020-01-01T24:00:00Z',
+    '2020-01-01T06:60:00Z',
+    '2020-01-01T06:15:00+0200',
+    '2020-01-01T06:15:00+24:00',
+    '2020-01-01',
   ])('rejects a non-contract timestamp before creating a Run: %s', (value) => {
     expect(() => createRunAt(value)).toThrowError(
       expect.objectContaining<Partial<DomainError>>({
@@ -98,6 +106,16 @@ describe('v2 shared deterministic boundaries', () => {
       );
     },
   );
+
+  it('rejects an unsupported canonical JSON runtime value', () => {
+    expect(() =>
+      canonicalJson(undefined as unknown as CanonicalJsonValue),
+    ).toThrowError(
+      expect.objectContaining<Partial<DomainError>>({
+        code: 'INVALID_CANONICAL_JSON',
+      }),
+    );
+  });
 
   it('rejects cycles while cloning canonical JSON', () => {
     const cyclic: { self?: unknown } = {};
