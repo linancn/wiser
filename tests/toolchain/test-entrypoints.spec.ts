@@ -134,5 +134,56 @@ describe('workspace test entrypoints', () => {
     ]) {
       expect(config).toContain(excluded);
     }
+    for (const threshold of [
+      'statements: 73',
+      'branches: 67',
+      'functions: 75',
+      'lines: 76',
+      "'packages/core/src/v2/**/*.ts'",
+      "'packages/core/src/v2/shared.ts'",
+      "'apps/telemetry-ingress/src/forwarder.ts'",
+      "'packages/data-infra/src/projections/graph-stac/validation.ts'",
+      "'packages/data-infra/src/projections/postgis/validation.ts'",
+    ]) {
+      expect(config).toContain(threshold);
+    }
+    expect(config).not.toContain('autoUpdate');
+  });
+
+  it('runs the coverage ratchet in CI and retains its machine-readable report', () => {
+    const workflow = read('.github/workflows/ci.yml');
+    const start = workflow.indexOf('\n  verify:');
+    const end = workflow.indexOf('\n  browser:', start);
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    const verifyJob = workflow.slice(start, end);
+    const verify = verifyJob.indexOf('run: pnpm verify');
+    const coverageStep = verifyJob.indexOf(
+      'name: Verify unit coverage ratchet',
+    );
+    const coverage = verifyJob.indexOf('run: pnpm test:coverage');
+    const artifact = verifyJob.indexOf('name: Upload unit coverage report');
+
+    expect(coverageStep).toBeGreaterThan(verify);
+    expect(coverage).toBeGreaterThan(coverageStep);
+    expect(artifact).toBeGreaterThan(coverage);
+    expect(verifyJob.slice(artifact)).toContain('coverage/lcov.info');
+    expect(verifyJob.slice(artifact)).toContain(
+      'coverage/coverage-summary.json',
+    );
+  });
+
+  it('documents the verified ratchet without conflating browser coverage', () => {
+    const english = read(
+      'apps/docs/src/content/docs/en/development/testing.md',
+    );
+    const chinese = read(
+      'apps/docs/src/content/docs/zh-CN/development/testing.md',
+    );
+
+    expect(english).toContain('coverage ratchet');
+    expect(english).toContain('Playwright');
+    expect(chinese).toContain('覆盖率棘轮');
+    expect(chinese).toContain('Playwright');
   });
 });
