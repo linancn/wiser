@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/graphql-module.ts
   - packages/data-contracts/src/capability/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 2597535dc53d5ca7d9faa65be1bb699c345c0b57
+lastReviewedCommit: 009852bdcfd26240fa31553e7d0e2254400aaf67
 ---
 
 ## Endpoint and authority contract
@@ -77,6 +77,8 @@ One request may select only one mutation field, so one key maps to one command. 
 Connections expose `nodes` and `pageInfo { endCursor hasNextPage }`; other pages retain `nextCursor`. Cursors are opaque and scope-bound. Never copy one from REST, another Tenant/Project, or an old authorization version.
 
 `geoQuery(input: GeoQueryInput!)` accepts one optional `versionId`. When omitted, each bounded response selects extents from every DataItem's latest visible committed version; when supplied, it selects extents from that exact immutable version. Continue with its snapshot/query/scope-bound opaque `nextCursor`. Optional `dataItemIds` intersects either selection. A hidden or absent exact version produces an empty result set rather than disclosing its existence.
+
+`geoIntersect` selects a DataItem target's visible committed Version before collecting every sibling extent; missing, hidden, extent-free, or disjoint targets return the same empty result and never fall back to history. `DataItemVersion.tileAvailability { vector raster }` is required on current catalog outputs and indicates routable governed sources, not GIS upstream health or COG proof.
 
 ## Mutation fields
 

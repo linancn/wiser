@@ -35,10 +35,16 @@ type PageInfo {
   endCursor: String
   hasNextPage: Boolean!
 }
+type TileAvailability {
+  vector: Boolean!
+  raster: Boolean!
+}
 type DataItemVersion {
+  dataItemId: ID!
   versionId: ID!
   version: Int
   sourceHash: String
+  tileAvailability: TileAvailability!
 }
 type DataItem {
   dataItemId: ID!

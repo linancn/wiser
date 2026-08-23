@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/graphql-module.ts
   - packages/data-contracts/src/capability/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 2597535dc53d5ca7d9faa65be1bb699c345c0b57
+lastReviewedCommit: 009852bdcfd26240fa31553e7d0e2254400aaf67
 ---
 
 ## 入口与权威契约
@@ -77,6 +77,8 @@ Idempotency-Key: <uuid>
 Connection 返回 `nodes` 与 `pageInfo { endCursor hasNextPage }`。其余分页结果保留 `nextCursor`。Cursor 是不透明、scope-bound 的；不能从 REST、另一个 Tenant/Project 或旧授权版本复制。
 
 `geoQuery(input: GeoQueryInput!)` 接受一个可选的 `versionId`。省略时，每个有界响应从各 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent，并以绑定 snapshot/query/scope 的不透明 `nextCursor` 继续。可选 `dataItemIds` 与两种选择均取交集。版本不可见或不存在时返回空结果集，不泄露其存在性。
+
+`geoIntersect` 会先选择 DataItem target 的可见已提交 Version，再收集全部 sibling extent；target 缺失、不可见、无 extent 或彼此不相交时返回同样的空结果，绝不回退历史版本。当前 catalog 输出必须包含 `DataItemVersion.tileAvailability { vector raster }`；它表示受控 source 可路由，不代表 GIS 上游健康或 COG 证明。
 
 ## Mutation fields
 

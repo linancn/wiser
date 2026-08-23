@@ -296,7 +296,7 @@ describe('PostGIS geo query PostgreSQL integration', () => {
           `grant usage on schema catalog, security to ${roleName}`,
         );
         await admin.query(
-          `grant select on catalog.data_item_version, catalog.spatial_extent to ${roleName}`,
+          `grant select on catalog.data_item, catalog.data_item_version, catalog.spatial_extent to ${roleName}`,
         );
         await admin.query(
           `grant execute on all functions in schema security to ${roleName}`,

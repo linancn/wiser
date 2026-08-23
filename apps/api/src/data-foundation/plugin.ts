@@ -116,7 +116,7 @@ export function createDataFoundationModule(
       app.get('/api/data/v1/capabilities', (_request, reply) => {
         setNoStore(reply);
         return reply.send({
-          registryVersion: '1.1.0',
+          registryVersion: '2.0.0',
           capabilities,
         });
       });

@@ -209,6 +209,10 @@ export interface DataItemVersionDto {
   readonly acceptanceStatus: AcceptanceStatus;
   readonly publicationStatus: PublicationStatus;
   readonly securityLevel: SecurityLevel;
+  readonly tileAvailability: {
+    readonly vector: boolean;
+    readonly raster: boolean;
+  };
   readonly createdAt: string;
   readonly committedAt?: string;
   readonly publishedAt?: string;
@@ -654,6 +658,7 @@ function parseVersion(
     row.committedAt === undefined ? undefined : date(row.committedAt, contract);
   const publishedAt =
     row.publishedAt === undefined ? undefined : date(row.publishedAt, contract);
+  const tileAvailability = object(row.tileAvailability, contract);
   return {
     dataItemId: uuid(row.dataItemId, contract),
     versionId: uuid(row.versionId, contract),
@@ -674,6 +679,10 @@ function parseVersion(
       contract,
     ),
     securityLevel: oneOf(row.securityLevel, SECURITY_LEVELS, contract),
+    tileAvailability: {
+      vector: boolean(tileAvailability.vector, contract),
+      raster: boolean(tileAvailability.raster, contract),
+    },
     createdAt: date(row.createdAt, contract),
     ...(committedAt === undefined ? {} : { committedAt }),
     ...(publishedAt === undefined ? {} : { publishedAt }),
@@ -1208,6 +1217,59 @@ export function parseDataHealth(value: unknown): DataHealthDto {
 
 export function parseDataRouteUuid(value: UntrustedRouteValue): string | null {
   return typeof value === 'string' && UUID_PATTERN.test(value) ? value : null;
+}
+
+export interface MapVersionSelection {
+  readonly dataItemId: string;
+  readonly versionId: string;
+}
+
+export function parseMapVersionSelection(
+  dataItem: UntrustedRouteValue,
+  version: UntrustedRouteValue,
+): MapVersionSelection | null | undefined {
+  const normalizedDataItem = dataItem === '' ? undefined : dataItem;
+  const normalizedVersion = version === '' ? undefined : version;
+  if (normalizedDataItem === undefined && normalizedVersion === undefined) {
+    return undefined;
+  }
+  const dataItemId = parseDataRouteUuid(normalizedDataItem);
+  const versionId = parseDataRouteUuid(normalizedVersion);
+  return dataItemId === null || versionId === null
+    ? null
+    : { dataItemId, versionId };
+}
+
+export interface MapTileUrls {
+  readonly vectorTileUrl?: string;
+  readonly rasterTileUrl?: string;
+}
+
+export function resolveMapTileUrls(
+  selection: MapVersionSelection | undefined,
+  authoritativeVersion: DataItemVersionDto | undefined,
+): MapTileUrls {
+  if (
+    selection === undefined ||
+    authoritativeVersion === undefined ||
+    authoritativeVersion.dataItemId !== selection.dataItemId ||
+    authoritativeVersion.versionId !== selection.versionId
+  ) {
+    return {};
+  }
+  const encodedVersion = encodeURIComponent(selection.versionId);
+  return {
+    ...(authoritativeVersion.tileAvailability.vector
+      ? {
+          vectorTileUrl: `/api/data-foundation/geo/tiles/vector/versions/${encodedVersion}/{z}/{x}/{y}.pbf`,
+        }
+      : {}),
+    ...(authoritativeVersion.tileAvailability.raster
+      ? {
+          rasterTileUrl: `/api/data-foundation/geo/tiles/raster/versions/${encodedVersion}/WebMercatorQuad/{z}/{x}/{y}.png`,
+        }
+      : {}),
+  };
 }
 
 export function parseSearchQuery(value: UntrustedRouteValue): string | null {

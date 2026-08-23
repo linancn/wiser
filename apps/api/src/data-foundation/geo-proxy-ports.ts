@@ -410,6 +410,11 @@ where asset.tenant_id = $1::uuid and asset.project_id = $2::uuid
     'image/tiff', 'image/geotiff', 'application/geotiff',
     'application/x-geotiff'
   )
+  and asset.storage_key =
+    'tenants/' || asset.tenant_id::text ||
+    '/projects/' || asset.project_id::text ||
+    '/versions/' || asset.version_id::text ||
+    '/sha256/' || encode(asset.content_hash, 'hex')
   and security.authorized_row(asset.tenant_id, asset.project_id,
     asset.security_level, asset.policy_version)
   and security.authorized_row(version.tenant_id, version.project_id,

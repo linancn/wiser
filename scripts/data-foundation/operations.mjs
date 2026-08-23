@@ -230,7 +230,10 @@ export function validateCapabilities(document) {
   if (
     document === null ||
     typeof document !== 'object' ||
-    document.registryVersion !== '1.0.0' ||
+    typeof document.registryVersion !== 'string' ||
+    !/^[1-9]\d*\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(
+      document.registryVersion,
+    ) ||
     !Array.isArray(document.capabilities)
   ) {
     throw operationError('Capability response has an invalid envelope');

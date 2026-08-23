@@ -15,9 +15,11 @@ import {
 import {
   bboxGeometry,
   isMapDisplayableFeature,
-  parseDataRouteUuid,
   parseGeoBbox,
+  parseMapVersionSelection,
+  resolveMapTileUrls,
   toMapFeatureCollection,
+  type DataItemVersionDto,
   type GeoQueryDto,
   type StacFeatureCollectionDto,
 } from '@/lib/data-foundation';
@@ -35,6 +37,7 @@ interface MapPageProps {
   readonly searchParams: Promise<{
     bbox?: string | string[];
     crs?: string | string[];
+    dataItem?: string | string[];
     version?: string | string[];
   }>;
 }
@@ -54,23 +57,21 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
   const copy = getDictionary(locale).dataFoundation;
   const route = `/${locale}/data-foundation/map`;
   const bbox = parseGeoBbox(search.bbox);
-  const versionId =
-    search.version === undefined
-      ? undefined
-      : (parseDataRouteUuid(search.version) ?? null);
+  const selection = parseMapVersionSelection(search.dataItem, search.version);
   const crs =
     search.crs === undefined
       ? 'EPSG:4326'
       : search.crs === 'EPSG:4326' || search.crs === 'EPSG:4490'
         ? search.crs
         : null;
-  const selectedVersionId = versionId ?? undefined;
+  const selectedVersionId = selection?.versionId;
   let result: GeoQueryDto | undefined;
   let stac: StacFeatureCollectionDto = { extents: [] };
+  let authoritativeVersion: DataItemVersionDto | undefined;
   let capabilityAvailable = false;
   let failure: ReturnType<typeof handleDataPageError> | undefined;
   try {
-    if (bbox === null || versionId === null || crs === null) {
+    if (bbox === null || selection === null || crs === null) {
       throw invalidDataPageRequest();
     }
     const dal = await getDataFoundationDal();
@@ -81,7 +82,7 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
       );
       if (!capabilityAvailable) throw dataPageFailure('contract', 502);
     } else {
-      [result, stac] = await Promise.all([
+      const [geoResult, stacResult, detail] = await Promise.all([
         dal.geo({
           geometry: bboxGeometry(bbox, crs),
           ...(selectedVersionId === undefined
@@ -89,7 +90,20 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
             : { versionId: selectedVersionId }),
         }),
         dal.stacItems({ bbox }),
+        selection === undefined
+          ? Promise.resolve(undefined)
+          : dal.dataItem(selection.dataItemId, selection.versionId),
       ]);
+      result = geoResult;
+      stac = stacResult;
+      authoritativeVersion = detail?.selectedVersion;
+      if (
+        selection !== undefined &&
+        (authoritativeVersion?.dataItemId !== selection.dataItemId ||
+          authoritativeVersion.versionId !== selection.versionId)
+      ) {
+        throw dataPageFailure('contract', 502);
+      }
     }
   } catch (error) {
     failure = handleDataPageError(error, locale, route);
@@ -106,6 +120,10 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
       selectedVersionId === undefined || extent.versionId === selectedVersionId,
   );
   const unsupportedCount = versionFeatures.length - displayable.length;
+  const tileUrls = resolveMapTileUrls(
+    selection ?? undefined,
+    authoritativeVersion,
+  );
 
   return (
     <DataPageMain>
@@ -123,6 +141,7 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
         bboxPlaceholder={copy.mapPage.bboxPlaceholder}
         crs={crs ?? 'EPSG:4326'}
         crsLabel={copy.mapPage.crsLabel}
+        dataItem={typeof search.dataItem === 'string' ? search.dataItem : ''}
         version={typeof search.version === 'string' ? search.version : ''}
         versionLabel={copy.mapPage.versionLabel}
         versionPlaceholder={copy.mapPage.versionPlaceholder}
@@ -166,16 +185,8 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
               }}
               stacExtents={stacExtents}
               selectedVersion={selectedVersionId}
-              vectorTileUrl={
-                selectedVersionId === undefined
-                  ? undefined
-                  : `/api/data-foundation/geo/tiles/vector/versions/${encodeURIComponent(selectedVersionId)}/{z}/{x}/{y}.pbf`
-              }
-              rasterTileUrl={
-                selectedVersionId === undefined
-                  ? undefined
-                  : `/api/data-foundation/geo/tiles/raster/versions/${encodeURIComponent(selectedVersionId)}/WebMercatorQuad/{z}/{x}/{y}.png`
-              }
+              vectorTileUrl={tileUrls.vectorTileUrl}
+              rasterTileUrl={tileUrls.rasterTileUrl}
             />
           )}
           {unsupportedCount === 0 ? null : (

@@ -551,6 +551,7 @@ export function MapQueryForm({
   bboxPlaceholder,
   crs,
   crsLabel,
+  dataItem,
   resetLabel,
   submitLabel,
   version,
@@ -564,6 +565,7 @@ export function MapQueryForm({
   readonly bboxPlaceholder: string;
   readonly crs: 'EPSG:4326' | 'EPSG:4490';
   readonly crsLabel: string;
+  readonly dataItem: string;
   readonly resetLabel: string;
   readonly submitLabel: string;
   readonly version: string;
@@ -575,6 +577,7 @@ export function MapQueryForm({
       className={`${styles.queryForm} ${styles.mapQueryForm}`}
       action={action}
     >
+      <input type="hidden" name="dataItem" value={dataItem} />
       <div className={styles.mapQueryFields}>
         <label>
           <span>{bboxLabel}</span>

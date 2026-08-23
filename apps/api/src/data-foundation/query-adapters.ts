@@ -188,70 +188,158 @@ limit $13::integer
 
 const GEO_INTERSECT_SQL = `
 /* data.geo.intersect fixed PostGIS query */
-with left_item as (
-  select extent.canonical_geometry as geometry
-  from catalog.spatial_extent as extent
-  join catalog.data_item_version as version
-    on version.tenant_id = extent.tenant_id and version.project_id = extent.project_id
-   and version.version_id = extent.version_id
-  where extent.tenant_id = $1::uuid and extent.project_id = $2::uuid
-    and extent.data_item_id = nullif($5::jsonb ->> 'dataItemId', '')::uuid
-    and ($5::jsonb ->> 'versionId' is null
-      or extent.version_id = ($5::jsonb ->> 'versionId')::uuid)
-    and version.committed_at is not null and version.policy_version <= $3::bigint
-  order by version.version_number desc limit 1
-), left_target as (
-  select geometry from left_item
-  union all
+with params as (
+  select coalesce($8::timestamptz, statement_timestamp()) as snapshot_at
+), left_geometry_target as (
   select ST_Transform(ST_SetSRID(
     ST_GeomFromGeoJSON((($5::jsonb -> 'geometry') - 'crs')::text),
-    substring($5::jsonb -> 'geometry' ->> 'crs' from '[0-9]+$')::integer), 4490)
+    substring($5::jsonb -> 'geometry' ->> 'crs' from '[0-9]+$')::integer
+  ), 4490) as geometry
   where $5::jsonb ? 'geometry'
-), right_item as (
-  select extent.canonical_geometry as geometry
-  from catalog.spatial_extent as extent
-  join catalog.data_item_version as version
-    on version.tenant_id = extent.tenant_id and version.project_id = extent.project_id
-   and version.version_id = extent.version_id
-  where extent.tenant_id = $1::uuid and extent.project_id = $2::uuid
-    and extent.data_item_id = nullif($6::jsonb ->> 'dataItemId', '')::uuid
-    and ($6::jsonb ->> 'versionId' is null
-      or extent.version_id = ($6::jsonb ->> 'versionId')::uuid)
-    and version.committed_at is not null and version.policy_version <= $3::bigint
-  order by version.version_number desc limit 1
-), right_target as (
-  select geometry from right_item
-  union all
-  select ST_Transform(ST_SetSRID(
-    ST_GeomFromGeoJSON((($6::jsonb -> 'geometry') - 'crs')::text),
-    substring($6::jsonb -> 'geometry' ->> 'crs' from '[0-9]+$')::integer), 4490)
-  where $6::jsonb ? 'geometry'
-), ranked_extent as (
-  select extent.*, dense_rank() over (
-    partition by extent.data_item_id
+), left_ranked_version as (
+  select version.*, dense_rank() over (
+    partition by version.data_item_id
     order by version.version_number desc, version.version_id desc
   ) as version_rank
-  from catalog.spatial_extent as extent
-  join catalog.data_item_version as version
-    on version.tenant_id = extent.tenant_id
-   and version.project_id = extent.project_id
-   and version.version_id = extent.version_id
-  where extent.tenant_id = $1::uuid and extent.project_id = $2::uuid
+  from catalog.data_item_version as version
+  join catalog.data_item as item
+    on item.tenant_id = version.tenant_id
+   and item.project_id = version.project_id
+   and item.data_item_id = version.data_item_id
+  cross join params
+  where item.tenant_id = $1::uuid and item.project_id = $2::uuid
+    and $5::jsonb ? 'dataItemId'
+    and item.data_item_id = nullif($5::jsonb ->> 'dataItemId', '')::uuid
+    and ($5::jsonb ->> 'versionId' is null
+      or version.version_id = ($5::jsonb ->> 'versionId')::uuid)
     and version.committed_at is not null
-    and extent.policy_version <= $3::bigint
+    and version.committed_at <= params.snapshot_at
+    and version.created_at <= params.snapshot_at
+    and item.policy_version <= $3::bigint
     and version.policy_version <= $3::bigint
+    and security.security_rank(item.security_level) <= security.security_rank($4)
+    and security.security_rank(version.security_level) <= security.security_rank($4)
+), left_selected_version as (
+  select * from left_ranked_version where version_rank = 1
+), left_item_target as (
+  select ST_UnaryUnion(ST_Collect(extent.canonical_geometry)) as geometry
+  from left_selected_version as version
+  join catalog.spatial_extent as extent
+    on extent.tenant_id = version.tenant_id
+   and extent.project_id = version.project_id
+   and extent.data_item_id = version.data_item_id
+   and extent.version_id = version.version_id
+  cross join params
+  where extent.created_at <= params.snapshot_at
+    and extent.policy_version <= $3::bigint
+    and security.security_rank(extent.security_level) <= security.security_rank($4)
+  having count(*) > 0
+), left_target as (
+  select geometry from left_geometry_target
+  union all
+  select geometry from left_item_target
+), right_geometry_target as (
+  select ST_Transform(ST_SetSRID(
+    ST_GeomFromGeoJSON((($6::jsonb -> 'geometry') - 'crs')::text),
+    substring($6::jsonb -> 'geometry' ->> 'crs' from '[0-9]+$')::integer
+  ), 4490) as geometry
+  where $6::jsonb ? 'geometry'
+), right_ranked_version as (
+  select version.*, dense_rank() over (
+    partition by version.data_item_id
+    order by version.version_number desc, version.version_id desc
+  ) as version_rank
+  from catalog.data_item as item
+  join catalog.data_item_version as version
+    on version.tenant_id = item.tenant_id
+   and version.project_id = item.project_id
+   and version.data_item_id = item.data_item_id
+  cross join params
+  where item.tenant_id = $1::uuid and item.project_id = $2::uuid
+    and $6::jsonb ? 'dataItemId'
+    and item.data_item_id = nullif($6::jsonb ->> 'dataItemId', '')::uuid
+    and ($6::jsonb ->> 'versionId' is null
+      or version.version_id = ($6::jsonb ->> 'versionId')::uuid)
+    and version.committed_at is not null
+    and version.committed_at <= params.snapshot_at
+    and version.created_at <= params.snapshot_at
+    and item.policy_version <= $3::bigint
+    and version.policy_version <= $3::bigint
+    and security.security_rank(item.security_level) <= security.security_rank($4)
+    and security.security_rank(version.security_level) <= security.security_rank($4)
+), right_selected_version as (
+  select * from right_ranked_version where version_rank = 1
+), right_item_target as (
+  select ST_UnaryUnion(ST_Collect(extent.canonical_geometry)) as geometry
+  from right_selected_version as version
+  join catalog.spatial_extent as extent
+    on extent.tenant_id = version.tenant_id
+   and extent.project_id = version.project_id
+   and extent.data_item_id = version.data_item_id
+   and extent.version_id = version.version_id
+  cross join params
+  where extent.created_at <= params.snapshot_at
+    and extent.policy_version <= $3::bigint
+    and security.security_rank(extent.security_level) <= security.security_rank($4)
+  having count(*) > 0
+), right_target as (
+  select geometry from right_geometry_target
+  union all
+  select geometry from right_item_target
+), overlap_target as (
+  select ST_Intersection(left_side.geometry, right_side.geometry) as geometry
+  from left_target as left_side
+  cross join right_target as right_side
+  where left_side.geometry && right_side.geometry
+    and ST_Intersects(left_side.geometry, right_side.geometry)
+), ranked_candidate_version as (
+  select version.*, dense_rank() over (
+    partition by version.data_item_id
+    order by version.version_number desc, version.version_id desc
+  ) as version_rank
+  from catalog.data_item_version as version
+  join catalog.data_item as item
+    on item.tenant_id = version.tenant_id
+   and item.project_id = version.project_id
+   and item.data_item_id = version.data_item_id
+  cross join params
+  where item.tenant_id = $1::uuid and item.project_id = $2::uuid
+    and version.committed_at is not null
+    and version.committed_at <= params.snapshot_at
+    and version.created_at <= params.snapshot_at
+    and item.policy_version <= $3::bigint
+    and version.policy_version <= $3::bigint
+    and security.security_rank(item.security_level) <= security.security_rank($4)
+    and security.security_rank(version.security_level) <= security.security_rank($4)
+), selected_candidate_version as (
+  select * from ranked_candidate_version where version_rank = 1
 )
 select extent.spatial_extent_id::text as feature_id,
   extent.data_item_id, extent.version_id,
   ST_AsGeoJSON(extent.source_geometry)::jsonb as geometry,
-  extent.source_crs, '{}'::jsonb as properties
-from ranked_extent as extent
-where extent.version_rank = 1
-  and exists (select 1 from left_target l, right_target r
-    where ST_Intersects(l.geometry, r.geometry)
-      and ST_Intersects(extent.canonical_geometry, ST_Intersection(l.geometry, r.geometry)))
+  extent.source_crs, '{}'::jsonb as properties,
+  0::double precision as sort_distance,
+  to_char(
+    params.snapshot_at at time zone 'UTC',
+    'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
+  ) as snapshot_at
+from selected_candidate_version as version
+join catalog.spatial_extent as extent
+  on extent.tenant_id = version.tenant_id
+ and extent.project_id = version.project_id
+ and extent.data_item_id = version.data_item_id
+ and extent.version_id = version.version_id
+cross join overlap_target as overlap
+cross join params
+where extent.created_at <= params.snapshot_at
+  and extent.policy_version <= $3::bigint
+  and security.security_rank(extent.security_level) <= security.security_rank($4)
+  and ($7::uuid is null or extent.spatial_extent_id > $7::uuid)
+  and not ST_IsEmpty(overlap.geometry)
+  and extent.canonical_geometry && overlap.geometry
+  and ST_Intersects(extent.canonical_geometry, overlap.geometry)
 order by extent.spatial_extent_id
-limit $7::integer
+limit $9::integer
 `;
 
 function adapterError(code: QueryAdapterErrorCode) {
@@ -847,6 +935,41 @@ function geoOutput(rows: readonly Record<string, unknown>[]) {
   };
 }
 
+function geoPage(
+  rows: readonly Record<string, unknown>[],
+  first: number,
+  fingerprint: string,
+) {
+  const selected = rows.slice(0, first);
+  const output = geoOutput(selected);
+  if (rows.length <= first) return output;
+  const last = selected.at(-1);
+  const sortDistance = last?.['sort_distance'];
+  const featureId = last?.['feature_id'];
+  const snapshotAt = last?.['snapshot_at'];
+  if (
+    typeof sortDistance !== 'number' ||
+    !Number.isFinite(sortDistance) ||
+    sortDistance < 0 ||
+    typeof featureId !== 'string' ||
+    !UUID_PATTERN.test(featureId) ||
+    typeof snapshotAt !== 'string' ||
+    !GEO_SNAPSHOT_PATTERN.test(snapshotAt) ||
+    !Number.isFinite(Date.parse(snapshotAt))
+  ) {
+    throw adapterError('INVALID_BACKEND_RESULT');
+  }
+  return {
+    ...output,
+    nextCursor: encodeGeoCursor(
+      fingerprint,
+      sortDistance,
+      featureId,
+      snapshotAt,
+    ),
+  };
+}
+
 export class PostgisGeoQueryPort implements GeoQueryPort {
   readonly #pool: QueryAdapterPgPool;
   readonly #maximumFeatures: number;
@@ -912,33 +1035,7 @@ export class PostgisGeoQueryPort implements GeoQueryPort {
         after?.snapshotAt ?? null,
         first + 1,
       ]);
-      const selected = result.rows.slice(0, first);
-      const output = geoOutput(selected);
-      if (result.rows.length <= first) return output;
-      const last = selected.at(-1);
-      const sortDistance = last?.['sort_distance'];
-      const featureId = last?.['feature_id'];
-      const snapshotAt = last?.['snapshot_at'];
-      if (
-        typeof sortDistance !== 'number' ||
-        !Number.isFinite(sortDistance) ||
-        sortDistance < 0 ||
-        typeof featureId !== 'string' ||
-        !UUID_PATTERN.test(featureId) ||
-        typeof snapshotAt !== 'string' ||
-        !GEO_SNAPSHOT_PATTERN.test(snapshotAt)
-      ) {
-        throw adapterError('INVALID_BACKEND_RESULT');
-      }
-      return {
-        ...output,
-        nextCursor: encodeGeoCursor(
-          fingerprint,
-          sortDistance,
-          featureId,
-          snapshotAt,
-        ),
-      };
+      return geoPage(result.rows, first, fingerprint);
     });
   }
 
@@ -950,6 +1047,11 @@ export class PostgisGeoQueryPort implements GeoQueryPort {
       100,
       this.#maximumFeatures,
     );
+    const fingerprint = queryFingerprint(request, { left, right });
+    const after = decodeGeoCursor(request.input['after'], fingerprint);
+    if (after !== null && after.sortDistance !== 0) {
+      throw adapterError('INVALID_CURSOR');
+    }
     return transaction(this.#pool, request, async (client) => {
       const result = await client.query(GEO_INTERSECT_SQL, [
         request.scope.tenantId,
@@ -958,9 +1060,11 @@ export class PostgisGeoQueryPort implements GeoQueryPort {
         request.scope.maxSecurityLevel,
         JSON.stringify(left),
         JSON.stringify(right),
-        first,
+        after?.featureId ?? null,
+        after?.snapshotAt ?? null,
+        first + 1,
       ]);
-      return geoOutput(result.rows);
+      return geoPage(result.rows, first, fingerprint);
     });
   }
 }

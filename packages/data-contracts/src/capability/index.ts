@@ -6,9 +6,12 @@ import {
   CreateDataItemOutputSchema,
   DataItemSchema,
   DataItemVersionPageSchema,
+  DataItemVersionPageV1Schema,
   DataItemVersionSchema,
+  DataItemVersionV1Schema,
   GetDataItemVersionInputSchema,
   GetDataItemVersionOutputSchema,
+  GetDataItemVersionOutputV1Schema,
   ListDataItemVersionsInputSchema,
   ProcessingStageSchema,
   QualityGradeSchema,
@@ -95,6 +98,11 @@ export const DataCatalogGetInputSchema = z.strictObject({
 export const DataCatalogGetOutputSchema = z.strictObject({
   item: DataItemSchema,
   selectedVersion: DataItemVersionSchema.optional(),
+});
+
+export const DataCatalogGetOutputV1Schema = z.strictObject({
+  item: DataItemSchema,
+  selectedVersion: DataItemVersionV1Schema.optional(),
 });
 
 export const DataQueryFilterSchema = z.strictObject({
@@ -372,7 +380,7 @@ const capabilityRegistry = {
   }),
   'data.catalog.get': defineCapability({
     id: 'data.catalog.get',
-    version: '1.0.0',
+    version: '2.0.0',
     kind: 'query',
     inputSchema: DataCatalogGetInputSchema,
     outputSchema: DataCatalogGetOutputSchema,
@@ -630,7 +638,7 @@ const capabilityRegistry = {
   }),
   'data.catalog.versions.list': defineCapability({
     id: 'data.catalog.versions.list',
-    version: '1.0.0',
+    version: '2.0.0',
     kind: 'query',
     inputSchema: ListDataItemVersionsInputSchema,
     outputSchema: DataItemVersionPageSchema,
@@ -651,7 +659,7 @@ const capabilityRegistry = {
   }),
   'data.catalog.versions.get': defineCapability({
     id: 'data.catalog.versions.get',
-    version: '1.0.0',
+    version: '2.0.0',
     kind: 'query',
     inputSchema: GetDataItemVersionInputSchema,
     outputSchema: GetDataItemVersionOutputSchema,
@@ -840,6 +848,75 @@ export const DATA_CAPABILITY_REGISTRY: Readonly<
 > = Object.freeze(capabilityRegistry);
 
 const capabilityArchive = {
+  'data.catalog.get': Object.freeze([
+    defineCapability({
+      id: 'data.catalog.get',
+      version: '1.0.0',
+      kind: 'query',
+      inputSchema: DataCatalogGetInputSchema,
+      outputSchema: DataCatalogGetOutputV1Schema,
+      requiredScopes: ['data.catalog.read'],
+      maxSecurityLevel: 'L3_CONFIDENTIAL',
+      executionMode: 'SYNCHRONOUS',
+      timeout: 30_000,
+      idempotent: true,
+      auditLevel: 'STANDARD',
+      restMapping: {
+        method: 'GET',
+        path: '/api/data/v1/catalog/data-items/:dataItemId',
+        successStatus: 200,
+      },
+      graphqlMapping: { operationType: 'query', field: 'dataItem' },
+      mcpMapping: { toolName: 'data_catalog_get' },
+      skillMapping: { operation: 'data.catalog.get' },
+    }),
+  ]),
+  'data.catalog.versions.list': Object.freeze([
+    defineCapability({
+      id: 'data.catalog.versions.list',
+      version: '1.0.0',
+      kind: 'query',
+      inputSchema: ListDataItemVersionsInputSchema,
+      outputSchema: DataItemVersionPageV1Schema,
+      requiredScopes: ['data.catalog.read'],
+      maxSecurityLevel: 'L3_CONFIDENTIAL',
+      executionMode: 'SYNCHRONOUS',
+      timeout: 30_000,
+      idempotent: true,
+      auditLevel: 'STANDARD',
+      restMapping: {
+        method: 'GET',
+        path: '/api/data/v1/catalog/data-items/:dataItemId/versions',
+        successStatus: 200,
+      },
+      graphqlMapping: { operationType: 'query', field: 'dataItemVersions' },
+      mcpMapping: { toolName: 'data_catalog_versions_list' },
+      skillMapping: { operation: 'data.catalog.versions.list' },
+    }),
+  ]),
+  'data.catalog.versions.get': Object.freeze([
+    defineCapability({
+      id: 'data.catalog.versions.get',
+      version: '1.0.0',
+      kind: 'query',
+      inputSchema: GetDataItemVersionInputSchema,
+      outputSchema: GetDataItemVersionOutputV1Schema,
+      requiredScopes: ['data.catalog.read'],
+      maxSecurityLevel: 'L3_CONFIDENTIAL',
+      executionMode: 'SYNCHRONOUS',
+      timeout: 30_000,
+      idempotent: true,
+      auditLevel: 'STANDARD',
+      restMapping: {
+        method: 'GET',
+        path: '/api/data/v1/catalog/data-items/:dataItemId/versions/:versionId',
+        successStatus: 200,
+      },
+      graphqlMapping: { operationType: 'query', field: 'dataItemVersion' },
+      mcpMapping: { toolName: 'data_catalog_version_get' },
+      skillMapping: { operation: 'data.catalog.versions.get' },
+    }),
+  ]),
   'data.geo.query': Object.freeze([
     defineCapability({
       id: 'data.geo.query',

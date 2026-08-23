@@ -528,7 +528,7 @@ const expectedJsonSchemaHashes = {
   },
   'data.catalog.get': {
     input: '59f8155f67dd96336971960f7143c640e2fd75643846ab1b4c835a1602857078',
-    output: 'ec49b4213125b3a70612ef02f4859fb1861eee31947e5c69707f8bbf278953d2',
+    output: 'b10d024e2aae3ae53dcd6de3abe6a49ffa3e275718250dd86d690ea1eedd3816',
   },
   'data.query': {
     input: '20d4bff3890ed680749126034103e2bed7e1d67224cd0ca5837ce068568f0648',
@@ -576,11 +576,11 @@ const expectedJsonSchemaHashes = {
   },
   'data.catalog.versions.list': {
     input: '75619aee74646552dcf7b4939d615e01747a55cbe074ad7589894896d8fae176',
-    output: '417d20fde3f862522707b7dcdc66e4e2a7d39f3574a74fbbaa84957b47aceb5a',
+    output: 'cc60946d06af0e1797889890191d10f35615c014f56b5de2fbc9bfa7b93a796a',
   },
   'data.catalog.versions.get': {
     input: 'e506474b6ef13975dec248cd0e32b68a09754d04f420a710355c0d15b105aa6a',
-    output: '93d00d1053ece01534eee9d559c84f23faf74e2a71ffde53657ac36fd91f4504',
+    output: '23d01b3a181e673467f8994216574750a0c960fd9f87cab89d276d1963c97ed1',
   },
   'data.uploadSession.create': {
     input: 'e8c8f8eb84563ca0b1c61f0ca9dbe55d00f5672f8c4117913b81dc21424d46e0',
@@ -1005,6 +1005,32 @@ describe('Data Foundation capability registry', () => {
         ? undefined
         : jsonSchemaHash(definition.inputSchema),
     ).toBe('2036d4561ed61bc9fab314ae85485e3f6663570ecbd6aee136dd72ef3ce26acb');
+  });
+
+  it('versions additive authority metadata without rewriting strict outputs', () => {
+    const historicalOutputHashes = {
+      'data.catalog.get':
+        'ec49b4213125b3a70612ef02f4859fb1861eee31947e5c69707f8bbf278953d2',
+      'data.catalog.versions.list':
+        '417d20fde3f862522707b7dcdc66e4e2a7d39f3574a74fbbaa84957b47aceb5a',
+      'data.catalog.versions.get':
+        '93d00d1053ece01534eee9d559c84f23faf74e2a71ffde53657ac36fd91f4504',
+    } as const;
+
+    for (const [capabilityId, outputHash] of Object.entries(
+      historicalOutputHashes,
+    )) {
+      const id = capabilityId as keyof typeof historicalOutputHashes;
+      expect(DATA_CAPABILITY_REGISTRY[id].version).toBe('2.0.0');
+      const archived = DATA_CAPABILITY_ARCHIVE[id];
+      expect(archived).toHaveLength(1);
+      expect(archived?.[0]?.version).toBe('1.0.0');
+      expect(
+        archived?.[0] === undefined
+          ? undefined
+          : jsonSchemaHash(archived[0].outputSchema),
+      ).toBe(outputHash);
+    }
   });
 
   it('validates every capability input strictly', () => {

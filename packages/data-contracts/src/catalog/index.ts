@@ -177,26 +177,62 @@ export const DataItemSchema = z.strictObject({
 });
 export type DataItemDto = z.infer<typeof DataItemSchema>;
 
+export const TileAvailabilitySchema = z.strictObject({
+  vector: z.boolean(),
+  raster: z.boolean(),
+});
+export type TileAvailabilityDto = z.infer<typeof TileAvailabilitySchema>;
+
+const DataItemVersionFields = {
+  tenantId: PlatformUuidSchema,
+  dataItemId: PlatformUuidSchema,
+  versionId: PlatformUuidSchema,
+  version: z.number().int().positive(),
+  assetIds: z.array(PlatformUuidSchema).min(1).max(10_000),
+  sourceHash: Sha256Schema,
+  metadataHash: Sha256Schema,
+  schemaVersionId: PlatformUuidSchema.optional(),
+  processingStage: ProcessingStageSchema,
+  generationMethod: GenerationMethodSchema,
+  qualityGrade: QualityGradeSchema,
+  acceptanceStatus: AcceptanceStatusSchema,
+  publicationStatus: PublicationStatusSchema,
+  securityLevel: SecurityLevelSchema,
+  createdAt: OffsetDateTimeSchema,
+  committedAt: OffsetDateTimeSchema.optional(),
+  publishedAt: OffsetDateTimeSchema.optional(),
+  supersedesVersionId: PlatformUuidSchema.optional(),
+} as const;
+
+export const DataItemVersionV1Schema = z
+  .strictObject(DataItemVersionFields)
+  .superRefine((version, context) => {
+    if (
+      version.publicationStatus === 'PUBLISHED' &&
+      version.publishedAt === undefined
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['publishedAt'],
+        message: 'publishedAt is required for a published data item version.',
+      });
+    }
+    if (
+      version.publicationStatus === 'PUBLISHED' &&
+      version.committedAt === undefined
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['committedAt'],
+        message: 'committedAt is required for a published data item version.',
+      });
+    }
+  });
+
 export const DataItemVersionSchema = z
   .strictObject({
-    tenantId: PlatformUuidSchema,
-    dataItemId: PlatformUuidSchema,
-    versionId: PlatformUuidSchema,
-    version: z.number().int().positive(),
-    assetIds: z.array(PlatformUuidSchema).min(1).max(10_000),
-    sourceHash: Sha256Schema,
-    metadataHash: Sha256Schema,
-    schemaVersionId: PlatformUuidSchema.optional(),
-    processingStage: ProcessingStageSchema,
-    generationMethod: GenerationMethodSchema,
-    qualityGrade: QualityGradeSchema,
-    acceptanceStatus: AcceptanceStatusSchema,
-    publicationStatus: PublicationStatusSchema,
-    securityLevel: SecurityLevelSchema,
-    createdAt: OffsetDateTimeSchema,
-    committedAt: OffsetDateTimeSchema.optional(),
-    publishedAt: OffsetDateTimeSchema.optional(),
-    supersedesVersionId: PlatformUuidSchema.optional(),
+    ...DataItemVersionFields,
+    tileAvailability: TileAvailabilitySchema,
   })
   .superRefine((version, context) => {
     if (
@@ -247,6 +283,11 @@ export const DataItemVersionPageSchema = z.strictObject({
   nextCursor: CursorSchema.optional(),
 });
 
+export const DataItemVersionPageV1Schema = z.strictObject({
+  items: z.array(DataItemVersionV1Schema),
+  nextCursor: CursorSchema.optional(),
+});
+
 export const GetDataItemVersionInputSchema = z.strictObject({
   dataItemId: PlatformUuidSchema,
   versionId: PlatformUuidSchema,
@@ -254,4 +295,8 @@ export const GetDataItemVersionInputSchema = z.strictObject({
 
 export const GetDataItemVersionOutputSchema = z.strictObject({
   version: DataItemVersionSchema,
+});
+
+export const GetDataItemVersionOutputV1Schema = z.strictObject({
+  version: DataItemVersionV1Schema,
 });

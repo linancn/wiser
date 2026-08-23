@@ -122,7 +122,11 @@ function appWith(
                   name: 'Yongding stations',
                   securityLevel: 'L1_INTERNAL',
                   sourceOrganization: 'restricted-source',
-                  __selectedVersion: { versionId: VERSION_ID },
+                  __selectedVersion: {
+                    dataItemId: DATA_ITEM_ID,
+                    versionId: VERSION_ID,
+                    tileAvailability: { vector: true, raster: false },
+                  },
                 },
               ],
               nextCursor: 'cursor-next',
@@ -183,6 +187,9 @@ describe('Data Foundation schema-first GraphQL transport', () => {
     );
     expect(DATA_FOUNDATION_GRAPHQL_SCHEMA).not.toMatch(/SQL|Cypher|DSL/);
     expect(DATA_FOUNDATION_GRAPHQL_SCHEMA).toContain('versionId: ID');
+    expect(DATA_FOUNDATION_GRAPHQL_SCHEMA).toContain(
+      'tileAvailability: TileAvailability!',
+    );
     expect(
       readFileSync(
         new URL('../src/data-foundation/schema.graphql', import.meta.url),
@@ -205,7 +212,11 @@ describe('Data Foundation schema-first GraphQL transport', () => {
               name
               securityLevel
               sourceOrganization
-              selectedVersion { versionId }
+              selectedVersion {
+                dataItemId
+                versionId
+                tileAvailability { vector raster }
+              }
             }
             pageInfo { endCursor hasNextPage }
           }
@@ -223,7 +234,11 @@ describe('Data Foundation schema-first GraphQL transport', () => {
               name: 'Yongding stations',
               securityLevel: 'L1_INTERNAL',
               sourceOrganization: null,
-              selectedVersion: { versionId: VERSION_ID },
+              selectedVersion: {
+                dataItemId: DATA_ITEM_ID,
+                versionId: VERSION_ID,
+                tileAvailability: { vector: true, raster: false },
+              },
             },
           ],
           pageInfo: { endCursor: 'cursor-next', hasNextPage: true },

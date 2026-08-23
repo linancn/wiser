@@ -71,14 +71,24 @@ test('validates truthful API health and the complete Capability registry', () =>
 
   assert.doesNotThrow(() =>
     validateCapabilities({
-      registryVersion: '1.0.0',
+      registryVersion: '2.0.0',
       capabilities: REQUIRED_CAPABILITY_IDS.map((id) => ({ id })),
     }),
   );
+  for (const registryVersion of ['0.0.0', '2.0.0-beta.1', 'latest']) {
+    assert.throws(
+      () =>
+        validateCapabilities({
+          registryVersion,
+          capabilities: REQUIRED_CAPABILITY_IDS.map((id) => ({ id })),
+        }),
+      /invalid envelope/,
+    );
+  }
   assert.throws(
     () =>
       validateCapabilities({
-        registryVersion: '1.0.0',
+        registryVersion: '2.0.0',
         capabilities: [{ id: 'data.catalog.search' }],
       }),
     /missing required capability/,

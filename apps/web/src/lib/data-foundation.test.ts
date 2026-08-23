@@ -194,6 +194,7 @@ describe('Data Foundation browser-safe contracts', () => {
     if (parse === undefined) return;
 
     expect(parse(undefined, undefined)).toBeUndefined();
+    expect(parse('', '')).toBeUndefined();
     expect(parse(UUID, VERSION_ID)).toEqual({
       dataItemId: UUID,
       versionId: VERSION_ID,

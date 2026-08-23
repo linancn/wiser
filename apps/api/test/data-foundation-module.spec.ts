@@ -84,7 +84,7 @@ describe('Data Foundation HTTP composition module', () => {
       }>;
     }>();
 
-    expect(body.registryVersion).toBe('1.1.0');
+    expect(body.registryVersion).toBe('2.0.0');
     expect(body.capabilities.map(({ id }) => id)).toEqual(DATA_CAPABILITY_IDS);
     for (const capability of body.capabilities) {
       expect(capability.inputSchema).toMatchObject({
@@ -185,6 +185,31 @@ describe('Data Foundation HTTP composition module', () => {
       historical.json<{ inputSchema: { properties: object } }>().inputSchema
         .properties,
     ).not.toHaveProperty('versionId');
+  });
+
+  it('archives strict catalog outputs when version authority metadata changes', async () => {
+    const app = appWith(() =>
+      Promise.resolve({ database: true, objectStore: true, worker: true }),
+    );
+
+    for (const capabilityId of [
+      'data.catalog.get',
+      'data.catalog.versions.list',
+      'data.catalog.versions.get',
+    ]) {
+      const historical = await app.inject({
+        method: 'GET',
+        url: `/api/data/v1/capabilities/${capabilityId}/1.0.0`,
+      });
+      const current = await app.inject({
+        method: 'GET',
+        url: `/api/data/v1/capabilities/${capabilityId}/2.0.0`,
+      });
+      expect(historical.statusCode).toBe(200);
+      expect(current.statusCode).toBe(200);
+      expect(historical.body).not.toContain('tileAvailability');
+      expect(current.body).toContain('tileAvailability');
+    }
   });
 
   it('keeps existing Agent EXCON routes mounted beside Data Foundation', async () => {

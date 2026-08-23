@@ -18,7 +18,7 @@ checkPaths:
   - packages/data-contracts/src/capability/**
   - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 2597535dc53d5ca7d9faa65be1bb699c345c0b57
+lastReviewedCommit: 009852bdcfd26240fa31553e7d0e2254400aaf67
 ---
 
 ## 只做 HTTP 适配
@@ -130,6 +130,8 @@ GET Tool 只编码 boolean、number、string 或 string array query；path param
 5. 不把搜索 score 当作质量或授权结论。
 
 `data_geo_query` 接受一个可选的 `versionId`。省略时，从每个 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent。每次响应受 `first` 限制，并以绑定 snapshot/query/scope 的不透明 `nextCursor` 继续；`dataItemIds` 与两种选择均取交集，版本不可见或不存在时返回空结果集。
+
+`data_geo_intersect` 先把 DataItem target 解析为可见已提交 Version，再收集全部 sibling extent，绝不回退旧 Version。当前 catalog/version Tool 输出必须带有 `tileAvailability`；Agent 可用布尔量决定是否提供受控 vector/raster route，但不得由此推断上游服务健康或 COG 合规。
 
 ### 入库
 

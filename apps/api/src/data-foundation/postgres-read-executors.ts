@@ -71,7 +71,47 @@ const VERSION_COLUMNS = `
   version.schema_version_id, version.processing_stage,
   version.generation_method, version.quality_grade,
   version.acceptance_status, version.publication_status,
-  version.security_level, version.created_at, version.committed_at,
+  version.security_level,
+  (version.committed_at is not null and exists (
+    select 1
+    from catalog.spatial_extent as available_extent
+    where available_extent.tenant_id = version.tenant_id
+      and available_extent.project_id = version.project_id
+      and available_extent.data_item_id = version.data_item_id
+      and available_extent.version_id = version.version_id
+      and security.authorized_row(
+        available_extent.tenant_id, available_extent.project_id,
+        available_extent.security_level, available_extent.policy_version
+      )
+  )) as vector_tile_available,
+  (version.committed_at is not null and exists (
+    select 1
+    from catalog.asset as raster_asset
+    join ingestion.input_asset as raster_input
+      on raster_input.tenant_id = raster_asset.tenant_id
+     and raster_input.project_id = raster_asset.project_id
+     and raster_input.asset_id = raster_asset.asset_id
+    where raster_asset.tenant_id = version.tenant_id
+      and raster_asset.project_id = version.project_id
+      and raster_asset.version_id = version.version_id
+      and raster_asset.lifecycle_state = 'RAW'
+      and raster_asset.content_hash is not null
+      and raster_asset.content_blob_id is not null
+      and lower(btrim(split_part(raster_asset.media_type, ';', 1))) in (
+        'image/tiff', 'image/geotiff', 'application/geotiff',
+        'application/x-geotiff'
+      )
+      and raster_asset.storage_key =
+        'tenants/' || raster_asset.tenant_id::text ||
+        '/projects/' || raster_asset.project_id::text ||
+        '/versions/' || raster_asset.version_id::text ||
+        '/sha256/' || encode(raster_asset.content_hash, 'hex')
+      and security.authorized_row(
+        raster_asset.tenant_id, raster_asset.project_id,
+        raster_asset.security_level, raster_asset.policy_version
+      )
+  )) as raster_tile_available,
+  version.created_at, version.committed_at,
   version.published_at, version.supersedes_version_id
 `;
 
@@ -591,6 +631,10 @@ function version(row: Record<string, unknown>): DataItemVersionDto {
       row,
       'security_level',
     ) as DataItemVersionDto['securityLevel'],
+    tileAvailability: {
+      vector: boolean(row, 'vector_tile_available'),
+      raster: boolean(row, 'raster_tile_available'),
+    },
     createdAt: text(row, 'created_at'),
     ...(optionalText(row, 'committed_at') === undefined
       ? {}

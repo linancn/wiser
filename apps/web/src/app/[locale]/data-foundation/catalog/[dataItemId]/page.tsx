@@ -84,7 +84,8 @@ export default async function DataItemPage({
   const item = detail?.item;
   const selectedVersion = detail?.selectedVersion;
   const mapSearch = new URLSearchParams();
-  if (selectedVersion !== undefined) {
+  if (selectedVersion !== undefined && item !== undefined) {
+    mapSearch.set('dataItem', item.dataItemId);
     mapSearch.set('version', selectedVersion.versionId);
   }
   if (item?.spatialExtent !== undefined) {

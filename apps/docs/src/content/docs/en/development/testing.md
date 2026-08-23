@@ -25,7 +25,7 @@ checkPaths:
   - examples/agent-excon/**
   - .github/workflows/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 5e253f1123d2b2b625077ac9544a34378e8d64b2
+lastReviewedCommit: 009852bdcfd26240fa31553e7d0e2254400aaf67
 ---
 
 ## Red → Green → Refactor
@@ -155,7 +155,7 @@ WISER_DATA_PG_INTEGRATION=1 DATA_TEST_DATABASE_URL='<owner-dsn>' pnpm test:postg
 DATA_WORKER_PG_SMOKE_URL='<worker-dsn>' pnpm test:postgres:data-worker
 ```
 
-The API command spec uses a temporary non-bypass role to prove illegal Operation, Ingestion, Job, and Transform Plan transitions fail with stable PostgreSQL errors. It also proves authority identity/content, terminal and running same-state protection, capability-scoped upload completion, exact row versions, retirement of the legacy claim path, accurate wake-to-claim event history, and legal heartbeat/wait aggregation. Its positive fixture advances through the legal lifecycle rather than inserting an impossible intermediate state. The API PostGIS spec separately proves authoritative latest/exact immutable-version selection, preservation of sibling extents, DataItem intersection, and fail-closed Tenant, security, and policy boundaries. The Worker deep test then proves the guarded schema still accepts the complete ingestion commit path.
+The API command spec uses a temporary non-bypass role to prove illegal Operation, Ingestion, Job, and Transform Plan transitions fail with stable PostgreSQL errors. It also proves authority identity/content, terminal and running same-state protection, capability-scoped upload completion, exact row versions, retirement of the legacy claim path, accurate wake-to-claim event history, and legal heartbeat/wait aggregation. Its positive fixture advances through the legal lifecycle rather than inserting an impossible intermediate state. The API PostGIS spec separately proves authoritative latest/exact immutable-version selection, sibling-extent collection, snapshot pagination, DataItem intersection, and fail-closed Tenant, security, and policy boundaries. The authenticated GeoJSON browser fixture must enable vector, disable raster, and issue no raster tile request; this checks version-level authority metadata without pretending that the fixture proves a valid COG. The Worker deep test then proves the guarded schema still accepts the complete ingestion commit path.
 
 Data Foundation CI completes the vertical smoke and saves its machine-readable report first, runs the authenticated Data browser suite against that same stack, then runs the API and Worker deep tests, and finally removes that job's Data volumes unconditionally. The order is `smoke → authenticated browser → API/Worker deep tests → always cleanup`; cleanup must still run after any earlier failure. Never point these commands at a shared database or a local volume whose data must be retained.
 

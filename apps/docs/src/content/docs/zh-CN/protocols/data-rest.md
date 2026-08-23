@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: 2597535dc53d5ca7d9faa65be1bb699c345c0b57
+lastReviewedCommit: 009852bdcfd26240fa31553e7d0e2254400aaf67
 ---
 
 ## 协议边界
@@ -123,7 +123,10 @@ If-Match: "v3"
 - `data.query`：受控字段、`EQ/NE/GT/GTE/LT/LTE/IN/CONTAINS` filter；
 - graph：实体 ID、关系类型和最大深度；
 - `data.geo.query`：受支持 GeoJSON geometry、显式 CRS、`INTERSECTS/WITHIN/CONTAINS/NEAREST` 与可选的单数 `versionId`。省略 `versionId` 时，每个有界响应从各 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent。使用返回的、绑定 snapshot/query/scope 的不透明 `nextCursor` 继续；`dataItemIds` 与两种选择均取交集，版本不可见或不存在时返回空结果集；
+- `data.geo.intersect`：接受 Geometry 或 DataItem target；DataItem target 先选择最新/精确的可见已提交 Version，再收集全部 sibling extent，绝不回退旧 Version。target 缺失、不可见、无 extent 或彼此不相交时均返回不可区分的空页，并使用同样的 snapshot/query/scope cursor 继续；
 - federated search：catalog/fulltext/semantic/graph/geo/stac source allowlist。
+
+当前 catalog get/version 响应要求 `tileAvailability: { vector, raster }`。它描述受控 source 是否可路由，不表示 GIS 服务健康：vector 要求可见的版本级 extent；raster 要求可见 RAW TIFF/GeoTIFF asset 具备 blob/hash/input 关联和精确内容寻址 key。
 
 SearchOrchestrator 在后端下推权限与发布过滤，固定 `RRF k=60`，按 DataItem+Version 去重，再逐条重新授权。
 
