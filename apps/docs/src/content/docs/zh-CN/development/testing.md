@@ -23,7 +23,7 @@ checkPaths:
   - examples/agent-excon/**
   - .github/workflows/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: edd97b4d3215c55d272ae2721b7843286e6f4286
+lastReviewedCommit: 895c5fce46852d635d3cb337c6fade895244213c
 ---
 
 ## Red → Green → Refactor
@@ -132,6 +132,15 @@ pnpm data:smoke
 pnpm data:down
 pnpm supabase:stop
 ```
+
+两个真实 PostgreSQL adapter 测试只允许指向 CI 或明确可丢弃的隔离 Data 数据库。API 测试需要 migration owner DSN 来创建临时非 bypass role；Worker 测试使用真实 `wiser_data_worker` 登录并会提交随机 authority fixture：
+
+```bash
+WISER_DATA_PG_INTEGRATION=1 DATA_TEST_DATABASE_URL='<owner-dsn>' pnpm test:postgres:data-api
+DATA_WORKER_PG_SMOKE_URL='<worker-dsn>' pnpm test:postgres:data-worker
+```
+
+Data Foundation CI 先完成纵向 smoke，再运行 API、Worker 两个深度测试，最后无条件删除该 job 的 Data volumes。不要把这些命令指向共享数据库或需要保留的本机 volume。
 
 在干净环境中，`pnpm stack:full:up` 会执行启动 Supabase、启动 Data profile、migration、seed 和 `data:smoke` 的收敛流程。Smoke 的成功证明固定步骤跨越上传、扫描、指纹、fake Agent、确定性转换、质量/审核、权威提交、Outbox、五个 completion target、REST、GraphQL、MCP 和登录 Web，并验证 Outbox 重放不重复创建 target facts。
 

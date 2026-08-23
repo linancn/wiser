@@ -64,6 +64,9 @@ describe('Data PostgreSQL CI', () => {
   it('runs both real adapters after the vertical smoke and before cleanup', () => {
     const job = dataFoundationJob();
     const smoke = job.indexOf('run: pnpm data:smoke');
+    const apiStep = job.indexOf(
+      'name: Verify Data API commands against real PostgreSQL',
+    );
     const api = job.indexOf('run: pnpm test:postgres:data-api');
     const worker = job.indexOf('run: pnpm test:postgres:data-worker');
     const cleanup = job.indexOf(
@@ -74,7 +77,10 @@ describe('Data PostgreSQL CI', () => {
     expect(api).toBeGreaterThan(smoke);
     expect(worker).toBeGreaterThan(api);
     expect(cleanup).toBeGreaterThan(worker);
-    expect(job.slice(api, worker)).toContain("WISER_DATA_PG_INTEGRATION: '1'");
+    expect(apiStep).toBeGreaterThan(smoke);
+    expect(job.slice(apiStep, worker)).toContain(
+      "WISER_DATA_PG_INTEGRATION: '1'",
+    );
     expect(job).toContain('if: always()');
   });
 

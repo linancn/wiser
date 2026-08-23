@@ -23,7 +23,7 @@ checkPaths:
   - examples/agent-excon/**
   - .github/workflows/**
 lastReviewedAt: 2026-08-23
-lastReviewedCommit: edd97b4d3215c55d272ae2721b7843286e6f4286
+lastReviewedCommit: 895c5fce46852d635d3cb337c6fade895244213c
 ---
 
 ## Red → Green → Refactor
@@ -132,6 +132,15 @@ pnpm data:smoke
 pnpm data:down
 pnpm supabase:stop
 ```
+
+The two real PostgreSQL adapter tests may target only CI or an explicitly disposable isolated Data database. The API test needs a migration-owner DSN so it can create a temporary non-bypass role; the Worker test logs in as the real `wiser_data_worker` and commits randomized authority fixtures:
+
+```bash
+WISER_DATA_PG_INTEGRATION=1 DATA_TEST_DATABASE_URL='<owner-dsn>' pnpm test:postgres:data-api
+DATA_WORKER_PG_SMOKE_URL='<worker-dsn>' pnpm test:postgres:data-worker
+```
+
+Data Foundation CI completes the vertical smoke first, then runs the API and Worker deep tests, and finally removes that job's Data volumes unconditionally. Never point these commands at a shared database or a local volume whose data must be retained.
 
 On a clean environment, `pnpm stack:full:up` converges Supabase startup, the Data profile, migrations, seed, and `data:smoke`. A passing smoke proves the fixed sequence across upload, scanning, fingerprinting, fake Agent, deterministic transformation, quality/review, authority commit, Outbox, five completion targets, REST, GraphQL, MCP, and authenticated Web. It also verifies that Outbox replay does not duplicate target facts.
 
