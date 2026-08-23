@@ -68,12 +68,14 @@ describe('evidence projection identity and validation', () => {
     { ...input, chunkId: '../other-tenant' },
     { ...input, sourceHash: 'not-a-sha256' },
     { ...input, vector: [0, Number.NaN] },
+    { ...input, vector: [0, 1] },
     { ...input, pageOrSection: '' },
     { ...input, unexpected: 'field' },
   ])('rejects malformed and unknown projection input %#', async (candidate) => {
     const projection = new WeaviateEvidenceProjection({
       baseUrl: 'http://weaviate:8080',
       apiKey: 'weaviate-secret',
+      vectorDimensions: 3,
       http: new FakeHttpClient(),
     });
 
@@ -90,6 +92,7 @@ describe('Weaviate evidence projection', () => {
     const projection = new WeaviateEvidenceProjection({
       baseUrl: 'http://weaviate:8080',
       apiKey: 'weaviate-secret',
+      vectorDimensions: 3,
       http,
     });
 
@@ -109,7 +112,7 @@ describe('Weaviate evidence projection', () => {
     expect(create.body).toMatchObject({
       class: WEAVIATE_EVIDENCE_COLLECTION,
       vectorizer: 'none',
-      multiTenancyConfig: { enabled: true, autoTenantCreation: true },
+      multiTenancyConfig: { enabled: true, autoTenantCreation: false },
     });
     expect(
       (create.body as { properties: Array<{ name: string }> }).properties.map(
@@ -153,6 +156,32 @@ describe('Weaviate evidence projection', () => {
     expect(propertyTypes.get('channels')).toEqual(['text[]']);
     expect(propertyTypes.get('limitations')).toEqual(['text[]']);
     expect(propertyTypes.get('policyVersion')).toEqual(['int']);
+
+    const properties = new Map(
+      (
+        create.body as {
+          properties: Array<{ name: string } & Record<string, unknown>>;
+        }
+      ).properties.map((property) => [property.name, property]),
+    );
+    expect(properties.get('tenantId')).toMatchObject({
+      tokenization: 'field',
+      indexFilterable: true,
+      indexSearchable: false,
+    });
+    expect(properties.get('channels')).toMatchObject({
+      tokenization: 'field',
+      indexFilterable: true,
+      indexSearchable: false,
+    });
+    expect(properties.get('content')).toMatchObject({
+      indexFilterable: false,
+      indexSearchable: false,
+    });
+    expect(properties.get('policyVersion')).toMatchObject({
+      indexFilterable: true,
+      indexRangeFilters: true,
+    });
   });
 
   it('uses authenticated tenant-scoped idempotent PUT with a worker vector', async () => {
@@ -168,6 +197,7 @@ describe('Weaviate evidence projection', () => {
     const projection = new WeaviateEvidenceProjection({
       baseUrl: 'http://weaviate:8080',
       apiKey: 'weaviate-secret',
+      vectorDimensions: 3,
       http,
     });
 
@@ -224,6 +254,7 @@ describe('Weaviate evidence projection', () => {
     const projection = new WeaviateEvidenceProjection({
       baseUrl: 'http://weaviate:8080',
       apiKey: 'weaviate-secret',
+      vectorDimensions: 3,
       http,
     });
 
@@ -246,6 +277,7 @@ describe('Weaviate evidence projection', () => {
         new WeaviateEvidenceProjection({
           baseUrl: 'http://weaviate:8080/path',
           apiKey: '',
+          vectorDimensions: 3,
           http: new FakeHttpClient(),
         }),
     ).toThrow(EvidenceProjectionError);
@@ -253,12 +285,12 @@ describe('Weaviate evidence projection', () => {
 });
 
 describe('OpenSearch evidence projection', () => {
-  it('creates a fixed permission-aware mapping with the ICU Chinese analyzer', async () => {
+  it('creates a versioned multilingual mapping with ICU, SmartCN, and CJK analyzers', async () => {
     const http = new FakeHttpClient();
     http.responses.push({ status: 404 }, { status: 200 });
     const projection = new OpenSearchEvidenceProjection({
       baseUrl: 'https://opensearch:9200',
-      indexName: 'wiser-evidence-v1',
+      indexName: 'wiser-evidence-v2',
       username: 'wiser-indexer',
       password: 'opensearch-secret',
       http,
@@ -267,18 +299,37 @@ describe('OpenSearch evidence projection', () => {
     await projection.ensureIndex();
 
     expect(http.requests[0]?.url).toBe(
-      'https://opensearch:9200/wiser-evidence-v1',
+      'https://opensearch:9200/wiser-evidence-v2',
     );
     const create = http.requests[1];
     expect(create?.method).toBe('PUT');
     expect(create?.body).toMatchObject({
       settings: {
         analysis: {
+          char_filter: {
+            wiser_nfkc_cf: {
+              type: 'icu_normalizer',
+              name: 'nfkc_cf',
+              mode: 'compose',
+            },
+          },
+          filter: {
+            wiser_cjk_bigrams: {
+              type: 'cjk_bigram',
+              output_unigrams: false,
+            },
+          },
           analyzer: {
-            wiser_icu_zh: {
+            wiser_icu_multilingual: {
               type: 'custom',
+              char_filter: ['wiser_nfkc_cf'],
               tokenizer: 'icu_tokenizer',
-              filter: ['icu_folding', 'lowercase'],
+              filter: ['icu_folding'],
+            },
+            wiser_cjk_recall: {
+              type: 'custom',
+              tokenizer: 'standard',
+              filter: ['cjk_width', 'lowercase', 'wiser_cjk_bigrams'],
             },
           },
         },
@@ -296,7 +347,24 @@ describe('OpenSearch evidence projection', () => {
           policyVersion: { type: 'long' },
           businessDomains: { type: 'keyword' },
           channels: { type: 'keyword' },
-          content: { type: 'text', analyzer: 'wiser_icu_zh' },
+          content: {
+            type: 'text',
+            analyzer: 'wiser_icu_multilingual',
+            search_analyzer: 'wiser_icu_multilingual',
+            search_quote_analyzer: 'wiser_icu_multilingual',
+            fields: {
+              smartcn: {
+                type: 'text',
+                analyzer: 'smartcn',
+                search_analyzer: 'smartcn',
+              },
+              cjk: {
+                type: 'text',
+                analyzer: 'wiser_cjk_recall',
+                search_analyzer: 'wiser_cjk_recall',
+              },
+            },
+          },
         },
       },
     });
@@ -306,7 +374,7 @@ describe('OpenSearch evidence projection', () => {
     const http = new FakeHttpClient();
     const projection = new OpenSearchEvidenceProjection({
       baseUrl: 'https://opensearch:9200',
-      indexName: 'wiser-evidence-v1',
+      indexName: 'wiser-evidence-v2',
       username: 'wiser-indexer',
       password: 'opensearch-secret',
       http,
@@ -318,7 +386,7 @@ describe('OpenSearch evidence projection', () => {
     expect(replay).toEqual(first);
     expect(http.requests[0]?.url).toBe(http.requests[1]?.url);
     expect(http.requests[0]?.url).toBe(
-      `https://opensearch:9200/wiser-evidence-v1/_doc/${first.projectionId}`,
+      `https://opensearch:9200/wiser-evidence-v2/_doc/${first.projectionId}`,
     );
     expect(http.requests[0]?.headers?.Authorization).toBe(
       `Basic ${Buffer.from('wiser-indexer:opensearch-secret').toString('base64')}`,
@@ -358,7 +426,7 @@ describe('OpenSearch evidence projection', () => {
     });
     const projection = new OpenSearchEvidenceProjection({
       baseUrl: 'https://opensearch:9200',
-      indexName: 'wiser-evidence-v1',
+      indexName: 'wiser-evidence-v2',
       username: 'wiser-indexer',
       password: 'opensearch-secret',
       http,

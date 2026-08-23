@@ -129,6 +129,7 @@ describe('five-target projection hydrator', () => {
       NEO4J: [],
       STAC: [],
     };
+    const ensureNeo4jIndexes = vi.fn(() => Promise.resolve());
     const targets = createProjectionTargets({
       hydrator,
       postgis: { put: (input) => void calls.POSTGIS.push(input) },
@@ -140,7 +141,10 @@ describe('five-target projection hydrator', () => {
         ensureIndex: () => Promise.resolve(),
         put: (input) => void calls.OPENSEARCH.push(input),
       },
-      neo4j: { put: (input) => void calls.NEO4J.push(input) },
+      neo4j: {
+        ensureIndexes: ensureNeo4jIndexes,
+        put: (input) => void calls.NEO4J.push(input),
+      },
       stac: { put: (input) => void calls.STAC.push(input) },
     });
 
@@ -154,6 +158,7 @@ describe('five-target projection hydrator', () => {
       'STAC',
     ]);
     expect(authority.load).toHaveBeenCalledOnce();
+    expect(ensureNeo4jIndexes).toHaveBeenCalledOnce();
     expect(calls.POSTGIS[0]).toMatchObject({
       dataItemId: event.dataItemId,
       versionId: event.versionId,
@@ -226,7 +231,7 @@ describe('five-target projection hydrator', () => {
       postgis: { put() {} },
       weaviate: { ensureCollection, put() {} },
       opensearch: { ensureIndex: () => Promise.resolve(), put() {} },
-      neo4j: { put() {} },
+      neo4j: { ensureIndexes: () => Promise.resolve(), put() {} },
       stac: { put() {} },
     }).find(({ kind }) => kind === 'WEAVIATE');
     expect(target).toBeDefined();
@@ -272,7 +277,10 @@ describe('five-target projection hydrator', () => {
         ensureIndex: () => Promise.resolve(),
         put: calls.opensearch,
       },
-      neo4j: { put: calls.neo4j },
+      neo4j: {
+        ensureIndexes: () => Promise.resolve(),
+        put: calls.neo4j,
+      },
       stac: { put: calls.stac },
     });
     await Promise.all(targets.map((target) => target.project(nonSpatialEvent)));

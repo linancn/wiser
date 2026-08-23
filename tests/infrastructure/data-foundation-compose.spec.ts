@@ -6,6 +6,10 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(import.meta.dirname, '../..');
 const compose = readFileSync(resolve(root, 'compose.yaml'), 'utf8');
 const environment = readFileSync(resolve(root, '.env.example'), 'utf8');
+const dataVersions = readFileSync(
+  resolve(root, 'infrastructure/data-foundation/versions.env'),
+  'utf8',
+);
 const workflow = readFileSync(
   resolve(root, '.github/workflows/ci.yml'),
   'utf8',
@@ -166,6 +170,26 @@ describe('Data Foundation Compose profile', () => {
     expect(init).toContain('init-object-store');
     expect(worker).toContain('condition: service_completed_successfully');
     expect(compose).toMatch(/\n {2}opensearch-ca:\n/);
+  });
+
+  it('installs the official ICU and SmartCN analyzers for multilingual recall', () => {
+    const init = serviceBlock('opensearch-icu-init');
+    const opensearch = serviceBlock('opensearch');
+
+    expect(dataVersions).toContain(
+      'DATA_OPENSEARCH_SMARTCN_PLUGIN_URL=https://artifacts.opensearch.org/releases/plugins/analysis-smartcn/3.8.0/analysis-smartcn-3.8.0.zip',
+    );
+    expect(dataVersions).toMatch(
+      /^DATA_OPENSEARCH_SMARTCN_PLUGIN_SHA512=[a-f0-9]{128}$/m,
+    );
+    expect(init).toContain('analysis-icu/3.8.0/analysis-icu-3.8.0.zip');
+    expect(init).toContain('analysis-smartcn/3.8.0/analysis-smartcn-3.8.0.zip');
+    expect(init).toContain('source: opensearch-smartcn-plugin');
+    expect(opensearch).toContain(
+      'target: /usr/share/opensearch/plugins/analysis-smartcn',
+    );
+    expect(opensearch).toContain('grep -qx analysis-smartcn');
+    expect(compose).toMatch(/\n {2}opensearch-smartcn-plugin:\n/);
   });
 });
 

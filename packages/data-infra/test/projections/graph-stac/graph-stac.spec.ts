@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   GraphStacProjectionError,
+  NEO4J_ENTITY_FULLTEXT_INDEX,
   Neo4jKnowledgeGraphProjection,
   StacCatalogProjection,
   deterministicGraphProjectionId,
@@ -123,6 +124,38 @@ function graphProjection(http: GraphStacHttpClient) {
 }
 
 describe('Neo4j knowledge graph projection', () => {
+  it('creates and awaits one synchronous CJK entity-name full-text index', async () => {
+    const http = new FakeHttpClient();
+    const projection = graphProjection(http);
+
+    await projection.ensureIndexes();
+
+    expect(http.requests).toHaveLength(2);
+    expect(http.requests[0]).toMatchObject({
+      method: 'POST',
+      url: 'http://neo4j:7474/db/neo4j/query/v2',
+      body: {
+        statement: expect.stringContaining('CREATE FULLTEXT INDEX'),
+        parameters: { indexName: NEO4J_ENTITY_FULLTEXT_INDEX },
+      },
+    });
+    expect(http.requests[0]?.body).toMatchObject({
+      statement: expect.stringContaining("`fulltext.analyzer`: 'cjk'"),
+    });
+    expect(http.requests[0]?.body).toMatchObject({
+      statement: expect.stringContaining(
+        '`fulltext.eventually_consistent`: false',
+      ),
+    });
+    expect(http.requests[1]?.body).toEqual({
+      statement: 'CALL db.awaitIndex($indexName, $timeoutSeconds)',
+      parameters: {
+        indexName: NEO4J_ENTITY_FULLTEXT_INDEX,
+        timeoutSeconds: 30,
+      },
+    });
+  });
+
   it('derives deterministic scoped identities and replays one fixed MERGE query', async () => {
     const http = new FakeHttpClient();
     const projection = new Neo4jKnowledgeGraphProjection({

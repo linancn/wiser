@@ -23,7 +23,7 @@ const EVIDENCE_ID = 'b2000000-0000-4000-8000-000000000005';
 
 function request(overrides: Readonly<Record<string, unknown>> = {}) {
   return {
-    query: 'Yongding ecological evidence',
+    query: '永定河 WaterGPT evidence',
     tenantId: TENANT_ID,
     projectId: PROJECT_ID,
     maxSecurityLevel: 'L2_RESTRICTED',
@@ -125,7 +125,7 @@ describe('OpenSearchSearchBackend', () => {
     );
     const backend = new OpenSearchSearchBackend({
       endpoint: 'https://opensearch.internal:9200',
-      indexName: 'wiser-evidence-v1',
+      indexName: 'wiser-evidence-v2',
       username: 'wiser-search',
       password: 'private-password',
       fetch,
@@ -136,7 +136,7 @@ describe('OpenSearchSearchBackend', () => {
     ]);
     const { url, init, body } = firstFetchCall(fetch);
     expect(url).toBe(
-      'https://opensearch.internal:9200/wiser-evidence-v1/_search',
+      'https://opensearch.internal:9200/wiser-evidence-v2/_search',
     );
     expect(init?.method).toBe('POST');
     expect(new Headers(init?.headers).get('authorization')).toMatch(/^Basic /);
@@ -146,7 +146,35 @@ describe('OpenSearchSearchBackend', () => {
         bool: {
           must: [
             {
-              multi_match: { query: 'Yongding ecological evidence' },
+              bool: {
+                minimum_should_match: 1,
+                should: expect.arrayContaining([
+                  {
+                    match: {
+                      content: {
+                        query: '永定河 WaterGPT evidence',
+                        boost: 3,
+                      },
+                    },
+                  },
+                  {
+                    match: {
+                      'content.smartcn': {
+                        query: '永定河 WaterGPT evidence',
+                        boost: 2,
+                      },
+                    },
+                  },
+                  {
+                    match: {
+                      'content.cjk': {
+                        query: '永定河 WaterGPT evidence',
+                        boost: 0.75,
+                      },
+                    },
+                  },
+                ]),
+              },
             },
           ],
         },
@@ -172,7 +200,7 @@ describe('WeaviateSearchBackend', () => {
       jsonResponse({
         data: {
           Get: {
-            WiserEvidenceChunk: [
+            WiserEvidenceChunkV2: [
               { ...indexedProjection(), _additional: { score: '0.92' } },
             ],
           },
@@ -182,7 +210,8 @@ describe('WeaviateSearchBackend', () => {
     const backend = new WeaviateSearchBackend({
       endpoint: 'http://weaviate.internal:8080',
       apiKey: 'private-weaviate-key',
-      collectionName: 'WiserEvidenceChunk',
+      collectionName: 'WiserEvidenceChunkV2',
+      vectorDimensions: 3,
       embed,
       fetch,
     });
@@ -190,20 +219,20 @@ describe('WeaviateSearchBackend', () => {
     await expect(
       backend.search(request({ channels: ['semantic'] })),
     ).resolves.toEqual([indexedSearchHit()]);
-    expect(embed).toHaveBeenCalledWith('Yongding ecological evidence');
+    expect(embed).toHaveBeenCalledWith('永定河 WaterGPT evidence');
     const { url, body } = firstFetchCall(fetch);
     expect(url).toBe('http://weaviate.internal:8080/v1/graphql');
-    expect(body['query']).toEqual(expect.stringContaining('hybrid'));
+    expect(body['query']).toEqual(expect.stringContaining('nearVector'));
+    expect(body['query']).not.toEqual(expect.stringContaining('hybrid'));
     expect(body['query']).toEqual(expect.stringContaining('tenant: $tenant'));
     expect(body['query']).toEqual(expect.stringContaining('limit: 25'));
     expect(body['query']).toEqual(expect.stringContaining(TENANT_ID));
     expect(body['query']).toEqual(expect.stringContaining('valueInt:7'));
     expect(body['query']).not.toEqual(
-      expect.stringContaining('Yongding ecological evidence'),
+      expect.stringContaining('永定河 WaterGPT evidence'),
     );
     expect(body['variables']).toMatchObject({
       tenant: TENANT_ID,
-      query: 'Yongding ecological evidence',
       vector: [0.25, 0.5, 0.75],
     });
     expect(record(body['variables'])).not.toHaveProperty('where');
@@ -252,21 +281,24 @@ describe('Neo4jSearchBackend', () => {
     });
 
     await expect(
-      backend.search(request({ channels: ['graph'] })),
+      backend.search(
+        request({ query: '永定河 WaterGPT', channels: ['graph'] }),
+      ),
     ).resolves.toEqual([projection()]);
     const { url, body } = firstFetchCall(fetch);
     expect(url).toBe('http://neo4j.internal:7474/db/neo4j/query/v2');
     expect(body['statement']).toEqual(
-      expect.stringContaining('MATCH (entity:WiserEntity)'),
+      expect.stringContaining('db.index.fulltext.queryNodes'),
     );
     expect(body['statement']).toEqual(expect.stringContaining('$tenantId'));
     expect(body['statement']).not.toEqual(
-      expect.stringContaining('Yongding ecological evidence'),
+      expect.stringContaining('永定河 WaterGPT'),
     );
     expect(body['parameters']).toMatchObject({
       tenantId: TENANT_ID,
       projectId: PROJECT_ID,
-      query: 'Yongding ecological evidence',
+      indexName: 'wiser_entity_name_cjk_v1',
+      query: '"永定河" OR "WaterGPT"',
       policyVersion: 7,
       limit: 25,
     });
@@ -323,8 +355,8 @@ describe('PostGISSearchBackend', () => {
       text.includes('platform-search:postgis-query'),
     );
     expect(queryCall?.text).toContain('$1::uuid');
-    expect(queryCall?.text).not.toContain('Yongding ecological evidence');
-    expect(queryCall?.values).toContain('Yongding ecological evidence');
+    expect(queryCall?.text).not.toContain('永定河 WaterGPT evidence');
+    expect(queryCall?.values).toContain('永定河 WaterGPT evidence');
     expect(client.calls.at(-1)?.text.toLowerCase()).toBe('commit');
     expect(client.released).toBe(true);
   });
