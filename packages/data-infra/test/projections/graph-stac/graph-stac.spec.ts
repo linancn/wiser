@@ -73,6 +73,55 @@ class FakeHttpClient implements GraphStacHttpClient {
   }
 }
 
+class DeferredFirstHttpClient implements GraphStacHttpClient {
+  readonly requests: GraphStacHttpRequest[] = [];
+  readonly firstRequestStarted: Promise<void>;
+  readonly #firstResponse: Promise<GraphStacHttpResponse>;
+  #markFirstStarted: (() => void) | undefined;
+  #releaseFirst: (() => void) | undefined;
+
+  constructor() {
+    this.firstRequestStarted = new Promise((resolve) => {
+      this.#markFirstStarted = resolve;
+    });
+    this.#firstResponse = new Promise((resolve) => {
+      this.#releaseFirst = () => resolve({ status: 200, body: {} });
+    });
+  }
+
+  request(request: GraphStacHttpRequest): Promise<GraphStacHttpResponse> {
+    this.requests.push(request);
+    if (this.requests.length === 1) {
+      this.#markFirstStarted?.();
+      return this.#firstResponse;
+    }
+    return Promise.resolve({ status: 200, body: {} });
+  }
+
+  releaseFirst(): void {
+    this.#releaseFirst?.();
+  }
+}
+
+function stacProjection(http: GraphStacHttpClient) {
+  return new StacCatalogProjection({
+    baseUrl: 'http://stac-api:8080',
+    bearerToken: 'stac-projector-secret',
+    assetBaseUrl: 'http://api:3001',
+    http,
+  });
+}
+
+function graphProjection(http: GraphStacHttpClient) {
+  return new Neo4jKnowledgeGraphProjection({
+    baseUrl: 'http://neo4j:7474',
+    database: 'neo4j',
+    username: 'wiser-projector',
+    password: 'neo4j-secret',
+    http,
+  });
+}
+
 describe('Neo4j knowledge graph projection', () => {
   it('derives deterministic scoped identities and replays one fixed MERGE query', async () => {
     const http = new FakeHttpClient();
@@ -341,5 +390,213 @@ describe('STAC 1.1 catalog projection', () => {
     expect(error).toBeInstanceOf(GraphStacProjectionError);
     expect(String(error)).not.toContain('stac-projector-secret');
     expect(String(error)).not.toContain('upstream detail');
+  });
+});
+
+describe('Graph/STAC projection input boundaries', () => {
+  it.each([
+    {
+      name: 'one-ordinate Point',
+      geometry: { type: 'Point', coordinates: [115.5] },
+    },
+    {
+      name: 'one-position LineString',
+      geometry: { type: 'LineString', coordinates: [[115.5, 39.5]] },
+    },
+    {
+      name: 'unclosed Polygon ring',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [115.5, 39.5],
+            [116.5, 39.5],
+            [116.5, 40.5],
+            [115.5, 40.5],
+          ],
+        ],
+      },
+    },
+    {
+      name: 'misnested MultiPolygon',
+      geometry: {
+        type: 'MultiPolygon',
+        coordinates: [
+          [
+            [115.5, 39.5],
+            [116.5, 39.5],
+            [115.5, 39.5],
+          ],
+        ],
+      },
+    },
+    {
+      name: 'mixed two- and three-dimensional LineString',
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [115.5, 39.5],
+          [116.5, 40.5, 10],
+        ],
+      },
+    },
+  ])('rejects $name without an HTTP request', async ({ geometry }) => {
+    const http = new FakeHttpClient();
+
+    await expect(
+      stacProjection(http).put({ ...stacInput, geometry }),
+    ).rejects.toMatchObject({ code: 'INVALID_PROJECTION_INPUT' });
+    expect(http.requests).toHaveLength(0);
+  });
+
+  it.each([
+    { type: 'Point', coordinates: [116, 40] },
+    {
+      type: 'MultiPoint',
+      coordinates: [
+        [116, 40],
+        [117, 41],
+      ],
+    },
+    {
+      type: 'LineString',
+      coordinates: [
+        [116, 40],
+        [117, 41],
+      ],
+    },
+    {
+      type: 'MultiLineString',
+      coordinates: [
+        [
+          [116, 40],
+          [117, 41],
+        ],
+        [
+          [118, 42],
+          [119, 43],
+        ],
+      ],
+    },
+    {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [116, 40],
+          [117, 40],
+          [117, 41],
+          [116, 40],
+        ],
+      ],
+    },
+    {
+      type: 'MultiPolygon',
+      coordinates: [
+        [
+          [
+            [116, 40],
+            [117, 40],
+            [117, 41],
+            [116, 40],
+          ],
+        ],
+      ],
+    },
+  ] as const)('accepts a structurally valid $type', async (geometry) => {
+    const http = new FakeHttpClient();
+
+    const result = await stacProjection(http).put({ ...stacInput, geometry });
+    expect(result.itemId).toMatch(/^wiser-[a-f0-9]{48}$/);
+    expect(http.requests).toHaveLength(2);
+    expect(http.requests[1]?.body).toMatchObject({ geometry });
+  });
+
+  it.each(['2026-02-31T00:00:00Z', '2025-02-29T00:00:00.000Z'])(
+    'rejects an impossible calendar timestamp: %s',
+    async (validFrom) => {
+      const http = new FakeHttpClient();
+
+      await expect(
+        graphProjection(http).put({ ...graphInput, validFrom }),
+      ).rejects.toMatchObject({ code: 'INVALID_PROJECTION_INPUT' });
+      expect(http.requests).toHaveLength(0);
+    },
+  );
+
+  it.each([
+    {
+      name: 'object tenantId',
+      override: { tenantId: { toString: () => common.tenantId } },
+    },
+    {
+      name: 'object sourceHash',
+      override: { sourceHash: { toString: () => common.sourceHash } },
+    },
+  ])('returns a stable domain error for $name', async ({ override }) => {
+    const http = new FakeHttpClient();
+
+    await expect(
+      graphProjection(http).put({ ...graphInput, ...override }),
+    ).rejects.toMatchObject({ code: 'INVALID_PROJECTION_INPUT' });
+    expect(http.requests).toHaveLength(0);
+  });
+
+  it('rejects uppercase UUID spellings before deriving an identity', async () => {
+    const http = new FakeHttpClient();
+    const lowerTenantId = 'a1000000-0000-4000-8000-000000000001';
+
+    const lower = await stacProjection(http).put({
+      ...stacInput,
+      tenantId: lowerTenantId,
+    });
+    expect(lower.itemId).toMatch(/^wiser-[a-f0-9]{48}$/);
+    await expect(
+      stacProjection(http).put({
+        ...stacInput,
+        tenantId: lowerTenantId.toUpperCase(),
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_PROJECTION_INPUT' });
+    expect(http.requests).toHaveLength(2);
+  });
+
+  it('projects one immutable validated snapshot despite caller mutation', async () => {
+    const http = new DeferredFirstHttpClient();
+    const bbox = [115.5, 39.5, 116.5, 40.5];
+    const firstPosition = [115.5, 39.5];
+    const geometry = {
+      type: 'Polygon' as const,
+      coordinates: [
+        [firstPosition, [116.5, 39.5], [116.5, 40.5], [115.5, 39.5]],
+      ],
+    };
+    const putting = stacProjection(http).put({
+      ...stacInput,
+      bbox,
+      geometry,
+    });
+    await http.firstRequestStarted;
+
+    bbox[0] = 0;
+    firstPosition[0] = 0;
+    http.releaseFirst();
+    await putting;
+
+    expect(http.requests[0]?.body).toMatchObject({
+      extent: { spatial: { bbox: [[115.5, 39.5, 116.5, 40.5]] } },
+    });
+    expect(http.requests[1]?.body).toMatchObject({
+      bbox: [115.5, 39.5, 116.5, 40.5],
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [115.5, 39.5],
+            [116.5, 39.5],
+            [116.5, 40.5],
+            [115.5, 39.5],
+          ],
+        ],
+      },
+    });
   });
 });
