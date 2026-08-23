@@ -21,17 +21,7 @@ function filteredArgs(command) {
 
 export async function verifyDataFoundation() {
   const fixture = await verifyFixtureBundle();
-  await runCommand(
-    'node',
-    [
-      '--test',
-      'scripts/data-foundation/operations.test.mjs',
-      'scripts/data-foundation/runtime-role.test.mjs',
-      'scripts/data-foundation/supabase-runtime.test.mjs',
-      'scripts/data-foundation/vertical-smoke.test.mjs',
-    ],
-    { capture: false },
-  );
+  await runCommand('pnpm', ['test:ops'], { capture: false });
   await runCommand('pnpm', filteredArgs('test'), { capture: false });
   await runCommand('pnpm', filteredArgs('typecheck'), { capture: false });
   await runCommand('pnpm', filteredArgs('build'), { capture: false });

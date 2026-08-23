@@ -8,6 +8,6 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
     },
     include: ['packages/**/*.spec.ts', 'tests/**/*.spec.ts'],
-    passWithNoTests: true,
+    passWithNoTests: false,
   },
 });

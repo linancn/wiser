@@ -22,8 +22,8 @@ checkPaths:
   - infrastructure/observability/**
   - examples/agent-excon/**
   - .github/workflows/**
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
+lastReviewedAt: 2026-08-23
+lastReviewedCommit: 70f4baadcfdb7683a2d4cfa1eb0f1c968f0e783e
 ---
 
 ## Red → Green → Refactor
@@ -63,9 +63,10 @@ pnpm verify
 1. `prettier --check .`，检查整个仓库的格式；
 2. 生成 Fumadocs 内容后运行 type-aware Oxlint；
 3. 对所有声明了 `typecheck` 的 workspace 运行 TypeScript 检查；
-4. 根 Vitest 运行 `packages/**/*.spec.ts` 与 `tests/**/*.spec.ts`，随后运行所有 `apps/*` 中存在的 `test` 脚本；
-5. 对所有声明了 `build` 的 workspace 构建；
-6. 运行 `docker compose config --quiet` 验证默认 Compose 配置。
+4. `pnpm test:unit` 先用根 Vitest 运行 `packages/**/*.spec.ts` 与 `tests/**/*.spec.ts`，再运行所有 `apps/*` 中存在的 `test` 脚本；
+5. `pnpm test:ops` 用 Node test runner 运行 `scripts/data-foundation/*.test.mjs`，验证运维编排、runtime role、Supabase 状态解析和纵向 smoke 合同；
+6. 对所有声明了 `build` 的 workspace 构建；
+7. 运行 `docker compose config --quiet` 验证默认 Compose 配置。
 
 `pnpm verify` 不会启动 Docker 服务，不会 reset 或测试 Supabase，不会应用 Data migration，不会运行 `data:smoke`，也不包含 Web/Docs Playwright、observability smoke、cookbook、showcase 或任何真实 AI 调用。相关变化必须追加下面的聚焦门禁。
 
@@ -76,6 +77,7 @@ pnpm verify
 | 范围                             | 命令                                                                                  |
 | -------------------------------- | ------------------------------------------------------------------------------------- |
 | 单个根或 package spec            | `pnpm exec vitest run <path-to-spec>`                                                 |
+| Data Foundation 运维合同         | `pnpm test:ops`                                                                       |
 | Agent EXCON contracts/core/infra | `pnpm exec vitest run packages/contracts/test packages/core/test packages/infra/test` |
 | Platform contracts/auth          | `pnpm exec vitest run packages/platform-contracts/test packages/platform-auth/test`   |
 | API composition                  | `pnpm --filter @wiser/api test`                                                       |
@@ -89,7 +91,7 @@ pnpm verify
 | Data infrastructure              | `pnpm --filter @wiser/data-infra test`                                                |
 | EXCON scenario assets            | `pnpm --filter @agent-excon/scenarios test`                                           |
 
-`@agent-excon/contracts`、`@agent-excon/core`、`@agent-excon/infra`、`@wiser/platform-contracts` 和 `@wiser/platform-auth` 没有独立 `test` script，它们的 spec 由根 Vitest 配置收集，因此使用表中的路径命令。不要把 `pnpm --filter <package> test` 的无脚本结果误认为测试已经运行。
+`pnpm test` 明确组合 `test:unit` 与 `test:ops`。`@agent-excon/contracts`、`@agent-excon/core`、`@agent-excon/infra`、`@wiser/platform-contracts` 和 `@wiser/platform-auth` 没有独立 `test` script，它们的 spec 由根 Vitest 配置收集，因此使用表中的路径命令。不要把 `pnpm --filter <package> test` 的无脚本结果误认为测试已经运行。
 
 ## Supabase 与 Data Foundation
 
@@ -109,7 +111,7 @@ Data package、migration runner 或 Compose 合同变化时先运行：
 pnpm data:verify
 ```
 
-它不接触运行中的数据库。Data schema、runtime role、Worker、对象存储、投影、REST、GraphQL、MCP 或登录 Web 变化还需要真实纵向路径：
+`data:verify` 复用根 `test:ops` 入口，再检查四个 Data workspace 的 test/typecheck/build 和 Compose 配置；它不接触运行中的数据库。Data schema、runtime role、Worker、对象存储、投影、REST、GraphQL、MCP 或登录 Web 变化还需要真实纵向路径：
 
 ```bash
 pnpm supabase:start

@@ -22,8 +22,8 @@ checkPaths:
   - infrastructure/observability/**
   - examples/agent-excon/**
   - .github/workflows/**
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
+lastReviewedAt: 2026-08-23
+lastReviewedCommit: 70f4baadcfdb7683a2d4cfa1eb0f1c968f0e783e
 ---
 
 ## Red → Green → Refactor
@@ -63,9 +63,10 @@ It performs, in order:
 1. `prettier --check .` across the repository;
 2. Fumadocs content generation followed by type-aware Oxlint;
 3. TypeScript checks for every workspace that declares `typecheck`;
-4. root Vitest over `packages/**/*.spec.ts` and `tests/**/*.spec.ts`, followed by every existing `test` script under `apps/*`;
-5. builds for every workspace that declares `build`;
-6. `docker compose config --quiet` for the default Compose configuration.
+4. `pnpm test:unit`, which runs root Vitest over `packages/**/*.spec.ts` and `tests/**/*.spec.ts`, followed by every existing `test` script under `apps/*`;
+5. `pnpm test:ops`, which uses the Node test runner over `scripts/data-foundation/*.test.mjs` to verify operations orchestration, runtime roles, Supabase status parsing, and the vertical-smoke contract;
+6. builds for every workspace that declares `build`;
+7. `docker compose config --quiet` for the default Compose configuration.
 
 `pnpm verify` does not start Docker services, reset or test Supabase, apply Data migrations, run `data:smoke`, or include Web/Docs Playwright, observability smoke, cookbooks, showcases, or any real AI call. Add the focused gates below whenever the change requires them.
 
@@ -76,6 +77,7 @@ Use the narrowest command during development, then return to root verification b
 | Scope                            | Command                                                                               |
 | -------------------------------- | ------------------------------------------------------------------------------------- |
 | One root or package spec         | `pnpm exec vitest run <path-to-spec>`                                                 |
+| Data Foundation operations       | `pnpm test:ops`                                                                       |
 | Agent EXCON contracts/core/infra | `pnpm exec vitest run packages/contracts/test packages/core/test packages/infra/test` |
 | Platform contracts/auth          | `pnpm exec vitest run packages/platform-contracts/test packages/platform-auth/test`   |
 | API composition                  | `pnpm --filter @wiser/api test`                                                       |
@@ -89,7 +91,7 @@ Use the narrowest command during development, then return to root verification b
 | Data infrastructure              | `pnpm --filter @wiser/data-infra test`                                                |
 | EXCON scenario assets            | `pnpm --filter @agent-excon/scenarios test`                                           |
 
-`@agent-excon/contracts`, `@agent-excon/core`, `@agent-excon/infra`, `@wiser/platform-contracts`, and `@wiser/platform-auth` have no standalone `test` script. Their specs are collected by root Vitest, so use the path commands in the table. Do not mistake a no-script result from `pnpm --filter <package> test` for an executed test suite.
+`pnpm test` explicitly composes `test:unit` and `test:ops`. `@agent-excon/contracts`, `@agent-excon/core`, `@agent-excon/infra`, `@wiser/platform-contracts`, and `@wiser/platform-auth` have no standalone `test` script. Their specs are collected by root Vitest, so use the path commands in the table. Do not mistake a no-script result from `pnpm --filter <package> test` for an executed test suite.
 
 ## Supabase and Data Foundation
 
@@ -109,7 +111,7 @@ For Data package, migration-runner, or Compose contract changes, first run:
 pnpm data:verify
 ```
 
-It does not touch a running database. Changes to Data schemas, runtime roles, Workers, object storage, projections, REST, GraphQL, MCP, or authenticated Web also require the live vertical path:
+`data:verify` reuses the root `test:ops` entrypoint, then checks the four Data workspaces' test/typecheck/build and Compose configuration; it does not touch a running database. Changes to Data schemas, runtime roles, Workers, object storage, projections, REST, GraphQL, MCP, or authenticated Web also require the live vertical path:
 
 ```bash
 pnpm supabase:start

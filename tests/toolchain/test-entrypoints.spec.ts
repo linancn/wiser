@@ -41,7 +41,9 @@ describe('workspace test entrypoints', () => {
           unit: typeof scripts.test === 'string',
         };
       })
-      .sort((left, right) => String(left.name).localeCompare(String(right.name)));
+      .sort((left, right) =>
+        String(left.name).localeCompare(String(right.name)),
+      );
 
     expect(applications).toEqual([
       { browser: false, name: '@agent-excon/worker', unit: true },

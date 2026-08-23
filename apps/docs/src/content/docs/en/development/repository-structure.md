@@ -22,8 +22,8 @@ checkPaths:
   - supabase/**
   - skills/**
   - examples/**
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
+lastReviewedAt: 2026-08-23
+lastReviewedCommit: 70f4baadcfdb7683a2d4cfa1eb0f1c968f0e783e
 ---
 
 ## Start with the mental model
