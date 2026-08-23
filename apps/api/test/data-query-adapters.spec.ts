@@ -387,6 +387,13 @@ describe('PostGIS geo query port', () => {
     expect(sql).toContain('source_geometry');
     expect(sql).toContain('<->');
     expect(sql).toContain('unnest($8::text[])');
+    expect(sql).toContain(
+      'security.security_rank(extent.security_level) <= security.security_rank($4)',
+    );
+    expect(sql).toContain(
+      'security.security_rank(version.security_level) <= security.security_rank($4)',
+    );
+    expect(client.calls[2]!.values[3]).toBe(scope.maxSecurityLevel);
     expect(client.calls[2]!.values[7]).toEqual(['INTERSECTS', 'NEAREST']);
     expect(sql).not.toContain('116.2');
   });
