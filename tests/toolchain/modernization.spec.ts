@@ -13,6 +13,14 @@ function readJson(path: string): Record<string, unknown> {
   return JSON.parse(read(path)) as Record<string, unknown>;
 }
 
+function dependencyVersion(path: string, name: string): string | undefined {
+  const manifest = readJson(path);
+  return {
+    ...(manifest.dependencies as Record<string, string> | undefined),
+    ...(manifest.devDependencies as Record<string, string> | undefined),
+  }[name];
+}
+
 function docpactRule(config: string, id: string): string {
   const marker = `  - id: ${id}\n`;
   const start = config.indexOf(marker);
@@ -48,7 +56,7 @@ describe('TypeScript 7 native toolchain', () => {
 
     expect(scripts.lint).toBe('oxlint --type-aware');
     expect(dependencies.typescript).toBe('7.0.2');
-    expect(dependencies.oxlint).toBe('1.79.0');
+    expect(dependencies.oxlint).toBe('1.80.0');
     expect(dependencies['oxlint-tsgolint']).toBe('7.0.2001');
 
     for (const removed of [
@@ -95,6 +103,43 @@ describe('TypeScript 7 native toolchain', () => {
   });
 });
 
+describe('latest compatible workspace dependencies', () => {
+  it('pins the reviewed Node 24 and pnpm 11 toolchain consistently', () => {
+    const rootPackage = readJson('package.json');
+
+    expect(rootPackage.packageManager).toBe('pnpm@11.24.0');
+    expect(read('.nvmrc').trim()).toBe('24.19.0');
+    expect(read('infrastructure/docker/Dockerfile.dev')).toContain(
+      'corepack prepare pnpm@11.24.0 --activate',
+    );
+    expect(read('.github/workflows/ci.yml')).toContain('version: 11.24.0');
+    expect(read('.github/workflows/ci.yml')).not.toContain('version: 11.22.0');
+  });
+
+  it.each([
+    ['apps/api/package.json', '@supabase/supabase-js', '2.112.4'],
+    ['apps/docs/package.json', '@types/react-dom', '19.2.5'],
+    ['apps/docs/package.json', 'fumadocs-core', '16.15.1'],
+    ['apps/docs/package.json', 'fumadocs-ui', '16.15.1'],
+    ['apps/docs/package.json', 'next', '16.3.3'],
+    ['apps/web/package.json', '@supabase/ssr', '0.12.5'],
+    ['apps/web/package.json', '@supabase/supabase-js', '2.112.4'],
+    ['apps/web/package.json', '@types/react-dom', '19.2.5'],
+    ['apps/web/package.json', 'maplibre-gl', '6.6.0'],
+    ['apps/web/package.json', 'next', '16.3.3'],
+    ['packages/data-infra/package.json', '@aws-sdk/client-s3', '3.1118.0'],
+    [
+      'packages/data-infra/package.json',
+      '@aws-sdk/s3-request-presigner',
+      '3.1118.0',
+    ],
+    ['packages/infra/package.json', '@openai/codex-sdk', '0.149.1'],
+    ['packages/infra/package.json', '@supabase/supabase-js', '2.112.4'],
+  ])('%s pins %s at %s', (path, name, version) => {
+    expect(dependencyVersion(path, name)).toBe(version);
+  });
+});
+
 describe('Fumadocs documentation application', () => {
   it('replaces Astro and Starlight with the pinned Next.js and Fumadocs stack', () => {
     const manifest = readJson('apps/docs/package.json');
@@ -103,9 +148,9 @@ describe('Fumadocs documentation application', () => {
       ...(manifest.devDependencies as Record<string, string>),
     };
 
-    expect(dependencies.next).toBe('16.3.2');
-    expect(dependencies['fumadocs-core']).toBe('16.15.0');
-    expect(dependencies['fumadocs-ui']).toBe('16.15.0');
+    expect(dependencies.next).toBe('16.3.3');
+    expect(dependencies['fumadocs-core']).toBe('16.15.1');
+    expect(dependencies['fumadocs-ui']).toBe('16.15.1');
     expect(dependencies['fumadocs-mdx']).toBe('15.3.1');
     expect(dependencies).not.toHaveProperty('astro');
     expect(dependencies).not.toHaveProperty('@astrojs/check');
