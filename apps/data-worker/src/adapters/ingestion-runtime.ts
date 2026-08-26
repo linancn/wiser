@@ -2053,6 +2053,12 @@ export class TikaIngestionParser {
         response = await this.#fetch(`${this.#endpoint}/rmeta/text`, init);
         if (!response.ok) {
           await response.body?.cancel().catch(() => undefined);
+          if (response.status === 400) {
+            throw runtimeError('TIKA_INVALID_RESPONSE', false);
+          }
+          if (response.status === 413) {
+            throw runtimeError('TIKA_INPUT_LIMIT', false);
+          }
           throw runtimeError('TIKA_TEMPORARY');
         }
         const body = await boundedResponse(
@@ -2069,7 +2075,12 @@ export class TikaIngestionParser {
           throw runtimeError('TIKA_INVALID_RESPONSE', false);
         }
         const metadata = { ...(parsed[0] as Record<string, unknown>) };
-        const extractedText = metadata['X-TIKA:content'];
+        const tika4Content = metadata['tk:content'];
+        const extractedText =
+          typeof tika4Content === 'string'
+            ? tika4Content
+            : metadata['X-TIKA:content'];
+        delete metadata['tk:content'];
         delete metadata['X-TIKA:content'];
         if (typeof extractedText === 'string') {
           const excerpt = extractedText.trim().slice(0, 8_192);

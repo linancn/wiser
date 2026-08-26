@@ -133,6 +133,8 @@ The default Worker executes ingestion through the concrete `data.ingestion.proce
 9. freeze a hash-only review checkpoint and route low-confidence/high-risk work to human review;
 10. commit authority and Outbox after approval, then publish only after all five completion-target ledgers succeed.
 
+Tika 4 runs only on the private Data network. The Worker keeps the explicit `PUT /rmeta/text` JSON contract, while the mounted server configuration limits requests to 16 MiB, extracted output to one million characters, total parsing to 30 seconds, and the fork pool to one child. HTTP `429` and `503` remain retryable dependency failures; malformed `400` requests and over-limit `413` requests are terminal. This absorbs Tika 4's process isolation and backpressure semantics without exposing its raw error bodies.
+
 An Agent proposes explanations and plans. It cannot modify source data, silently correct fields, decide quality/acceptance, bypass review, or write authority/projection stores. The fake Agent and `DeterministicFakeEmbedding` are for tests, CI, and local smoke only; identical text, version, and dimension yield identical finite vectors. Worker records Agent run/action, model identity, input/output hashes, and transform plan without putting prompts, credentials, or object bodies in audit.
 
 Quality reads deterministic checks only; one failed blocking rule prevents passage regardless of score. Derived security inherits the highest source level and may only be raised. Publication requires a committed version, eligible acceptance, passing quality, `PROJECTING`, and five unique `SUCCEEDED` targets.

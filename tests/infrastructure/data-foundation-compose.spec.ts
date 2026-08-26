@@ -155,8 +155,10 @@ describe('Data Foundation Compose profile', () => {
     expect(config.pipes).toMatchObject({ numClients: 1 });
     expect(block).toContain('command: [-c, /tika-config.json]');
     expect(block).toContain(
-      './infrastructure/data-foundation/tika/tika-config.json:/tika-config.json:ro',
+      'source: ./infrastructure/data-foundation/tika/tika-config.json',
     );
+    expect(block).toContain('target: /tika-config.json');
+    expect(block).toContain('read_only: true');
     expect(block).toContain('http://127.0.0.1:9998/version');
     expect(block).not.toContain('JAVA_TOOL_OPTIONS');
   });

@@ -133,6 +133,8 @@ REJECTED、PUBLISHED、FAILED、CANCELLED 为终态。
 9. 冻结 hash-only review checkpoint，低置信度/高风险进入人工审核；
 10. 批准后提交权威版本与 Outbox，等待五个 completion target ledger 成功再发布。
 
+Tika 4 只运行在 Data 私有网络中。Worker 保持显式的 `PUT /rmeta/text` JSON 契约；挂载的服务端配置将请求限制为 16 MiB、抽取输出限制为一百万字符、总解析时间限制为 30 秒，并把 fork 池限制为一个子进程。HTTP `429` 与 `503` 仍作为可重试依赖失败，格式错误的 `400` 与超限的 `413` 则为终态失败。这样既吸收 Tika 4 的进程隔离与背压语义，也不向外暴露其原始错误正文。
+
 Agent 只提出解释与计划，不能修改原始数据、静默纠正字段、决定质量/验收、绕过审核或直接写权威/投影存储。fake Agent 和 `DeterministicFakeEmbedding` 只用于测试、CI 与本机 smoke；同文本、版本和维度产生相同有限向量。Worker 记录 Agent run/action、模型 identity、input/output hash 与 transform plan，不把 prompt、凭据或对象正文写入 audit。
 
 质量门禁只读取确定性检查；blocking rule 失败时即使总分过阈值也不能通过。派生安全等级取全部来源最高值，只能显式提高不能降低。发布要求已提交版本、可发布验收、通过质量门禁、`PROJECTING` 状态和五个唯一 `SUCCEEDED` completion target。

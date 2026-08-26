@@ -1,0 +1,20 @@
+{
+  "server": {
+    "allowPerRequestConfig": false,
+    "allowPipes": false,
+    "maxRequestSizeBytes": 16777216
+  },
+  "parse-context": {
+    "output-limits": {
+      "throwOnWriteLimit": false,
+      "writeLimit": 1000000
+    },
+    "timeout-limits": {
+      "progressTimeoutMillis": 15000,
+      "totalTaskTimeoutMillis": 30000
+    }
+  },
+  "pipes": {
+    "numClients": 1
+  }
+}

@@ -184,7 +184,7 @@ services:
   data-postgres:
     <<: *data-service
     profiles: [data-foundation]
-    image: postgis/postgis:18-3.6@sha256:db8c151a4e1f4686b1a985a3490cf96f9f8c8c2725f58a46ef7a57e52f167cc3
+    image: postgis/postgis:18-3.6@sha256:8d67cc8fe5f45808d54fe95cc210b05ce6b3ea3682e9a97c36362f3e1b8ff939
     platform: linux/amd64
     cap_add:
       - CHOWN
@@ -243,7 +243,7 @@ services:
   data-runtime-provision:
     <<: *data-service
     profiles: [data-foundation]
-    image: postgis/postgis:18-3.6@sha256:db8c151a4e1f4686b1a985a3490cf96f9f8c8c2725f58a46ef7a57e52f167cc3
+    image: postgis/postgis:18-3.6@sha256:8d67cc8fe5f45808d54fe95cc210b05ce6b3ea3682e9a97c36362f3e1b8ff939
     platform: linux/amd64
     entrypoint: [/bin/sh, -ec]
     command:
@@ -298,7 +298,7 @@ services:
   seaweedfs:
     <<: *data-service
     profiles: [data-foundation]
-    image: chrislusf/seaweedfs:4.43@sha256:7bea581f48155c069d3c725e60c386c88210c67cde8bce412344ff6ebea264da
+    image: chrislusf/seaweedfs:4.44@sha256:e67e8c385484120b78bff47ba5f4debbca47fbd27ed1a39f016f47e8baea615b
     cap_add:
       - CHOWN
       - DAC_OVERRIDE
@@ -358,7 +358,7 @@ services:
   weaviate:
     <<: *data-service
     profiles: [data-foundation]
-    image: cr.weaviate.io/semitechnologies/weaviate:1.39.0@sha256:7660940e14fabb70429d6cd625600147aef8ed8aa576525baa22b4f00a4556b2
+    image: cr.weaviate.io/semitechnologies/weaviate:1.39.1@sha256:3f702e886d9ff325dc0d77180331888835f3783a647e41625c66b80f768f2187
     environment:
       PERSISTENCE_DATA_PATH: /var/lib/weaviate
       DEFAULT_VECTORIZER_MODULE: none
@@ -544,7 +544,7 @@ services:
   neo4j:
     <<: *data-service
     profiles: [data-foundation]
-    image: neo4j:2026.07.1@sha256:0ddfa71c8f0bfe0d780d74fb66b985de4767bbd274bab70c0806cb3a6deec101
+    image: neo4j:2026.07.1@sha256:dbc377fb9cd8fe8dabc19d3041b197d5ca0ef8bae514cea175b8df265e5b7a76
     cap_add:
       - CHOWN
       - DAC_OVERRIDE
@@ -704,25 +704,35 @@ services:
   tika:
     <<: *data-service
     profiles: [data-foundation]
-    image: apache/tika:3.3.1.0-full@sha256:d8e6ed96260ad89307a93195a1b856102987a818ac648502f8efbaf313d32470
-    environment:
-      JAVA_TOOL_OPTIONS: -Xms256m -Xmx1g
+    image: apache/tika:4.0.0-full@sha256:80072bb73dd320a9de9709beb0b16d14dd6d2680376f8d31e498f55b633ba593
+    command: [-c, /tika-config.json]
     ports:
       - 127.0.0.1:19998:9998
+    volumes:
+      - type: bind
+        source: ./infrastructure/data-foundation/tika/tika-config.json
+        target: /tika-config.json
+        read_only: true
     healthcheck:
-      test: [CMD-SHELL, 'wget -q --spider http://127.0.0.1:9998/tika']
+      test: [CMD-SHELL, 'wget -qO- http://127.0.0.1:9998/version >/dev/null']
       interval: 10s
       timeout: 5s
       retries: 30
-      start_period: 20s
+      start_period: 30s
     deploy:
-      resources: *data-resources
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.10'
+          memory: 512M
     logging: *data-logging
 
   clamav:
     <<: *data-service
     profiles: [data-foundation]
-    image: clamav/clamav:1.5.4-debian13-slim@sha256:2bb8cd7dfe3e87f86e969a2c415f7698583175e46dc2234672be9210c982c144
+    image: clamav/clamav:1.5.4-debian13-slim@sha256:967334b92d1782e4d1314ddf903ae537d26792d21c9a39adecb8ac9757980514
     cap_add:
       - CHOWN
       - DAC_OVERRIDE
