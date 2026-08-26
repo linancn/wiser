@@ -1066,7 +1066,11 @@ describe('ClamAV and Tika ingestion clients', () => {
         return Promise.resolve(
           new Response(
             JSON.stringify([
-              { 'X-TIKA:content': 'hello water', title: 'Report' },
+              {
+                'X-TIKA:content': 'legacy content',
+                'tk:content': 'hello water from Tika 4',
+                title: 'Report',
+              },
             ]),
             {
               status: 200,
@@ -1080,16 +1084,20 @@ describe('ClamAV and Tika ingestion clients', () => {
       maximumResponseBytes: 2048,
     });
 
-    await expect(
-      parser.parse({
-        objectRef: 'quarantine/object',
-        mediaType: 'application/pdf',
-        sourceKind: 'document',
-      }),
-    ).resolves.toMatchObject({
-      kind: 'document',
-      metadata: { title: 'Report', 'wiser:excerpt': 'hello water' },
+    const result = await parser.parse({
+      objectRef: 'quarantine/object',
+      mediaType: 'application/pdf',
+      sourceKind: 'document',
     });
+    expect(result).toMatchObject({
+      kind: 'document',
+      metadata: {
+        title: 'Report',
+        'wiser:excerpt': 'hello water from Tika 4',
+      },
+    });
+    expect(result.metadata).not.toHaveProperty('tk:content');
+    expect(result.metadata).not.toHaveProperty('X-TIKA:content');
     expect(requests[0]?.url).toBe('http://tika:9998/rmeta/text');
     expect(requests[0]?.init?.method).toBe('PUT');
   });
