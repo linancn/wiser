@@ -15,8 +15,8 @@ checkPaths:
   - packages/data-core/**
   - packages/data-infra/**
   - infrastructure/data-foundation/**
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: ed36c7913b5dd2b2542adf1aa1ce1e5d9a70029f
+lastReviewedAt: 2026-08-26
+lastReviewedCommit: e048ff2ee4cc0f3c5065ca36947094463e3b1841
 ---
 
 # WISER Data Worker / 数据基座 Worker
