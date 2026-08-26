@@ -1094,6 +1094,39 @@ describe('ClamAV and Tika ingestion clients', () => {
     expect(requests[0]?.init?.method).toBe('PUT');
   });
 
+  it.each([
+    [400, 'TIKA_INVALID_RESPONSE', false],
+    [413, 'TIKA_INPUT_LIMIT', false],
+    [429, 'TIKA_TEMPORARY', true],
+    [503, 'TIKA_TEMPORARY', true],
+  ] as const)(
+    'maps Tika 4 HTTP %i to %s with retryable=%s',
+    async (status, category, retryable) => {
+      const parser = new TikaIngestionParser({
+        endpoint: 'http://tika:9998',
+        read: () => Promise.resolve(new TextEncoder().encode('hello water')),
+        fetch: () =>
+          Promise.resolve(
+            new Response(JSON.stringify({ status: 'TIKA_4_ERROR' }), {
+              status,
+              headers: { 'content-type': 'application/json' },
+            }),
+          ),
+        timeoutMs: 1_000,
+        maximumInputBytes: 1024,
+        maximumResponseBytes: 2048,
+      });
+
+      await expect(
+        parser.parse({
+          objectRef: 'quarantine/object',
+          mediaType: 'application/pdf',
+          sourceKind: 'document',
+        }),
+      ).rejects.toMatchObject({ category, retryable });
+    },
+  );
+
   it('preserves an allowlisted GeoJSON source CRS instead of assuming WGS84', async () => {
     const source = new TextEncoder().encode(
       JSON.stringify({

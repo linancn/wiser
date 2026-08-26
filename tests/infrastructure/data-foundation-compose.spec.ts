@@ -95,6 +95,72 @@ describe('Data Foundation Compose profile', () => {
     }
   });
 
+  it('pins the reviewed latest stable container artifacts', () => {
+    const images = {
+      'data-postgres':
+        'postgis/postgis:18-3.6@sha256:8d67cc8fe5f45808d54fe95cc210b05ce6b3ea3682e9a97c36362f3e1b8ff939',
+      seaweedfs:
+        'chrislusf/seaweedfs:4.44@sha256:e67e8c385484120b78bff47ba5f4debbca47fbd27ed1a39f016f47e8baea615b',
+      weaviate:
+        'cr.weaviate.io/semitechnologies/weaviate:1.39.1@sha256:3f702e886d9ff325dc0d77180331888835f3783a647e41625c66b80f768f2187',
+      neo4j:
+        'neo4j:2026.07.1@sha256:dbc377fb9cd8fe8dabc19d3041b197d5ca0ef8bae514cea175b8df265e5b7a76',
+      tika: 'apache/tika:4.0.0-full@sha256:80072bb73dd320a9de9709beb0b16d14dd6d2680376f8d31e498f55b633ba593',
+      clamav:
+        'clamav/clamav:1.5.4-debian13-slim@sha256:967334b92d1782e4d1314ddf903ae537d26792d21c9a39adecb8ac9757980514',
+    } as const;
+
+    for (const [service, image] of Object.entries(images)) {
+      expect(serviceBlock(service), service).toContain(`image: ${image}`);
+      expect(dataVersions, service).toContain(image);
+    }
+    expect(
+      readFileSync(
+        resolve(root, 'infrastructure/docker/Dockerfile.dev'),
+        'utf8',
+      ),
+    ).toContain(
+      'node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df',
+    );
+  });
+
+  it('bounds Tika 4 forked parsing with an explicit JSON configuration', () => {
+    const block = serviceBlock('tika');
+    const configPath = resolve(
+      root,
+      'infrastructure/data-foundation/tika/tika-config.json',
+    );
+
+    expect(existsSync(configPath)).toBe(true);
+    const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+      readonly server: Readonly<Record<string, unknown>>;
+      readonly 'parse-context': Readonly<Record<string, unknown>>;
+      readonly pipes: Readonly<Record<string, unknown>>;
+    };
+    expect(config.server).toMatchObject({
+      allowPerRequestConfig: false,
+      allowPipes: false,
+      maxRequestSizeBytes: 16_777_216,
+    });
+    expect(config['parse-context']).toMatchObject({
+      'output-limits': {
+        throwOnWriteLimit: false,
+        writeLimit: 1_000_000,
+      },
+      'timeout-limits': {
+        progressTimeoutMillis: 15_000,
+        totalTaskTimeoutMillis: 30_000,
+      },
+    });
+    expect(config.pipes).toMatchObject({ numClients: 1 });
+    expect(block).toContain('command: [-c, /tika-config.json]');
+    expect(block).toContain(
+      './infrastructure/data-foundation/tika/tika-config.json:/tika-config.json:ro',
+    );
+    expect(block).toContain('http://127.0.0.1:9998/version');
+    expect(block).not.toContain('JAVA_TOOL_OPTIONS');
+  });
+
   it('hardens long-running services with health, resources, logs, and local ports', () => {
     for (const service of [...externalServices, 'data-worker', 'mcp-http']) {
       const block = serviceBlock(service);
