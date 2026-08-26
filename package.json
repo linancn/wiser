@@ -5,7 +5,7 @@
   "type": "module",
   "description": "WISER — Water Intelligence System & Engine for Reconfiguration, empowered by AI",
   "license": "MIT",
-  "packageManager": "pnpm@11.22.0",
+  "packageManager": "pnpm@11.24.0",
   "engines": {
     "node": ">=24.18.0 <25",
     "pnpm": ">=11.19.0 <12"
@@ -69,7 +69,7 @@
     "@agent-excon/scenarios": "workspace:*",
     "@types/node": "24.13.3",
     "@vitest/coverage-v8": "4.1.11",
-    "oxlint": "1.79.0",
+    "oxlint": "1.80.0",
     "oxlint-tsgolint": "7.0.2001",
     "prettier": "3.9.6",
     "supabase": "2.115.0",

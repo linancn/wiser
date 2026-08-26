@@ -4,7 +4,7 @@ ENV PNPM_HOME=/home/node/.local/share/pnpm
 ENV PATH=${PNPM_HOME}:${PATH}
 
 RUN corepack enable \
-  && corepack prepare pnpm@11.22.0 --activate
+  && corepack prepare pnpm@11.24.0 --activate
 
 WORKDIR /workspace
 RUN chown node:node /workspace

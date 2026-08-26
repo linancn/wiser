@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "@agent-excon/contracts": "workspace:*",
-    "@openai/codex-sdk": "0.149.0",
-    "@supabase/supabase-js": "2.112.3",
+    "@openai/codex-sdk": "0.149.1",
+    "@supabase/supabase-js": "2.112.4",
     "openai": "7.5.0",
     "pg": "8.23.0",
     "zod": "catalog:"
