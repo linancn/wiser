@@ -23,7 +23,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/pg": "8.23.1",
-    "tsx": "4.23.12",
+    "tsx": "4.23.13",
     "typescript": "catalog:",
     "vitest": "4.1.11"
   },
