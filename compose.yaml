@@ -184,7 +184,7 @@ services:
   data-postgres:
     <<: *data-service
     profiles: [data-foundation]
-    image: postgis/postgis:18-3.6@sha256:8d67cc8fe5f45808d54fe95cc210b05ce6b3ea3682e9a97c36362f3e1b8ff939
+    image: postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677
     platform: linux/amd64
     cap_add:
       - CHOWN
@@ -243,7 +243,7 @@ services:
   data-runtime-provision:
     <<: *data-service
     profiles: [data-foundation]
-    image: postgis/postgis:18-3.6@sha256:8d67cc8fe5f45808d54fe95cc210b05ce6b3ea3682e9a97c36362f3e1b8ff939
+    image: postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677
     platform: linux/amd64
     entrypoint: [/bin/sh, -ec]
     command:
@@ -298,7 +298,7 @@ services:
   seaweedfs:
     <<: *data-service
     profiles: [data-foundation]
-    image: chrislusf/seaweedfs:4.44@sha256:e67e8c385484120b78bff47ba5f4debbca47fbd27ed1a39f016f47e8baea615b
+    image: chrislusf/seaweedfs:4.45@sha256:fc9f76fa993ad69966ffeb2f65d0318fcae39c6f8e20cf68ef7b3a5cb97769e5
     cap_add:
       - CHOWN
       - DAC_OVERRIDE
@@ -358,7 +358,7 @@ services:
   weaviate:
     <<: *data-service
     profiles: [data-foundation]
-    image: cr.weaviate.io/semitechnologies/weaviate:1.39.1@sha256:3f702e886d9ff325dc0d77180331888835f3783a647e41625c66b80f768f2187
+    image: cr.weaviate.io/semitechnologies/weaviate:1.39.2@sha256:5c62e5cbce4c48fc770abcee71099d9de32aad3b44d12299611f8135ee412362
     environment:
       PERSISTENCE_DATA_PATH: /var/lib/weaviate
       DEFAULT_VECTORIZER_MODULE: none
@@ -552,6 +552,7 @@ services:
       - SETGID
       - SETUID
     environment:
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: 'yes'
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-WiserLocalNeo4j-5d6f13b9}
       NEO4J_server_memory_heap_initial__size: 256m
       NEO4J_server_memory_heap_max__size: 768m
@@ -683,7 +684,7 @@ services:
   martin:
     <<: *data-service
     profiles: [data-foundation]
-    image: ghcr.io/maplibre/martin:1.14.0@sha256:fe5e8952312ca8ea0a25c4b1f72ceb13676f2b50dca310843e48b31c8ceb2264
+    image: ghcr.io/maplibre/martin:1.15.0@sha256:84f406ac96839aad3ea06ddaa68ef7617ed55305c21038c182d59f100e48dd6d
     environment:
       DATABASE_URL: postgresql://wiser_data_gis:${DATA_GIS_DATABASE_PASSWORD:-wiser-local-gis-runtime-e7c124a9}@data-postgres:5432/wiser_data
     expose:
@@ -732,7 +733,7 @@ services:
   clamav:
     <<: *data-service
     profiles: [data-foundation]
-    image: clamav/clamav:1.5.4-debian13-slim@sha256:967334b92d1782e4d1314ddf903ae537d26792d21c9a39adecb8ac9757980514
+    image: clamav/clamav:1.5.4-debian13-slim@sha256:4c975c439fcb7ab9cbdd72162c2802f5efcb4a11dcf5b0b37da1d746474ef20e
     cap_add:
       - CHOWN
       - DAC_OVERRIDE
@@ -893,7 +894,7 @@ services:
     logging: *data-logging
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.159.0@sha256:1f2c54a30e713fac6b3ae77a1ec84010c2007e29ced8ec666214fc2f6739c1cc
+    image: otel/opentelemetry-collector-contrib:0.160.0@sha256:799dc6cf12c96192af37b5bdba804da8c10b3bc563b43cb90c3f3c58d9572ad6
     profiles: [observability]
     command: [--config=/etc/otelcol-contrib/config.yaml]
     restart: unless-stopped
@@ -983,7 +984,7 @@ services:
       - excon
 
   loki:
-    image: grafana/loki:3.7.6@sha256:efd47c67f9bac88ca29bcf8cb997d9ab29d1848bd0aff579282295542a745952
+    image: grafana/loki:3.7.7@sha256:d70e4659623f3e109af669cae76fe2a5dd5be54e2298fe8aed380d982fbc2500
     profiles: [observability]
     command: [-config.file=/etc/loki/loki.yaml]
     restart: unless-stopped
@@ -998,7 +999,7 @@ services:
       - excon
 
   grafana:
-    image: grafana/grafana:13.2.0@sha256:3fd54ae1214669f8355f065ec9f6445d5279a3d77095ab048ca045685272429b
+    image: grafana/grafana:13.2.1@sha256:f772d434e8fab0049deb2b1b30abd43342bcfca1537614aa8d36080232cf4283
     profiles: [observability]
     restart: unless-stopped
     security_opt:

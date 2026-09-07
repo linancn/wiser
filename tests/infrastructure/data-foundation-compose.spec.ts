@@ -98,16 +98,16 @@ describe('Data Foundation Compose profile', () => {
   it('pins the reviewed latest stable container artifacts', () => {
     const images = {
       'data-postgres':
-        'postgis/postgis:18-3.6@sha256:8d67cc8fe5f45808d54fe95cc210b05ce6b3ea3682e9a97c36362f3e1b8ff939',
+        'postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677',
       seaweedfs:
-        'chrislusf/seaweedfs:4.44@sha256:e67e8c385484120b78bff47ba5f4debbca47fbd27ed1a39f016f47e8baea615b',
+        'chrislusf/seaweedfs:4.45@sha256:fc9f76fa993ad69966ffeb2f65d0318fcae39c6f8e20cf68ef7b3a5cb97769e5',
       weaviate:
-        'cr.weaviate.io/semitechnologies/weaviate:1.39.1@sha256:3f702e886d9ff325dc0d77180331888835f3783a647e41625c66b80f768f2187',
+        'cr.weaviate.io/semitechnologies/weaviate:1.39.2@sha256:5c62e5cbce4c48fc770abcee71099d9de32aad3b44d12299611f8135ee412362',
       neo4j:
         'neo4j:2026.07.1@sha256:dbc377fb9cd8fe8dabc19d3041b197d5ca0ef8bae514cea175b8df265e5b7a76',
       tika: 'apache/tika:4.0.0-full@sha256:80072bb73dd320a9de9709beb0b16d14dd6d2680376f8d31e498f55b633ba593',
       clamav:
-        'clamav/clamav:1.5.4-debian13-slim@sha256:967334b92d1782e4d1314ddf903ae537d26792d21c9a39adecb8ac9757980514',
+        'clamav/clamav:1.5.4-debian13-slim@sha256:4c975c439fcb7ab9cbdd72162c2802f5efcb4a11dcf5b0b37da1d746474ef20e',
     } as const;
 
     for (const [service, image] of Object.entries(images)) {
