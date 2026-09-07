@@ -40,7 +40,7 @@ describe('authenticated Data browser CI', () => {
       'playwright test --config playwright.live.config.ts',
     );
     expect(webScripts['test:e2e']).toBe('playwright test');
-    expect(referenceConfig).toContain("baseURL: 'http://127.0.0.1:3100'");
+    expect(referenceConfig).toContain("baseURL: 'http://127.0.0.1:3200'");
     expect(referenceConfig).not.toContain('e2e-live');
     expect(liveConfig).toContain("testDir: './e2e-live'");
     expect(liveConfig).toContain('WISER_WEB_LIVE_BASE_URL');
@@ -88,7 +88,7 @@ describe('authenticated Data browser CI', () => {
     expect(artifact).toBeGreaterThan(browser);
     expect(cleanup).toBeGreaterThan(artifact);
     expect(job.slice(browserStep, browser)).toContain(
-      'WISER_WEB_LIVE_BASE_URL: http://127.0.0.1:3000',
+      'WISER_WEB_LIVE_BASE_URL: http://127.0.0.1:3100',
     );
     expect(job.slice(browserStep, browser)).toContain(
       'WISER_WEB_LIVE_EMAIL: operator@agent-excon.test',

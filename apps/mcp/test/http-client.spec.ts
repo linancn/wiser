@@ -34,7 +34,7 @@ describe('Agent EXCON MCP environment configuration', () => {
 
     expect(fetchSpy).toHaveBeenCalledOnce();
     expect(requestUrl(fetchSpy.mock.calls[0]?.[0])).toBe(
-      'http://127.0.0.1:3001/api/v2/runs/run-id/me',
+      'http://127.0.0.1:3101/api/v2/runs/run-id/me',
     );
   });
 
@@ -55,7 +55,7 @@ describe('Agent EXCON MCP environment configuration', () => {
     await client.request({ method: 'GET', path: '/episodes/episode-id' });
 
     expect(requestUrl(fetchSpy.mock.calls[0]?.[0])).toBe(
-      'http://127.0.0.1:3001/api/v1/episodes/episode-id',
+      'http://127.0.0.1:3101/api/v1/episodes/episode-id',
     );
   });
 
@@ -71,7 +71,7 @@ describe('Agent EXCON MCP environment configuration', () => {
     expect(() =>
       createHttpClientFromEnvironment({
         AGENT_EXCON_API_KEY: 'participant-token',
-        AGENT_EXCON_API_URL: 'http://127.0.0.1:3001/api/v1/',
+        AGENT_EXCON_API_URL: 'http://127.0.0.1:3101/api/v1/',
       }),
     ).toThrow(/URL.*v1.*v2|v1.*v2.*URL/);
   });

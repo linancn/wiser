@@ -39,7 +39,7 @@ describe('reference browser CI', () => {
 
   it('starts isolated Next servers without inheriting conflicting script ports', () => {
     expect(read('apps/web/playwright.config.ts')).toContain(
-      "command: 'pnpm exec next dev --hostname 127.0.0.1 --port 3100'",
+      "command: 'pnpm exec next dev --hostname 127.0.0.1 --port 3200'",
     );
     expect(read('apps/docs/playwright.config.ts')).toContain(
       "command: 'pnpm exec next dev --hostname 127.0.0.1 --port 4322'",
@@ -90,7 +90,7 @@ describe('reference browser CI', () => {
 
     for (const document of [chinese, english]) {
       expect(document).toContain('pnpm test:e2e:reference');
-      expect(document).toContain('127.0.0.1:3100');
+      expect(document).toContain('127.0.0.1:3200');
       expect(document).toContain('127.0.0.1:4322');
     }
     expect(chinese).toContain('reference/Auth-off');

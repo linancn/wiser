@@ -3,6 +3,18 @@ import { describe, expect, it } from 'vitest';
 import { resolveV2LocalLabServerConfig } from '../src/index.js';
 
 describe('v2 local lab server configuration', () => {
+  it('keeps the standalone lab separate from the default shared API port', () => {
+    expect(
+      resolveV2LocalLabServerConfig({
+        NODE_ENV: 'development',
+        WISER_LAB_RUNTIME_DIR: '/tmp/wiser-workbuddy-lab',
+      }),
+    ).toMatchObject({
+      port: 3201,
+      apiBaseUrl: 'http://127.0.0.1:3201/api/v2/',
+    });
+  });
+
   it('requires an explicit absolute runtime directory and loopback binding', () => {
     expect(
       resolveV2LocalLabServerConfig({
