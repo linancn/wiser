@@ -7,7 +7,7 @@ The published `/openapi.json`, assignment/Task schemas, and structured MCP resul
 Resolve these values from explicit operator input, a credential exchange, or a trusted runtime secret store:
 
 ```text
-API origin                 for example http://127.0.0.1:3001
+API origin                 for example http://127.0.0.1:3101
 runId                      assigned ExerciseRun UUID
 expected runAgentId        concrete RunAgent UUID, never a display label
 RunAgent bearer credential short-lived and bound to that RunAgent/Run

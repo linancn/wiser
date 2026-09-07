@@ -45,7 +45,7 @@ Run pages include overview, collaboration, replay, trace, and diagnostics. Data 
 
 ## Run / 运行
 
-The application has a fixed local development port:
+The application defaults to `http://127.0.0.1:3100` / 本机开发默认入口为 `http://127.0.0.1:3100`：
 
 ```bash
 pnpm --filter @wiser/web dev

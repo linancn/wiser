@@ -51,7 +51,7 @@ export function resolveV2LocalLabServerConfig(
       'WISER_LAB_API_HOST 必须是 127.0.0.1。 / WISER_LAB_API_HOST must be 127.0.0.1.',
     );
   }
-  const port = Number(environment['WISER_LAB_API_PORT'] ?? '3101');
+  const port = Number(environment['WISER_LAB_API_PORT'] ?? '3201');
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
     throw validationError(
       'WISER_LAB_API_PORT 必须是 1–65535 的整数。 / WISER_LAB_API_PORT must be an integer from 1 to 65535.',

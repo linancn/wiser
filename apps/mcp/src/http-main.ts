@@ -15,7 +15,7 @@ import {
 import { createAgentExconMcpServer } from './server.js';
 
 function port(value: string | undefined): number {
-  const parsed = Number(value ?? '3100');
+  const parsed = Number(value ?? '3004');
   if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > 65_535) {
     throw new Error('DATA_MCP_PORT must be an integer from 1 to 65535.');
   }

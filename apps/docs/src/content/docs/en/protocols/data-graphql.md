@@ -98,7 +98,7 @@ GraphQL never implies “successful request means published.” Long work return
 ## Query example
 
 ```bash
-curl --fail http://127.0.0.1:3001/graphql \
+curl --fail http://127.0.0.1:3101/graphql \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $DATA_API_BEARER_TOKEN" \
   -H "X-Wiser-Tenant-Id: $DATA_TENANT_ID" \
@@ -115,7 +115,7 @@ Real IDs must come from an authorized catalog result. Never place the bearer in 
 ## Mutation example
 
 ```bash
-curl --fail http://127.0.0.1:3001/graphql \
+curl --fail http://127.0.0.1:3101/graphql \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $DATA_API_BEARER_TOKEN" \
   -H "X-Wiser-Tenant-Id: $DATA_TENANT_ID" \

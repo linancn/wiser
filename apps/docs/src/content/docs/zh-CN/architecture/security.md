@@ -21,8 +21,8 @@ checkPaths:
   - packages/platform-auth/**
   - packages/data-infra/**
   - infrastructure/**
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: 9465d7fada3ed33d926f6afac5041f8f9980c817
+lastReviewedAt: 2026-09-07
+lastReviewedCommit: 626cfd1c22e8c24fb38306520c4e9433a5984151
 ---
 
 ## 四类数据必须分开

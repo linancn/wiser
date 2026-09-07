@@ -32,7 +32,7 @@ Data MCP 是现有 WISER MCP Gateway 的静态 `WiserMcpModule`，不是第二�
 完整配置五项必须一起出现；全部缺失时只启动 Agent EXCON MCP，部分配置会失败关闭：
 
 ```bash
-export DATA_API_URL=http://127.0.0.1:3001/api/data/v1/
+export DATA_API_URL=http://127.0.0.1:3101/api/data/v1/
 export DATA_API_BEARER_TOKEN=<supabase-jwt-or-wdc1-delegated-credential>
 export DATA_TENANT_ID=<tenant-uuid>
 export DATA_PROJECT_ID=<project-uuid>
@@ -45,7 +45,7 @@ export DATA_PURPOSE=data-steward-console
 
 ```bash
 export AGENT_EXCON_PROTOCOL_VERSION=v2
-export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
+export AGENT_EXCON_API_URL=http://127.0.0.1:3101/api/v2/
 export AGENT_EXCON_API_KEY=<configured-excon-key>
 ```
 

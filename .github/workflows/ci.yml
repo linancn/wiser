@@ -242,7 +242,7 @@ jobs:
       - name: Verify authenticated Data browser flow
         id: authenticated_data_browser
         env:
-          WISER_WEB_LIVE_BASE_URL: http://127.0.0.1:3000
+          WISER_WEB_LIVE_BASE_URL: http://127.0.0.1:3100
           WISER_WEB_LIVE_SMOKE_REPORT: ${{ runner.temp }}/wiser-data-smoke.json
           WISER_WEB_LIVE_EMAIL: operator@agent-excon.test
           WISER_WEB_LIVE_PASSWORD: WiserLocalOperator-2026!

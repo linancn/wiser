@@ -172,7 +172,7 @@ export function createHttpClientFromEnvironment(
   const baseUrl =
     environment['AGENT_EXCON_API_URL'] ??
     environment['AGENT_EXCON_API_BASE_URL'] ??
-    `http://127.0.0.1:3001/api/${protocolVersion}/`;
+    `http://127.0.0.1:3101/api/${protocolVersion}/`;
   assertProtocolUrlAlignment(baseUrl, protocolVersion);
   return new FetchAgentExconHttpClient({
     baseUrl,

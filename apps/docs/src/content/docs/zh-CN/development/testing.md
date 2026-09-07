@@ -176,14 +176,14 @@ pnpm --filter @wiser/web test:e2e
 pnpm --filter @wiser/docs test:e2e
 ```
 
-两个 Playwright 配置都会启动自己的隔离开发服务器：Web 使用 `127.0.0.1:3100`，Docs 使用 `127.0.0.1:4322`。CI 的 browser job 在 `pnpm verify` 通过后运行同一根命令，只在失败时保留 screenshot、trace 和 HTML report。标准套件使用 reference/Auth-off 配置，证明浏览器中的路由、语言、主题和交互；它不能替代统一 Auth 或数据库纵向 smoke。
+两个 Playwright 配置都会启动自己的隔离开发服务器：Web 使用 `127.0.0.1:3200`，Docs 使用 `127.0.0.1:4322`。CI 的 browser job 在 `pnpm verify` 通过后运行同一根命令，只在失败时保留 screenshot、trace 和 HTML report。标准套件使用 reference/Auth-off 配置，证明浏览器中的路由、语言、主题和交互；它不能替代统一 Auth 或数据库纵向 smoke。
 
 ### 登录态 Data live 套件
 
 一套可丢弃的 loopback 栈已经完成 Data migration、seed 和 smoke 后，对同一套栈运行受保护浏览器流程：
 
 ```bash
-WISER_WEB_LIVE_BASE_URL='http://127.0.0.1:3000' \
+WISER_WEB_LIVE_BASE_URL='http://127.0.0.1:3100' \
 WISER_WEB_LIVE_SMOKE_REPORT='<成功-smoke-report.json-的绝对路径>' \
 WISER_WEB_LIVE_EMAIL='<本机-seed-账号>' \
 WISER_WEB_LIVE_PASSWORD='<本机-seed-密码>' \

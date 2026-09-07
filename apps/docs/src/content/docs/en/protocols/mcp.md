@@ -42,7 +42,7 @@ Start only after a trusted bootstrap provides the `runId`, `runAgentId`, and sho
 
 ```bash
 export AGENT_EXCON_API_KEY=<short-lived-run-agent-token>
-export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
+export AGENT_EXCON_API_URL=http://127.0.0.1:3101/api/v2/
 
 pnpm --filter @wiser/mcp build
 pnpm --filter @wiser/mcp start
@@ -57,7 +57,7 @@ The shared Compose profile runs a second entrypoint at `POST /mcp`. It requires 
 ```bash
 export DATA_MCP_BEARER_TOKEN=<random-secret-at-least-16-characters>
 export DATA_MCP_HOST=127.0.0.1 # optional; default 0.0.0.0
-export DATA_MCP_PORT=3100      # optional
+export DATA_MCP_PORT=3004      # optional
 
 pnpm --filter @wiser/mcp build
 pnpm --filter @wiser/mcp start:http
@@ -133,7 +133,7 @@ v1 Tools are not registered automatically. Set both values only for an explicitl
 
 ```bash
 export AGENT_EXCON_PROTOCOL_VERSION=v1
-export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v1/
+export AGENT_EXCON_API_URL=http://127.0.0.1:3101/api/v1/
 ```
 
 This mode registers nine legacy Tools: `excon_start_episode`, `excon_get_episode`, `excon_observe`, `excon_list_observations`, `excon_submit_allocation_plan`, `excon_get_evaluation`, `excon_get_feedback`, `excon_advance`, and `excon_get_events`. Never carry a v1 Episode, Observation, version, or idempotency key into a v2 Run.

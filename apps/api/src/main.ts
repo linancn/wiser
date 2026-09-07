@@ -34,7 +34,7 @@ import {
 } from './v2-runtime.js';
 
 function port(value: string | undefined): number {
-  const parsed = Number(value ?? '3001');
+  const parsed = Number(value ?? '3101');
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65_535) {
     throw new ExerciseServiceError(
       'VALIDATION_FAILED',

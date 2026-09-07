@@ -44,8 +44,8 @@ lastReviewedCommit: e048ff2ee4cc0f3c5065ca36947094463e3b1841
 
 | 服务                                         | 本机入口                                             |
 | -------------------------------------------- | ---------------------------------------------------- |
-| Web                                          | `http://127.0.0.1:3000`                              |
-| API / OpenAPI                                | `http://127.0.0.1:3001` / `/openapi.json`            |
+| Web                                          | `http://127.0.0.1:3100`                              |
+| API / OpenAPI                                | `http://127.0.0.1:3101` / `/openapi.json`            |
 | EXCON v1 compatibility Worker health         | `http://127.0.0.1:3002/health/ready`                 |
 | Docs                                         | `http://127.0.0.1:4321`                              |
 | Data Worker health                           | `http://127.0.0.1:13003/health/ready`                |
@@ -62,6 +62,8 @@ lastReviewedCommit: e048ff2ee4cc0f3c5065ca36947094463e3b1841
 
 GeoServer、STAC API、TiTiler 与 Martin 没有 host port；只能由统一 Auth 后的 API 代理访问。
 
+Compose 与独立开发都使用 Web `3100`、API `3101` 作为宿主机入口；Compose 内部端口仍为 `3000`、`3001`。浏览器参考测试使用 `3200`，独立 EXCON Lab 默认使用 `3201`，独立 MCP HTTP 默认使用 `3004`。Supabase Auth 回调使用 Web 的 `3100` 地址，无需本机端口覆盖配置。
+
 ## 单应用命令
 
 在不同终端中按需启动：
@@ -72,7 +74,7 @@ pnpm --filter @wiser/web dev
 pnpm --filter @wiser/docs dev
 ```
 
-也可以用 `pnpm dev` 并行启动这三个进程：Web 固定在 `3000`，API 默认使用 `3001`，Docs 固定在 `4321`。API 在缺少生产配置时使用 Auth off、Agent EXCON memory、Data Foundation off 的本机兼容模式。这个模式适合协议和 UI 循环，不验证统一 Auth、数据库持久化或 Data 功能。
+也可以用 `pnpm dev` 并行启动这三个进程：Web 固定在 `3100`，API 默认使用 `3101`，Docs 固定在 `4321`。API 在缺少生产配置时使用 Auth off、Agent EXCON memory、Data Foundation off 的本机兼容模式。这个模式适合协议和 UI 循环，不验证统一 Auth、数据库持久化或 Data 功能。
 
 ## 身份边界
 

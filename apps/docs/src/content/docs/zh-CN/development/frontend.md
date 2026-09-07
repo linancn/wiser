@@ -26,7 +26,7 @@ lastReviewedCommit: c4092d9f961841f89cdf9ed383360c41f809bd17
 
 | 应用        | 本机入口                | 职责                                                            | 代码入口                                        |
 | ----------- | ----------------------- | --------------------------------------------------------------- | ----------------------------------------------- |
-| `apps/web`  | `http://127.0.0.1:3000` | WISER 产品界面：统一登录、Agent EXCON 与 Data Foundation 工作区 | `src/app/[locale]`、`src/components`、`src/lib` |
+| `apps/web`  | `http://127.0.0.1:3100` | WISER 产品界面：统一登录、Agent EXCON 与 Data Foundation 工作区 | `src/app/[locale]`、`src/components`、`src/lib` |
 | `apps/docs` | `http://127.0.0.1:4321` | WISER 的 Fumadocs 文档站：架构、协议、运行手册与开发说明        | `src/app`、`src/content/docs/{zh-CN,en}`        |
 
 两个应用共享 WISER 的视觉语言、中文默认策略和深浅色能力，但不共享运行时状态。产品功能只进入 `apps/web`，开发者说明只进入 `apps/docs`；不要把文档站做成另一个产品控制台，也不要把长篇开发说明嵌进产品页面。

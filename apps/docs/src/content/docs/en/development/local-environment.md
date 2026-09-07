@@ -44,8 +44,8 @@ lastReviewedCommit: e048ff2ee4cc0f3c5065ca36947094463e3b1841
 
 | Service                                      | Local entrypoint                                     |
 | -------------------------------------------- | ---------------------------------------------------- |
-| Web                                          | `http://127.0.0.1:3000`                              |
-| API / OpenAPI                                | `http://127.0.0.1:3001` / `/openapi.json`            |
+| Web                                          | `http://127.0.0.1:3100`                              |
+| API / OpenAPI                                | `http://127.0.0.1:3101` / `/openapi.json`            |
 | EXCON v1 compatibility worker health         | `http://127.0.0.1:3002/health/ready`                 |
 | Docs                                         | `http://127.0.0.1:4321`                              |
 | Data worker health                           | `http://127.0.0.1:13003/health/ready`                |
@@ -62,6 +62,8 @@ lastReviewedCommit: e048ff2ee4cc0f3c5065ca36947094463e3b1841
 
 GeoServer, STAC API, TiTiler, and Martin have no host port. They are reachable only through the API proxy after unified authorization.
 
+Web and API use host ports `3100` and `3101` in both Compose and standalone development. Compose keeps their internal ports at `3000` and `3001`. Reference browser tests use `3200`, the standalone EXCON Lab defaults to `3201`, and standalone MCP HTTP defaults to `3004`. Supabase Auth redirects use the Web origin on `3100`; no local port override is required.
+
 ## Standalone application commands
 
 Start only what you need in separate terminals:
@@ -72,7 +74,7 @@ pnpm --filter @wiser/web dev
 pnpm --filter @wiser/docs dev
 ```
 
-Use `pnpm dev` to run all three in parallel: Web is fixed to `3000`, API defaults to `3001`, and Docs is fixed to `4321`. Without production configuration, API uses the local compatibility combination of Auth off, Agent EXCON memory, and Data Foundation off. It is useful for protocol and UI loops, but it does not verify unified Auth, database durability, or Data behavior.
+Use `pnpm dev` to run all three in parallel: Web is fixed to `3100`, API defaults to `3101`, and Docs is fixed to `4321`. Without production configuration, API uses the local compatibility combination of Auth off, Agent EXCON memory, and Data Foundation off. It is useful for protocol and UI loops, but it does not verify unified Auth, database durability, or Data behavior.
 
 ## Identity boundary
 

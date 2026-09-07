@@ -1381,7 +1381,7 @@ export async function runDataFoundationVerticalSmoke(options = {}) {
   const apiOrigin = origin(
     options.apiOrigin ??
       runtime.environment['DATA_API_ORIGIN'] ??
-      'http://127.0.0.1:3001',
+      'http://127.0.0.1:3101',
     firstStep,
     'INVALID_API_ORIGIN',
   );
@@ -1395,7 +1395,7 @@ export async function runDataFoundationVerticalSmoke(options = {}) {
   const webOrigin = origin(
     options.webOrigin ??
       runtime.environment['DATA_WEB_ORIGIN'] ??
-      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3100',
     VERTICAL_SMOKE_STEP_IDS[17],
     'INVALID_WEB_ORIGIN',
   );

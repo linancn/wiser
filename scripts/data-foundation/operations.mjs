@@ -561,7 +561,7 @@ export async function composeHealthCheck() {
 }
 
 export async function apiContractCheck(
-  apiOrigin = process.env.DATA_API_ORIGIN ?? 'http://127.0.0.1:3001',
+  apiOrigin = process.env.DATA_API_ORIGIN ?? 'http://127.0.0.1:3101',
 ) {
   const origin = new URL(apiOrigin);
   if (

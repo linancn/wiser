@@ -61,7 +61,9 @@ pnpm stack:full:up
 pnpm --filter @wiser/api dev
 ```
 
-默认监听 `http://127.0.0.1:3001`。独立开发模式可使用 Auth off、EXCON memory、Data off，因此不能证明完整集成。生产构建使用 `pnpm --filter @wiser/api build` 后运行 `pnpm --filter @wiser/api start`。 / The default endpoint is `http://127.0.0.1:3001`. Standalone development may use Auth off, EXCON memory, and Data off, so it does not prove full integration. For a production build, run `pnpm --filter @wiser/api build` and then `pnpm --filter @wiser/api start`.
+默认监听 `http://127.0.0.1:3101`。独立开发模式可使用 Auth off、EXCON memory、Data off，因此不能证明完整集成。生产构建使用 `pnpm --filter @wiser/api build` 后运行 `pnpm --filter @wiser/api start`。 / The default endpoint is `http://127.0.0.1:3101`. Standalone development may use Auth off, EXCON memory, and Data off, so it does not prove full integration. For a production build, run `pnpm --filter @wiser/api build` and then `pnpm --filter @wiser/api start`.
+
+独立 EXCON Lab 使用 `pnpm --filter @wiser/api lab`，默认端口为 `3201`，可通过 `WISER_LAB_API_PORT` 覆盖；还必须提供绝对路径 `WISER_LAB_RUNTIME_DIR`。 / The standalone EXCON Lab defaults to port `3201`, accepts `WISER_LAB_API_PORT`, and requires an absolute `WISER_LAB_RUNTIME_DIR`.
 
 ## 配置边界 / Configuration boundary
 

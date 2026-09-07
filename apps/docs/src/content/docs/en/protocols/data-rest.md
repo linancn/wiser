@@ -204,14 +204,14 @@ Absent and undisclosable resources both use safe `404`. Object-store credentials
 ## Example
 
 ```bash
-curl --fail http://127.0.0.1:3001/api/data/v1/health
+curl --fail http://127.0.0.1:3101/api/data/v1/health
 
 curl --fail \
   -H "Authorization: Bearer $DATA_API_BEARER_TOKEN" \
   -H "X-Wiser-Tenant-Id: $DATA_TENANT_ID" \
   -H "X-Wiser-Project-Id: $DATA_PROJECT_ID" \
   -H "X-Wiser-Purpose: data-steward-console" \
-  'http://127.0.0.1:3001/api/data/v1/catalog/data-items?first=20&qualityGrades=A,B'
+  'http://127.0.0.1:3101/api/data/v1/catalog/data-items?first=20&qualityGrades=A,B'
 ```
 
 Writes additionally need `Content-Type: application/json` and a UUID `Idempotency-Key`. Do not persist a real bearer in logs, shell history, Messages, or Artifacts.

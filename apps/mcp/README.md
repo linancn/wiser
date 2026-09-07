@@ -61,7 +61,7 @@ pnpm --filter @wiser/mcp start
 pnpm --filter @wiser/mcp dev:http
 ```
 
-独立 HTTP 默认端口是 `3100`；`POST /mcp` 是 MCP 入口，`GET /health/live` 与 `GET /health/ready` 是无认证健康检查。 / Standalone HTTP defaults to port `3100`; `POST /mcp` is the MCP endpoint, while `GET /health/live` and `GET /health/ready` are unauthenticated health checks.
+独立 HTTP 默认端口是 `3004`；`POST /mcp` 是 MCP 入口，`GET /health/live` 与 `GET /health/ready` 是无认证健康检查。 / Standalone HTTP defaults to port `3004`; `POST /mcp` is the MCP endpoint, while `GET /health/live` and `GET /health/ready` are unauthenticated health checks.
 
 ## 配置边界 / Configuration boundary
 

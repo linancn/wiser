@@ -26,7 +26,7 @@ lastReviewedCommit: c4092d9f961841f89cdf9ed383360c41f809bd17
 
 | Application | Local entrypoint        | Responsibility                                                                   | Code entrypoint                                     |
 | ----------- | ----------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `apps/web`  | `http://127.0.0.1:3000` | WISER product UI: unified sign-in, Agent EXCON, and Data Foundation workspaces   | `src/app/[locale]`, `src/components`, and `src/lib` |
+| `apps/web`  | `http://127.0.0.1:3100` | WISER product UI: unified sign-in, Agent EXCON, and Data Foundation workspaces   | `src/app/[locale]`, `src/components`, and `src/lib` |
 | `apps/docs` | `http://127.0.0.1:4321` | WISER Fumadocs site: architecture, protocols, runbooks, and development guidance | `src/app` and `src/content/docs/{zh-CN,en}`         |
 
 The applications share the WISER visual language, Chinese-default policy, and light/dark capability, but they do not share runtime state. Product functionality belongs in `apps/web`; developer guidance belongs in `apps/docs`. Do not turn Docs into another product console or embed long development guides in product pages.

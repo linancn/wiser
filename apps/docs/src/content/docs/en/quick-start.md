@@ -63,14 +63,14 @@ The default complete stack is ready only after the command succeeds. It neither 
 
 | Purpose               | Address                                    |
 | --------------------- | ------------------------------------------ |
-| WISER Portal          | `http://127.0.0.1:3000/en`                 |
-| Agent EXCON scenarios | `http://127.0.0.1:3000/en/scenarios`       |
-| Agent EXCON runs      | `http://127.0.0.1:3000/en/runs`            |
-| Data Foundation       | `http://127.0.0.1:3000/en/data-foundation` |
+| WISER Portal          | `http://127.0.0.1:3100/en`                 |
+| Agent EXCON scenarios | `http://127.0.0.1:3100/en/scenarios`       |
+| Agent EXCON runs      | `http://127.0.0.1:3100/en/runs`            |
+| Data Foundation       | `http://127.0.0.1:3100/en/data-foundation` |
 | Documentation         | `http://127.0.0.1:4321/en`                 |
-| API readiness         | `http://127.0.0.1:3001/health/ready`       |
-| OpenAPI               | `http://127.0.0.1:3001/openapi.json`       |
-| GraphQL               | `POST http://127.0.0.1:3001/graphql`       |
+| API readiness         | `http://127.0.0.1:3101/health/ready`       |
+| OpenAPI               | `http://127.0.0.1:3101/openapi.json`       |
+| GraphQL               | `POST http://127.0.0.1:3101/graphql`       |
 | MCP Streamable HTTP   | `http://127.0.0.1:13004/mcp`               |
 | Supabase Studio       | `http://127.0.0.1:56323`                   |
 

@@ -94,7 +94,7 @@ function createHarness() {
         return new Response(null, {
           status: 303,
           headers: {
-            location: `http://0.0.0.0:3000/zh-CN/data-foundation/catalog/${INGESTION_ID}`,
+            location: `http://0.0.0.0:3100/zh-CN/data-foundation/catalog/${INGESTION_ID}`,
             'set-cookie': 'sb-local-auth-token=fixture; Path=/; HttpOnly',
           },
         });

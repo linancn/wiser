@@ -33,7 +33,7 @@ WISER does not duplicate a public API for every system. Platform, Agent EXCON, a
 Web / external clients / Skills
               │
               ▼
-       @wiser/api :3001
+       @wiser/api :3101
        ├── /api/platform/v1   unified identity and delegation
        ├── /api/v2            Agent EXCON
        ├── /api/data/v1       Data Foundation REST/resources/GIS
@@ -51,7 +51,7 @@ Telemetry Ingress ────────► internal OTel Collector
 
 | Process                       | Entrypoint                           | Focused start                                      | Local entrypoint and health                                                 |
 | ----------------------------- | ------------------------------------ | -------------------------------------------------- | --------------------------------------------------------------------------- |
-| Shared API `@wiser/api`       | `apps/api/src/main.ts`, `app.ts`     | `pnpm --filter @wiser/api dev`                     | Defaults to `3001`; `/health/live`, `/health/ready`, `/openapi.json`        |
+| Shared API `@wiser/api`       | `apps/api/src/main.ts`, `app.ts`     | `pnpm --filter @wiser/api dev`                     | Defaults to `3101`; `/health/live`, `/health/ready`, `/openapi.json`        |
 | EXCON v1 compatibility Worker | `apps/worker/src/main.ts`            | `pnpm --filter @agent-excon/worker dev`            | Health defaults `8081`, Compose `3002`; default API does not enqueue        |
 | Data Worker                   | `apps/data-worker/src/main.ts`       | `pnpm --filter @wiser/data-worker dev`             | `/health/live`, `/health/ready`, `/metrics`; complete stack maps `13003`    |
 | MCP stdio                     | `apps/mcp/src/index.ts`              | Build first, then `pnpm --filter @wiser/mcp start` | stdio; no HTTP port                                                         |

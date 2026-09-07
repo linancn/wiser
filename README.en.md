@@ -44,9 +44,9 @@ Browsers, Skills, and MCP clients access business capabilities through HTTP boun
 
 | Path                     | Type             | Responsibility                                                                                                          | Complete-stack entrypoint             |
 | ------------------------ | ---------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| `apps/web`               | Frontend         | WISER Portal, unified sign-in, and business workspaces; Chinese default, English and light/dark themes                  | `http://127.0.0.1:3000/zh-CN`         |
+| `apps/web`               | Frontend         | WISER Portal, unified sign-in, and business workspaces; Chinese default, English and light/dark themes                  | `http://127.0.0.1:3100/zh-CN`         |
 | `apps/docs`              | Frontend         | Fumadocs site for every WISER system                                                                                    | `http://127.0.0.1:4321`               |
-| `apps/api`               | Backend          | Shared Fastify host for Platform, Agent EXCON, and Data Foundation                                                      | `http://127.0.0.1:3001`               |
+| `apps/api`               | Backend          | Shared Fastify host for Platform, Agent EXCON, and Data Foundation                                                      | `http://127.0.0.1:3101`               |
 | `apps/worker`            | Backend worker   | PostgreSQL-backed v1 compatibility/testing worker; default API does not enqueue it, and v2 evaluates inside API service | `http://127.0.0.1:3002/health/ready`  |
 | `apps/data-worker`       | Backend worker   | Data ingestion, quality, publication, and projection jobs                                                               | `http://127.0.0.1:13003/health/ready` |
 | `apps/mcp`               | Protocol gateway | Maps Agent EXCON and Data Foundation MCP tools to HTTP APIs                                                             | `http://127.0.0.1:13004/mcp`          |
@@ -66,9 +66,9 @@ pnpm stack:full:up
 
 The first image build and Data end-to-end smoke can take time. After the command succeeds, default services and the Data verification path are available. Agent EXCON live Web/MCP still needs the dedicated credentials described below. Open:
 
-- Product UI: <http://127.0.0.1:3000/zh-CN>
+- Product UI: <http://127.0.0.1:3100/zh-CN>
 - Documentation: <http://127.0.0.1:4321>
-- API readiness: <http://127.0.0.1:3001/health/ready>
+- API readiness: <http://127.0.0.1:3101/health/ready>
 - Supabase Studio: <http://127.0.0.1:56323>
 
 The seeded account is for local fixtures only:

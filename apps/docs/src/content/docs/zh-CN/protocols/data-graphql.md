@@ -98,7 +98,7 @@ GraphQL 没有隐式“成功即发布”。长任务返回统一 `Operation`，
 ## 查询示例
 
 ```bash
-curl --fail http://127.0.0.1:3001/graphql \
+curl --fail http://127.0.0.1:3101/graphql \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $DATA_API_BEARER_TOKEN" \
   -H "X-Wiser-Tenant-Id: $DATA_TENANT_ID" \
@@ -115,7 +115,7 @@ curl --fail http://127.0.0.1:3001/graphql \
 ## Mutation 示例
 
 ```bash
-curl --fail http://127.0.0.1:3001/graphql \
+curl --fail http://127.0.0.1:3101/graphql \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $DATA_API_BEARER_TOKEN" \
   -H "X-Wiser-Tenant-Id: $DATA_TENANT_ID" \

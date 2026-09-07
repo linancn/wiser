@@ -42,7 +42,7 @@ Streamable HTTP 的 `DATA_MCP_BEARER_TOKEN` 只认证 `/mcp` transport，不能�
 
 ```bash
 export AGENT_EXCON_API_KEY=<short-lived-run-agent-token>
-export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
+export AGENT_EXCON_API_URL=http://127.0.0.1:3101/api/v2/
 
 pnpm --filter @wiser/mcp build
 pnpm --filter @wiser/mcp start
@@ -57,7 +57,7 @@ pnpm --filter @wiser/mcp start
 ```bash
 export DATA_MCP_BEARER_TOKEN=<至少-16-字符的随机密钥>
 export DATA_MCP_HOST=127.0.0.1 # 可选；默认 0.0.0.0
-export DATA_MCP_PORT=3100      # 可选
+export DATA_MCP_PORT=3004      # 可选
 
 pnpm --filter @wiser/mcp build
 pnpm --filter @wiser/mcp start:http
@@ -133,7 +133,7 @@ v1 工具不会自动注册。只有任务明确指定 legacy Episode 时才同�
 
 ```bash
 export AGENT_EXCON_PROTOCOL_VERSION=v1
-export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v1/
+export AGENT_EXCON_API_URL=http://127.0.0.1:3101/api/v1/
 ```
 
 此模式注册 9 个 legacy Tools：`excon_start_episode`、`excon_get_episode`、`excon_observe`、`excon_list_observations`、`excon_submit_allocation_plan`、`excon_get_evaluation`、`excon_get_feedback`、`excon_advance`、`excon_get_events`。不得把 v1 Episode、Observation、version 或 idempotency key 带入 v2 Run。

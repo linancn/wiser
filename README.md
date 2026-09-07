@@ -44,9 +44,9 @@ WISER 是承载水智能产品的多系统平台。仓库内的业务系统共�
 
 | 路径                     | 类型        | 职责                                                                                             | 完整栈入口                            |
 | ------------------------ | ----------- | ------------------------------------------------------------------------------------------------ | ------------------------------------- |
-| `apps/web`               | 前端        | WISER Portal、统一登录与业务工作区；中文默认，支持英文与深浅色主题                               | `http://127.0.0.1:3000/zh-CN`         |
+| `apps/web`               | 前端        | WISER Portal、统一登录与业务工作区；中文默认，支持英文与深浅色主题                               | `http://127.0.0.1:3100/zh-CN`         |
 | `apps/docs`              | 前端        | 全系统 Fumadocs 文档站                                                                           | `http://127.0.0.1:4321`               |
-| `apps/api`               | 后端        | 统一 Fastify Host；组合 Platform、Agent EXCON、Data Foundation                                   | `http://127.0.0.1:3001`               |
+| `apps/api`               | 后端        | 统一 Fastify Host；组合 Platform、Agent EXCON、Data Foundation                                   | `http://127.0.0.1:3101`               |
 | `apps/worker`            | 后端 Worker | PostgreSQL-backed v1 compatibility/testing Worker；默认 API 不 enqueue，v2 在 API service 内评价 | `http://127.0.0.1:3002/health/ready`  |
 | `apps/data-worker`       | 后端 Worker | Data Foundation 入库、质量、发布与投影任务                                                       | `http://127.0.0.1:13003/health/ready` |
 | `apps/mcp`               | 协议网关    | 将 Agent EXCON 与 Data Foundation MCP Tool 映射到 HTTP API                                       | `http://127.0.0.1:13004/mcp`          |
@@ -66,9 +66,9 @@ pnpm stack:full:up
 
 首次构建和 Data 端到端 smoke 会花费一些时间；命令成功返回后，默认服务和 Data 验证路径可用。Agent EXCON live Web/MCP 仍需要后文所述的专用 credential。打开：
 
-- 产品界面：<http://127.0.0.1:3000/zh-CN>
+- 产品界面：<http://127.0.0.1:3100/zh-CN>
 - 文档：<http://127.0.0.1:4321>
-- API 健康检查：<http://127.0.0.1:3001/health/ready>
+- API 健康检查：<http://127.0.0.1:3101/health/ready>
 - Supabase Studio：<http://127.0.0.1:56323>
 
 本机种子账号仅供 fixture 使用：

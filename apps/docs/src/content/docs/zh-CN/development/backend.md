@@ -33,7 +33,7 @@ WISER 没有为每个系统复制一套公网 API。Platform、Agent EXCON 和 D
 Web / external clients / Skills
               │
               ▼
-       @wiser/api :3001
+       @wiser/api :3101
        ├── /api/platform/v1   unified identity and delegation
        ├── /api/v2            Agent EXCON
        ├── /api/data/v1       Data Foundation REST/resources/GIS
@@ -51,7 +51,7 @@ Telemetry Ingress ────────► internal OTel Collector
 
 | 进程                          | 入口                                 | 聚焦启动                                          | 本机入口与健康检查                                                     |
 | ----------------------------- | ------------------------------------ | ------------------------------------------------- | ---------------------------------------------------------------------- |
-| 共享 API `@wiser/api`         | `apps/api/src/main.ts`、`app.ts`     | `pnpm --filter @wiser/api dev`                    | 默认 `3001`；`/health/live`、`/health/ready`、`/openapi.json`          |
+| 共享 API `@wiser/api`         | `apps/api/src/main.ts`、`app.ts`     | `pnpm --filter @wiser/api dev`                    | 默认 `3101`；`/health/live`、`/health/ready`、`/openapi.json`          |
 | EXCON v1 compatibility Worker | `apps/worker/src/main.ts`            | `pnpm --filter @agent-excon/worker dev`           | 默认 health `8081`、Compose `3002`；默认 API 不 enqueue                |
 | Data Worker                   | `apps/data-worker/src/main.ts`       | `pnpm --filter @wiser/data-worker dev`            | `/health/live`、`/health/ready`、`/metrics`；完整栈映射 `13003`        |
 | MCP stdio                     | `apps/mcp/src/index.ts`              | 先 build，再运行 `pnpm --filter @wiser/mcp start` | stdio，无 HTTP 端口                                                    |

@@ -63,14 +63,14 @@ pnpm stack:full:up
 
 | 用途                | 地址                                          |
 | ------------------- | --------------------------------------------- |
-| WISER Portal        | `http://127.0.0.1:3000/zh-CN`                 |
-| 智能体演练场 · 场景 | `http://127.0.0.1:3000/zh-CN/scenarios`       |
-| 智能体演练场 · 运行 | `http://127.0.0.1:3000/zh-CN/runs`            |
-| 数据基座            | `http://127.0.0.1:3000/zh-CN/data-foundation` |
+| WISER Portal        | `http://127.0.0.1:3100/zh-CN`                 |
+| 智能体演练场 · 场景 | `http://127.0.0.1:3100/zh-CN/scenarios`       |
+| 智能体演练场 · 运行 | `http://127.0.0.1:3100/zh-CN/runs`            |
+| 数据基座            | `http://127.0.0.1:3100/zh-CN/data-foundation` |
 | 文档站              | `http://127.0.0.1:4321`                       |
-| API readiness       | `http://127.0.0.1:3001/health/ready`          |
-| OpenAPI             | `http://127.0.0.1:3001/openapi.json`          |
-| GraphQL             | `POST http://127.0.0.1:3001/graphql`          |
+| API readiness       | `http://127.0.0.1:3101/health/ready`          |
+| OpenAPI             | `http://127.0.0.1:3101/openapi.json`          |
+| GraphQL             | `POST http://127.0.0.1:3101/graphql`          |
 | MCP Streamable HTTP | `http://127.0.0.1:13004/mcp`                  |
 | Supabase Studio     | `http://127.0.0.1:56323`                      |
 

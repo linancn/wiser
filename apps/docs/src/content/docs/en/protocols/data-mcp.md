@@ -32,7 +32,7 @@ The module registers 22 strict Zod Tools from the ordered `@wiser/data-contracts
 All five values appear together. With none present, Gateway starts only Agent EXCON MCP; partial configuration fails closed:
 
 ```bash
-export DATA_API_URL=http://127.0.0.1:3001/api/data/v1/
+export DATA_API_URL=http://127.0.0.1:3101/api/data/v1/
 export DATA_API_BEARER_TOKEN=<supabase-jwt-or-wdc1-delegated-credential>
 export DATA_TENANT_ID=<tenant-uuid>
 export DATA_PROJECT_ID=<project-uuid>
@@ -45,7 +45,7 @@ The shared Gateway process initializes its Agent EXCON HTTP client first. Even w
 
 ```bash
 export AGENT_EXCON_PROTOCOL_VERSION=v2
-export AGENT_EXCON_API_URL=http://127.0.0.1:3001/api/v2/
+export AGENT_EXCON_API_URL=http://127.0.0.1:3101/api/v2/
 export AGENT_EXCON_API_KEY=<configured-excon-key>
 ```
 

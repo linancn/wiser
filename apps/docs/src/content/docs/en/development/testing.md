@@ -176,14 +176,14 @@ pnpm --filter @wiser/web test:e2e
 pnpm --filter @wiser/docs test:e2e
 ```
 
-Both Playwright configurations start isolated development servers: Web uses `127.0.0.1:3100`, while Docs uses `127.0.0.1:4322`. The CI browser job runs the same root command after `pnpm verify` and retains screenshots, traces, and the HTML report only on failure. The standard suites use reference/Auth-off configuration to prove browser routing, language, theme, and interaction; they do not replace unified-Auth or database vertical smoke.
+Both Playwright configurations start isolated development servers: Web uses `127.0.0.1:3200`, while Docs uses `127.0.0.1:4322`. The CI browser job runs the same root command after `pnpm verify` and retains screenshots, traces, and the HTML report only on failure. The standard suites use reference/Auth-off configuration to prove browser routing, language, theme, and interaction; they do not replace unified-Auth or database vertical smoke.
 
 ### Authenticated Data live suite
 
 After a disposable loopback stack has already completed Data migration, seed, and smoke, run the protected browser flow against that same stack:
 
 ```bash
-WISER_WEB_LIVE_BASE_URL='http://127.0.0.1:3000' \
+WISER_WEB_LIVE_BASE_URL='http://127.0.0.1:3100' \
 WISER_WEB_LIVE_SMOKE_REPORT='<absolute-path-to-successful-smoke-report.json>' \
 WISER_WEB_LIVE_EMAIL='<seeded-local-email>' \
 WISER_WEB_LIVE_PASSWORD='<seeded-local-password>' \

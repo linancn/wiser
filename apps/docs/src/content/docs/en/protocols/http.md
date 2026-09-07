@@ -16,8 +16,8 @@ checkPaths:
   - packages/contracts/**
   - packages/excon-scenarios/**
   - skills/agent-excon/**
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: dd8c0bb38e4d9d9a14e7c1c67d8b9752d04739a8
+lastReviewedAt: 2026-09-07
+lastReviewedCommit: 626cfd1c22e8c24fb38306520c4e9433a5984151
 ---
 
 ## Protocol boundary
