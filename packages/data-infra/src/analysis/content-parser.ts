@@ -30,7 +30,8 @@ export type AnalysisContentEvent =
       readonly type: 'summary';
       readonly recordCount: number;
       readonly featureCount: number;
-      readonly status: 'READY' | 'EMPTY';
+      readonly status: 'READY' | 'EMPTY' | 'PARTIAL';
+      readonly reason?: string | null;
     };
 export class AnalysisContentError extends Error {
   constructor(
@@ -40,7 +41,15 @@ export class AnalysisContentError extends Error {
       | 'UNKNOWN_CRS'
       | 'HASH_MISMATCH'
       | 'RECORD_LIMIT'
-      | 'SIZE_LIMIT',
+      | 'SIZE_LIMIT'
+      | 'COLUMN_LIMIT'
+      | 'ARCHIVE_LIMIT'
+      | 'UNSAFE_ARCHIVE'
+      | 'ENCRYPTED_CONTENT'
+      | 'INVALID_FORMAT'
+      | 'INCONSISTENT_COLUMNS'
+      | 'CAPACITY_LIMIT'
+      | 'PARSING_FAILED',
   ) {
     super(code);
     this.name = 'AnalysisContentError';
@@ -86,7 +95,11 @@ function columns(labels: readonly string[]): AnalysisColumn[] {
     fail('INVALID_CONTENT');
   return labels.map((label, index) => ({ key: `c${index + 1}`, label }));
 }
-function recordId(input: AnalysisContentInput, index: number): string {
+type AnalysisIdentity = Pick<
+  AnalysisContentInput,
+  'dataItemId' | 'versionId' | 'assetId' | 'sourceHash'
+>;
+function recordId(input: AnalysisIdentity, index: number): string {
   const hash = createHash('sha256')
     .update(
       [
@@ -102,7 +115,7 @@ function recordId(input: AnalysisContentInput, index: number): string {
   return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-8${hash.slice(13, 16)}-a${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
 }
 function row(
-  input: AnalysisContentInput,
+  input: AnalysisIdentity,
   index: number,
   values: Record<string, AnalysisValue>,
   geometry: AnalysisValue = null,
@@ -119,6 +132,39 @@ function row(
     geometry,
     sourceCrs: geometry === null ? null : 'EPSG:4326',
   };
+}
+/** A parser supplies content; the worker binds identifiers to admitted authority. */
+export function bindAnalysisRecord(
+  input: AnalysisIdentity,
+  content: {
+    readonly index: number;
+    readonly values: unknown;
+    readonly geometry: unknown;
+    readonly sourceId: unknown;
+    readonly sourceCrs: unknown;
+  },
+): Extract<AnalysisContentEvent, { type: 'record' }> {
+  if (
+    !Number.isSafeInteger(content.index) ||
+    content.index < 1 ||
+    content.index > 2000000 ||
+    !object(content.values)
+  )
+    fail('INVALID_CONTENT');
+  if (
+    content.sourceId !== null &&
+    (typeof content.sourceId !== 'string' || content.sourceId.length > 1024)
+  )
+    fail('INVALID_CONTENT');
+  if (content.geometry !== null && content.sourceCrs !== 'EPSG:4326')
+    fail('UNKNOWN_CRS');
+  return row(
+    input,
+    content.index,
+    jsonValue(content.values) as Record<string, AnalysisValue>,
+    geometry(content.geometry),
+    content.sourceId,
+  );
 }
 function validPosition(value: unknown): value is number[] {
   return (

@@ -52,7 +52,10 @@ function response(values: readonly unknown[]) {
     { headers: { 'content-type': 'application/x-ndjson' } },
   );
 }
-async function collect(values = events, override: Partial<typeof input> = {}) {
+async function collect(
+  values: readonly unknown[] = events,
+  override: Partial<typeof input> = {},
+) {
   const parser = createExternalAnalysisParser({
     endpoint: 'http://source-parser:3005',
     fetch: () => Promise.resolve(response(values)),
