@@ -244,6 +244,134 @@ describe('authorized exploration result sets in PostgreSQL', () => {
         expect(empty.resources).toEqual([]);
         await client.query('reset role');
         const expired = randomUUID();
+        const asset = randomUUID(),
+          analysis = randomUUID(),
+          operation = randomUUID();
+        const record = randomUUID(),
+          secondRecord = randomUUID();
+        await client.query(
+          `insert into catalog.content_blob(content_blob_id,tenant_id,project_id,content_hash,byte_size,raw_storage_key,lifecycle_state,security_level) values($1,$2,$3,decode(repeat('a',64),'hex'),20,'fixture/raw','RAW','L1_INTERNAL')`,
+          [asset, tenant, project],
+        );
+        await client.query(
+          `insert into catalog.asset(asset_id,tenant_id,project_id,version_id,storage_key,content_hash,media_type,byte_size,lifecycle_state,security_level,content_blob_id) values($1,$2,$3,$4,'fixture/version',decode(repeat('a',64),'hex'),'application/geo+json',20,'RAW','L1_INTERNAL',$1)`,
+          [asset, tenant, project, version],
+        );
+        await client.query(
+          `insert into service.operation(operation_id,tenant_id,project_id,capability_id,actor_id,status,progress_percent,idempotency_key,request_payload,security_level) values($1::uuid,$2,$3,'data.analysis.create',$4,'RUNNING',0,$1::text,'{}','L1_INTERNAL')`,
+          [operation, tenant, project, actor],
+        );
+        await client.query(
+          `insert into service.analysis_run(analysis_id,tenant_id,project_id,version_id,operation_id,parser_version,security_level,policy_version) values($1,$2,$3,$4,$5,'1.0.0','L1_INTERNAL',1)`,
+          [analysis, tenant, project, version, operation],
+        );
+        await client.query(
+          `insert into service.analysis_asset(analysis_id,asset_id,tenant_id,project_id,source_hash,status,record_count,feature_count,columns,security_level,policy_version) values($1,$2,$3,$4,decode(repeat('a',64),'hex'),'READY',2,2,'[{"key":"c1","label":"Station"},{"key":"c2","label":"Value"}]','L1_INTERNAL',1)`,
+          [analysis, asset, tenant, project],
+        );
+        await client.query(
+          `insert into catalog.analysis_record(analysis_id,record_id,asset_id,tenant_id,project_id,record_index,record_values,geom,security_level,policy_version) values($1,$2,$3,$4,$5,1,'{"c1":"01646500","c2":0}',st_setsrid(st_makepoint(-77.12763889,38.94977778),4326),'L1_INTERNAL',1),($1,$6,$3,$4,$5,2,'{"c1":"00000001","c2":2}',st_setsrid(st_makepoint(0,0),4326),'L1_INTERNAL',1)`,
+          [analysis, record, asset, tenant, project, secondRecord],
+        );
+        await client.query(
+          "update service.analysis_run set status='READY',completed_at=clock_timestamp() where analysis_id=$1",
+          [analysis],
+        );
+        const stillUnparsed = ExplorationResultSchema.parse(
+          await executor.execute(
+            { queryId: historical.queryId, view: 'resources' },
+            context,
+          ),
+        );
+        expect(stillUnparsed.resources[0]?.readiness.records).toBe(
+          'NOT_PARSED',
+        );
+        const analyzed = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              spec: { versions: [{ dataItemId: item, versionId: version }] },
+              view: 'resources',
+            },
+            context,
+          ),
+        );
+        expect(analyzed.resources[0]).toMatchObject({
+          recordCount: 2,
+          featureCount: 2,
+          analysis: { analysisId: analysis },
+          readiness: { records: 'READY', spatial: 'READY' },
+        });
+        const records = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              queryId: analyzed.queryId,
+              view: 'records',
+              versionId: version,
+              first: 1,
+            },
+            context,
+          ),
+        );
+        expect(records.totalCount).toBe(2);
+        expect(records.records?.[0]).toMatchObject({
+          recordId: record,
+          featureId: record,
+          values: { c1: '01646500', c2: 0 },
+        });
+        expect(records.assets?.[0]?.columns).toEqual([
+          { key: 'c1', label: 'Station' },
+          { key: 'c2', label: 'Value' },
+        ]);
+        const second = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              queryId: analyzed.queryId,
+              view: 'records',
+              versionId: version,
+              first: 1,
+              after: records.nextCursor,
+            },
+            context,
+          ),
+        );
+        expect(second.records?.[0]?.recordId).toBe(secondRecord);
+        const map = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              queryId: analyzed.queryId,
+              view: 'map',
+              bbox: [-78, 38, -77, 40],
+            },
+            context,
+          ),
+        );
+        expect(map.totalCount).toBe(1);
+        expect(map.features?.[0]).toMatchObject({
+          id: record,
+          properties: { recordId: record, versionId: version },
+          geometry: { type: 'Point', coordinates: [-77.12763889, 38.94977778] },
+        });
+        await expect(
+          executor.execute(
+            {
+              queryId: analyzed.queryId,
+              view: 'map',
+              after: records.nextCursor,
+            },
+            context,
+          ),
+        ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+        await expect(
+          executor.execute(
+            {
+              queryId: analyzed.queryId,
+              view: 'records',
+              versionId: secondVersion,
+            },
+            context,
+          ),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+        await client.query('reset role');
         await client.query(
           `insert into service.exploration_snapshot(query_id,tenant_id,project_id,actor_id,purpose,security_level,policy_version,spec,version_refs,created_at,expires_at) values ($1,$2,$3,$4,'integration-test','L1_INTERNAL',1,'{}','[]',now()-interval '2 hours',now()-interval '90 minutes')`,
           [expired, tenant, project, actor],
