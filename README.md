@@ -17,7 +17,7 @@ checkPaths:
   - compose.yaml
   - package.json
 lastReviewedAt: 2026-09-08
-lastReviewedCommit: cee9c51ac26e77bd078edc3af41cfb6ca0de611d
+lastReviewedCommit: 4e6e1079081a6b420c0a8e11892b07758e1fd351
 ---
 
 # WISER · 水地图
