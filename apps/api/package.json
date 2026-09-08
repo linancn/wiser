@@ -37,8 +37,10 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@mapbox/vector-tile": "3.0.0",
     "@types/node": "catalog:",
     "@types/pg": "8.23.1",
+    "pbf": "5.1.2",
     "tsx": "4.23.12",
     "typescript": "catalog:",
     "vitest": "4.1.11"

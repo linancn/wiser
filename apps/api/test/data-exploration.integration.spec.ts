@@ -1,3 +1,4 @@
+import { verifyExplorationTiles } from './fixtures/exploration-tiles.js';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { Pool, type PoolClient } from 'pg';
@@ -356,6 +357,17 @@ describe('authorized exploration result sets in PostgreSQL', () => {
           analyzedResourceCount: 1,
           indexedRecordCount: 2,
           indexedFeatureCount: 2,
+        });
+        await verifyExplorationTiles(client, {
+          tenant,
+          project,
+          actor,
+          item,
+          version,
+          asset,
+          analysis,
+          queryId: analyzed.queryId,
+          record,
         });
         const records = ExplorationResultSchema.parse(
           await executor.execute(

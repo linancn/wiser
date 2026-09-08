@@ -101,12 +101,18 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
+      '@mapbox/vector-tile':
+        specifier: 3.0.0
+        version: 3.0.0
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
       '@types/pg':
         specifier: 8.23.1
         version: 8.23.1
+      pbf:
+        specifier: 5.1.2
+        version: 5.1.2
       tsx:
         specifier: 4.23.12
         version: 4.23.12
