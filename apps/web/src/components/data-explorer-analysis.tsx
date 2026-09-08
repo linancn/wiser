@@ -1,4 +1,8 @@
 'use client';
+import {
+  invalidatesExploration,
+  type InvalidateExploration,
+} from '@/lib/exploration-request';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import {
@@ -17,9 +21,11 @@ export function DataExplorerAnalysis({
   versionId,
   selectedRecord,
   onSelect,
+  onInvalidated,
   onData,
 }: {
   readonly locale: Locale;
+  readonly onInvalidated: InvalidateExploration;
   readonly queryId: string;
   readonly view: 'records' | 'map';
   readonly versionId: string | null;
@@ -65,7 +71,14 @@ export function DataExplorerAnalysis({
           signal: controller.signal,
           cache: 'no-store',
         });
-        if (!response.ok) throw new Error('Query unavailable');
+        if (!response.ok) {
+          if (
+            !controller.signal.aborted &&
+            invalidatesExploration(response.status)
+          )
+            onInvalidated(queryId, response.status);
+          throw new Error('Query unavailable');
+        }
         const data = ExplorationResultSchema.parse(await response.json());
         if (controller.signal.aborted) return;
         setResult(data);
@@ -77,7 +90,7 @@ export function DataExplorerAnalysis({
       }
     })();
     return () => controller.abort();
-  }, [queryId, view, requestVersionId, assetId, cursor, onData]);
+  }, [queryId, view, requestVersionId, assetId, cursor, onData, onInvalidated]);
   if (view === 'records' && versionId === null)
     return (
       <div className={styles.empty}>
@@ -103,6 +116,7 @@ export function DataExplorerAnalysis({
         result={result}
         selectedId={selectedRecord?.recordId ?? null}
         onSelect={onSelect}
+        onInvalidated={onInvalidated}
       />
     );
   const selectedAsset = result.assets?.find(

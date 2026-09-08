@@ -1,4 +1,8 @@
 'use client';
+import {
+  invalidatesExploration,
+  type InvalidateExploration,
+} from '@/lib/exploration-request';
 
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -18,9 +22,11 @@ export function DataExplorerGraph({
   selectedRecord,
   selectedNode,
   onSelect,
+  onInvalidated,
 }: {
   readonly queryId: string;
   readonly locale: Locale;
+  readonly onInvalidated: InvalidateExploration;
   readonly versionId: string | null;
   readonly selectedRecord: ExplorationRecord | null;
   readonly selectedNode: ExplorationGraphNode | null;
@@ -59,7 +65,14 @@ export function DataExplorerGraph({
             ...(after ? { after } : {}),
           }),
         });
-        if (!response.ok) throw new Error('Graph unavailable');
+        if (!response.ok) {
+          if (
+            !controller.signal.aborted &&
+            invalidatesExploration(response.status)
+          )
+            onInvalidated(queryId, response.status);
+          throw new Error('Graph unavailable');
+        }
         const next = ExplorationResultSchema.parse(await response.json());
         if (!controller.signal.aborted) {
           cancelAnimationFrame(frame);
@@ -78,7 +91,7 @@ export function DataExplorerGraph({
       controller.abort();
       cancelAnimationFrame(frame);
     };
-  }, [queryId, focus, after]);
+  }, [queryId, focus, after, onInvalidated]);
   const graph = result?.graph;
   const canvas = useMemo(
     () => ({

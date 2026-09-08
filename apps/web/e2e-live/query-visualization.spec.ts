@@ -38,7 +38,9 @@ test('expired result envelopes clear browser data at their advertised deadline',
   await expect(
     page.getByRole('button', { name: 'DS-0558 · NLDI API', exact: true }),
   ).toHaveCount(0);
-  await expect(page.getByRole('alert')).toContainText('本次结果集已失效');
+  await expect(
+    page.getByTestId('data-explorer').getByRole('alert'),
+  ).toContainText('本次结果集已失效');
 });
 
 test('denied query and tile responses clear previous data and allow a fresh authorized query', async ({

@@ -1,4 +1,8 @@
 'use client';
+import {
+  invalidatesExploration,
+  type InvalidateExploration,
+} from '@/lib/exploration-request';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as maplibre from 'maplibre-gl';
 import Map, {
@@ -23,12 +27,14 @@ export default function DataExplorerMap({
   result,
   selectedId,
   onSelect,
+  onInvalidated,
   locale,
 }: {
   readonly result: ExplorationResult;
   readonly selectedId: string | null;
   readonly onSelect: (record: ExplorationRecord) => void;
   readonly locale: Locale;
+  readonly onInvalidated: InvalidateExploration;
 }) {
   const map = useRef<MapRef>(null);
   const [ready, setReady] = useState(false);
@@ -102,7 +108,14 @@ export default function DataExplorerMap({
         cache: 'no-store',
         signal: controller.signal,
       });
-      if (!response.ok) throw new Error('Record unavailable');
+      if (!response.ok) {
+        if (
+          !controller.signal.aborted &&
+          invalidatesExploration(response.status)
+        )
+          onInvalidated(result.queryId, response.status);
+        throw new Error('Record unavailable');
+      }
       const data = ExplorationResultSchema.parse(await response.json());
       if (controller.signal.aborted) return;
       const record = data.records?.[0];
@@ -206,7 +219,16 @@ export default function DataExplorerMap({
               ).size,
             );
           }}
-          onError={() => {
+          onError={(event) => {
+            const error: unknown = event.error;
+            if (
+              typeof error === 'object' &&
+              error !== null &&
+              'status' in error &&
+              typeof error.status === 'number' &&
+              invalidatesExploration(error.status)
+            )
+              onInvalidated(result.queryId, error.status);
             setFailed(true);
             setReady(false);
           }}

@@ -1,5 +1,6 @@
 'use client';
 
+import { invalidatesExploration } from '@/lib/exploration-request';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { DataExplorerGraph } from './data-explorer-graph';
@@ -123,6 +124,36 @@ export function DataExplorer({
   const [page, setPage] = useState(0);
   const pending = useRef<AbortController | null>(null);
   useEffect(() => () => pending.current?.abort(), []);
+  const activeQueryId = useRef(result?.queryId ?? null);
+  activeQueryId.current = result?.queryId ?? null;
+  const invalidate = useCallback((queryId: string, status = 410) => {
+    if (activeQueryId.current !== queryId) return;
+    activeQueryId.current = null;
+    setResult(null);
+    dispatch({ type: 'query', queryId: null });
+    setRecordAssets([]);
+    setCursors([undefined]);
+    setPage(0);
+    setView('resources');
+    setFailure([401, 403].includes(status) ? 'unavailable' : 'expired');
+  }, []);
+  useEffect(() => {
+    if (!result) return;
+    const expires = Date.parse(result.expiresAt);
+    const expire = () => invalidate(result.queryId);
+    const timer = window.setTimeout(expire, Math.max(0, expires - Date.now()));
+    const resume = () => {
+      if (Date.now() >= expires) expire();
+    };
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('pageshow', resume);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('pageshow', resume);
+    };
+  }, [result?.queryId, result?.expiresAt, invalidate]);
+
   useEffect(() => {
     if (
       !result ||
@@ -146,7 +177,14 @@ export function DataExplorer({
             first: 1,
           }),
         });
-        if (!response.ok) return;
+        if (!response.ok) {
+          if (
+            !controller.signal.aborted &&
+            invalidatesExploration(response.status)
+          )
+            invalidate(result.queryId, response.status);
+          return;
+        }
         const data = ExplorationResultSchema.parse(await response.json());
         if (!controller.signal.aborted && data.assets)
           setRecordAssets(data.assets);
@@ -155,7 +193,7 @@ export function DataExplorer({
       }
     })();
     return () => controller.abort();
-  }, [result, selectedRecord, recordAssets]);
+  }, [result, selectedRecord, recordAssets, invalidate]);
   const number = new Intl.NumberFormat(locale);
 
   async function query(input: unknown, targetPage: number, reset: boolean) {
@@ -172,7 +210,10 @@ export function DataExplorer({
         signal: controller.signal,
         cache: 'no-store',
       });
+      if (controller.signal.aborted) return;
       if (!response.ok) {
+        if (invalidatesExploration(response.status) && activeQueryId.current)
+          invalidate(activeQueryId.current, response.status);
         setFailure(
           [404, 409, 422].includes(response.status) ? 'expired' : 'unavailable',
         );
@@ -591,6 +632,7 @@ export function DataExplorer({
               selectedRecord={selectedRecord}
               selectedNode={selectedNode}
               onSelect={selectNode}
+              onInvalidated={invalidate}
             />
           ) : result && (view === 'records' || view === 'map') ? (
             <DataExplorerAnalysis
@@ -607,6 +649,7 @@ export function DataExplorer({
               selectedRecord={selectedRecord}
               onSelect={selectRecord}
               onData={onAnalysisData}
+              onInvalidated={invalidate}
             />
           ) : null}
         </section>

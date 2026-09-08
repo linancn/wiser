@@ -81,3 +81,5 @@ See [Frontend development](../docs/src/content/docs/en/development/frontend.md) 
 Data exploration at `/[locale]/data-foundation/explore` uses shared `@wiser/data-contracts` schemas and the verified-session `/api/data-foundation/explore` endpoint for version-pinned resource queries, pagination and selection details. / 数据探索页面通过共享契约与当前登录会话完成固定版本查询、分页和详情选择。
 
 Data Explorer links resource, record and MapLibre views through one authorized query and shared selection. Dev/build automatically prepares matching MapLibre 6.8.0 worker modules. The checked-in Natural Earth overview basemap is public-domain and has a source/hash manifest in `public/basemap/source.json`. Business records and geometries continue to come exclusively from the authenticated HTTP API.
+
+Exploration invalidation and expiry clear all rendered views and selection together while retaining editable form conditions for retry. / 探索授权失效或到期时，各视图与选择一起清除，表单条件保留以便重新查询。
