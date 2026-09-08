@@ -61,7 +61,8 @@ Keep all four Supabase artifacts synchronized: ordered migrations are replayable
 
    - `00_agent_excon.sql`: v1 Agent EXCON relations;
    - `01_multi_agent_run.sql`: v2 Runs, Tasks, Receipts, journals, and private EXCON facts;
-   - `02_platform_auth.sql`: unified identity, tenants/projects, authorization, and delegation.
+   - `02_platform_auth.sql`: unified identity, tenants/projects, authorization, and delegation;
+   - `03_agent_connections.sql`: private Agent connections, immutable OAuth credential bindings, token hook, and direct-session restrictions on exposed tables.
 
 5. If local development identities or deterministic cases need new data, update `supabase/seed.sql`. Seeds must be repeatable, contain no real credentials, and agree with the pgTAP assertions.
 6. Run the complete gate:

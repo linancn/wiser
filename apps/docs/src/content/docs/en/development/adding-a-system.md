@@ -28,8 +28,8 @@ checkPaths:
   - scripts/**
   - .docpact/**
   - .github/workflows/**
-lastReviewedAt: 2026-09-07
-lastReviewedCommit: 626cfd1c22e8c24fb38306520c4e9433a5984151
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: e6986b7ccb7807d22dd55cec5b03c77566a5d97a
 ---
 
 ## Intended use

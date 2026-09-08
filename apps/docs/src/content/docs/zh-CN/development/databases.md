@@ -61,7 +61,8 @@ Supabase 的四类文件必须同步：顺序 migration 是可重放历史，dec
 
    - `00_agent_excon.sql`：v1 Agent EXCON 关系；
    - `01_multi_agent_run.sql`：v2 Run、Task、Receipt、journal 与 EXCON 私有事实；
-   - `02_platform_auth.sql`：统一身份、Tenant/Project、授权与委托。
+   - `02_platform_auth.sql`：统一身份、Tenant/Project、授权与委托；
+   - `03_agent_connections.sql`：私有 Agent 连接、不可变的 OAuth credential 绑定、token hook，以及暴露表的直接 Session 限制。
 
 5. 若本机开发身份或确定性案例需要新数据，同步更新 `supabase/seed.sql`。Seed 必须可重复、无真实凭据，并与 pgTAP 断言一致。
 6. 运行完整门禁：

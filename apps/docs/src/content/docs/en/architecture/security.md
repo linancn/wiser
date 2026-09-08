@@ -46,6 +46,8 @@ Enable RLS on every exposed table. Data API exposure and RLS are separate: new t
 
 Frontend code receives only a publishable key. Views use security-invoker behavior, and privileged functions live in an unexposed schema with default public execution revoked. Run database advisors and tests as anonymous, authenticated, and service roles after migrations.
 
+OAuth resource tokens carrying `client_id` do not inherit direct human access. The ordinary API JWT verifier rejects them, and exposed application tables apply the restrictive `wiser_direct_session_only` policy alongside their ownership policies. Add the same restriction when introducing another exposed table. Agent connections and OAuth credential bindings remain private and force RLS; the token hook grants only Supabase Auth the necessary read and execute privileges.
+
 ## Time and evidence authorization
 
 `Observation` is a v1 compatibility term. v2 has no separate Observation entity: after time and permission checks, `/sync` freezes the issued Inject payload as an `AgentViewReceipt`. A Submission may cite only a receipt belonging to that RunAgent or an ArtifactVersion explicitly granted to it.

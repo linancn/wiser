@@ -52,7 +52,11 @@ platform.delegations
 platform_private.delegated_credentials
 platform_private.authorization_audit_events
 platform_private.control_outbox
+platform_private.agent_connections
+platform_private.agent_exchange_credentials
 ```
+
+Agent connection records bind one human and OAuth client to one existing `agent-data` Delegation and an exact MCP resource URL. Exchanged credentials retain an immutable OAuth Session binding and cannot outlive the OAuth token. The optional Supabase access-token hook preserves direct login claims, rejects unapproved OAuth clients, and binds approved claims to that resource and Delegation. The hook is invoked only by Supabase Auth; its presence does not enable the OAuth runtime. Ordinary human JWT resolution rejects tokens carrying `client_id`.
 
 - Actor represents a human, agent, or service; human actors reference `auth.users.id`.
 - Tenant is the top-level isolation boundary; Project is the resource-ownership boundary.

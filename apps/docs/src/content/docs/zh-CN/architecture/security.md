@@ -52,6 +52,8 @@ lastReviewedCommit: 626cfd1c22e8c24fb38306520c4e9433a5984151
 
 每次 migration 后运行数据库安全 advisor，并以真实 `anon`、`authenticated` 和服务角色分别做集成测试。
 
+带有 `client_id` 的 OAuth resource Token 不继承 human 直接访问权限。普通 API JWT 验证器会拒绝这类 Token；暴露的应用表在所有权策略之外叠加 restrictive `wiser_direct_session_only` 策略，新增暴露表时也必须保留该限制。Agent 连接与 OAuth credential 绑定存放在强制 RLS 的私有表；token hook 仅向 Supabase Auth 授予必要的读取和执行权限。
+
 ## 时间与证据授权
 
 `Observation` 是 v1 兼容协议术语。v2 不再创建独立 Observation 实体：系统判断 RunAgent 在当前虚拟时间有权访问后，由 `/sync` 把实际发放的 Inject payload 固化为 `AgentViewReceipt`。提交引用证据时，必须验证 Receipt 属于该 RunAgent，或引用的是已经显式授权给它的 ArtifactVersion。

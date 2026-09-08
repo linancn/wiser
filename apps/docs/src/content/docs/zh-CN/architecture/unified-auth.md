@@ -52,7 +52,11 @@ platform.delegations
 platform_private.delegated_credentials
 platform_private.authorization_audit_events
 platform_private.control_outbox
+platform_private.agent_connections
+platform_private.agent_exchange_credentials
 ```
+
+Agent 连接记录把一个 human 与 OAuth client 绑定到已有的 `agent-data` Delegation 和精确的 MCP resource URL。交换所得 credential 保留不可变的 OAuth Session 绑定，有效期不能超过 OAuth Token。可选的 Supabase access-token hook 保留直接登录的 claims，拒绝未授权 OAuth client，并把已批准 claims 绑定到对应 resource 与 Delegation。只有 Supabase Auth 可以调用该 hook；创建函数本身不会启用 OAuth runtime。普通 human JWT 解析会拒绝带有 `client_id` 的 Token。
 
 - Actor 统一表示 human、agent 与 service；human actor 关联 `auth.users.id`。
 - Tenant 是顶级隔离边界；Project 是业务资源所有权边界。
