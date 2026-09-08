@@ -72,6 +72,7 @@ grant execute on function service.wiser_spatial_extent_mvt(
   integer,
   json
 ) to wiser_data_gis;
+grant execute on function service.wiser_exploration_mvt(integer, integer, integer, json) to wiser_data_gis;
 revoke all on all tables in schema
   catalog,
   ingestion,

@@ -38,6 +38,12 @@ export async function verifyExplorationTiles(
     throw error;
   });
   if (migration) await client.query(migration);
+  const tileRole = `wiser_tile_test_${randomUUID().replaceAll('-', '')}`;
+  await client.query(`create role ${tileRole} nologin nosuperuser nobypassrls`);
+  await client.query(`grant usage on schema service to ${tileRole}`);
+  await client.query(
+    `grant execute on function service.wiser_exploration_mvt(integer,integer,integer,json) to ${tileRole}`,
+  );
   const params = {
     tenantId: scope.tenant,
     projectId: scope.project,
@@ -48,10 +54,12 @@ export async function verifyExplorationTiles(
     policyVersion: '1',
   };
   const tile = async (supplied: typeof params, z = 0, x = 0, y = 0) => {
+    await client.query(`set local role ${tileRole}`);
     const result = await client.query<{ tile: Buffer }>(
       'select service.wiser_exploration_mvt($1,$2,$3,$4::json) tile',
       [z, x, y, JSON.stringify(supplied)],
     );
+    await client.query('reset role');
     return result.rows[0]!.tile;
   };
   const layer = new VectorTile(new PbfReader(await tile(params))).layers[

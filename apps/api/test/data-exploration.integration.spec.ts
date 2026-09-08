@@ -551,5 +551,6 @@ describe('authorized exploration result sets in PostgreSQL', () => {
         await pool.end();
       }
     },
+    30000,
   );
 });
