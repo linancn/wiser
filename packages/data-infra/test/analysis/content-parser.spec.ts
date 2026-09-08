@@ -30,6 +30,58 @@ async function parse(
 }
 
 describe('deterministic analytical content parsing', () => {
+  it.skipIf(process.env['WISER_DATA_REAL_CASE'] !== '1')(
+    'streams every row of the real million-row Beijing river source',
+    async () => {
+      const bytes = await readFile(
+        new URL(
+          '../../../../.source/water_research_data_interface_download_bundle_20260908/downloads/beijing_open_data/市水务局-城市河湖水情.csv',
+          import.meta.url,
+        ),
+      );
+      const sourceHash =
+        '3c5f56e45f4ccbdfaad95388ed4c9178b49be75ea223f4aa4dd473a5410c7762';
+      expect(createHash('sha256').update(bytes).digest('hex')).toBe(sourceHash);
+      let count = 0;
+      let summary: AnalysisContentEvent | undefined;
+      for await (const event of parseAnalysisContent({
+        bytes,
+        format: 'csv',
+        dataItemId: item,
+        versionId: version,
+        assetId: asset,
+        sourceHash,
+      })) {
+        if (event.type === 'record') {
+          count += 1;
+          if (count === 1)
+            expect(event.values).toEqual({
+              c1: '30300100',
+              c2: '25/8/2022 19:55:00',
+              c3: '25.0',
+              c4: null,
+            });
+          expect(event.index).toBe(count);
+        }
+        if (event.type === 'summary') summary = event;
+      }
+      expect(count).toBe(1048575);
+      expect(summary).toMatchObject({
+        status: 'READY',
+        recordCount: 1048575,
+        featureCount: 0,
+      });
+    },
+    60000,
+  );
+  it('accepts a bounded budget large enough for full spreadsheet row capacity', async () => {
+    expect(
+      (await parse('station\n0001', 'csv', { maximumRecords: 1048576 })).at(-1),
+    ).toMatchObject({ recordCount: 1, status: 'READY' });
+    await expect(
+      parse('station\n0001', 'csv', { maximumRecords: 2000001 }),
+    ).rejects.toMatchObject({ code: 'RECORD_LIMIT' });
+  });
   it('preserves Unicode headers, identifiers, raw units and quoted CSV content with stable row identities', async () => {
     const content =
       '\uFEFF测站编码,水位,备注\n001,12.5,"first, row"\n002,,"two\nlines"\n';
