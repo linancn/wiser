@@ -18,6 +18,8 @@ export async function verifyExplorationTiles(
     analysis: string;
     queryId: string;
     record: string;
+    filteredQueryId: string;
+    filteredRecord: string;
   },
 ) {
   await client.query('reset role');
@@ -46,6 +48,14 @@ export async function verifyExplorationTiles(
     'utf8',
   ).catch(() => '');
   if (boundaryMigration) await client.query(boundaryMigration);
+  const recordMigration = await readFile(
+    new URL(
+      '../../../../infrastructure/data-foundation/postgres/migrations/0016_exploration_record_queries.sql',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  await client.query(recordMigration);
   const tileRole = `wiser_tile_test_${randomUUID().replaceAll('-', '')}`;
   await client.query(`create role ${tileRole} nologin nosuperuser nobypassrls`);
   await client.query(`grant usage on schema service to ${tileRole}`);
@@ -73,6 +83,14 @@ export async function verifyExplorationTiles(
   const layer = new VectorTile(new PbfReader(await tile(params))).layers[
     'exploration'
   ]!;
+  const filteredLayer = new VectorTile(
+    new PbfReader(await tile({ ...params, queryId: scope.filteredQueryId })),
+  ).layers['exploration']!;
+  expect(filteredLayer.length).toBe(1);
+  expect(filteredLayer.feature(0).properties).toMatchObject({
+    recordId: scope.filteredRecord,
+    count: 1,
+  });
   expect(layer.length).toBe(2);
   expect(
     Array.from({ length: layer.length }, (_, i) => layer.feature(i).properties),

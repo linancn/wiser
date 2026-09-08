@@ -149,9 +149,21 @@ export class PostgresExplorationExecutor {
           spec: snapshot.spec,
           createdAt: snapshot.created_at.toISOString(),
           expiresAt: snapshot.expires_at.toISOString(),
-          ...(await (
-            input.view === 'graph' ? queryProvenanceGraph : queryAnalysisView
-          )(client, snapshot.version_refs, queryId, input)),
+          ...(await (input.view === 'graph'
+            ? queryProvenanceGraph(
+                client,
+                snapshot.version_refs,
+                queryId,
+                input,
+                snapshot.spec,
+              )
+            : queryAnalysisView(
+                client,
+                snapshot.version_refs,
+                queryId,
+                input,
+                snapshot.spec,
+              ))),
         });
         if (context.signal.aborted)
           throw new DataCapabilityHandlerError('CAPABILITY_TIMEOUT');
@@ -293,6 +305,28 @@ export class PostgresExplorationExecutor {
             spec.readiness.spatial.includes(facts.spatial))
         );
       });
+    }
+    if (spec.recordQuery) {
+      if (refs.length !== 1 || !refs[0]?.analysisId)
+        throw new DataCapabilityHandlerError('NOT_FOUND');
+      const asset = await client.query(
+        'select columns from service.analysis_asset where analysis_id=$1::uuid and asset_id=$2::uuid',
+        [refs[0].analysisId, spec.recordQuery.assetId],
+      );
+      if (!asset.rows[0]) throw new DataCapabilityHandlerError('NOT_FOUND');
+      const fields = new Set(
+        z
+          .array(z.object({ key: z.string() }))
+          .parse(asset.rows[0]['columns'])
+          .map((column) => column.key),
+      );
+      const requested = [
+        ...spec.recordQuery.filters.map((filter) => filter.field),
+        ...(spec.recordQuery.columns ?? []),
+        ...(spec.recordQuery.sort ? [spec.recordQuery.sort.field] : []),
+      ];
+      if (requested.some((field) => !fields.has(field)))
+        throw new DataCapabilityHandlerError('VALIDATION_FAILED');
     }
     const id = randomUUID();
     await client.query(

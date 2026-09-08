@@ -552,8 +552,8 @@ const expectedJsonSchemaHashes = {
     output: '157a58322075047c67537707e26c0307eb80090d55e7bf3443b704345d9e3d16',
   },
   'data.explore.query': {
-    input: 'a0d0cc79e8ee7b6ea0a1722821e5083efe96effa6c8f9e4a86e5206e31d81c85',
-    output: 'f890ee2ede73bb68e0f8178ec96bd41b28beb4e585c2f433af5349125de0d940',
+    input: '1b63c6299372914790fc26657f3450cfd733631b3efc8085187b244357cc6d89',
+    output: '8cd03199a55c91de493db23ae0225488920ad99b046d805256b6c26bb9826edc',
   },
   'data.catalog.search': {
     input: '9fa0f09f57dc5063f42406cdaefd0e19b0ab8e019a3a4ba9824a3445c24139be',
@@ -1060,6 +1060,16 @@ describe('Data Foundation capability registry', () => {
         DATA_CAPABILITY_ARCHIVE['data.explore.query']![4]!.outputSchema,
       ),
     ).toBe('528740b10bf048d8284e604b5335d6c5b80cd142413e0e8b7d05f729af38da43');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![5]!.inputSchema,
+      ),
+    ).toBe('a0d0cc79e8ee7b6ea0a1722821e5083efe96effa6c8f9e4a86e5206e31d81c85');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![5]!.outputSchema,
+      ),
+    ).toBe('f890ee2ede73bb68e0f8178ec96bd41b28beb4e585c2f433af5349125de0d940');
     const historical = DATA_CAPABILITY_ARCHIVE['data.geo.query'];
     expect(historical).toHaveLength(1);
     const definition = historical?.[0];

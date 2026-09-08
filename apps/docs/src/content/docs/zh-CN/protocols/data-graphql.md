@@ -193,3 +193,5 @@ Query 可按相同 cursor 安全重试。Mutation 只能以相同身份、operat
 查询结果矢量入口为 `GET/HEAD /api/data/v1/geo/tiles/vector/queries/{queryId}/{z}/{x}/{y}.pbf`，额外要求 `data.query.execute` 与 `data.catalog.read`。每次请求均在 RLS 下重新校验当前用户的查询清单及全部固定版本和分析批次，然后才调用 Martin。调用方不得提交查询参数，七项范围值全部来自已验证上下文和路径。响应使用 `exploration` 图层及 `Cache-Control: no-store`；过期、撤权或属于其他用户的查询不会访问上游。现有按版本瓦片保留原路径和图层。
 
 探索契约 1.5 增加可选的地图整体 `spatial.bounds`（WGS84；空结果为 null）及 `mercatorFeatureCount`，由同一授权记录集合计算，不受分页影响。浏览器只请求一条初始记录与范围摘要，定位整个结果范围，再按视口加载同源查询瓦片。点选单要素通过 1.4 的精确记录回查获取详情，点选聚合点继续放大。地图分别标明视口要素／聚合点数与可上图记录总数。追加迁移 `0015_exploration_tile_boundaries.sql` 明确接缝点的唯一瓦片归属，防止重复计数。1.4 契约仍保留在归档中。
+
+探索 1.6 通过同一能力传递严格文件级 `recordQuery`：一个显式版本、经来源字段模式校验的类型化条件、稳定字段排序和列选择。记录、地图瓦片与图谱记录回查共享不可变条件；边界及空值／数值语义见 Data REST。

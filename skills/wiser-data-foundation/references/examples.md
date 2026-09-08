@@ -99,3 +99,35 @@ At `WAITING_REVIEW`, retrieve `data_ingestion_get` and present:
 - before/after transformation diff, limitations, and proposed conditions.
 
 An authorized reviewer uses `data_ingestion_approve` or `data_ingestion_reject` with the current `expectedVersion` and a fresh idempotency key. Never auto-approve from Agent confidence.
+
+## 同一条件下查看记录与地图
+
+先通过资源查询与 `view: "records"` 取得当前版本、文件 `assetId` 和原始 `columns`；字段键不能从其他文件沿用。探索 1.6 可在一个显式版本内建立文件级条件：
+
+```json
+{
+  "spec": {
+    "versions": [{ "dataItemId": "{dataItemId}", "versionId": "{versionId}" }],
+    "recordQuery": {
+      "assetId": "{assetId}",
+      "filters": [
+        {
+          "field": "{numericFieldKey}",
+          "type": "number",
+          "operator": "gte",
+          "value": 0
+        }
+      ],
+      "sort": {
+        "field": "{numericFieldKey}",
+        "type": "number",
+        "direction": "desc"
+      },
+      "columns": ["{identifierFieldKey}", "{numericFieldKey}"]
+    }
+  },
+  "view": "resources"
+}
+```
+
+随后使用返回的 `queryId` 请求 `view: "records"`（带同一 `versionId`）、`view: "map"` 或图谱记录回查。地图瓦片也沿用该查询，不在客户端另做权限或条件过滤。编号使用文本条件以保留前导零；缺失值用 `type: "presence"` 与 `operator: "isNull"` / `"isNotNull"`。排序与筛选不改写原始值，也不表示不同字段或文件的单位可以直接相加。

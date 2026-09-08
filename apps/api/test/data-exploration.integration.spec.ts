@@ -117,6 +117,31 @@ describe('authorized exploration result sets in PostgreSQL', () => {
           ),
         );
         await client.query(
+          await readFile(
+            new URL(
+              '../../../infrastructure/data-foundation/postgres/migrations/0016_exploration_record_queries.sql',
+              import.meta.url,
+            ),
+            'utf8',
+          ),
+        );
+        for (const [value, expected] of [
+          [null, null],
+          ['NaN', null],
+          ['Infinity', null],
+          ['1e9999', null],
+          ['0001', '1'],
+          [' 2.5 ', '2.5'],
+          [0, '0'],
+          [{ value: 2 }, null],
+        ] as const) {
+          const parsed = await client.query<{ value: string | null }>(
+            'select service.exploration_number($1::jsonb)::text value',
+            [JSON.stringify(value)],
+          );
+          expect(parsed.rows[0]?.['value']).toBe(expected);
+        }
+        await client.query(
           `create role ${role} nologin nosuperuser nobypassrls`,
         );
         await client.query(
@@ -390,6 +415,57 @@ describe('authorized exploration result sets in PostgreSQL', () => {
         expect(filteredRecords.records?.[0]?.values).toEqual({
           c1: '00000001',
         });
+        const sortedQuery = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              spec: {
+                versions: [{ dataItemId: item, versionId: version }],
+                recordQuery: {
+                  assetId: asset,
+                  sort: { field: 'c2', type: 'number', direction: 'desc' },
+                },
+              },
+              view: 'resources',
+            },
+            context,
+          ),
+        );
+        const sorted = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              queryId: sortedQuery.queryId,
+              view: 'records',
+              versionId: version,
+              first: 1,
+            },
+            context,
+          ),
+        );
+        expect(sorted.records?.[0]?.recordId).toBe(secondRecord);
+        const sortedNext = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              queryId: sorted.queryId,
+              view: 'records',
+              versionId: version,
+              first: 1,
+              after: sorted.nextCursor,
+            },
+            context,
+          ),
+        );
+        expect(sortedNext.records?.[0]?.recordId).toBe(record);
+        await expect(
+          executor.execute(
+            {
+              queryId: filtered.queryId,
+              view: 'graph',
+              versionId: version,
+              recordId: record,
+            },
+            context,
+          ),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' });
         const filteredMap = ExplorationResultSchema.parse(
           await executor.execute(
             { queryId: filtered.queryId, view: 'map' },
@@ -441,6 +517,8 @@ describe('authorized exploration result sets in PostgreSQL', () => {
           analysis,
           queryId: analyzed.queryId,
           record,
+          filteredQueryId: filtered.queryId,
+          filteredRecord: secondRecord,
         });
         const records = ExplorationResultSchema.parse(
           await executor.execute(
