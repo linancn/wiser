@@ -33,6 +33,44 @@ async function listen(handler: McpHttpRequestHandler): Promise<{
 }
 
 describe('WISER MCP Streamable HTTP boundary', () => {
+  it('advertises OAuth resource metadata and rejects unrelated browser origins', async () => {
+    const authorize = vi.fn(() => Promise.resolve(null));
+    const server = createWiserMcpHttpServer({
+      ready: () => true,
+      authorize,
+      resourceMetadata: {
+        resource: 'https://mcp.example.test/mcp',
+        authorizationServer: 'https://auth.example.test/auth/v1',
+      },
+    });
+    servers.push(server);
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const metadata = await fetch(
+      `${origin}/.well-known/oauth-protected-resource/mcp`,
+    );
+    expect(metadata.status).toBe(200);
+    expect(await metadata.json()).toMatchObject({
+      resource: 'https://mcp.example.test/mcp',
+      authorization_servers: ['https://auth.example.test/auth/v1'],
+      bearer_methods_supported: ['header'],
+      scopes_supported: ['openid'],
+    });
+    const missing = await fetch(`${origin}/mcp`, { method: 'POST' });
+    expect(missing.status).toBe(401);
+    expect(missing.headers.get('www-authenticate')).toBe(
+      'Bearer resource_metadata="https://mcp.example.test/.well-known/oauth-protected-resource/mcp"',
+    );
+    const callCount = authorize.mock.calls.length;
+    const hostile = await fetch(`${origin}/mcp`, {
+      method: 'POST',
+      headers: { Origin: 'https://attacker.example.test' },
+    });
+    expect(hostile.status).toBe(403);
+    expect(authorize.mock.calls).toHaveLength(callCount);
+  });
+
   it('serves non-cacheable live and ready probes', async () => {
     const { origin } = await listen(vi.fn());
 
