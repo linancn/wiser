@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 import {
   AttributionControl,
+  setWorkerUrl,
   LngLatBounds,
   Map as MapLibreMap,
   NavigationControl,
@@ -17,6 +18,8 @@ import type {
 } from '@/lib/data-foundation';
 
 import styles from './data-foundation-map.module.css';
+
+setWorkerUrl('/vendor/maplibre/6.8.0/maplibre-gl-worker.mjs');
 
 function collectBounds(value: unknown, bounds: LngLatBounds): LngLatBounds {
   if (!Array.isArray(value)) return bounds;

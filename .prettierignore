@@ -9,3 +9,5 @@ coverage/
 playwright-report/
 supabase/.temp/
 test-results/
+apps/web/public/vendor/maplibre/
+apps/web/public/basemap/land-110m.geojson

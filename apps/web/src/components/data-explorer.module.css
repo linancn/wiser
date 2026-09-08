@@ -2,7 +2,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   padding-top: 12px;
   padding-bottom: 32px;
 }
@@ -17,6 +17,120 @@
   font-size: 1.5rem;
   line-height: 1.2;
   color: var(--text-strong);
+}
+.heading > div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.viewTabs {
+  display: flex;
+  margin-left: auto;
+  gap: 4px;
+}
+.viewTabs button {
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+.viewTabs button[aria-selected='true'] {
+  background: var(--action-primary-bg);
+  color: var(--action-primary-text);
+  border-color: var(--accent-strong);
+}
+.mapCanvas {
+  position: relative;
+  height: max(460px, calc(100dvh - 310px));
+  min-width: 0;
+}
+.mapCanvas :global(.maplibregl-ctrl-group),
+.mapCanvas :global(.maplibregl-ctrl-attrib) {
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+}
+.mapCanvas :global(.maplibregl-ctrl-attrib) a {
+  color: var(--text-secondary);
+}
+:global([data-theme='dark']) .mapCanvas :global(.maplibregl-ctrl-icon) {
+  filter: invert(1);
+}
+.mapSummary {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  left: 12px;
+  top: 12px;
+  max-width: calc(100% - 70px);
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm);
+  font-size: 0.75rem;
+}
+.mapNotice {
+  position: absolute;
+  bottom: 35px;
+  left: 12px;
+  right: 12px;
+  background: var(--surface-raised);
+  padding: 8px;
+  font-size: 0.8rem;
+}
+.recordToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+}
+.recordToolbar label {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+.recordToolbar select {
+  width: 100%;
+  max-width: 400px;
+  min-height: 40px;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+}
+.results .recordTable {
+  table-layout: auto;
+}
+.results .recordTable th {
+  min-width: 160px;
+  width: auto;
+}
+.results .recordTable th:first-child {
+  min-width: 64px;
+}
+.inspector {
+  max-height: calc(100dvh - 310px);
+  overflow-y: auto;
+}
+@media (max-width: 700px) {
+  .status {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .viewTabs {
+    margin-left: 0;
+  }
+  .viewTabs button {
+    min-height: 44px;
+  }
+  .inspector {
+    max-height: none;
+  }
+  .recordToolbar {
+    flex-wrap: wrap;
+  }
 }
 .heading p {
   margin: 3px 0 0;
@@ -55,8 +169,8 @@
   width: 100%;
 }
 .query button {
-  background: var(--accent-strong);
-  color: var(--text-on-strong);
+  background: var(--action-primary-bg);
+  color: var(--action-primary-text);
   font-weight: 700;
 }
 .explorer button {
@@ -309,5 +423,10 @@
   }
   .results .resource {
     min-height: 44px;
+  }
+  .results .recordTable th:nth-child(n),
+  .results .recordTable td:nth-child(n) {
+    display: table-cell;
+    width: auto;
   }
 }

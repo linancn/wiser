@@ -150,3 +150,5 @@ Playwright 使用用户可感知的 role、label、可见文本或稳定 test id
 - 相关架构、协议或开发文档同步更新，并通过 Docpact 和根目录 `pnpm verify`。
 
 `/[locale]/data-foundation/explore` 工作区与 API 共享严格探索契约。紧凑查询栏、资源表格与选择详情面板将结果区置于页面上方。服务端渲染建立或恢复授权结果集，后续请求经过验证当前 Session 的 Next.js 入口 `/api/data-foundation/explore`。调整筛选建立新版本清单，分页沿用同一 `queryId`。数据名称支持键盘操作，详情显示精确版本、就绪状态及来源限制；未知分析数量不会显示为零。
+
+探索地图按需加载 MapLibre GL JS 6.8.0 与 react-map-gl 8.1.3。`apps/web/scripts/prepare-maplibre.mjs` 在开发和构建前运行，将精确匹配的 Worker 与共享模块复制到同源、带版本号的公共目录；生成的供应商文件不提交 Git。固定版本的公有领域 Natural Earth 1:110m 陆地数据提供本地概览底图，`public/basemap/source.json` 记录源提交和 SHA-256；概览底图不表示具备街道级细节。

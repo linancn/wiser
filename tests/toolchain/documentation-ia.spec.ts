@@ -130,7 +130,9 @@ describe('human documentation entrypoints', () => {
     const webScripts = web.scripts as Record<string, string>;
     const docsScripts = docs.scripts as Record<string, string>;
 
-    expect(webScripts.dev).toBe('next dev --hostname 127.0.0.1 --port 3100');
+    expect(webScripts.dev).toBe(
+      'node scripts/prepare-maplibre.mjs && next dev --hostname 127.0.0.1 --port 3100',
+    );
     expect(docsScripts.dev).toBe('next dev --hostname 127.0.0.1 --port 4321');
   });
 });

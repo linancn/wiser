@@ -142,3 +142,5 @@ Every product UI change verifies:
 - ordinary failures expose no server secret or raw upstream response.
 
 The `/[locale]/data-foundation/explore` workspace shares the strict exploration contracts with the API. A compact query bar, resource table and selection inspector keep the result area near the top of the viewport. Server rendering starts or resumes an authorized result set; subsequent queries pass through the session-verified Next.js endpoint `/api/data-foundation/explore`. Filters start a new version manifest; paging keeps the same `queryId`. Keyboard-operable resource names expose exact versions, readiness and source limitations. Unknown analytical counts remain explicit instead of becoming zero.
+
+Resource readiness precedes analytical inspection. Record views expose original column labels, bounded pages, source filenames and hashes without inferring units. Map selection retains the version and source record in the Inspector. The displayed feature count states how many features are loaded out of the spatial result total.

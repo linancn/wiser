@@ -125,7 +125,7 @@ describe('latest compatible workspace dependencies', () => {
     ['apps/web/package.json', '@supabase/ssr', '0.12.5'],
     ['apps/web/package.json', '@supabase/supabase-js', '2.112.4'],
     ['apps/web/package.json', '@types/react-dom', '19.2.5'],
-    ['apps/web/package.json', 'maplibre-gl', '6.6.0'],
+    ['apps/web/package.json', 'maplibre-gl', '6.8.0'],
     ['apps/web/package.json', 'next', '16.3.3'],
     ['packages/data-infra/package.json', '@aws-sdk/client-s3', '3.1118.0'],
     [

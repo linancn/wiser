@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-09-08
-lastReviewedCommit: 25eee01796818498b02abd32f773c580ffb75f32
+lastReviewedCommit: 1b3ef2faf08601861e2180f10d7693be81d86ab2
 ---
 
 ## 权威边界

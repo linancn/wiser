@@ -4,3 +4,4 @@ playwright-report/
 test-results/
 *.tsbuildinfo
 next-env.d.ts
+public/vendor/maplibre/

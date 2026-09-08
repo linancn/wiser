@@ -27,8 +27,25 @@ test('real NLDI records select the same station on the exploration map', async (
     'true',
   );
   await expect(page.getByTestId('explorer-map')).toHaveAttribute(
+    'data-rendered-feature-count',
+    '1',
+  );
+  await expect(page.getByTestId('explorer-map')).toHaveAttribute(
     'data-selected-record',
     /^[0-9a-f-]{36}$/,
+  );
+  await page.getByRole('button', { name: '关闭详情', exact: true }).click();
+  await expect(page.getByTestId('explorer-map')).toHaveAttribute(
+    'data-rendered-feature-count',
+    '1',
+  );
+  const canvas = page.getByTestId('explorer-map').locator('canvas');
+  const bounds = (await canvas.boundingBox())!;
+  await canvas.click({
+    position: { x: bounds.width / 2, y: bounds.height / 2 },
+  });
+  await expect(page.getByTestId('explorer-inspector')).toContainText(
+    'USGS-01646500',
   );
   await expect(page.getByTestId('explorer-inspector')).toContainText(
     '3c9220e3-a5dc-5254-b134-4cc0f6944108',

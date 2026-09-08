@@ -89,6 +89,21 @@ const zhCN = {
   },
   dataFoundation: {
     explorer: {
+      viewLabel: '结果视图',
+      resourceView: '资源',
+      mapView: '地图',
+      selectRecord: '选择记录',
+      recordDetails: '记录与来源',
+      sourceFile: '来源文件',
+      sourceHash: '来源哈希',
+      noRecords:
+        '当前来源没有可显示的记录。可切换文件，或回到资源查看内容状态。',
+      selectForRecords: '先选择一个资源，再查看其中的记录。',
+      fitMap: '适合范围',
+      shownFeatures: '已显示要素',
+      mapUnavailable: '部分地图内容暂时无法显示，可切换到记录视图继续查看。',
+      loadingView: '正在加载结果…',
+      recordPage: '记录页',
       title: '数据探索',
       description: '查询已发布的数据，检查来源、版本与可用内容。',
       scope: '当前项目 · 按权限显示',
@@ -1110,6 +1125,22 @@ const en: typeof zhCN = {
   },
   dataFoundation: {
     explorer: {
+      viewLabel: 'Result views',
+      resourceView: 'Resources',
+      mapView: 'Map',
+      selectRecord: 'Select record',
+      recordDetails: 'Record and provenance',
+      sourceFile: 'Source file',
+      sourceHash: 'Source hash',
+      noRecords:
+        'This source has no records to display. Choose another file or inspect its resource readiness.',
+      selectForRecords: 'Select a resource to inspect its records.',
+      fitMap: 'Fit bounds',
+      shownFeatures: 'Features shown',
+      mapUnavailable:
+        'Some map content is unavailable. Switch to records to continue exploring.',
+      loadingView: 'Loading results…',
+      recordPage: 'Record page',
       title: 'Data exploration',
       description:
         'Query published data and inspect its sources, versions and available content.',
