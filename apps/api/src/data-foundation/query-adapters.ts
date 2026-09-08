@@ -96,10 +96,10 @@ where fragment.tenant_id = $1::uuid and fragment.project_id = $2::uuid
     select 1
     from jsonb_array_elements($5::jsonb) as filter
     where not case filter ->> 'operator'
-      when 'EQ' then fragment.locator -> 'record' -> (filter ->> 'field') = filter -> 'value'
-      when 'NE' then fragment.locator -> 'record' -> (filter ->> 'field') <> filter -> 'value'
-      when 'IN' then fragment.locator -> 'record' -> (filter ->> 'field') <@ filter -> 'value'
-      when 'CONTAINS' then fragment.locator -> 'record' -> (filter ->> 'field') @> filter -> 'value'
+      when 'EQ' then (fragment.locator -> 'record' -> (filter ->> 'field')) = (filter -> 'value')
+      when 'NE' then (fragment.locator -> 'record' -> (filter ->> 'field')) <> (filter -> 'value')
+      when 'IN' then (fragment.locator -> 'record' -> (filter ->> 'field')) <@ (filter -> 'value')
+      when 'CONTAINS' then (fragment.locator -> 'record' -> (filter ->> 'field')) @> (filter -> 'value')
       when 'GT' then (fragment.locator -> 'record' ->> (filter ->> 'field'))::numeric > (filter ->> 'value')::numeric
       when 'GTE' then (fragment.locator -> 'record' ->> (filter ->> 'field'))::numeric >= (filter ->> 'value')::numeric
       when 'LT' then (fragment.locator -> 'record' ->> (filter ->> 'field'))::numeric < (filter ->> 'value')::numeric

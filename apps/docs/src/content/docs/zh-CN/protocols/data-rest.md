@@ -15,8 +15,8 @@ checkPaths:
   - packages/data-contracts/src/capability/**
   - apps/api/src/data-foundation/**
   - skills/wiser-data-foundation/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: 2b365e92de940ca7b13bdd1720ff452540754222
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: b6dc97b67860a37f5230518743dca84d2cb25fa1
 ---
 
 ## 协议边界
@@ -125,6 +125,8 @@ If-Match: "v3"
 - `data.geo.query`：受支持 GeoJSON geometry、显式 CRS、`INTERSECTS/WITHIN/CONTAINS/NEAREST` 与可选的单数 `versionId`。省略 `versionId` 时，每个有界响应从各 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent。使用返回的、绑定 snapshot/query/scope 的不透明 `nextCursor` 继续；`dataItemIds` 与两种选择均取交集，版本不可见或不存在时返回空结果集；
 - `data.geo.intersect`：接受 Geometry 或 DataItem target；DataItem target 先选择最新/精确的可见已提交 Version，再收集全部 sibling extent，绝不回退旧 Version。target 缺失、不可见、无 extent 或彼此不相交时均返回不可区分的空页，并使用同样的 snapshot/query/scope cursor 继续；
 - federated search：catalog/fulltext/semantic/graph/geo/stac source allowlist。
+
+`data.query` 读取所选已提交版本的结构化证据记录。可见的来源登记版本尚无分析记录时，返回 `200`、精确的 `versionId`、请求的列和 `rows: []`；通过目录、证据检索和受控文件下载查看来源材料。空结果不代表原始文件丢失。JSON 相等与包含筛选比较完整提取的 JSON 操作数；真实 PostgreSQL 集成覆盖全部八种运算符、空记录和安全/策略过滤。
 
 当前 catalog get/version 响应要求 `tileAvailability: { vector, raster }`。它描述受控 source 是否可路由，不表示 GIS 服务健康：vector 要求可见的版本级 extent；raster 要求可见 RAW TIFF/GeoTIFF asset 具备 blob/hash/input 关联和精确内容寻址 key。
 

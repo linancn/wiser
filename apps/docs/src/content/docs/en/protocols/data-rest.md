@@ -15,8 +15,8 @@ checkPaths:
   - packages/data-contracts/src/capability/**
   - apps/api/src/data-foundation/**
   - skills/wiser-data-foundation/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: 2b365e92de940ca7b13bdd1720ff452540754222
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: b6dc97b67860a37f5230518743dca84d2cb25fa1
 ---
 
 ## Protocol boundary
@@ -125,6 +125,8 @@ Structured query accepts only allowlisted fields and operators:
 - `data.geo.query`: supported GeoJSON geometry, explicit CRS, `INTERSECTS/WITHIN/CONTAINS/NEAREST`, and an optional singular `versionId`. Without `versionId`, each bounded response selects extents from every DataItem's latest visible committed version; with it, the response selects extents from that exact immutable version. Continue with the returned snapshot/query/scope-bound opaque `nextCursor`; `dataItemIds` intersects either selection, and a hidden or absent exact version returns an empty result set;
 - `data.geo.intersect`: Geometry or DataItem targets. DataItem targets select latest/exact visible committed Version first, collect all sibling extents, and never fall back to an older Version. Missing, hidden, extent-free, or disjoint targets return an indistinguishable empty page; continuation uses the same snapshot/query/scope-bound cursor;
 - federated search: an allowlist of catalog/fulltext/semantic/graph/geo/stac sources.
+
+`data.query` reads structured evidence records from the selected committed version. A visible source-registration version without analytical records returns `200` with its exact `versionId`, requested columns and `rows: []`. Use catalog, evidence retrieval and governed asset download to inspect its source materials. Empty results do not imply that raw files were lost. JSON equality and containment filters compare complete extracted JSON operands; real PostgreSQL integration covers all eight operators, empty records and security/policy filtering.
 
 Current catalog get/version responses require `tileAvailability: { vector, raster }`. The flags describe a routable governed source, not GIS service health: vector requires a visible version-level extent; raster requires a visible RAW TIFF/GeoTIFF asset with blob/hash/input linkage and an exact content-addressed key.
 
