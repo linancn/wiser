@@ -398,6 +398,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: 3.1118.0
         version: 3.1118.0
+      csv-parse:
+        specifier: 7.0.2
+        version: 7.0.2
       pg:
         specifier: 8.23.0
         version: 8.23.0
@@ -4000,6 +4003,12 @@ packages:
     resolution:
       {
         integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==,
+      }
+
+  csv-parse@7.0.2:
+    resolution:
+      {
+        integrity: sha512-uKZghv9UmPkMVLYy//KZ9HFAIJsl7wkhoEdIL0+rhuSY9pZQlhaeGEDPIe+/w7eh81MOql8Q/9+inAGWG6ZHYA==,
       }
 
   d3-array@3.2.4:
@@ -9354,6 +9363,8 @@ snapshots:
       utrie: 1.0.2
 
   csstype@3.2.3: {}
+
+  csv-parse@7.0.2: {}
 
   d3-array@3.2.4:
     dependencies:

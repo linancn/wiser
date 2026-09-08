@@ -202,3 +202,5 @@ npm 的精确版本由对应 `package.json` 与根 `pnpm-lock.yaml` 定义；Dat
 每次续查都绑定 Actor、Tenant、Project、Purpose、精确授权版本和安全上限。PostgreSQL 强制 RLS 保护清单，各视图还会重新核查引用的数据项及版本是否仍可访问且已发布。授权或发布变化使续查失效，不会静默改变结果集；新发布的版本也不会替换已固定版本。这固定的是版本成员，不是跨投影存储的分布式快照。就绪状态与分析数量独立：只有登记的资源返回 `NOT_PARSED`，未知记录数为 `null`。
 
 Web 的 `/zh-CN/data-foundation/explore` 工作区复用这些契约，通过 Next.js API adapter 使用当前 Supabase Session，提供紧凑资源表格、查询、固定结果集分页与精确版本详情。
+
+`@wiser/data-infra` 的分析解析器核验来源 SHA-256，以流式方式读取严格 CSV，并生成固定版本范围内的稳定记录 ID。源字符串、前导零、中文字段和空值均被保留，字段键与显示名称独立。JSON/GeoJSON 解析保留属性并验证格式声明的 WGS84 几何；普通经纬度属性不能证明 CRS 或几何有效。格式错误、不支持的 CRS 和明确的大小/记录上限返回分类失败。解析不会改变质量、验收、发布、来源完整性或单位。设置 `WISER_DATA_REAL_CASE=1` 的可选测试核对已准入 NLDI 样本哈希和坐标，不提交源内容。
