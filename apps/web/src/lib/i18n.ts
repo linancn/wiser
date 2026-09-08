@@ -27,6 +27,16 @@ export function isLocale(value: string): value is Locale {
 }
 
 const zhCN = {
+  agentSetup: {
+    action: '让智能体接入 WISER',
+    hint: '复制指令，发送给你的 AI 助手，开始连接项目数据。',
+    copied: '已复制接入指令，请发送给你的 AI 助手。',
+    manual: '请复制下方指令，发送给你的 AI 助手。',
+    textLabel: '接入指令',
+    unavailable: '智能体接入暂时不可用，请稍后重试。',
+    promptPrefix:
+      'Fetch and execute the appropriate instructions to set me up for WISER from ',
+  },
   meta: {
     title: 'WISER｜水系统智能平台',
     description: '连接可信水系统数据与智能体演练的一体化工作平台。',
@@ -973,6 +983,17 @@ const zhCN = {
 };
 
 const en: typeof zhCN = {
+  agentSetup: {
+    action: 'Connect your agent to WISER',
+    hint: 'Copy the instructions to your AI assistant to connect your project data.',
+    copied: 'Setup instructions copied. Send them to your AI assistant.',
+    manual: 'Copy the instructions below and send them to your AI assistant.',
+    textLabel: 'Setup instructions',
+    unavailable:
+      'Agent setup is temporarily unavailable. Please try again later.',
+    promptPrefix:
+      'Fetch and execute the appropriate instructions to set me up for WISER from ',
+  },
   meta: {
     title: 'WISER | Water Intelligence Platform',
     description:

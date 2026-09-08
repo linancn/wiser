@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { getDictionary, type Locale } from '@/lib/i18n';
+import { AgentSetup } from './agent-setup';
 
 import styles from './portal-landing.module.css';
 
@@ -52,6 +53,13 @@ export function PortalLanding({ locale }: { readonly locale: Locale }) {
           <p className={styles.eyebrow}>{copy.eyebrow}</p>
           <h1 id="portal-heading">{copy.heading}</h1>
           <p className={styles.lede}>{copy.lede}</p>
+          <AgentSetup
+            copy={getDictionary(locale).agentSetup}
+            setupUrl={
+              process.env['WISER_AGENT_SETUP_URL'] ??
+              'http://127.0.0.1:3101/agent-setup/prompt.md'
+            }
+          />
           <Link className={styles.primaryAction} href={`/${locale}/login`}>
             {copy.signInAction}
             <span aria-hidden="true">→</span>

@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import type { FastifyInstance } from 'fastify';
 
 import { buildApp } from './app.js';
+import { agentSetupFromEnvironment } from './platform/agent-setup.js';
 import { StaticParticipantAuthenticator } from './auth.js';
 import {
   createDataFoundationRuntimeFromEnvironment,
@@ -73,6 +74,7 @@ export function createDefaultApiModules(
   const platformAuth = factories.createPlatformAuthRuntime(environment);
   const data = factories.createDataFoundationRuntime(environment, platformAuth);
   return Object.freeze([
+    agentSetupFromEnvironment(environment),
     ...(platformAuth.module === null ? [] : [platformAuth.module]),
     ...data.modules,
   ]);
@@ -161,6 +163,7 @@ export async function createDefaultApiApp(
       platformAuth,
     );
     registerWiserApiModules(app, data.modules);
+    registerWiserApiModules(app, [agentSetupFromEnvironment(environment)]);
     await app.ready();
     return app;
   } catch (error) {

@@ -93,6 +93,8 @@ See [Platform Auth](/en/architecture/unified-auth/), [Agent EXCON HTTP](/en/prot
 
 ## Environment variables and secrets
 
+Web and Docs use the public `WISER_AGENT_SETUP_URL` for their copyable Agent instructions; its local default is `http://127.0.0.1:3101/agent-setup/prompt.md`. Point it to the deployment's public API and supply it during production Docs builds. The API's `DATA_PUBLIC_API_ORIGIN` controls content-pinned Skill download URLs. See [Agent setup](/en/protocols/agent-setup/) for release verification and the separate authenticated connection.
+
 The Data Foundation Skill's research-bundle helper uses Python 3 with the standard library. Its inventory phase checks package/download manifests, joins registered interfaces to the full source catalog, and accounts for unlisted files without changing the source directory. Run `python3 -B skills/wiser-data-foundation/scripts/water_bundle.py inventory --bundle /absolute/source --out /absolute/output/inventory.json`. This is local preparation; only the unified HTTP API may perform business ingestion. The Skill reference documents credential exclusions, sanitized derivatives, completeness and the opt-in real-case test.
 
 `.env.example` is a variable catalog, not a production-ready configuration. The complete stack writes generated local secrets to ignored `.wiser/local/runtime-secrets.json`. Never commit `.env`, database URLs, S3 keys, Supabase service-role keys, HMAC keys, MCP tokens, or Codex login files.

@@ -26,6 +26,8 @@ lastReviewedCommit: e048ff2ee4cc0f3c5065ca36947094463e3b1841
 
 `apps/docs` is the single Fumadocs site for WISER Platform, Agent EXCON, Data Foundation, and future systems. `apps/docs` 是所有 WISER 系统共用的 Fumadocs 文档站。
 
+首页和文档页提供双语智能体接入复制操作，地址由公开的 `WISER_AGENT_SETUP_URL` 配置；生产预渲染时在构建阶段提供该值。 / Home and document pages provide a bilingual Agent setup copy action configured with the public `WISER_AGENT_SETUP_URL`; supply it during the production prerender build. See [the protocol](./src/content/docs/en/protocols/agent-setup.md) / [接入协议](./src/content/docs/zh-CN/protocols/agent-setup.md).
+
 ## Entrypoints / 入口
 
 - Chinese (default) / 中文（默认）：<http://127.0.0.1:4321/>

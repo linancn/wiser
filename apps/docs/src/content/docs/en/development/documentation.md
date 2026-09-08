@@ -21,8 +21,8 @@ checkPaths:
   - infrastructure/**/README.md
   - apps/docs/src/content/**
   - .docpact/**
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: 2fff614988729e9594f436bce759df08f2cf43d5
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: cee9c51ac26e77bd078edc3af41cfb6ca0de611d
 ---
 
 ## Give each fact one authoritative home

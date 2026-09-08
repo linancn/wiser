@@ -23,6 +23,8 @@ lastReviewedCommit: c4092d9f961841f89cdf9ed383360c41f809bd17
 
 `apps/web` is the shared Next.js product UI for the WISER Portal, Data Foundation, and Agent EXCON. Chinese is the default at the public `/zh-CN` Portal, English uses `/en`, and `/` redirects to `/zh-CN`. / `apps/web` 是 WISER Portal、数据基座与智能体演练场共用的 Next.js 产品界面；Portal 允许匿名了解平台，再引导统一登录。
 
+Portal 提供“让智能体接入 WISER”复制入口，使用公开的 `WISER_AGENT_SETUP_URL`；复制本身不授予访问权限。 / Portal provides “Connect your agent to WISER” through the public `WISER_AGENT_SETUP_URL`; copying grants no access. See [Agent setup](../docs/src/content/docs/en/protocols/agent-setup.md) / [智能体接入](../docs/src/content/docs/zh-CN/protocols/agent-setup.md).
+
 ## Routes / 路由
 
 | System                | Chinese entry            | English entry         |

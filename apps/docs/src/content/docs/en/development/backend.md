@@ -86,6 +86,8 @@ Business modules implement `WiserApiModule`. A module ID must be a unique, dotte
 
 `/health/ready` checks the API's own EXCON services. Data Foundation has a separate `/api/data/v1/health` that reports database, object-store, and Data Worker status. Do not treat one liveness response as proof that every dependency is ready.
 
+The default composition also registers `platform.agent-setup`: `/agent-setup/prompt.md`, its manifest, and content-pinned allowlisted Skill files. This public distribution surface reads only repository-owned release files and never accepts a filesystem path or identity from a caller. See [Agent setup](/en/protocols/agent-setup/) for public-origin configuration and installation/connection verification.
+
 ### Identity and runtime modes
 
 - Supabase Auth is the only human Session authority. The platform resolver also accepts authorized delegated credentials.

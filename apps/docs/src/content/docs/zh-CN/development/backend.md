@@ -86,6 +86,8 @@ Telemetry Ingress ────────► internal OTel Collector
 
 `/health/ready` 验证 API 自身的 EXCON 服务；Data Foundation 另有 `/api/data/v1/health`，会分别反映数据库、对象存储和 Data Worker。不要用一个 liveness 结果代替完整依赖就绪证明。
 
+默认组合还注册 `platform.agent-setup`，提供 `/agent-setup/prompt.md`、发行清单和按内容固定的 Skill 文件。这个公开分发入口只读取仓库自有的允许文件，不接受调用者指定的文件系统路径或身份。公开地址配置、安装及连接验证见[智能体接入](/protocols/agent-setup/)。
+
 ### 身份和运行模式
 
 - Supabase Auth 是人类 Session 的唯一身份源；平台 resolver 同时接受经授权的委托凭据。

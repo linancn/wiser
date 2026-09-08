@@ -112,6 +112,7 @@ services:
     <<: *app
     command: pnpm --filter @wiser/web exec next dev --hostname 0.0.0.0 --port 3000
     environment:
+      WISER_AGENT_SETUP_URL: ${WISER_AGENT_SETUP_URL:-http://127.0.0.1:3101/agent-setup/prompt.md}
       AGENT_EXCON_API_INTERNAL_URL: http://api:3001
       AGENT_EXCON_WEB_DATA_MODE: ${AGENT_EXCON_WEB_DATA_MODE:-live}
       WISER_WEB_OPERATOR_TOKEN: ${WISER_WEB_OPERATOR_TOKEN:-local-demo-operator-token}
@@ -168,6 +169,8 @@ services:
   docs:
     <<: *app
     command: pnpm --filter @wiser/docs exec next dev --hostname 0.0.0.0 --port 4321
+    environment:
+      WISER_AGENT_SETUP_URL: ${WISER_AGENT_SETUP_URL:-http://127.0.0.1:3101/agent-setup/prompt.md}
     ports:
       - 127.0.0.1:4321:4321
     healthcheck:

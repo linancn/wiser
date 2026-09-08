@@ -29,7 +29,7 @@ checkPaths:
   - .docpact/**
   - .github/workflows/**
 lastReviewedAt: 2026-09-08
-lastReviewedCommit: cd004c35cd46719da2abb2bd013800af348eeff3
+lastReviewedCommit: cee9c51ac26e77bd078edc3af41cfb6ca0de611d
 ---
 
 ## Intended use

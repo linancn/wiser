@@ -5,6 +5,29 @@ export const locales = ['zh-CN', 'en'] as const;
 export type DocsLocale = (typeof locales)[number];
 export const defaultLocale: DocsLocale = 'zh-CN';
 
+const agentSetupZh = {
+  action: '让智能体接入 WISER',
+  hint: '复制指令，发送给你的 AI 助手，开始连接项目数据。',
+  copied: '已复制接入指令，请发送给你的 AI 助手。',
+  manual: '请复制下方指令，发送给你的 AI 助手。',
+  textLabel: '接入指令',
+  unavailable: '智能体接入暂时不可用，请稍后重试。',
+  promptPrefix:
+    'Fetch and execute the appropriate instructions to set me up for WISER from ',
+};
+const agentSetupEn: typeof agentSetupZh = {
+  action: 'Connect your agent to WISER',
+  hint: 'Copy the instructions to your AI assistant to connect your project data.',
+  copied: 'Setup instructions copied. Send them to your AI assistant.',
+  manual: 'Copy the instructions below and send them to your AI assistant.',
+  textLabel: 'Setup instructions',
+  unavailable:
+    'Agent setup is temporarily unavailable. Please try again later.',
+  promptPrefix:
+    'Fetch and execute the appropriate instructions to set me up for WISER from ',
+};
+export const agentSetupCopy = { 'zh-CN': agentSetupZh, en: agentSetupEn };
+
 export const i18nConfig = {
   languages: [...locales],
   defaultLanguage: defaultLocale,

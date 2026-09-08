@@ -66,6 +66,8 @@ In Supabase mode, Portal, sign-in, and Auth transport routes are public. Other l
 
 Pages are Server Components by default. Add a Client Component only for browser interaction, browser APIs, or local state. Do not move data access and identity logic into the browser merely because a parent view contains an interaction.
 
+Portal and Docs expose a localized Agent setup copy action backed by the server-configured public `WISER_AGENT_SETUP_URL`. Clipboard denial reveals selectable instructions; success reports only that copying completed. No credential or project data is attached to the prompt. The [Agent setup protocol](/en/protocols/agent-setup/) defines release verification and the separate connection check. Production Docs need the intended URL at build time because their pages are prerendered.
+
 ## Agent EXCON read models
 
 Agent EXCON pages support two explicit data modes:

@@ -27,6 +27,8 @@ WISER 是产品与平台总上下文。Agent EXCON 与 Data Foundation 是平级
 
 组合根接入统一 Supabase Auth、平台身份/委托模块、持久化 EXCON v2 command journal、Data Capability、REST、GraphQL、MCP/Skill、系统 Worker、投影和双语 Web。`pnpm stack:full:up` 在同一平台身份边界下启动默认完整栈并执行 Data smoke；v1 Episode 是显式内存 compatibility，不代表统一平台的持久化路径。
 
+Portal 和 Docs 共用可复制的[智能体接入流程](/protocols/agent-setup/)。API 分发按内容固定的 Skill 发行包与公开协议元数据，这些公开资源不授予身份或数据访问权限；安装后的 Skill 仍通过统一 HTTP/MCP 边界及单独验证的项目上下文工作。
+
 “统一身份”表示同一 Supabase/Platform 权威和授权上下文，不表示所有客户端复用一枚交互式 credential。Data Web 使用用户的 Supabase SSR Session；EXCON live Web 使用服务端 operator credential；MCP transport bearer、EXCON RunAgent credential 与 Data API identity 各自承担不同边界，不能互换。
 
 ## 系统边界

@@ -93,6 +93,8 @@ Data Foundation Web 使用 Supabase SSR Session，完整栈会为 Data smoke 和
 
 ## 环境变量与秘密
 
+Web 与 Docs 通过公开的 `WISER_AGENT_SETUP_URL` 生成可复制的智能体接入指令，本机默认为 `http://127.0.0.1:3101/agent-setup/prompt.md`。部署时指向公开 API，生产 Docs 构建时也需提供。API 的 `DATA_PUBLIC_API_ORIGIN` 控制按内容固定的 Skill 下载地址。发行校验与独立的身份连接见[智能体接入](/protocols/agent-setup/)。
+
 Data Foundation Skill 的研究数据包辅助脚本使用 Python 3 标准库。清点阶段校验包清单和下载清单，将注册入口合并到完整数据源目录，并核对清单外文件，保持来源目录不变。运行 `python3 -B skills/wiser-data-foundation/scripts/water_bundle.py inventory --bundle /absolute/source --out /absolute/output/inventory.json`。这是本机准备步骤；正式入库只能通过统一 HTTP API。Skill 参考文档说明凭据排除、脱敏副本、完整性状态与显式启用的真实案例测试。
 
 `.env.example` 是变量目录，不是可直接用于生产的配置。完整栈会把本机生成的秘密保存在被 Git 忽略的 `.wiser/local/runtime-secrets.json`。不要提交 `.env`、数据库 URL、S3 key、Supabase service-role、HMAC key、MCP token 或 Codex 登录文件。
