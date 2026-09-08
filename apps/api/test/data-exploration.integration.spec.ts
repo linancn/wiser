@@ -144,6 +144,32 @@ describe('authorized exploration result sets in PostgreSQL', () => {
         const executor = new PostgresExplorationExecutor(
           scopedPool(client, role),
         );
+        const missingProvider = ExplorationResultSchema.parse(
+          await executor.execute(
+            { spec: { providers: ['Absent provider'] }, view: 'resources' },
+            context,
+          ),
+        );
+        expect(missingProvider.totalCount).toBe(0);
+        const registered = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              spec: {
+                providers: ['Fixture provider'],
+                kinds: ['CATALOG_ENTRY'],
+                readiness: { records: ['NOT_PARSED'] },
+              },
+              view: 'resources',
+            },
+            context,
+          ),
+        );
+        expect(registered.totalCount).toBe(2);
+        expect(registered.summary).toMatchObject({
+          resourceCount: 2,
+          analyzedResourceCount: 0,
+          records: [{ status: 'NOT_PARSED', count: 2 }],
+        });
         const first = ExplorationResultSchema.parse(
           await executor.execute(
             { spec: { text: 'water' }, view: 'resources', first: 1 },
@@ -310,6 +336,26 @@ describe('authorized exploration result sets in PostgreSQL', () => {
           featureCount: 2,
           analysis: { analysisId: analysis },
           readiness: { records: 'READY', spatial: 'READY' },
+        });
+        const readyOnly = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              spec: {
+                versions: [{ dataItemId: item, versionId: version }],
+                readiness: { records: ['READY'], spatial: ['READY'] },
+              },
+              view: 'resources',
+            },
+            context,
+          ),
+        );
+        expect(readyOnly.totalCount).toBe(1);
+        expect(readyOnly.resources[0]?.versionId).toBe(version);
+        expect(readyOnly.summary).toMatchObject({
+          resourceCount: 1,
+          analyzedResourceCount: 1,
+          indexedRecordCount: 2,
+          indexedFeatureCount: 2,
         });
         const records = ExplorationResultSchema.parse(
           await executor.execute(

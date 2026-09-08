@@ -73,6 +73,9 @@ importers:
       '@wiser/data-contracts':
         specifier: workspace:*
         version: link:../../packages/data-contracts
+      '@wiser/data-core':
+        specifier: workspace:*
+        version: link:../../packages/data-core
       '@wiser/data-infra':
         specifier: workspace:*
         version: link:../../packages/data-infra

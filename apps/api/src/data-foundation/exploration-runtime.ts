@@ -1,3 +1,7 @@
+import {
+  loadExplorationReadiness,
+  explorationReadinessSummary,
+} from './exploration-readiness.js';
 import { queryProvenanceGraph } from './exploration-graph.js';
 import { randomUUID } from 'node:crypto';
 import { queryAnalysisView } from './exploration-views.js';
@@ -25,7 +29,7 @@ select item.data_item_id, version.version_id,
   (select analysis.analysis_id from service.analysis_run analysis where analysis.version_id=version.version_id and analysis.completed_at is not null order by analysis.completed_at desc,analysis.analysis_id desc limit 1) analysis_id
 from catalog.data_item item
 join lateral (
-  select v.version_id, v.quality_grade from catalog.data_item_version v
+  select v.version_id, v.quality_grade, v.asset_manifest from catalog.data_item_version v
   where v.tenant_id=item.tenant_id and v.project_id=item.project_id and v.data_item_id=item.data_item_id
     and v.publication_status='PUBLISHED' and v.acceptance_status in ('PASSED','CONDITIONALLY_PASSED')
     and ($5::jsonb is null or exists (select 1 from jsonb_array_elements($5) ref
@@ -37,6 +41,8 @@ where item.publication_status='PUBLISHED' and item.acceptance_status in ('PASSED
   and ($2::uuid[] is null or item.data_item_id=any($2))
   and ($3::text[] is null or item.business_domains && $3)
   and ($4::text[] is null or version.quality_grade=any($4))
+  and ($6::text[] is null or coalesce(version.asset_manifest->'sourceRegistration'->>'providerName',item.source_organization)=any($6))
+  and ($7::text[] is null or coalesce(version.asset_manifest->'sourceRegistration'->>'kind','DATASET')=any($7))
 order by item.name collate "C", item.data_item_id, version.version_id
 limit 10001`;
 const AUTHORIZED = `with authorized as (
@@ -171,6 +177,10 @@ export class PostgresExplorationExecutor {
         start,
         input.first + 1,
       ]);
+      const readiness = await loadExplorationReadiness(
+        client,
+        snapshot.version_refs,
+      );
       const resources = page.rows.slice(0, input.first).map((row) => {
         const manifest = z
           .record(z.string(), z.unknown())
@@ -182,30 +192,10 @@ export class PostgresExplorationExecutor {
             limitations: z.array(z.string()).optional(),
           })
           .parse(manifest['sourceRegistration'] ?? {});
-        const records = z
-          .number()
-          .int()
-          .nonnegative()
-          .parse(row['record_count']);
-        const features = z
-          .number()
-          .int()
-          .nonnegative()
-          .parse(row['feature_count']);
         const analyzed = typeof row['analysis_id'] === 'string';
-        const parsedRecords =
-          analyzed && row['analysis_record_count'] !== null
-            ? z.number().int().nonnegative().parse(row['analysis_record_count'])
-            : null;
-        const parsedFeatures =
-          analyzed && row['analysis_feature_count'] !== null
-            ? z
-                .number()
-                .int()
-                .nonnegative()
-                .parse(row['analysis_feature_count'])
-            : null;
-        const partial = row['analysis_status'] === 'PARTIAL';
+        const availability = readiness.get(z.uuid().parse(row['version_id']));
+        if (availability === undefined)
+          throw new DataCapabilityHandlerError('EXECUTION_FAILED');
         return ExplorationResourceSchema.parse({
           dataItemId: row['data_item_id'],
           versionId: row['version_id'],
@@ -213,12 +203,8 @@ export class PostgresExplorationExecutor {
           provider: source.providerName ?? row['source_organization'],
           kind: source.kind ?? 'DATASET',
           assetCount: row['asset_count'],
-          recordCount: analyzed ? parsedRecords : records > 0 ? records : null,
-          featureCount: analyzed
-            ? parsedFeatures
-            : features > 0
-              ? features
-              : null,
+          recordCount: availability.recordCount,
+          featureCount: availability.featureCount,
           ...(analyzed
             ? {
                 analysis: {
@@ -228,24 +214,8 @@ export class PostgresExplorationExecutor {
               }
             : {}),
           readiness: {
-            records: analyzed
-              ? parsedRecords === null
-                ? 'UNSUPPORTED'
-                : partial
-                  ? 'PARTIAL'
-                  : 'READY'
-              : records > 0
-                ? 'READY'
-                : 'NOT_PARSED',
-            spatial: analyzed
-              ? !parsedFeatures
-                ? 'UNSUPPORTED'
-                : partial
-                  ? 'PARTIAL'
-                  : 'READY'
-              : features > 0
-                ? 'READY'
-                : 'NOT_PARSED',
+            records: availability.records,
+            spatial: availability.spatial,
             graph: row['graph_ready'] === true ? 'READY' : 'NOT_PARSED',
           },
           limitations: source.limitations ?? [],
@@ -257,6 +227,7 @@ export class PostgresExplorationExecutor {
         createdAt: snapshot.created_at.toISOString(),
         expiresAt: snapshot.expires_at.toISOString(),
         view: 'resources',
+        summary: explorationReadinessSummary(snapshot.version_refs, readiness),
         totalCount: snapshot.version_refs.length,
         resources,
         ...(page.rows.length > input.first
@@ -309,16 +280,31 @@ export class PostgresExplorationExecutor {
       spec.businessDomains ?? null,
       spec.qualityGrades ?? null,
       spec.versions === undefined ? null : JSON.stringify(spec.versions),
+      spec.providers ?? null,
+      spec.kinds ?? null,
     ]);
     if (matched.rows.length > 10000)
       throw new DataCapabilityHandlerError('VALIDATION_FAILED');
-    const refs = matched.rows.map((row) =>
+    let refs = matched.rows.map((row) =>
       StoredRef.parse({
         dataItemId: row['data_item_id'],
         versionId: row['version_id'],
         analysisId: row['analysis_id'] ?? null,
       }),
     );
+    if (spec.readiness !== undefined) {
+      const readiness = await loadExplorationReadiness(client, refs);
+      refs = refs.filter((ref) => {
+        const facts = readiness.get(ref.versionId);
+        return (
+          facts !== undefined &&
+          (spec.readiness?.records === undefined ||
+            spec.readiness.records.includes(facts.records)) &&
+          (spec.readiness?.spatial === undefined ||
+            spec.readiness.spatial.includes(facts.spatial))
+        );
+      });
+    }
     const id = randomUUID();
     await client.query(
       `insert into service.exploration_snapshot(query_id,tenant_id,project_id,actor_id,purpose,security_level,policy_version,spec,version_refs,created_at,expires_at) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,statement_timestamp(),statement_timestamp()+interval '30 minutes')`,

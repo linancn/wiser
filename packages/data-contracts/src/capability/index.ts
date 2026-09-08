@@ -7,9 +7,11 @@ import {
   ExplorationQueryInputSchema,
   ExplorationQueryInputV1Schema,
   ExplorationQueryInputV11Schema,
+  ExplorationQueryInputV12Schema,
   ExplorationResultSchema,
   ExplorationResultV1Schema,
   ExplorationResultV11Schema,
+  ExplorationResultV12Schema,
 } from '../exploration/index.ts';
 
 import {
@@ -885,7 +887,7 @@ const capabilityRegistry = {
   }),
   'data.explore.query': defineCapability({
     id: 'data.explore.query',
-    version: '1.2.0',
+    version: '1.3.0',
     kind: 'query',
     inputSchema: ExplorationQueryInputSchema,
     outputSchema: ExplorationResultSchema,
@@ -944,6 +946,12 @@ const capabilityArchive = {
       version: '1.1.0',
       inputSchema: ExplorationQueryInputV11Schema,
       outputSchema: ExplorationResultV11Schema,
+    }),
+    defineCapability({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.2.0',
+      inputSchema: ExplorationQueryInputV12Schema,
+      outputSchema: ExplorationResultV12Schema,
     }),
   ]),
   'data.catalog.search': Object.freeze([

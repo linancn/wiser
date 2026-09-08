@@ -9,6 +9,35 @@ test.skip(
   'Requires the admitted private water research case.',
 );
 
+test('real query readiness filters agree with the complete result summary', async ({
+  page,
+}) => {
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  await expect(page.getByTestId('explorer-readiness-summary')).toContainText(
+    '1',
+  );
+  await page.getByText('更多筛选', { exact: true }).click();
+  await page
+    .getByRole('combobox', { name: '空间就绪状态', exact: true })
+    .selectOption('NO_SPATIAL_DATA');
+  await page.getByRole('button', { name: '查询', exact: true }).click();
+  await expect(page.getByTestId('explorer-total')).toContainText('0');
+  await page
+    .getByRole('combobox', { name: '空间就绪状态', exact: true })
+    .selectOption('READY');
+  await page.getByRole('button', { name: '查询', exact: true }).click();
+  await expect(page.getByTestId('explorer-total')).toContainText('1');
+  await expect(page.getByTestId('explorer-readiness-summary')).toContainText(
+    '已检查来源',
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
 test('real Shapefile group retains attributes and unknown CRS without fabricated map features', async ({
   page,
 }) => {
@@ -181,7 +210,9 @@ test('exploration queries real resources and preserves version selection across 
   await expect(page.getByTestId('explorer-inspector')).toContainText(
     '710c54dd-26d5-54e8-a6aa-a0597ca147a8',
   );
-  await expect(page.getByTestId('explorer-inspector')).toContainText('待解析');
+  await expect(page.getByTestId('explorer-inspector')).toContainText(
+    '仅有来源登记',
+  );
   await expect(
     page
       .getByTestId('explorer-inspector')

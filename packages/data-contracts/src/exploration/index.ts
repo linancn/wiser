@@ -1,361 +1,97 @@
 import { z } from 'zod';
-import { PlatformUuidSchema } from '@wiser/platform-contracts';
 import {
-  DataKeySchema,
-  OffsetDateTimeSchema,
-  PageRequestFields,
-} from '../common.ts';
-import { QualityGradeSchema } from '../catalog/index.ts';
+  QuerySpecV1Schema,
+  ExplorationReadinessV1Schema,
+  ExplorationResourceV12Schema,
+  ExplorationQueryInputV12Schema,
+  ExplorationResultV12Schema,
+} from './legacy.ts';
+export * from './legacy.ts';
 
-export const ExplorationVersionRefSchema = z.strictObject({
-  dataItemId: PlatformUuidSchema,
-  versionId: PlatformUuidSchema,
-});
-
-/** Declarative criteria only; authorization always comes from the verified caller. */
-export const QuerySpecSchema = z.strictObject({
-  text: z.string().trim().min(1).max(512).optional(),
-  dataItemIds: z
-    .array(PlatformUuidSchema)
-    .min(1)
-    .max(256)
-    .refine((ids) => new Set(ids).size === ids.length, 'Duplicate data item')
-    .optional(),
-  versions: z
-    .array(ExplorationVersionRefSchema)
-    .min(1)
-    .max(256)
-    .refine(
-      (refs) =>
-        new Set(refs.map((ref) => `${ref.dataItemId}:${ref.versionId}`))
-          .size === refs.length,
-      'Duplicate version',
-    )
-    .optional(),
-  businessDomains: z.array(DataKeySchema).min(1).max(64).optional(),
-  qualityGrades: z.array(QualityGradeSchema).min(1).max(3).optional(),
-});
-
-export const ExplorationQueryInputV1Schema = z
-  .strictObject({
-    spec: QuerySpecSchema.optional(),
-    queryId: PlatformUuidSchema.optional(),
-    view: z.literal('resources'),
-    ...PageRequestFields,
-  })
-  .refine(
-    (input) => (input.spec === undefined) !== (input.queryId === undefined),
-    'Supply a query specification or an existing result set',
-  )
-  .refine(
-    (input) => input.after === undefined || input.queryId !== undefined,
-    'Continuation requires a result set',
-  );
-
-export const ExplorationQueryInputV11Schema = z
-  .strictObject({
-    ...ExplorationQueryInputV1Schema.shape,
-    view: z.enum(['resources', 'records', 'map']),
-    versionId: PlatformUuidSchema.optional(),
-    assetId: PlatformUuidSchema.optional(),
-    bbox: z
-      .tuple([
-        z.number().min(-180).max(180),
-        z.number().min(-90).max(90),
-        z.number().min(-180).max(180),
-        z.number().min(-90).max(90),
-      ])
-      .refine(([west, south, east, north]) => west <= east && south <= north)
-      .optional(),
-  })
-  .refine(
-    (input) => (input.spec === undefined) !== (input.queryId === undefined),
-    'Supply a query specification or an existing result set',
-  )
-  .refine(
-    (input) => input.after === undefined || input.queryId !== undefined,
-    'Continuation requires a result set',
-  )
-  .superRefine((input, context) => {
-    if (input.view !== 'resources' && input.queryId === undefined)
-      context.addIssue({
-        code: 'custom',
-        message: 'Analytical views require an existing result set',
-      });
-    if (input.view === 'records' && input.versionId === undefined)
-      context.addIssue({
-        code: 'custom',
-        message: 'Record views require a selected version',
-      });
-    if (
-      (input.view === 'resources' &&
-        (input.versionId !== undefined || input.assetId !== undefined)) ||
-      (input.view !== 'map' && input.bbox !== undefined)
-    )
-      context.addIssue({
-        code: 'custom',
-        message: 'View options do not apply to the selected view',
-      });
-  });
-
-export const ExplorationQueryInputSchema = z
-  .strictObject({
-    ...ExplorationQueryInputV1Schema.shape,
-    view: z.enum(['resources', 'records', 'map', 'graph']),
-    versionId: PlatformUuidSchema.optional(),
-    assetId: PlatformUuidSchema.optional(),
-    recordId: PlatformUuidSchema.optional(),
-    bbox: z
-      .tuple([
-        z.number().min(-180).max(180),
-        z.number().min(-90).max(90),
-        z.number().min(-180).max(180),
-        z.number().min(-90).max(90),
-      ])
-      .refine(([west, south, east, north]) => west <= east && south <= north)
-      .optional(),
-  })
-  .refine(
-    (input) => (input.spec === undefined) !== (input.queryId === undefined),
-    'Supply a query specification or an existing result set',
-  )
-  .refine(
-    (input) => input.after === undefined || input.queryId !== undefined,
-    'Continuation requires a result set',
-  )
-  .superRefine((input, context) => {
-    if (input.view !== 'resources' && input.queryId === undefined)
-      context.addIssue({
-        code: 'custom',
-        message: 'Analytical views require an existing result set',
-      });
-    if (
-      input.recordId !== undefined &&
-      (input.view !== 'graph' || input.versionId === undefined)
-    )
-      context.addIssue({
-        code: 'custom',
-        message: 'Record graph focus requires a selected version',
-      });
-    if (input.view === 'records' && input.versionId === undefined)
-      context.addIssue({
-        code: 'custom',
-        message: 'Record views require a selected version',
-      });
-    if (
-      (input.view === 'resources' &&
-        (input.versionId !== undefined || input.assetId !== undefined)) ||
-      (input.view !== 'map' && input.bbox !== undefined)
-    )
-      context.addIssue({
-        code: 'custom',
-        message: 'View options do not apply to the selected view',
-      });
-  });
-
-const CountSchema = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 export const ExplorationReadinessSchema = z.enum([
-  'NOT_PARSED',
-  'READY',
-  'PARTIAL',
-  'UNSUPPORTED',
-  'INVALID',
-  'RESTRICTED',
+  ...ExplorationReadinessV1Schema.options,
+  'METADATA_ONLY',
+  'EMPTY',
+  'NO_SPATIAL_DATA',
+  'CRS_UNVERIFIED',
 ]);
-export const ExplorationResourceV1Schema = z.strictObject({
-  dataItemId: PlatformUuidSchema,
-  versionId: PlatformUuidSchema,
-  name: z.string().min(1).max(2048),
-  provider: z.string().max(2048),
-  kind: z.string().min(1).max(128),
-  assetCount: CountSchema,
+export const QuerySpecSchema = QuerySpecV1Schema.extend({
+  providers: z
+    .array(z.string().trim().min(1).max(2048))
+    .min(1)
+    .max(64)
+    .optional(),
+  kinds: z
+    .array(
+      z.enum([
+        'PROVIDER',
+        'DATASET_INTERFACE',
+        'CATALOG_ENTRY',
+        'FILE_COLLECTION',
+        'DATASET',
+      ]),
+    )
+    .min(1)
+    .max(5)
+    .optional(),
+  readiness: z
+    .strictObject({
+      records: z.array(ExplorationReadinessSchema).min(1).max(10).optional(),
+      spatial: z.array(ExplorationReadinessSchema).min(1).max(10).optional(),
+    })
+    .optional(),
+});
+export const ExplorationResourceSchema = ExplorationResourceV12Schema.extend({
   readiness: z.strictObject({
     records: ExplorationReadinessSchema,
     spatial: ExplorationReadinessSchema,
     graph: ExplorationReadinessSchema,
   }),
-  recordCount: CountSchema.nullable(),
-  featureCount: CountSchema.nullable(),
-  limitations: z.array(z.string().max(2048)).max(64),
 });
-
-export const ExplorationResultV1Schema = z
+export const ExplorationQueryInputSchema = z
   .strictObject({
-    queryId: PlatformUuidSchema,
-    spec: QuerySpecSchema,
-    createdAt: OffsetDateTimeSchema,
-    expiresAt: OffsetDateTimeSchema,
-    view: z.literal('resources'),
-    totalCount: CountSchema,
-    resources: z.array(ExplorationResourceV1Schema).max(200),
-    nextCursor: PageRequestFields.after,
+    ...ExplorationQueryInputV12Schema.shape,
+    spec: QuerySpecSchema.optional(),
   })
-  .refine(
-    (result) => Date.parse(result.expiresAt) > Date.parse(result.createdAt),
-    'Result set must have a positive lifetime',
-  );
-
-export const ExplorationAnalysisAssetSchema = z.strictObject({
-  assetId: PlatformUuidSchema,
-  sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
-  status: z.enum([
-    'READY',
-    'EMPTY',
-    'PARTIAL',
-    'UNSUPPORTED',
-    'INVALID',
-    'RESTRICTED',
-    'MANIFEST',
-  ]),
-  recordCount: CountSchema.nullable(),
-  featureCount: CountSchema.nullable(),
-  reason: z.string().nullable(),
-  columns: z
-    .array(
-      z.strictObject({
-        key: z.string().min(1).max(128),
-        label: z.string().min(1).max(512),
-      }),
-    )
-    .max(256),
-  paths: z.array(z.string().max(1024)).max(1000),
-});
-export const ExplorationResourceSchema = ExplorationResourceV1Schema.extend({
-  analysis: z
-    .strictObject({
-      analysisId: PlatformUuidSchema,
-      status: z.enum(['READY', 'PARTIAL']),
-    })
-    .optional(),
-});
-export const ExplorationRecordSchema = z.strictObject({
-  recordId: PlatformUuidSchema,
-  featureId: PlatformUuidSchema.nullable(),
-  dataItemId: PlatformUuidSchema,
-  versionId: PlatformUuidSchema,
-  analysisId: PlatformUuidSchema,
-  assetId: PlatformUuidSchema,
-  sourceId: z.string().nullable(),
-  index: CountSchema,
-  values: z.record(z.string(), z.json()),
-});
-export const ExplorationMapFeatureSchema = z.strictObject({
-  type: z.literal('Feature'),
-  id: PlatformUuidSchema,
-  geometry: z.record(z.string(), z.json()),
-  properties: ExplorationRecordSchema,
-});
-export const ExplorationResultV11Schema = z
-  .strictObject({
-    ...ExplorationResultV1Schema.shape,
-    view: z.enum(['resources', 'records', 'map']),
-    resources: z.array(ExplorationResourceSchema).max(200),
-    assets: z.array(ExplorationAnalysisAssetSchema).max(1000).optional(),
-    records: z.array(ExplorationRecordSchema).max(200).optional(),
-    features: z.array(ExplorationMapFeatureSchema).max(200).optional(),
-    selectedAssetId: PlatformUuidSchema.optional(),
-    coverage: z
-      .strictObject({
-        resourceCount: CountSchema,
-        analyzedResourceCount: CountSchema,
-        indexedRecordCount: CountSchema,
-        indexedFeatureCount: CountSchema,
-      })
-      .optional(),
-  })
-  .refine(
-    (result) => Date.parse(result.expiresAt) > Date.parse(result.createdAt),
-    'Result set must have a positive lifetime',
-  )
-  .superRefine((result, context) => {
-    if (
-      result.view === 'records' &&
-      (result.records === undefined || result.assets === undefined)
-    )
-      context.addIssue({
-        code: 'custom',
-        message: 'Record results require rows and source schemas',
-      });
-    if (result.view === 'map' && result.features === undefined)
-      context.addIssue({
-        code: 'custom',
-        message: 'Map results require features',
-      });
+  .superRefine((input, context) => {
+    const legacy = ExplorationQueryInputV12Schema.safeParse({
+      ...input,
+      ...(input.spec === undefined ? {} : { spec: {} }),
+    });
+    if (!legacy.success)
+      for (const issue of legacy.error.issues)
+        context.addIssue({
+          code: 'custom',
+          path: issue.path,
+          message: issue.message,
+        });
   });
-
-export const ExplorationGraphNodeSchema = z.strictObject({
-  id: z.string().min(1).max(256),
-  kind: z.enum([
-    'RESOURCE',
-    'VERSION',
-    'ASSET',
-    'RECORD',
-    'ENTITY',
-    'EVIDENCE',
-  ]),
-  label: z.string().min(1).max(2048),
-  dataItemId: PlatformUuidSchema,
-  versionId: PlatformUuidSchema,
-  assetId: PlatformUuidSchema.optional(),
-  evidenceId: PlatformUuidSchema.optional(),
-  sourceHash: z
-    .string()
-    .regex(/^[a-f0-9]{64}$/)
-    .optional(),
-  record: ExplorationRecordSchema.optional(),
+const Count = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
+export const ExplorationSummarySchema = z.strictObject({
+  resourceCount: Count,
+  analyzedResourceCount: Count,
+  indexedRecordCount: Count,
+  indexedFeatureCount: Count,
+  records: z
+    .array(z.strictObject({ status: ExplorationReadinessSchema, count: Count }))
+    .max(10),
+  spatial: z
+    .array(z.strictObject({ status: ExplorationReadinessSchema, count: Count }))
+    .max(10),
 });
-export const ExplorationGraphSchema = z
-  .strictObject({
-    nodes: z.array(ExplorationGraphNodeSchema).max(1000),
-    edges: z
-      .array(
-        z.strictObject({
-          id: z.string().min(1).max(768),
-          source: z.string().min(1).max(256),
-          target: z.string().min(1).max(256),
-          relation: z.string().min(1).max(128),
-        }),
-      )
-      .max(2000),
-    truncated: z.boolean(),
-  })
-  .superRefine((graph, context) => {
-    const ids = new Set(graph.nodes.map((node) => node.id));
-    if (
-      ids.size !== graph.nodes.length ||
-      new Set(graph.edges.map((edge) => edge.id)).size !== graph.edges.length ||
-      graph.edges.some((edge) => !ids.has(edge.source) || !ids.has(edge.target))
-    )
-      context.addIssue({
-        code: 'custom',
-        message: 'Graph identities and edge endpoints must be consistent',
-      });
-  });
-
 export const ExplorationResultSchema = z
   .strictObject({
-    ...ExplorationResultV1Schema.shape,
-    view: z.enum(['resources', 'records', 'map', 'graph']),
+    ...ExplorationResultV12Schema.shape,
+    spec: QuerySpecSchema,
     resources: z.array(ExplorationResourceSchema).max(200),
-    assets: z.array(ExplorationAnalysisAssetSchema).max(1000).optional(),
-    records: z.array(ExplorationRecordSchema).max(200).optional(),
-    features: z.array(ExplorationMapFeatureSchema).max(200).optional(),
-    graph: ExplorationGraphSchema.optional(),
-    selectedAssetId: PlatformUuidSchema.optional(),
-    coverage: z
-      .strictObject({
-        resourceCount: CountSchema,
-        analyzedResourceCount: CountSchema,
-        indexedRecordCount: CountSchema,
-        indexedFeatureCount: CountSchema,
-      })
-      .optional(),
+    summary: ExplorationSummarySchema.optional(),
   })
-  .refine(
-    (result) => Date.parse(result.expiresAt) > Date.parse(result.createdAt),
-    'Result set must have a positive lifetime',
-  )
   .superRefine((result, context) => {
+    if (Date.parse(result.expiresAt) <= Date.parse(result.createdAt))
+      context.addIssue({
+        code: 'custom',
+        message: 'Result set must have a positive lifetime',
+      });
     if (result.view === 'graph' && result.graph === undefined)
       context.addIssue({
         code: 'custom',
@@ -375,15 +111,9 @@ export const ExplorationResultSchema = z
         message: 'Map results require features',
       });
   });
-
 export type QuerySpec = z.infer<typeof QuerySpecSchema>;
+export type ExplorationReadiness = z.infer<typeof ExplorationReadinessSchema>;
 export type ExplorationQueryInput = z.infer<typeof ExplorationQueryInputSchema>;
 export type ExplorationResult = z.infer<typeof ExplorationResultSchema>;
 export type ExplorationResource = z.infer<typeof ExplorationResourceSchema>;
-export type ExplorationRecord = z.infer<typeof ExplorationRecordSchema>;
-export type ExplorationAnalysisAsset = z.infer<
-  typeof ExplorationAnalysisAssetSchema
->;
-
-export type ExplorationGraphNode = z.infer<typeof ExplorationGraphNodeSchema>;
-export type ExplorationGraph = z.infer<typeof ExplorationGraphSchema>;
+export type ExplorationSummary = z.infer<typeof ExplorationSummarySchema>;

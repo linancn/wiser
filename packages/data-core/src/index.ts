@@ -5,3 +5,4 @@ export * from './ports/index.js';
 export * from './publication/index.js';
 export * from './quality/index.js';
 export * from './security/index.js';
+export * from './exploration-readiness.js';

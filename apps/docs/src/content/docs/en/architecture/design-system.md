@@ -109,3 +109,5 @@ The `/[locale]/data-foundation/explore` workspace shares the strict exploration 
 The exploration workspace shares a query bar and a single Inspector across resource, record and map tabs. Tabs support arrow/Home/End keys. Selection uses the same record identity across views, clears on a new result set, and ignores stale query events. Map layers use semantic theme colors; tables scroll inside their panel.
 
 The shared Inspector also accepts typed graph nodes. The G6 provenance view uses a bounded hierarchical layout and keyboard-operable node list; a focused record retains its identity when switching to the map or table. Node inspection keeps the graph entry focus stable, while an explicit overview action returns to the query-wide graph.
+
+Exploration keeps provider, registration-type and readiness controls in an expandable filter area. A compact coverage disclosure summarizes the whole result set, with text labels for content and spatial states. Completed assessment is distinct from indexed content; the summary never substitutes the current page size for the result total.

@@ -484,3 +484,88 @@
   border-color: var(--accent);
   background: var(--accent-soft);
 }
+
+.filters {
+  min-width: 0;
+}
+.filters summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  min-height: 44px;
+}
+.filters[open] {
+  flex-basis: 100%;
+  order: 2;
+}
+.filterFields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px 0;
+}
+.filterFields label {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  font-size: 0.875rem;
+}
+.filterFields input,
+.filterFields select {
+  min-width: 0;
+  width: 100%;
+}
+.query {
+  flex-wrap: wrap;
+}
+.coverage {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  padding: 4px 0;
+}
+.coverage summary {
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.coverageStates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 8px 12px;
+  background: var(--surface-raised);
+  border-radius: 8px;
+}
+.coverageStates ul {
+  margin: 4px 0;
+  padding-left: 16px;
+}
+@media (max-width: 700px) {
+  .filterFields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 420px) {
+  .filterFields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.coverage {
+  min-width: 0;
+  flex: 1;
+}
+.coverage[open] {
+  flex-basis: 100%;
+  order: 2;
+}
+.status {
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+@media (max-width: 700px) {
+  .coverage {
+    flex-basis: 100%;
+    order: 2;
+  }
+}

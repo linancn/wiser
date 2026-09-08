@@ -109,8 +109,13 @@ export async function queryAnalysisView(
     input.bbox ?? null,
   ];
   const totalCount = COUNT.parse(
-    (await client.query(`select count(*)::text total ${RECORDS}`, params))
-      .rows[0]?.['total'],
+    (input.view === 'records'
+      ? await client.query(
+          'select count(*)::text total from catalog.analysis_record where analysis_id=$1::uuid and asset_id=$2::uuid',
+          [ref?.analysisId ?? null, selectedAssetId ?? null],
+        )
+      : await client.query(`select count(*)::text total ${RECORDS}`, params)
+    ).rows[0]?.['total'],
   );
   if (offset > totalCount)
     throw new DataCapabilityHandlerError('VALIDATION_FAILED');

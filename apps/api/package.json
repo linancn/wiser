@@ -26,6 +26,7 @@
     "@fastify/swagger": "9.8.1",
     "@supabase/supabase-js": "2.112.4",
     "@wiser/data-contracts": "workspace:*",
+    "@wiser/data-core": "workspace:*",
     "@wiser/data-infra": "workspace:*",
     "@wiser/platform-auth": "workspace:*",
     "@wiser/platform-contracts": "workspace:*",

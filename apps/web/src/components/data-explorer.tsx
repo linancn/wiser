@@ -12,6 +12,8 @@ import {
 } from 'react';
 import {
   ExplorationResultSchema,
+  ExplorationReadinessSchema,
+  type ExplorationReadiness,
   type ExplorationResult,
   type ExplorationResource,
   type ExplorationRecord,
@@ -44,6 +46,16 @@ export function DataExplorer({
   const [quality, setQuality] = useState(
     initialResult?.spec.qualityGrades?.[0] ?? '',
   );
+  const [provider, setProvider] = useState(
+    initialResult?.spec.providers?.[0] ?? '',
+  );
+  const [kind, setKind] = useState(initialResult?.spec.kinds?.[0] ?? '');
+  const [recordReadiness, setRecordReadiness] = useState<
+    ExplorationReadiness | ''
+  >(initialResult?.spec.readiness?.records?.[0] ?? '');
+  const [spatialReadiness, setSpatialReadiness] = useState<
+    ExplorationReadiness | ''
+  >(initialResult?.spec.readiness?.spatial?.[0] ?? '');
   const [selection, dispatch] = useReducer(explorationSelectionReducer, {
     queryId: initialResult?.queryId ?? null,
     resource: null,
@@ -190,6 +202,18 @@ export function DataExplorer({
     event.preventDefault();
     const spec: QuerySpec = {
       ...(text.trim() ? { text: text.trim() } : {}),
+      ...(provider.trim() ? { providers: [provider.trim()] } : {}),
+      ...(kind
+        ? { kinds: [kind as NonNullable<QuerySpec['kinds']>[number]] }
+        : {}),
+      ...(recordReadiness || spatialReadiness
+        ? {
+            readiness: {
+              ...(recordReadiness ? { records: [recordReadiness] } : {}),
+              ...(spatialReadiness ? { spatial: [spatialReadiness] } : {}),
+            },
+          }
+        : {}),
       ...(quality ? { qualityGrades: [quality as 'A' | 'B' | 'C'] } : {}),
     };
     void query({ spec, view: 'resources', first: 25 }, 0, true);
@@ -251,6 +275,86 @@ export function DataExplorer({
             ))}
           </select>
         </label>
+        <details className={styles.filters}>
+          <summary>{copy.moreFilters}</summary>
+          <div className={styles.filterFields}>
+            <label>
+              <span>{copy.providerExact}</span>
+              <input
+                value={provider}
+                maxLength={2048}
+                onChange={(event) => setProvider(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>{copy.kindLabel}</span>
+              <select
+                value={kind}
+                onChange={(event) => setKind(event.target.value)}
+              >
+                <option value="">{copy.allKinds}</option>
+                {(
+                  [
+                    'PROVIDER',
+                    'DATASET_INTERFACE',
+                    'CATALOG_ENTRY',
+                    'FILE_COLLECTION',
+                    'DATASET',
+                  ] as const
+                ).map((value) => (
+                  <option key={value} value={value}>
+                    {copy.kinds[value]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>{copy.recordReadiness}</span>
+              <select
+                value={recordReadiness}
+                onChange={(event) =>
+                  setRecordReadiness(
+                    event.target.value === ''
+                      ? ''
+                      : ExplorationReadinessSchema.parse(event.target.value),
+                  )
+                }
+              >
+                <option value="">{copy.allReadiness}</option>
+                {ExplorationReadinessSchema.options
+                  .filter(
+                    (value) =>
+                      !['NO_SPATIAL_DATA', 'CRS_UNVERIFIED'].includes(value),
+                  )
+                  .map((value) => (
+                    <option key={value} value={value}>
+                      {copy.readiness[value]}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label>
+              <span>{copy.spatialReadiness}</span>
+              <select
+                value={spatialReadiness}
+                onChange={(event) =>
+                  setSpatialReadiness(
+                    event.target.value === ''
+                      ? ''
+                      : ExplorationReadinessSchema.parse(event.target.value),
+                  )
+                }
+              >
+                <option value="">{copy.allReadiness}</option>
+                {ExplorationReadinessSchema.options.map((value) => (
+                  <option key={value} value={value}>
+                    {copy.readiness[value]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </details>
         <button type="submit">{busy ? copy.querying : copy.queryAction}</button>
       </form>
       <div className={styles.status} aria-live="polite">
@@ -258,7 +362,40 @@ export function DataExplorer({
           {result === null ? '—' : number.format(result.totalCount)}{' '}
           {copy.resources}
         </strong>
-        <span>{result?.spec.text ?? copy.allResources}</span>
+        {result?.summary && (
+          <details
+            className={styles.coverage}
+            data-testid="explorer-readiness-summary"
+          >
+            <summary>
+              {copy.analyzedSources}{' '}
+              {number.format(result.summary.analyzedResourceCount)} /{' '}
+              {number.format(result.summary.resourceCount)} ·{' '}
+              {copy.indexedRecords}{' '}
+              {number.format(result.summary.indexedRecordCount)} ·{' '}
+              {copy.indexedFeatures}{' '}
+              {number.format(result.summary.indexedFeatureCount)}
+            </summary>
+            <div className={styles.coverageStates}>
+              {(['records', 'spatial'] as const).map((dimension) => (
+                <section key={dimension}>
+                  <strong>{copy[dimension]}</strong>
+                  <ul>
+                    {result.summary?.[dimension].map((entry) => (
+                      <li key={entry.status}>
+                        {copy.readiness[entry.status]}:{' '}
+                        {number.format(entry.count)}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          </details>
+        )}
+        {!result?.summary && (
+          <span>{result?.spec.text ?? copy.allResources}</span>
+        )}
         <div
           className={styles.viewTabs}
           role="tablist"
