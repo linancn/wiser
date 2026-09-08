@@ -834,6 +834,108 @@ describe('authorized exploration result sets in PostgreSQL', () => {
             context,
           ),
         ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+        const neighborInput = {
+          queryId: analyzed.queryId,
+          view: 'graph',
+          versionId: version,
+          assetId: asset,
+          first: 1,
+          graph: { detail: 'records' },
+        };
+        const neighbors = ExplorationResultSchema.parse(
+          await executor.execute(neighborInput, context),
+        );
+        expect(neighbors.graph?.grain).toBe('records');
+        expect(neighbors.totalCount).toBe(2);
+        expect(
+          neighbors.graph?.nodes
+            .filter((node) => node.kind === 'RECORD')
+            .map((node) => node.record?.recordId),
+        ).toEqual([record]);
+        expect(neighbors.nextCursor).toBeDefined();
+        const nextNeighbors = ExplorationResultSchema.parse(
+          await executor.execute(
+            { ...neighborInput, after: neighbors.nextCursor },
+            context,
+          ),
+        );
+        expect(
+          nextNeighbors.graph?.nodes
+            .filter((node) => node.kind === 'RECORD')
+            .map((node) => node.record?.recordId),
+        ).toEqual([secondRecord]);
+        expect(nextNeighbors.nextCursor).toBeUndefined();
+        await expect(
+          executor.execute(
+            {
+              ...neighborInput,
+              graph: { detail: 'assets' },
+              after: neighbors.nextCursor,
+            },
+            context,
+          ),
+        ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+        const pathResult = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              ...neighborInput,
+              graph: {
+                detail: 'records',
+                path: {
+                  from: `version:${version}`,
+                  to: `record:${analysis}:${record}`,
+                  maxDepth: 2,
+                },
+              },
+            },
+            context,
+          ),
+        );
+        expect(pathResult.graph?.path).toMatchObject({
+          found: true,
+          nodeIds: [
+            `version:${version}`,
+            `asset:${version}:${asset}`,
+            `record:${analysis}:${record}`,
+          ],
+        });
+        const hiddenPath = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              ...neighborInput,
+              graph: {
+                detail: 'records',
+                relations: ['HAS_RECORD'],
+                path: {
+                  from: `version:${version}`,
+                  to: `record:${analysis}:${record}`,
+                  maxDepth: 8,
+                },
+              },
+            },
+            context,
+          ),
+        );
+        expect(hiddenPath.graph?.edges.map((edge) => edge.relation)).toEqual([
+          'HAS_RECORD',
+        ]);
+        expect(hiddenPath.graph?.path?.found).toBe(false);
+        await expect(
+          executor.execute(
+            {
+              ...neighborInput,
+              graph: {
+                detail: 'records',
+                path: {
+                  from: 'foreign',
+                  to: `version:${version}`,
+                  maxDepth: 8,
+                },
+              },
+            },
+            context,
+          ),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' });
         expect(map.spatial).toMatchObject({
           bounds: [-77.12763889, 38.94977778, -77.12763889, 38.94977778],
           mercatorFeatureCount: 1,
