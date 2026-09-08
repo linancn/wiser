@@ -849,6 +849,14 @@ describe('authorized exploration result sets in PostgreSQL', () => {
           "update service.analysis_run set status='READY',completed_at=clock_timestamp() where analysis_id=$1",
           [aggregateAnalysis],
         );
+        const sameBase = ExplorationResultSchema.parse(
+          await executor.execute(
+            { baseQueryId: analyzed.queryId, spec: {}, view: 'resources' },
+            context,
+          ),
+        );
+        expect(sameBase.resources).toHaveLength(1);
+        expect(sameBase.resources[0]?.analysis?.analysisId).toBe(analysis);
         const refined = ExplorationResultSchema.parse(
           await executor.execute(
             {

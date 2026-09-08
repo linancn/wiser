@@ -145,6 +145,7 @@ describe('exploration query navigation', () => {
     );
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
     expect(inputBody(fetch.mock.calls[1][1] as RequestInit)).toEqual({
+      baseQueryId: firstId,
       spec: filtered.spec,
       view: 'resources',
       first: 25,

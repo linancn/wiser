@@ -129,7 +129,8 @@ export class PostgresExplorationExecutor {
         String(context.timeoutMs),
       ]);
       const queryId =
-        input.queryId ?? (await this.create(client, input.spec!, context));
+        input.queryId ??
+        (await this.create(client, input.spec!, context, input.baseQueryId));
       const selected = await client.query(
         'select * from service.exploration_snapshot where query_id=$1 and expires_at > clock_timestamp()',
         [queryId],
@@ -271,7 +272,23 @@ export class PostgresExplorationExecutor {
     client: QueryAdapterPgClient,
     spec: QuerySpec,
     context: DataCapabilityExecutionContext,
+    baseQueryId?: string,
   ): Promise<string> {
+    let base: z.infer<typeof StoredSnapshot> | undefined;
+    if (baseQueryId) {
+      const result = await client.query(
+        'select * from service.exploration_snapshot where query_id=$1 and expires_at > clock_timestamp()',
+        [baseQueryId],
+      );
+      if (!result.rows[0]) throw new DataCapabilityHandlerError('NOT_FOUND');
+      base = StoredSnapshot.parse(result.rows[0]);
+      const authorized = await client.query(
+        `${AUTHORIZED} select count(*)::int as total from authorized`,
+        [JSON.stringify(base.version_refs)],
+      );
+      if (authorized.rows[0]?.['total'] !== base.version_refs.length)
+        throw new DataCapabilityHandlerError('CONFLICT');
+    }
     const scope = [
       context.authorization.tenantId,
       context.authorization.projectId,
@@ -288,7 +305,9 @@ export class PostgresExplorationExecutor {
       spec.dataItemIds ?? null,
       spec.businessDomains ?? null,
       spec.qualityGrades ?? null,
-      spec.versions === undefined ? null : JSON.stringify(spec.versions),
+      spec.versions || base
+        ? JSON.stringify(spec.versions ?? base?.version_refs)
+        : null,
       spec.providers ?? null,
       spec.kinds ?? null,
     ]);
@@ -301,6 +320,17 @@ export class PostgresExplorationExecutor {
         analysisId: row['analysis_id'] ?? null,
       }),
     );
+    if (base) {
+      const pinned = new Map(
+        base.version_refs.map((ref) => [ref.versionId, ref]),
+      );
+      refs = refs.map((ref) => {
+        const previous = pinned.get(ref.versionId);
+        if (!previous || previous.dataItemId !== ref.dataItemId)
+          throw new DataCapabilityHandlerError('VALIDATION_FAILED');
+        return previous;
+      });
+    }
     if (spec.readiness !== undefined) {
       const readiness = await loadExplorationReadiness(client, refs);
       refs = refs.filter((ref) => {

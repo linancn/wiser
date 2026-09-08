@@ -552,7 +552,7 @@ const expectedJsonSchemaHashes = {
     output: '157a58322075047c67537707e26c0307eb80090d55e7bf3443b704345d9e3d16',
   },
   'data.explore.query': {
-    input: 'e445c3a83daed621ef9d135e67bec1ad3a5bcc6084c311311bc78d2339336117',
+    input: '488b98dc67e106937c3448a6ef3da659e3b93ccbe27e69c3cb8b58e1bbafef00',
     output: 'ef407b87f33600305e58ee01f8027ef1fbf7c5ce67bac04fa49d730dfbb1f0f5',
   },
   'data.catalog.search': {
@@ -1090,6 +1090,16 @@ describe('Data Foundation capability registry', () => {
         DATA_CAPABILITY_ARCHIVE['data.explore.query']![7]!.outputSchema,
       ),
     ).toBe('4f3defbc36354bd10541641ebce68e53d7da3aea8640a6f392b675f21e4b9848');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![8]!.inputSchema,
+      ),
+    ).toBe('e445c3a83daed621ef9d135e67bec1ad3a5bcc6084c311311bc78d2339336117');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![8]!.outputSchema,
+      ),
+    ).toBe('ef407b87f33600305e58ee01f8027ef1fbf7c5ce67bac04fa49d730dfbb1f0f5');
     const historical = DATA_CAPABILITY_ARCHIVE['data.geo.query'];
     expect(historical).toHaveLength(1);
     const definition = historical?.[0];

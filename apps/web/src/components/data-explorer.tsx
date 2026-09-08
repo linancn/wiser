@@ -364,6 +364,7 @@ export function DataExplorer({
     void previous;
     void query(
       {
+        baseQueryId: result.queryId,
         spec: {
           ...spec,
           versions: [{ dataItemId, versionId }],
