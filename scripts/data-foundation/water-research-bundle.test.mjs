@@ -20,6 +20,8 @@ test('Compose can ingest the largest real-case file and respects an explicit Wor
           '/dev/null',
           '-f',
           compose,
+          '--profile',
+          'data-foundation',
           'config',
           '--format',
           'json',
