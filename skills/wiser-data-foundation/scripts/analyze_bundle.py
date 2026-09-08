@@ -47,9 +47,10 @@ def reconcile_paths(registration, manifest, assets):
 
 
 class AnalysisRunner:
-    def __init__(self, client, state_dir, context, run_id, *, poll_seconds=1, timeout=1800):
+    def __init__(self, client, state_dir, context, run_id, *, poll_seconds=1, timeout=1800, audit_only=False):
         self.client, self.state_dir, self.context, self.run_id = client, state_dir, context, run_id
         self.poll_seconds, self.timeout = poll_seconds, timeout
+        self.audit_only = audit_only
 
     def analyze(self, registration):
         path = self.state_dir / (digest(registration["sourceId"].encode()) + ".json")
@@ -113,17 +114,21 @@ class AnalysisRunner:
         raise ImportFailure("RETRY_EXHAUSTED")
 
     def process(self, registration):
-        checkpoint = self.analyze(registration)
+        checkpoint = None if self.audit_only else self.analyze(registration)
         result = {key: registration[key] for key in ["sourceId", "kind", "name", "dataItemId", "versionId"]}
-        result.update({key: checkpoint[key] for key in ["analysisId", "operationId", "status", "operationVersion"]})
-        if checkpoint["status"] != "SUCCEEDED":
-            return result
+        if checkpoint is not None:
+            result.update({key: checkpoint[key] for key in ["analysisId", "operationId", "status", "operationVersion"]})
+            if checkpoint["status"] != "SUCCEEDED":
+                return result
         resource = self.client.api("POST", "/explore/query", {
             "spec": {"versions": [{key: registration[key] for key in ["dataItemId", "versionId"]}]}, "view": "resources", "first": 1})
         members = resource["resources"]
         if (len(members) != 1 or members[0]["versionId"] != registration["versionId"]
-                or members[0].get("analysis", {}).get("analysisId") != checkpoint["analysisId"]):
+                or not members[0].get("analysis", {}).get("analysisId")
+                or (checkpoint is not None and members[0]["analysis"]["analysisId"] != checkpoint["analysisId"])):
             raise ImportFailure("ANALYSIS_SNAPSHOT_CHANGED")
+        if checkpoint is None:
+            result.update(status="VERIFIED", analysisId=members[0]["analysis"]["analysisId"])
         records = self.client.api("POST", "/explore/query", {"queryId": resource["queryId"],
             "view": "records", "versionId": registration["versionId"], "first": 1})
         assets = records["assets"]
@@ -179,11 +184,13 @@ def run(args):
         if run_path.is_symlink():
             raise ImportFailure("UNSAFE_CHECKPOINT")
         identity = {"context": context, "registrationsHash": digest(content)}
+        if args.audit_only:
+            identity["workflow"] = "AUDIT_ONLY"
         state = json.loads(run_path.read_bytes()) if run_path.exists() else {"identity": identity, "runId": str(uuid.uuid4())}
         if state["identity"] != identity:
             raise ImportFailure("CHECKPOINT_SCOPE_MISMATCH")
         write_private(run_path, state)
-        runner = AnalysisRunner(client, state_dir, context, state["runId"], timeout=args.timeout)
+        runner = AnalysisRunner(client, state_dir, context, state["runId"], timeout=args.timeout, audit_only=args.audit_only)
         results = []
         with ThreadPoolExecutor(max_workers=args.workers) as executor:
             pending = {executor.submit(runner.process_with_retry, registration): registration for registration in registrations}
@@ -230,6 +237,7 @@ def main():
     parser.add_argument("--project", required=True)
     parser.add_argument("--purpose", default="data-steward-console")
     parser.add_argument("--source-ids")
+    parser.add_argument("--audit-only", action="store_true", help="Read and reconcile current completed analyses without creating Operations.")
     parser.add_argument("--workers", type=int, choices=[1, 2], default=2)
     parser.add_argument("--timeout", type=int, default=1800)
     args = parser.parse_args()
