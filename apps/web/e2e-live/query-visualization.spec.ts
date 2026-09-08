@@ -13,6 +13,55 @@ test.skip(
   'Requires the admitted private water research case.',
 );
 
+test('large real asset numeric filtering and sorting fits the interactive request budget', async ({
+  page,
+}) => {
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  const versionId = 'e139f0d1-972f-5401-bd35-71d842142185';
+  const response = await page.request.post('/api/data-foundation/explore', {
+    data: {
+      spec: {
+        versions: [
+          { dataItemId: 'e9087b50-2094-4a68-9032-d4d56e35952e', versionId },
+        ],
+        recordQuery: {
+          assetId: 'c3697270-8a1b-4392-9781-25f0de8032ed',
+          filters: [
+            { field: 'c3', type: 'number', operator: 'gte', value: 20 },
+          ],
+          sort: { field: 'c3', type: 'number', direction: 'desc' },
+          columns: ['c1', 'c2', 'c3'],
+        },
+      },
+      view: 'resources',
+    },
+  });
+  expect(response.ok()).toBe(true);
+  const query = ExplorationResultSchema.parse(await response.json());
+  const elapsed: number[] = [];
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const start = performance.now();
+    const pageResponse = await page.request.post(
+      '/api/data-foundation/explore',
+      {
+        data: { queryId: query.queryId, view: 'records', versionId, first: 25 },
+      },
+    );
+    elapsed.push(performance.now() - start);
+    expect(pageResponse.ok()).toBe(true);
+    const records = ExplorationResultSchema.parse(await pageResponse.json());
+    expect(records.records).toHaveLength(25);
+    expect(records.totalCount).toBe(360839);
+    const values = records.records!.map((record) =>
+      Number(record.values['c3']),
+    );
+    expect(values).toEqual([...values].sort((a, b) => b - a));
+    expect(values.every((value) => value >= 20)).toBe(true);
+  }
+  // With three observations the nearest-rank P95 is their maximum.
+  expect(Math.max(...elapsed)).toBeLessThan(1500);
+});
+
 test('graph layouts run in a same-origin worker and release it after rendering', async ({
   page,
 }) => {
