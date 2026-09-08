@@ -20,6 +20,8 @@ Register sources with ingestion 1.1 `sourceRegistration` and its strict `wiser.s
 
 The companion HTTP helper rechecks the entire inventory before each run. It registers every provider and catalog identity, merges registered interfaces into their catalog identity, and assigns each admitted file exactly once. Files with one known registry ID in their path join that source; other files join a stable collection for their relative directory. The collection is archival organization, not a claim of scientific lineage. Empty files remain explicit zero-byte manifest entries because upload sessions require positive object sizes.
 
+Within a registration, paths with identical prepared SHA-256 and size share one uploaded content asset. Every path remains in the manifest with its own source metadata and original/prepared hashes. Readback verifies the shared bytes once and reconciles every path against them. File counts therefore include aliases and empty entries; stored raw-asset counts exclude both extra aliases and empty entries.
+
 ```bash
 python3 -B skills/wiser-data-foundation/scripts/water_import.py \
   --bundle /absolute/path/to/research-bundle \

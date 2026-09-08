@@ -67,7 +67,7 @@ export function parseSourceRegistration(input: {
       }
       const asset = assets.get(file.assetId);
       if (
-        matched.has(file.assetId) ||
+        file.assetId === sourceRegistration.manifestAssetId ||
         asset?.sourceHash !== file.preparedSha256 ||
         asset.size !== file.preparedSizeBytes
       )
@@ -76,7 +76,7 @@ export function parseSourceRegistration(input: {
     }
     if (matched.size !== assets.size) throw new Error('unlisted asset');
     const parsedAssets = input.assets.map((asset) => {
-      const file = manifest.files.find(
+      const files = manifest.files.filter(
         (candidate) => candidate.assetId === asset.assetId,
       );
       return {
@@ -85,9 +85,9 @@ export function parseSourceRegistration(input: {
         contentHash: asset.sourceHash!,
         metadata: {
           'wiser:validationScope': 'SOURCE_REGISTRATION',
-          'wiser:excerpt': (file === undefined
+          'wiser:excerpt': (files.length === 0
             ? `${sourceRegistration.name}\n${JSON.stringify(manifest.record)}\n${sourceRegistration.limitations.join('\n')}`
-            : `${file.path}\n${file.artifactClass}\n${file.completeness}\nsha256:${file.sha256}\n${sourceRegistration.limitations.join('\n')}`
+            : `${files.map((file) => `${file.path}\n${file.artifactClass}\n${file.completeness}\nsha256:${file.sha256}`).join('\n')}\n${sourceRegistration.limitations.join('\n')}`
           ).slice(0, 8192),
         },
       };

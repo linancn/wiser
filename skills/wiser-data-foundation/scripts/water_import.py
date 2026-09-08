@@ -96,6 +96,22 @@ def group_inventory(inventory):
     return [groups[key] for key in sorted(groups)]
 
 
+def unique_file_uploads(files):
+    unique_files, by_hash, positions = [], {}, {}
+    for file in files:
+        if file["preparedSizeBytes"] == 0:
+            continue
+        fingerprint = file["preparedSha256"]
+        if fingerprint not in by_hash:
+            by_hash[fingerprint] = len(unique_files)
+            unique_files.append(file)
+        index = by_hash[fingerprint]
+        if unique_files[index]["preparedSizeBytes"] != file["preparedSizeBytes"]:
+            raise ImportFailure("HASH_SIZE_MISMATCH")
+        positions[file["path"]] = index
+    return unique_files, positions
+
+
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -202,7 +218,9 @@ class Uploader:
         self.client, self.checkpoint, self.scope, self.project = client, checkpoint, scope, project
 
     def key(self, phase):
-        return str(uuid.uuid5(uuid.NAMESPACE_URL, self.scope + ":" + self.checkpoint.data["sourceId"] + ":" + phase))
+        attempt = self.checkpoint.data.get("attempt", 0)
+        suffix = f":attempt:{attempt}" if attempt else ""
+        return str(uuid.uuid5(uuid.NAMESPACE_URL, self.scope + ":" + self.checkpoint.data["sourceId"] + ":" + phase + suffix))
 
     def upload(self, phase, objects, read_content):
         if not objects:
@@ -274,7 +292,7 @@ class GroupImporter:
                 checkpoint.save()
             return saved["result"]
 
-        nonempty = [file for file in group["files"] if file["preparedSizeBytes"] > 0]
+        nonempty, positions = unique_file_uploads(group["files"])
         objects = [{"fileName": PurePosixPath(file["path"]).name, "mediaType": file["mediaType"], "sizeBytes": file["preparedSizeBytes"], "sha256": file["preparedSha256"]} for file in nonempty]
 
         def read_content(index):
@@ -288,7 +306,7 @@ class GroupImporter:
             return prepared
 
         asset_ids = upload.upload("files", objects, read_content)
-        path_to_asset = {file["path"]: asset for file, asset in zip(nonempty, asset_ids, strict=True)}
+        path_to_asset = {path: asset_ids[index] for path, index in positions.items()}
         manifest = {"schemaVersion": "wiser.source-registration.v1", "sourceId": source["sourceId"], "record": source,
                     "files": [{**{key: file[key] for key in ["path", "sizeBytes", "sha256", "preparedSizeBytes", "preparedSha256", "artifactClass", "completeness", "disposition", "relatedSourceIds"]},
                                **({"assetId": path_to_asset[file["path"]]} if file["path"] in path_to_asset else {})} for file in group["files"]]}
