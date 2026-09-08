@@ -102,6 +102,16 @@ class AnalysisRunner:
             raise ImportFailure("MANIFEST_SCHEMA_MISMATCH")
         return value
 
+    def process_with_retry(self, registration, *, pause=time.sleep):
+        for attempt in range(6):
+            try:
+                return self.process(registration)
+            except ImportFailure as error:
+                if str(error) not in {"TRANSPORT_UNAVAILABLE", "HTTP_429", "HTTP_502", "HTTP_503", "HTTP_504", "MANIFEST_DOWNLOAD_FAILED"} or attempt == 5:
+                    raise
+                pause(min(30, 2 ** (attempt + 1)))
+        raise ImportFailure("RETRY_EXHAUSTED")
+
     def process(self, registration):
         checkpoint = self.analyze(registration)
         result = {key: registration[key] for key in ["sourceId", "kind", "name", "dataItemId", "versionId"]}
@@ -176,7 +186,7 @@ def run(args):
         runner = AnalysisRunner(client, state_dir, context, state["runId"], timeout=args.timeout)
         results = []
         with ThreadPoolExecutor(max_workers=args.workers) as executor:
-            pending = {executor.submit(runner.process, registration): registration for registration in registrations}
+            pending = {executor.submit(runner.process_with_retry, registration): registration for registration in registrations}
             for future in as_completed(pending):
                 registration = pending[future]
                 try:
@@ -185,6 +195,8 @@ def run(args):
                     result = {"sourceId": registration["sourceId"], "status": "ERROR", "reason": str(error)}
                 except Exception:
                     result = {"sourceId": registration["sourceId"], "status": "ERROR", "reason": "UNEXPECTED_RESPONSE"}
+                if "paths" not in result:
+                    write_private(state_dir / "failures" / (digest(registration["sourceId"].encode()) + ".json"), result)
                 results.append(result)
                 progress = {"selected": len(registrations), "finished": len(results),
                             "reconciled": sum("paths" in r for r in results),
