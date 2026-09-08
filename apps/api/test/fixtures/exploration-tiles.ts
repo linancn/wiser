@@ -56,6 +56,15 @@ export async function verifyExplorationTiles(
     'utf8',
   );
   await client.query(recordMigration);
+  await client.query(
+    await readFile(
+      new URL(
+        '../../../../infrastructure/data-foundation/postgres/migrations/0017_exploration_predicate_compilation.sql',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+  );
   const tileRole = `wiser_tile_test_${randomUUID().replaceAll('-', '')}`;
   await client.query(`create role ${tileRole} nologin nosuperuser nobypassrls`);
   await client.query(`grant usage on schema service to ${tileRole}`);

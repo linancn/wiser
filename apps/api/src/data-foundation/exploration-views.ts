@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { queryFilteredRecords } from './exploration-filtered-records.js';
 import {
   ExplorationAnalysisAssetSchema,
   ExplorationRecordSchema,
@@ -134,29 +135,48 @@ export async function queryAnalysisView(
     input.bbox ?? null,
     recordQuery ? JSON.stringify(recordQuery.filters) : null,
   ];
-  const counted = (
-    input.view === 'records'
-      ? await client.query(
-          'select count(*)::text total from catalog.analysis_record where analysis_id=$1::uuid and asset_id=$2::uuid and ($3::uuid is null or record_id=$3::uuid) and ($4::jsonb is null or service.exploration_record_matches(record_values,$4))',
-          [
-            ref?.analysisId ?? null,
-            selectedAssetId ?? null,
-            input.recordId ?? null,
-            recordQuery ? JSON.stringify(recordQuery.filters) : null,
-          ],
-        )
-      : await client.query(
-          `with coverage as (select count(*)::text total,st_extent(record.geom)::box2d bounds,count(*) filter(where st_intersects(record.geom,st_makeenvelope(-180,-85.0511287798066,180,85.0511287798066,4326)))::text mercator_count ${RECORDS}) select total,mercator_count,case when bounds is null then null else jsonb_build_array(st_xmin(bounds),st_ymin(bounds),st_xmax(bounds),st_ymax(bounds)) end bounds from coverage`,
-          params,
-        )
-  ).rows[0];
+  const filtered =
+    input.view === 'records' && recordQuery
+      ? await queryFilteredRecords(client, {
+          analysisId: ref?.analysisId ?? null,
+          assetId: recordQuery.assetId,
+          ...(input.recordId ? { recordId: input.recordId } : {}),
+          first: input.first,
+          offset,
+          query: recordQuery,
+        })
+      : null;
+  const counted = filtered
+    ? { total: filtered.total }
+    : (input.view === 'records'
+        ? await client.query(
+            'select count(*)::text total from catalog.analysis_record where analysis_id=$1::uuid and asset_id=$2::uuid and ($3::uuid is null or record_id=$3::uuid) and ($4::jsonb is null or service.exploration_record_matches(record_values,$4))',
+            [
+              ref?.analysisId ?? null,
+              selectedAssetId ?? null,
+              input.recordId ?? null,
+              recordQuery ? JSON.stringify(recordQuery.filters) : null,
+            ],
+          )
+        : await client.query(
+            `with coverage as (select count(*)::text total,st_extent(record.geom)::box2d bounds,count(*) filter(where st_intersects(record.geom,st_makeenvelope(-180,-85.0511287798066,180,85.0511287798066,4326)))::text mercator_count ${RECORDS}) select total,mercator_count,case when bounds is null then null else jsonb_build_array(st_xmin(bounds),st_ymin(bounds),st_xmax(bounds),st_ymax(bounds)) end bounds from coverage`,
+            params,
+          )
+      ).rows[0];
   const totalCount = COUNT.parse(counted?.['total']);
   if (input.recordId && totalCount === 0)
     throw new DataCapabilityHandlerError('NOT_FOUND');
   if (offset > totalCount)
     throw new DataCapabilityHandlerError('VALIDATION_FAILED');
-  const page =
-    input.view === 'records'
+  const page: { readonly rows: readonly Record<string, unknown>[] } = filtered
+    ? {
+        rows: filtered.rows.map((row) => ({
+          ...row,
+          data_item_id: ref?.dataItemId,
+          version_id: ref?.versionId,
+        })),
+      }
+    : input.view === 'records'
       ? await client.query(
           `select record.*,$1::text data_item_id,$2::text version_id,st_asgeojson(record.geom)::jsonb geometry
        from catalog.analysis_record record where record.analysis_id=$3::uuid and record.asset_id=$4::uuid

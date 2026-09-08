@@ -141,6 +141,60 @@ describe('authorized exploration result sets in PostgreSQL', () => {
           );
           expect(parsed.rows[0]?.['value']).toBe(expected);
         }
+        const scalarCases = [
+          null,
+          0,
+          2,
+          '0001',
+          '2.5',
+          ' 20 ',
+          '.5',
+          '1.',
+          '1e10',
+          'NaN',
+          'Infinity',
+          '1e9999',
+          '1_000',
+          '1 2',
+          true,
+          [2],
+          { v: 2 },
+        ];
+        const predicateCases = [
+          ...['eq', 'ne', 'gt', 'gte', 'lt', 'lte'].map((operator) => ({
+            type: 'number',
+            field: 'v',
+            operator,
+            value: 2,
+          })),
+          ...['eq', 'ne', 'contains'].map((operator) => ({
+            type: 'text',
+            field: 'v',
+            operator,
+            value: '2',
+          })),
+          ...['isNull', 'isNotNull'].map((operator) => ({
+            type: 'presence',
+            field: 'v',
+            operator,
+          })),
+        ];
+        const evaluate = () =>
+          client.query<{ value: boolean[] }>(
+            "select array_agg(service.exploration_record_matches(jsonb_build_object('v',s.value),jsonb_build_array(f.value)) order by s.ordinality,f.ordinality) value from jsonb_array_elements($1::jsonb) with ordinality s cross join jsonb_array_elements($2::jsonb) with ordinality f",
+            [JSON.stringify(scalarCases), JSON.stringify(predicateCases)],
+          );
+        const previousPredicates = await evaluate();
+        await client.query(
+          await readFile(
+            new URL(
+              '../../../infrastructure/data-foundation/postgres/migrations/0017_exploration_predicate_compilation.sql',
+              import.meta.url,
+            ),
+            'utf8',
+          ),
+        );
+        expect((await evaluate()).rows).toEqual(previousPredicates.rows);
         await client.query(
           `create role ${role} nologin nosuperuser nobypassrls`,
         );

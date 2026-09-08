@@ -59,6 +59,18 @@ test('large real asset numeric filtering and sorting fits the interactive reques
     expect(values.every((value) => value >= 20)).toBe(true);
   }
   // With three observations the nearest-rank P95 is their maximum.
+  await test.info().attach('record-query-performance', {
+    body: JSON.stringify({
+      sourceRecords: 361379,
+      matchingRecords: 360839,
+      first: 25,
+      sampleMs: elapsed,
+      nearestRankP95Ms: Math.max(...elapsed),
+      apiTransport: 'authenticated Next.js BFF',
+      samples: elapsed.length,
+    }),
+    contentType: 'application/json',
+  });
   expect(Math.max(...elapsed)).toBeLessThan(1500);
 });
 
