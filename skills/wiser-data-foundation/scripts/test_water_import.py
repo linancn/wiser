@@ -10,6 +10,7 @@ import unittest
 import test_water_bundle
 from water_bundle import build_inventory, digest
 from water_import import Checkpoint, HttpClient, ImportFailure, Uploader, group_inventory
+import water_import
 
 
 class ImportPlanTests(unittest.TestCase):
@@ -60,6 +61,15 @@ class LostCompletionAPI:
 
 
 class RecoveryTests(unittest.TestCase):
+    def test_registration_review_requires_matching_descriptor_waiting_operation_and_no_issues(self):
+        registration = {"sourceId": "DS-0001", "manifestSha256": "a" * 64}
+        snapshot = {"ingestion": {"state": "REVIEW_REQUIRED", "sourceRegistration": registration}, "qualityIssues": [], "agentRuns": []}
+        self.assertTrue(water_import.registration_review_allowed(snapshot, registration, {"status": "WAITING_REVIEW"}))
+        self.assertFalse(water_import.registration_review_allowed(snapshot, registration, {"status": "RUNNING"}))
+        self.assertFalse(water_import.registration_review_allowed(snapshot, {**registration, "sourceId": "DS-0002"}, {"status": "WAITING_REVIEW"}))
+        snapshot["qualityIssues"] = [{"severity": "ERROR", "status": "OPEN"}]
+        self.assertFalse(water_import.registration_review_allowed(snapshot, registration, {"status": "WAITING_REVIEW"}))
+
     def test_lost_complete_response_resumes_identical_command_without_reopening_or_duplicate_upload(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "checkpoint.json"
