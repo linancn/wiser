@@ -8,7 +8,7 @@ import urllib.request
 from pathlib import Path
 
 from parser import ParseError
-from server import make_server, prepare_request
+from server import encode_event, make_server, prepare_request
 
 
 def payload(content=b"Water\n\nStation 001"):
@@ -46,6 +46,17 @@ class ParserServiceTest(unittest.TestCase):
             with self.assertRaisesRegex(ParseError, "INVALID_REQUEST"):
                 prepare_request(bad, root)
             self.assertEqual(list(root.iterdir()), [])
+
+    def test_large_geometry_frames_remain_bounded_but_preserve_real_polygon_sizes(self):
+        event = {
+            "type": "record",
+            "values": {"coordinates": [[1100000.123456, 4400000.123456]] * 60000},
+        }
+        encoded = encode_event(event)
+        self.assertGreater(len(encoded), 1024 * 1024)
+        self.assertEqual(json.loads(encoded), event)
+        with self.assertRaisesRegex(ParseError, "RECORD_SIZE_LIMIT"):
+            encode_event({"type": "record", "text": "a" * (4 * 1024 * 1024)})
 
     def test_http_stream_is_hash_bound_and_reports_all_records_and_summary(self):
         server = make_server(("127.0.0.1", 0))

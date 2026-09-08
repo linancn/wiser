@@ -26,16 +26,19 @@ test('real Shapefile group retains attributes and unknown CRS without fabricated
       queryId: query.queryId,
       view: 'records',
       versionId: '29f117aa-d1fb-5d17-9af9-d27dfd5e8367',
+      assetId: 'f666ce4b-3854-4be7-a250-ef3aa5a33454',
       first: 1,
     },
   });
   expect(result.status()).toBe(200);
   const body = (await result.json()) as {
     totalCount: number;
+    coverage: { indexedRecordCount: number };
     records: { featureId: string | null; values: Record<string, unknown> }[];
     assets: { status: string; reason: string | null; paths: string[] }[];
   };
-  expect(body.totalCount).toBe(8628);
+  expect(body.totalCount).toBe(3955);
+  expect(body.coverage.indexedRecordCount).toBe(8628);
   expect(body.records[0]?.featureId).toBeNull();
   expect(body.records[0]?.values['__geometry']).toBeDefined();
   expect(

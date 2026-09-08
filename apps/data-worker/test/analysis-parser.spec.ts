@@ -38,6 +38,7 @@ function response(values: readonly unknown[]) {
     values.map((value) => JSON.stringify(value)).join('\n') + '\n',
   );
   let offset = 0;
+  const chunkSize = bytes.length > 1048576 ? 65536 : 3;
   return new Response(
     new ReadableStream<Uint8Array>({
       pull(controller) {
@@ -45,8 +46,8 @@ function response(values: readonly unknown[]) {
           controller.close();
           return;
         }
-        controller.enqueue(bytes.slice(offset, offset + 3));
-        offset = Math.min(bytes.length, offset + 3);
+        controller.enqueue(bytes.slice(offset, offset + chunkSize));
+        offset = Math.min(bytes.length, offset + chunkSize);
       },
     }),
     { headers: { 'content-type': 'application/x-ndjson' } },
@@ -83,6 +84,22 @@ describe('isolated source parser adapter', () => {
       versionId: '10000000-0000-4000-8000-000000000004',
     });
     expect(changed[1]).not.toEqual(result[1]);
+  });
+  it('retains large source geometry in bounded frames rather than discarding the entire asset', async () => {
+    const values = {
+      c1: {
+        type: 'Polygon',
+        coordinates: [
+          Array.from({ length: 60000 }, () => [1100000.123456, 4400000.123456]),
+        ],
+      },
+    };
+    const result = await collect([
+      ...events.slice(0, 2),
+      { ...events[2], values },
+      events[3],
+    ]);
+    expect(result[1]).toMatchObject({ type: 'record', values });
   });
   it('rejects changed source bytes before requesting a parser', async () => {
     let called = false;
