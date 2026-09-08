@@ -51,7 +51,11 @@ class SourceParserTest(unittest.TestCase):
 
     def test_truncated_pdf_is_invalid_content_not_an_unavailable_parser(self):
         with self.assertRaisesRegex(ParseError, "INVALID_CONTENT"):
-            self.events("range-sample.pdf", b"%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n", "pdf")
+            self.events(
+                "range-sample.pdf",
+                b"%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n",
+                "pdf",
+            )
 
     def test_disguised_excel_is_invalid(self):
         with self.assertRaisesRegex(ParseError, "INVALID_FORMAT"):

@@ -8,6 +8,8 @@ from datetime import date, datetime, time, timedelta
 from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath
 
+from pypdf.errors import PdfReadError
+
 MAX_INPUT_BYTES = 64 * 1024 * 1024
 MAX_EXPANDED_BYTES = 256 * 1024 * 1024
 MAX_RECORDS = 2_000_000
@@ -359,6 +361,7 @@ def parse_asset(path, kind, maximum_records=MAX_RECORDS):
     except ParseError:
         raise
     except (
+        PdfReadError,
         ValueError,
         UnicodeError,
         zipfile.BadZipFile,
