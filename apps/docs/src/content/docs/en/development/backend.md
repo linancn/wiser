@@ -89,6 +89,7 @@ Business modules implement `WiserApiModule`. A module ID must be a unique, dotte
 ### Identity and runtime modes
 
 - Supabase Auth is the only human Session authority. The platform resolver also accepts authorized delegated credentials.
+- Paired `WISER_AGENT_MCP_RESOURCE` and `WISER_AGENT_AUTH_ISSUER` configuration enables the Platform Agent consent, connection and exchange HTTP module. It reuses the same Auth client, PostgreSQL pool and HMAC key ring. The public issuer must match signed claims even when `SUPABASE_URL` uses an internal address; all Agent API responses are non-cacheable.
 - Production forces `WISER_AUTH_MODE=supabase`. Non-production may explicitly use `off`, but Data Foundation refuses to start while Auth is off.
 - A Platform request context contains Tenant, Project, Purpose, roles, scopes, security ceiling, and authz version. A system adapter authorizes from that context; “logged in” alone is not sufficient.
 - Agent EXCON maps Platform roles to operator/run_agent, and a run_agent credential must also be bound to the concrete RunAgent.

@@ -89,6 +89,7 @@ Telemetry Ingress ────────► internal OTel Collector
 ### 身份和运行模式
 
 - Supabase Auth 是人类 Session 的唯一身份源；平台 resolver 同时接受经授权的委托凭据。
+- 配对配置 `WISER_AGENT_MCP_RESOURCE` 与 `WISER_AGENT_AUTH_ISSUER` 后启用 Platform Agent 授权、连接管理与交换 HTTP 模块，复用同一 Auth client、PostgreSQL Pool 和 HMAC key ring。即使 `SUPABASE_URL` 使用内部地址，公开 issuer 仍须匹配已签名 claims；所有 Agent API 响应禁止缓存。
 - 生产环境强制 `WISER_AUTH_MODE=supabase`。非生产可以显式使用 `off`，但 Data Foundation 在 Auth 关闭时拒绝启动。
 - Platform 请求上下文包含 Tenant、Project、Purpose、roles、scopes、安全上限和 authz version。系统 adapter 必须从该上下文授权，不能只检查“已登录”。
 - Agent EXCON 把 Platform roles 映射为 operator/run_agent；run_agent credential 还必须绑定具体 RunAgent。

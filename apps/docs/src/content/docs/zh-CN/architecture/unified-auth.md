@@ -85,6 +85,18 @@ Agent 连接记录把一个 human 与 OAuth client 绑定到已有的 `agent-dat
 
 `/me` 与委托路由都要求 Bearer、Tenant、Project 与 Purpose。所有写操作要求 UUID `Idempotency-Key`；Delegation 命令还要求经过验证且具备 `platform.delegation.manage` 的 Supabase human。响应为 `private, no-store`，issue/rotate 的明文不可恢复。
 
+API 同时配置 `WISER_AGENT_MCP_RESOURCE`（精确的公开 `/mcp` URL）与 `WISER_AGENT_AUTH_ISSUER`（公开 Supabase `/auth/v1` issuer）后启用 Agent HTTP 路由。除回环地址外，两者都要求 HTTPS。内部 Supabase transport URL 与公开 issuer 分开配置；配置不完整时拒绝启动。
+
+| 方法   | 路径                                                       | 认证与结果                                                         |
+| ------ | ---------------------------------------------------------- | ------------------------------------------------------------------ |
+| `GET`  | `/api/platform/v1/agent-authorizations/{authorizationId}`  | 直接 human Session；OAuth client 信息与可授权项目                  |
+| `POST` | `/api/platform/v1/agent-connections`                       | 直接 human Session；有边界的项目授权                               |
+| `GET`  | `/api/platform/v1/agent-connections`                       | 直接 human Session；自己的安全连接 metadata                        |
+| `POST` | `/api/platform/v1/agent-connections/{connectionId}/revoke` | 直接 human Session；撤销自己的连接                                 |
+| `POST` | `/api/platform/v1/agent-connections/exchange`              | 绑定 resource 的 OAuth Token；短期 credential 与服务端绑定的上下文 |
+
+这些路由通过经过验证的 Session、持久化授权或 OAuth 绑定确定项目所有权。交换与撤销仅接受空 JSON body；所有写操作要求 UUID `Idempotency-Key`。入口统一校验输入和输出 schema，限制请求 body 为 16 KiB，并返回 no-store 响应和受控错误。数据库或 provider 故障不会暴露上游细节，管理视图不返回 credential。
+
 ## 请求处理
 
 ```text

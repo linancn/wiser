@@ -7,6 +7,7 @@ import {
   DATA_CAPABILITY_REGISTRY,
 } from '@wiser/data-contracts';
 import {
+  PostgresAgentConnectionService,
   DelegatedCredentialPrincipalResolver,
   PlatformCredentialPrincipalResolver,
   PostgresPlatformDelegationService,
@@ -14,6 +15,7 @@ import {
   createPostgresAuthorizationContextLoader,
   createPostgresDelegatedCredentialRecordLoader,
   createSupabaseJwtClaimsVerifier,
+  createSupabaseAgentClaimsVerifier,
   parseDelegatedCredentialHmacKeyRing,
   type AuthorizationQuery,
   type AuthorizationRow,
@@ -24,7 +26,9 @@ import {
   type PlatformDelegationTransactionPool,
   type SupabaseClaimsClient,
 } from '@wiser/platform-auth';
+import { PlatformAgentResourceSchema } from '@wiser/platform-contracts';
 
+import { createPlatformAgentConnectionsModule } from './agent-connections-module.js';
 import { createPlatformDelegationModule } from './delegation-module.js';
 import {
   createPlatformIdentityModule,
@@ -40,6 +44,7 @@ export type PlatformAuthRuntimeConfig =
       readonly supabasePublishableKey: string;
       readonly databaseUrl: string;
       readonly delegatedCredentialHmacKeyRing: DelegatedCredentialHmacKeyRing;
+      readonly agent?: { readonly resource: string; readonly issuer: string };
     };
 
 export interface AuthorizationDatabase {
@@ -131,12 +136,31 @@ export function loadPlatformAuthRuntimeConfig(
       'Invalid platform Auth configuration: WISER_DELEGATED_CREDENTIAL_HMAC_KEYS.',
     );
   }
+  const resource = environment['WISER_AGENT_MCP_RESOURCE'];
+  const issuer = environment['WISER_AGENT_AUTH_ISSUER'];
+  let agent: { resource: string; issuer: string } | undefined;
+  if (resource !== undefined || issuer !== undefined) {
+    if (
+      !PlatformAgentResourceSchema.safeParse(resource).success ||
+      issuer === undefined ||
+      !issuer.endsWith('/auth/v1') ||
+      !PlatformAgentResourceSchema.safeParse(
+        issuer.replace(/\/auth\/v1$/, '/mcp'),
+      ).success
+    ) {
+      throw new Error(
+        'Invalid Agent configuration: WISER_AGENT_MCP_RESOURCE and WISER_AGENT_AUTH_ISSUER are required together.',
+      );
+    }
+    agent = { resource: PlatformAgentResourceSchema.parse(resource), issuer };
+  }
   return {
     mode,
     supabaseUrl: parsed.data.supabaseUrl,
     supabasePublishableKey: parsed.data.supabasePublishableKey,
     databaseUrl: parsed.data.databaseUrl,
     delegatedCredentialHmacKeyRing,
+    ...(agent === undefined ? {} : { agent }),
   };
 }
 
@@ -233,8 +257,9 @@ export function createPlatformAuthRuntimeFromEnvironment(
 
   const claimsClient = factories.createClaimsClient(config);
   const database = factories.createAuthorizationDatabase(config);
+  const verifyHuman = createSupabaseJwtClaimsVerifier(claimsClient);
   const jwtResolver = new SupabaseJwtPrincipalResolver({
-    verifyClaims: createSupabaseJwtClaimsVerifier(claimsClient),
+    verifyClaims: verifyHuman,
     loadAuthorization: createPostgresAuthorizationContextLoader(database.query),
   });
   const delegatedResolver = new DelegatedCredentialPrincipalResolver({
@@ -249,6 +274,22 @@ export function createPlatformAuthRuntimeFromEnvironment(
     delegated: delegatedResolver,
   });
   const identityModule = createPlatformIdentityModule(resolver);
+  const agentModule =
+    config.agent === undefined
+      ? null
+      : createPlatformAgentConnectionsModule(
+          new PostgresAgentConnectionService({
+            pool: database.transactionPool,
+            resource: config.agent.resource,
+            keyRing: config.delegatedCredentialHmacKeyRing,
+            knownScopes: KNOWN_PLATFORM_SCOPES,
+            verifyHuman,
+            verifyAgent: createSupabaseAgentClaimsVerifier(
+              claimsClient,
+              config.agent,
+            ),
+          }),
+        );
   const delegationModule = createPlatformDelegationModule({
     resolver,
     service: new PostgresPlatformDelegationService({
@@ -263,6 +304,7 @@ export function createPlatformAuthRuntimeFromEnvironment(
     async register(app) {
       await identityModule.register(app);
       await delegationModule.register(app);
+      if (agentModule !== null) await agentModule.register(app);
       app.addHook('onClose', async () => {
         await database.close();
       });

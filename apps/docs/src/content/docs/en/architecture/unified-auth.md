@@ -85,6 +85,18 @@ Consent creates a platform Agent, expiring memberships, and one bounded Delegati
 
 `/me` and delegation routes require Bearer, Tenant, Project, and Purpose. Every write requires a UUID `Idempotency-Key`; Delegation commands also require a verified Supabase human with `platform.delegation.manage`. Responses are `private, no-store`, and issue/rotate plaintext is unrecoverable.
 
+Agent HTTP routes are enabled when the API receives both `WISER_AGENT_MCP_RESOURCE` (the exact public `/mcp` URL) and `WISER_AGENT_AUTH_ISSUER` (the public Supabase `/auth/v1` issuer). Both require HTTPS except on loopback. The internal Supabase transport URL remains independent of the public issuer. Partial configuration fails startup.
+
+| Method | Path                                                       | Authentication and result                                                    |
+| ------ | ---------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `GET`  | `/api/platform/v1/agent-authorizations/{authorizationId}`  | Direct human Session; OAuth client details and eligible projects             |
+| `POST` | `/api/platform/v1/agent-connections`                       | Direct human Session; bounded project consent                                |
+| `GET`  | `/api/platform/v1/agent-connections`                       | Direct human Session; own safe connection metadata                           |
+| `POST` | `/api/platform/v1/agent-connections/{connectionId}/revoke` | Direct human Session; revoke own connection                                  |
+| `POST` | `/api/platform/v1/agent-connections/exchange`              | Resource-bound OAuth token; short-lived credential plus server-bound context |
+
+These routes determine project ownership from the verified Session, persisted consent or OAuth binding. Exchange and revoke accept only an empty JSON body; all mutations require a UUID `Idempotency-Key`. Input/output schemas, 16 KiB request-body limits, no-store responses and controlled errors apply throughout. Database or provider failures expose no upstream details. Management views never return credentials.
+
 ## Request processing
 
 ```text
