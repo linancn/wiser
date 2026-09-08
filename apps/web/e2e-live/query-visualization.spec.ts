@@ -4,6 +4,48 @@ import { loadLiveCredentials } from './support/live-fixture';
 const credentials = loadLiveCredentials();
 const hydroAtlasId = 'e90d54eb-4740-4f21-a85e-1d497cc2cc57';
 
+test.skip(
+  process.env['WISER_DATA_REAL_CASE'] !== '1',
+  'Requires the admitted private water research case.',
+);
+
+test('real Shapefile group retains attributes and unknown CRS without fabricated map features', async ({
+  page,
+}) => {
+  await login(page, '/zh-CN/data-foundation/explore?q=qu1_shape');
+  const response = await page.request.post('/api/data-foundation/explore', {
+    data: {
+      spec: { dataItemIds: ['c3be43c7-65c8-4e5e-aaa9-fc9707cb60ae'] },
+      view: 'resources',
+    },
+  });
+  expect(response.status()).toBe(200);
+  const query = (await response.json()) as { queryId: string };
+  const result = await page.request.post('/api/data-foundation/explore', {
+    data: {
+      queryId: query.queryId,
+      view: 'records',
+      versionId: '29f117aa-d1fb-5d17-9af9-d27dfd5e8367',
+      first: 1,
+    },
+  });
+  expect(result.status()).toBe(200);
+  const body = (await result.json()) as {
+    totalCount: number;
+    records: { featureId: string | null; values: Record<string, unknown> }[];
+    assets: { status: string; reason: string | null; paths: string[] }[];
+  };
+  expect(body.totalCount).toBe(8628);
+  expect(body.records[0]?.featureId).toBeNull();
+  expect(body.records[0]?.values['__geometry']).toBeDefined();
+  expect(
+    body.assets
+      .filter((asset) => asset.paths.some((path) => path.endsWith('.shp')))
+      .map((asset) => asset.reason)
+      .sort(),
+  ).toEqual(['TRANSFORM_UNAVAILABLE', 'TRANSFORM_UNAVAILABLE', 'UNKNOWN_CRS']);
+});
+
 test('real large table returns an authorized bounded page within the interactive budget', async ({
   page,
 }) => {
