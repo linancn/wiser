@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { queryFilteredRecords } from './exploration-filtered-records.js';
 import {
+  queryRecordPage,
+  RECORD_PAGE_BYTES,
+} from './exploration-record-page.js';
+import {
   ExplorationAnalysisAssetSchema,
   ExplorationRecordSchema,
   type ExplorationQueryInput,
@@ -135,6 +139,12 @@ export async function queryAnalysisView(
     input.bbox ?? null,
     recordQuery ? JSON.stringify(recordQuery.filters) : null,
   ];
+  const maximumBytes =
+    RECORD_PAGE_BYTES -
+    Buffer.byteLength(JSON.stringify({ assets, spec })) -
+    4096;
+  if (input.view === 'records' && maximumBytes <= 0)
+    throw new DataCapabilityHandlerError('VALIDATION_FAILED');
   const filtered =
     input.view === 'records' && recordQuery
       ? await queryFilteredRecords(client, {
@@ -144,6 +154,7 @@ export async function queryAnalysisView(
           first: input.first,
           offset,
           query: recordQuery,
+          maximumBytes,
         })
       : null;
   const counted = filtered
@@ -177,23 +188,22 @@ export async function queryAnalysisView(
         })),
       }
     : input.view === 'records'
-      ? await client.query(
-          `select record.*,$1::text data_item_id,$2::text version_id,st_asgeojson(record.geom)::jsonb geometry
-       from catalog.analysis_record record where record.analysis_id=$3::uuid and record.asset_id=$4::uuid
-       and ($5::uuid is null or record.record_id=$5::uuid)
-       and ($8::jsonb is null or service.exploration_record_matches(record.record_values,$8->'filters'))
-       order by ${recordQuery?.sort ? `(case when $8->'sort'->>'type'='number' then service.exploration_number(record.record_values->($8->'sort'->>'field')) end) ${recordQuery.sort.direction} nulls last, (case when $8->'sort'->>'type'='text' then record.record_values->>($8->'sort'->>'field') end) collate "C" ${recordQuery.sort.direction} nulls last,` : ''} record.record_index limit $6::integer offset $7::integer`,
-          [
-            ref?.dataItemId ?? null,
-            ref?.versionId ?? null,
-            ref?.analysisId ?? null,
-            selectedAssetId ?? null,
-            input.recordId ?? null,
-            input.first + 1,
-            offset,
-            recordQuery ? JSON.stringify(recordQuery) : null,
-          ],
-        )
+      ? {
+          rows: (
+            await queryRecordPage(client, {
+              analysisId: ref?.analysisId ?? null,
+              assetId: selectedAssetId ?? null,
+              ...(input.recordId ? { recordId: input.recordId } : {}),
+              first: input.first,
+              offset,
+              maximumBytes,
+            })
+          ).rows.map((row) => ({
+            ...row,
+            data_item_id: ref?.dataItemId,
+            version_id: ref?.versionId,
+          })),
+        }
       : await client.query(
           `select record.*,ref->>'dataItemId' data_item_id,ref->>'versionId' version_id,st_asgeojson(record.geom)::jsonb geometry ${RECORDS}
       order by ref->>'dataItemId',ref->>'versionId',record.asset_id,record.record_index limit $7::integer offset $8::integer`,
@@ -218,6 +228,8 @@ export async function queryAnalysisView(
         : row['record_values'],
     }),
   );
+  if (input.view === 'records' && records.length === 0 && totalCount > offset)
+    throw new DataCapabilityHandlerError('VALIDATION_FAILED');
   const totals = (
     await client.query(
       `select coalesce(sum(record_count),0)::text records,coalesce(sum(feature_count),0)::text features from service.analysis_asset asset join jsonb_array_elements($1::jsonb) ref on asset.analysis_id=(ref->>'analysisId')::uuid`,
@@ -252,10 +264,10 @@ export async function queryAnalysisView(
             geometry: page.rows[index]?.['geometry'],
           })),
         }),
-    ...(page.rows.length > input.first
+    ...(offset + records.length < totalCount
       ? {
           nextCursor: Buffer.from(
-            JSON.stringify({ binding, offset: offset + input.first }),
+            JSON.stringify({ binding, offset: offset + records.length }),
           ).toString('base64url'),
         }
       : {}),

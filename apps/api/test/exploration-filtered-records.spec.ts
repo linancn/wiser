@@ -37,7 +37,9 @@ it('binds source fields and values as data while reusing one numeric evaluation 
   expect(sql.match(/service.exploration_number/g)).toHaveLength(1);
   expect(parameters).toContain(field);
   expect(parameters).toContain(value);
-  expect(parameters?.slice(-2)).toEqual([26, 0]);
+  expect(parameters).toContain(26);
+  expect(parameters).toContain(0);
+  expect(sql).toContain('rows unbounded preceding');
   expect(result.total).toBe('1');
   expect(result.rows).toHaveLength(1);
 });

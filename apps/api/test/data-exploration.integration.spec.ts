@@ -811,7 +811,7 @@ describe('authorized exploration result sets in PostgreSQL', () => {
           [aggregateAnalysis, tenant, project, version, aggregateOperation],
         );
         await client.query(
-          `insert into service.analysis_asset(analysis_id,asset_id,tenant_id,project_id,source_hash,status,record_count,feature_count,columns,security_level,policy_version) values($1,$2,$3,$4,decode(repeat('a',64),'hex'),'READY',207,0,'[{"key":"c1","label":"Unit"},{"key":"c2","label":"Value"}]','L1_INTERNAL',1)`,
+          `insert into service.analysis_asset(analysis_id,asset_id,tenant_id,project_id,source_hash,status,record_count,feature_count,columns,security_level,policy_version) values($1,$2,$3,$4,decode(repeat('a',64),'hex'),'READY',209,0,'[{"key":"c1","label":"Unit"},{"key":"c2","label":"Value"}]','L1_INTERNAL',1)`,
           [aggregateAnalysis, asset, tenant, project],
         );
         const aggregateValues = [
@@ -825,6 +825,8 @@ describe('authorized exploration result sets in PostgreSQL', () => {
             c1: `group-${index}`,
             c2: index,
           })),
+          { c1: 'large-records', c2: 'x'.repeat(1700000) },
+          { c1: 'large-records', c2: 'y'.repeat(1700000) },
         ];
         await client.query(
           `insert into catalog.analysis_record(analysis_id,record_id,asset_id,tenant_id,project_id,record_index,record_values,security_level,policy_version)
@@ -994,6 +996,80 @@ describe('authorized exploration result sets in PostgreSQL', () => {
           truncated: true,
         });
         expect(bounded.aggregate?.groups).toHaveLength(200);
+
+        const largeQuery = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              spec: {
+                versions: [{ dataItemId: item, versionId: version }],
+                recordQuery: {
+                  assetId: asset,
+                  filters: [
+                    {
+                      field: 'c1',
+                      type: 'text',
+                      operator: 'eq',
+                      value: 'large-records',
+                    },
+                  ],
+                },
+              },
+              view: 'resources',
+            },
+            context,
+          ),
+        );
+        const largeInput = {
+          queryId: largeQuery.queryId,
+          versionId: version,
+          view: 'records',
+          first: 200,
+        };
+        const largeFirst = ExplorationResultSchema.parse(
+          await executor.execute(largeInput, context),
+        );
+        expect(
+          Buffer.byteLength(JSON.stringify(largeFirst)),
+        ).toBeLessThanOrEqual(3 * 1024 * 1024);
+        expect(largeFirst.totalCount).toBe(2);
+        expect(largeFirst.records).toHaveLength(1);
+        expect(largeFirst.records?.[0]?.values['c2']).toBe('x'.repeat(1700000));
+        expect(largeFirst.nextCursor).toBeTruthy();
+        const largeLast = ExplorationResultSchema.parse(
+          await executor.execute(
+            { ...largeInput, after: largeFirst.nextCursor },
+            context,
+          ),
+        );
+        expect(largeLast.records).toHaveLength(1);
+        expect(largeLast.records?.[0]?.values['c2']).toBe('y'.repeat(1700000));
+        expect(largeLast.nextCursor).toBeUndefined();
+        const projectedQuery = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              spec: {
+                ...largeQuery.spec,
+                recordQuery: {
+                  ...largeQuery.spec.recordQuery,
+                  columns: ['c1'],
+                },
+              },
+              view: 'resources',
+            },
+            context,
+          ),
+        );
+        const projected = ExplorationResultSchema.parse(
+          await executor.execute(
+            { ...largeInput, queryId: projectedQuery.queryId },
+            context,
+          ),
+        );
+        expect(projected.records).toHaveLength(2);
+        expect(projected.records?.map((record) => record.values)).toEqual([
+          { c1: 'large-records' },
+          { c1: 'large-records' },
+        ]);
       } finally {
         await client.query('rollback');
         client.release();

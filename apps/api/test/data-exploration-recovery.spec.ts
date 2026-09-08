@@ -139,6 +139,18 @@ describe('exploration recovery', () => {
             ],
           };
         if (sql.startsWith('select count')) return { rows: [{ total: '10' }] };
+        if (sql.startsWith('with candidates'))
+          return {
+            rows: Array.from({ length: 10 }, (_, index) => ({
+              record_id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+              asset_id: other,
+              analysis_id: id,
+              record_index: index + 1,
+              source_id: null,
+              record_values: {},
+              geometry: null,
+            })),
+          };
         if (sql.includes('coalesce(sum'))
           return { rows: [{ records: '10', features: '0' }] };
         return { rows: [] };
@@ -151,5 +163,6 @@ describe('exploration recovery', () => {
       { queryId: id, versionId: id, view: 'records', first: 20 },
     );
     expect(result).toMatchObject({ selectedAssetId: other, totalCount: 10 });
+    expect('records' in result ? result.records : undefined).toHaveLength(10);
   });
 });

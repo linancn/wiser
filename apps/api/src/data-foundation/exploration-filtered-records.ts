@@ -1,4 +1,10 @@
 import { recordProjection } from './exploration-record-sql.js';
+import {
+  recordBytes,
+  recordSelect,
+  recordValueExpression,
+  RECORD_PAGE_BYTES,
+} from './exploration-record-page.js';
 import type { RecordQuery } from '@wiser/data-contracts';
 import type { QueryAdapterPgClient } from './query-adapters.js';
 
@@ -12,6 +18,7 @@ export async function queryFilteredRecords(
     readonly first: number;
     readonly offset: number;
     readonly query: RecordQuery;
+    readonly maximumBytes?: number;
   },
 ) {
   const parameters: unknown[] = [
@@ -34,14 +41,23 @@ export async function queryFilteredRecords(
       : `${prefix}record_index`;
   const limit = bind(input.first + 1, 'integer');
   const offset = bind(input.offset, 'integer');
+  const values = recordValueExpression(
+    bind(input.query.columns ?? null, 'text[]'),
+  );
+  const maximumBytes = bind(
+    input.maximumBytes ?? RECORD_PAGE_BYTES - 4096,
+    'integer',
+  );
   const result = await client.query(
     `with valued as materialized (
     select r.record_id,r.record_index${expressions.length ? `,${expressions.join(',')}` : ''} from catalog.analysis_record r
     where r.analysis_id=$1::uuid and r.asset_id=$2::uuid and ($3::uuid is null or r.record_id=$3::uuid)
   ), matched as materialized (select * from valued where ${predicates.length ? predicates.join(' and ') : 'true'}),
-  page as (select * from matched order by ${order()} limit ${limit} offset ${offset})
-  select counted.total,r.*,st_asgeojson(r.geom)::jsonb geometry
-  from (select count(*)::text total from matched) counted left join page on true
+  page as (select * from matched order by ${order()} limit ${limit} offset ${offset}),
+  measured as (select page.*,sum(${recordBytes(values)}) over(order by ${order('page.')} rows unbounded preceding) bytes from page join catalog.analysis_record r on r.analysis_id=$1::uuid and r.record_id=page.record_id),
+  bounded as (select * from measured where bytes<=${maximumBytes})
+  select counted.total,${recordSelect(values)}
+  from (select count(*)::text total from matched) counted left join bounded page on true
   left join catalog.analysis_record r on r.analysis_id=$1::uuid and r.record_id=page.record_id order by ${order('page.')}`,
     parameters,
   );
