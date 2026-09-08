@@ -224,6 +224,8 @@ create table platform.delegations (
 
 create table platform_private.delegated_credentials (
   id uuid primary key default gen_random_uuid(),
+  credential_kind text not null default 'delegated'
+    check (credential_kind in ('delegated', 'agent_exchange')),
   delegation_id uuid not null
     references platform.delegations(id) on delete restrict,
   key_id text not null unique
@@ -319,7 +321,7 @@ create index delegations_project_tenant_idx
   on platform.delegations (project_id, tenant_id);
 create unique index delegated_credentials_one_active_idx
   on platform_private.delegated_credentials (delegation_id)
-  where revoked_at is null;
+  where revoked_at is null and credential_kind = 'delegated';
 create index delegated_credentials_rotated_to_idx
   on platform_private.delegated_credentials (rotated_to_credential_id)
   where rotated_to_credential_id is not null;

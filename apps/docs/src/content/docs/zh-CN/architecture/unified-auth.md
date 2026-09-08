@@ -60,6 +60,10 @@ Agent 连接记录把一个 human 与 OAuth client 绑定到已有的 `agent-dat
 
 `createSupabaseAgentClaimsVerifier` 单独验证这类已签名 claims：要求配置的精确 issuer、单一 resource audience、authenticated role、有效的 user/session/client/Delegation ID，以及未到期的整数 expiry。它不会从用户 metadata 推导 Delegation。claims 验证之后，调用方仍须检查实时连接与 Session 授权。
 
+`PostgresAgentConnectionService` 提供请求检查、项目授权、连接列表与撤销，以及 credential 交换。授权要求实时有效的直接 human Session、`platform.delegation.manage`，以及目标 Project 的目录读取权限。查询模式仅授予调用方已有的读取 scopes；入库还要求用户明确选择且当前具备 `data.ingestion.write`，不授予发布权限。安全等级默认内部，不能超过调用方上限；授权有效期为 60–3600 秒。浏览器须先通过 Supabase 把 OAuth authorization request 关联到 human，再由服务提交授权。
+
+授权在一个控制面事务内创建平台 Agent、到期 Membership 与有边界的 Delegation。重新授权会撤销旧 Delegation。交换流程检查当前连接、OAuth client、consent 与 Session，再签发最长 60 秒且不超过 OAuth 和 Delegation 到期时间的 credential。`agent_exchange` credential 支持并发请求；普通 `delegated` credential 保留单枚有效约束。credential 类型和 OAuth 绑定不可变，延迟约束要求提交时绑定必须存在；每次委托 API 解析都会复查绑定的 Session、consent、client 和当前 Delegation。变更使用幂等锁与原子 Audit/Outbox，交换重放不能恢复明文。
+
 - Actor 统一表示 human、agent 与 service；human actor 关联 `auth.users.id`。
 - Tenant 是顶级隔离边界；Project 是业务资源所有权边界。
 - Tenant Membership 不自动授予任意 Project 数据访问。

@@ -129,6 +129,13 @@ export {
   type SupabaseAgentClaimsVerifier,
 } from './agent-claims.js';
 export {
+  PostgresAgentConnectionService,
+  AgentConnectionError,
+  type AgentConnectionErrorCode,
+  type AgentConnectionService,
+  type PostgresAgentConnectionServiceOptions,
+} from './agent-connections.js';
+export {
   issueDelegatedCredential,
   parseDelegatedCredentialHmacKeyRing,
   parseDelegatedCredentialToken,

@@ -128,3 +128,79 @@ export const PlatformRequestContextSchema = z.strictObject({
 export type PlatformRequestContext = z.infer<
   typeof PlatformRequestContextSchema
 >;
+
+export const PlatformAgentResourceSchema = z
+  .string()
+  .url()
+  .max(2048)
+  .refine((value) => {
+    return (
+      /^https:\/\/[^/?#@\\\s]+\/mcp$/.test(value) ||
+      /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:[0-9]+)?\/mcp$/.test(value)
+    );
+  });
+export const PlatformAgentModeSchema = z.enum(['query', 'ingest']);
+export const PlatformAgentAuthorizationIdSchema = z
+  .string()
+  .min(1)
+  .max(256)
+  .regex(/^[A-Za-z0-9_-]+$/);
+export const PlatformAgentAuthorizeCommandSchema = z.strictObject({
+  authorizationId: PlatformAgentAuthorizationIdSchema,
+  tenantId: PlatformUuidSchema,
+  projectId: PlatformUuidSchema,
+  mode: PlatformAgentModeSchema,
+  maxSecurityLevel: PlatformSecurityLevelSchema.default('L1_INTERNAL'),
+  expiresInSeconds: z.number().int().min(60).max(3600).default(3600),
+});
+export type PlatformAgentAuthorizeCommand = z.input<
+  typeof PlatformAgentAuthorizeCommandSchema
+>;
+export const PlatformAgentProjectSchema = z.strictObject({
+  tenantId: PlatformUuidSchema,
+  projectId: PlatformUuidSchema,
+  tenantName: z.strictObject({
+    'zh-CN': z.string().min(1).max(256),
+    en: z.string().min(1).max(256),
+  }),
+  projectName: z.strictObject({
+    'zh-CN': z.string().min(1).max(256),
+    en: z.string().min(1).max(256),
+  }),
+  modes: z.array(PlatformAgentModeSchema).min(1).max(2),
+  maxSecurityLevel: PlatformSecurityLevelSchema,
+});
+export const PlatformAgentAuthorizationViewSchema = z.strictObject({
+  authorizationId: PlatformAgentAuthorizationIdSchema,
+  clientId: PlatformUuidSchema,
+  clientName: z.string().min(1).max(1024),
+  redirectUri: z.string().url().max(2048),
+  resource: PlatformAgentResourceSchema,
+  projects: z.array(PlatformAgentProjectSchema).max(100),
+});
+export type PlatformAgentAuthorizationView = z.infer<
+  typeof PlatformAgentAuthorizationViewSchema
+>;
+export const PlatformAgentConnectionViewSchema = z.strictObject({
+  connectionId: PlatformUuidSchema,
+  clientId: PlatformUuidSchema,
+  delegationId: PlatformUuidSchema,
+  tenantId: PlatformUuidSchema,
+  projectId: PlatformUuidSchema,
+  scopes: z.array(PlatformScopeSchema).min(1).max(128),
+  purpose: z.literal('agent-data'),
+  maxSecurityLevel: PlatformSecurityLevelSchema,
+  expiresAt: z.iso.datetime(),
+  status: z.enum(['active', 'expired', 'revoked']),
+});
+export type PlatformAgentConnectionView = z.infer<
+  typeof PlatformAgentConnectionViewSchema
+>;
+export const PlatformAgentExchangeViewSchema = z.strictObject({
+  connection: PlatformAgentConnectionViewSchema,
+  token: z.string().regex(/^wdc1\.wdc_[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/),
+  expiresAt: z.iso.datetime(),
+});
+export type PlatformAgentExchangeView = z.infer<
+  typeof PlatformAgentExchangeViewSchema
+>;

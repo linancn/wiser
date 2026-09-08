@@ -102,7 +102,7 @@ describe.skipIf(databaseUrl === undefined)(
       await pool.query(
         `insert into auth.oauth_authorizations
       (id,authorization_id,client_id,user_id,redirect_uri,scope,resource,code_challenge,code_challenge_method)
-      values ($1,$1,$2,$3,'http://127.0.0.1:49555/callback','openid',$4,$5,'s256')`,
+      values ($1::uuid,$1::text,$2,$3,'http://127.0.0.1:49555/callback','openid',$4,$5,'s256')`,
         [authorizationId, clientId, owner, targetResource, 'a'.repeat(43)],
       );
       await pool.query(
@@ -324,6 +324,20 @@ describe.skipIf(databaseUrl === undefined)(
       expect(JSON.stringify([audit.rows, outbox.rows])).not.toContain(
         setup.token,
       );
+    });
+
+    it('prevents removing the OAuth binding by changing credential kind', async () => {
+      const setup = await connect();
+      await service.exchange({
+        token: setup.token,
+        idempotencyKey: randomUUID(),
+      });
+      await expect(
+        pool.query(
+          `update platform_private.delegated_credentials set credential_kind='delegated' where delegation_id=$1`,
+          [setup.connection.delegationId],
+        ),
+      ).rejects.toMatchObject({ code: '23514' });
     });
   },
 );

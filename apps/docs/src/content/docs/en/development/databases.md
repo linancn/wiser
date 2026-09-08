@@ -73,6 +73,8 @@ Keep all four Supabase artifacts synchronized: ordered migrations are replayable
 
 `supabase:verify` first executes `db reset --local`, then runs pgTAP, database lint, and all advisors. It deletes local Supabase data; never point it at a shared or production database. Never rename, reorder, or edit a migration that has entered history. Append another migration instead.
 
+The Agent consent/exchange integration test uses `WISER_AGENT_TEST_DATABASE_URL` with a disposable, migrated and seeded Supabase database. Run `pnpm exec vitest run apps/api/test/platform-agent-connections.integration.spec.ts` with that variable set. It creates synthetic OAuth Sessions, clients, consents and Agent memberships; run it after pgTAP, not concurrently with seed-count assertions. Without the variable, the integration suite is skipped. Normal unit tests remain independent of databases and AI providers.
+
 ## Data Foundation change workflow
 
 `infrastructure/data-foundation/postgres/migrations` is the sole Data Foundation business-schema history. Filenames are unique, contiguous `NNNN_descriptive_name.sql` entries and are append-only.
