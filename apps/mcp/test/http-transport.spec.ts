@@ -69,4 +69,64 @@ describe('WISER MCP Streamable HTTP boundary', () => {
     expect(handler).toHaveBeenCalledOnce();
     expect(unknown.status).toBe(404);
   });
+
+  it('binds concurrent requests to separate authorization contexts and rechecks revocation', async () => {
+    const active = new Set(['alice', 'bob']);
+    const server = createWiserMcpHttpServer({
+      ready: () => true,
+      async authorize(request: IncomingMessage) {
+        const actor = request.headers.authorization?.replace('Bearer ', '');
+        if (actor === undefined || !active.has(actor)) return null;
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        return async (_request: IncomingMessage, response: ServerResponse) => {
+          response.setHeader('Content-Type', 'application/json');
+          response.end(JSON.stringify({ actor, project: `${actor}-project` }));
+        };
+      },
+    });
+    servers.push(server);
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const call = (actor: string) =>
+      fetch(`${origin}/mcp`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${actor}` },
+      });
+
+    const [alice, bob] = await Promise.all([call('alice'), call('bob')]);
+    expect(await alice.json()).toEqual({
+      actor: 'alice',
+      project: 'alice-project',
+    });
+    expect(await bob.json()).toEqual({ actor: 'bob', project: 'bob-project' });
+    expect(alice.headers.get('cache-control')).toBe('no-store');
+
+    active.delete('alice');
+    const revoked = await call('alice');
+    expect(revoked.status).toBe(401);
+    expect(await revoked.json()).toEqual({ error: 'NOT_AUTHENTICATED' });
+    expect((await call('bob')).status).toBe(200);
+  });
+
+  it('keeps authorization dependency failures private and health probes available', async () => {
+    const server = createWiserMcpHttpServer({
+      ready: () => true,
+      authorize: async () => {
+        throw new Error('private upstream credential and database details');
+      },
+    });
+    servers.push(server);
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+
+    const response = await fetch(`${origin}/mcp`, { method: 'POST' });
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      error: 'MCP_AUTHORIZATION_UNAVAILABLE',
+    });
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect((await fetch(`${origin}/health/ready`)).status).toBe(200);
+  });
 });
