@@ -87,3 +87,5 @@ Exploration invalidation and expiry clear all rendered views and selection toget
 Record conditions, sorting and column selection create one authorized file query reused by record, map and provenance views. / 记录条件、排序和列配置创建同一授权文件查询，并在记录、地图和溯源视图间复用。
 
 The statistics view aggregates a selected source through the shared HTTP query and offers keyboard group selection alongside its chart. / 统计视图通过共享 HTTP 查询聚合所选来源，图表配有键盘可用的分组选择。
+
+Graph exploration includes bounded neighbor pages and current-page directed path highlighting, with keyboard controls and shared identity. / 图谱探索支持有界邻居分页和当前页有向路径高亮，复用键盘控件与共享身份。

@@ -17,6 +17,10 @@ vi.mock('./data-foundation-graph', () => ({
     return <div data-testid="canvas" />;
   },
 }));
+function requestBody(value: unknown): unknown {
+  if (typeof value !== 'string') throw new Error('Expected JSON body');
+  return JSON.parse(value) as unknown;
+}
 const id = '10000000-0000-4000-8000-000000000001';
 const node = {
   id: `version:${id}`,
@@ -73,7 +77,9 @@ afterEach(() => {
 it('expands a selected asset, pages neighbors and returns to the overview', async () => {
   const fetcher = vi
     .fn<typeof fetch>()
-    .mockResolvedValue(new Response(JSON.stringify(result)));
+    .mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify(result))),
+    );
   vi.stubGlobal('fetch', fetcher);
   const user = userEvent.setup();
   const rendered = render(<DataExplorerGraph {...props} />);
@@ -81,7 +87,7 @@ it('expands a selected asset, pages neighbors and returns to the overview', asyn
   act(() => probe.props.onSelect?.(`asset:${id}:${id}`));
   expect(props.onSelect).toHaveBeenCalledWith(result.graph!.nodes[1]);
   rendered.rerender(
-    <DataExplorerGraph {...props} selectedNode={result.graph!.nodes[1]!} />,
+    <DataExplorerGraph {...props} selectedNode={result.graph!.nodes[1]} />,
   );
   await user.click(screen.getByRole('button', { name: 'Expand records' }));
   await waitFor(() =>
@@ -92,9 +98,10 @@ it('expands a selected asset, pages neighbors and returns to the overview', asyn
       }),
     ),
   );
-  expect(
-    JSON.parse(String(fetcher.mock.calls.at(-1)?.[1]?.body)),
-  ).toMatchObject({ versionId: id, assetId: id });
+  expect(requestBody(fetcher.mock.calls.at(-1)?.[1]?.body)).toMatchObject({
+    versionId: id,
+    assetId: id,
+  });
   await user.click(screen.getByRole('button', { name: 'Show query overview' }));
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
 });
@@ -108,9 +115,10 @@ it('queries relation filters and a bounded path without exposing arbitrary endpo
   const user = userEvent.setup();
   render(<DataExplorerGraph {...props} />);
   await screen.findByTestId('canvas');
+  await user.click(screen.getByText('Relations and path'));
   await user.click(screen.getByRole('checkbox', { name: 'Contains evidence' }));
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
-  const body = JSON.parse(String(fetcher.mock.calls.at(-1)?.[1]?.body)) as {
+  const body = requestBody(fetcher.mock.calls.at(-1)?.[1]?.body) as {
     graph: { relations: string[] };
   };
   expect(body.graph.relations).not.toContain('HAS_EVIDENCE');
@@ -121,9 +129,7 @@ it('queries relation filters and a bounded path without exposing arbitrary endpo
   );
   await user.click(screen.getByRole('button', { name: 'Find directed path' }));
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
-  expect(
-    JSON.parse(String(fetcher.mock.calls.at(-1)?.[1]?.body)),
-  ).toMatchObject({
+  expect(requestBody(fetcher.mock.calls.at(-1)?.[1]?.body)).toMatchObject({
     graph: { path: { from: node.id, to: `asset:${id}:${id}`, maxDepth: 8 } },
   });
 });
@@ -153,4 +159,59 @@ it('invalidates revoked scope, retries transient failures and rejects mismatched
   render(<DataExplorerGraph {...props} />);
   await screen.findByRole('alert');
   expect(screen.queryByTestId('canvas')).toBeNull();
+});
+
+it('paginates bounded neighbors and ignores a response after cancellation', async () => {
+  const fetcher = vi.fn<typeof fetch>().mockImplementation((_url, init) => {
+    const body = requestBody(init?.body) as { after?: string };
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          ...result,
+          ...(body.after ? {} : { nextCursor: 'next-page' }),
+        }),
+      ),
+    );
+  });
+  vi.stubGlobal('fetch', fetcher);
+  const user = userEvent.setup();
+  const rendered = render(<DataExplorerGraph {...props} />);
+  await screen.findByTestId('canvas');
+  await user.click(screen.getByRole('button', { name: 'Next page' }));
+  await waitFor(() =>
+    expect(requestBody(fetcher.mock.calls.at(-1)?.[1]?.body)).toMatchObject({
+      after: 'next-page',
+    }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Next page' })
+        .disabled,
+    ).toBe(true),
+  );
+  await user.click(screen.getByRole('button', { name: 'Previous page' }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Previous page' })
+        .disabled,
+    ).toBe(true),
+  );
+  rendered.unmount();
+  let complete: ((value: Response) => void) | undefined;
+  fetcher.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+  );
+  const late = render(<DataExplorerGraph {...props} />);
+  await waitFor(() => expect(complete).toBeDefined());
+  const signal = fetcher.mock.calls.at(-1)?.[1]?.signal;
+  late.unmount();
+  expect(signal?.aborted).toBe(true);
+  await act(async () => {
+    complete?.(new Response('', { status: 403 }));
+    await Promise.resolve();
+  });
+  expect(props.onInvalidated).not.toHaveBeenCalled();
 });

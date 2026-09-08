@@ -26,9 +26,16 @@ export function KnowledgeGraphCanvas({
   onSelect,
   locale,
   hierarchical = false,
+  path,
 }: {
   readonly result: CanvasGraphData;
   readonly hierarchical?: boolean;
+  readonly path?:
+    | {
+        readonly nodeIds: readonly string[];
+        readonly edgeIds: readonly string[];
+      }
+    | undefined;
   readonly selectedId: string | null;
   readonly onSelect: (id: string) => void;
   readonly locale: Locale;
@@ -126,9 +133,13 @@ export function KnowledgeGraphCanvas({
             labelMaxWidth: 170,
             labelWordWrap: true,
           },
-          state: { selected: { stroke: palette.selected, lineWidth: 5 } },
+          state: {
+            selected: { stroke: palette.selected, lineWidth: 5 },
+            path: { stroke: palette.selected, lineWidth: 4 },
+          },
         },
         edge: {
+          state: { path: { stroke: palette.selected, lineWidth: 4 } },
           style: { stroke: palette.edge, lineWidth: 1.5, endArrow: true },
         },
         behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element'],
@@ -141,8 +152,21 @@ export function KnowledgeGraphCanvas({
       if (disposed) return;
       graph.current = active;
       resize = new ResizeObserver(() => {
-        if (!disposed)
-          active.resize(container.clientWidth, container.clientHeight);
+        if (
+          disposed ||
+          container.clientWidth === 0 ||
+          container.clientHeight === 0
+        )
+          return;
+        pending.current = pending.current
+          .then(async () => {
+            if (disposed) return;
+            active.resize(container.clientWidth, container.clientHeight);
+            await active.fitView(undefined, false);
+          })
+          .catch(() => {
+            if (!disposed) setState('unavailable');
+          });
       });
       resize.observe(container);
       theme = new MutationObserver(() => {
@@ -203,19 +227,26 @@ export function KnowledgeGraphCanvas({
       .then(async () => {
         if (graph.current !== active) return;
         await active.setElementState(
-          Object.fromEntries(
-            result.nodes.map((node) => [
+          Object.fromEntries([
+            ...result.nodes.map((node): [string, string[]] => [
               node.entityId,
-              node.entityId === selectedId ? ['selected'] : [],
+              [
+                ...(path?.nodeIds.includes(node.entityId) ? ['path'] : []),
+                ...(node.entityId === selectedId ? ['selected'] : []),
+              ],
             ]),
-          ),
+            ...result.edges.map((edge): [string, string[]] => [
+              edge.edgeId,
+              path?.edgeIds.includes(edge.edgeId) ? ['path'] : [],
+            ]),
+          ]),
           false,
         );
       })
       .catch(() => {
         if (graph.current === active) setState('unavailable');
       });
-  }, [selectedId, result, state]);
+  }, [selectedId, result, state, path]);
 
   return (
     <div

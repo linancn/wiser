@@ -1,3 +1,6 @@
+import { findExplorationPath } from '@wiser/data-core';
+import { queryFilteredRecords } from './exploration-filtered-records.js';
+import { RECORD_PAGE_BYTES } from './exploration-record-page.js';
 import { spatialPredicate } from './exploration-spatial.js';
 import { z } from 'zod';
 import {
@@ -31,12 +34,18 @@ export async function queryProvenanceGraph(
       : refs.filter((ref) => ref.versionId === input.versionId);
   if (input.versionId !== undefined && selected.length === 0)
     throw new DataCapabilityHandlerError('NOT_FOUND');
+  const detail = input.graph?.detail;
+  const first = Math.min(input.first, 100);
+  let total = selected.length;
+  let returned = 0;
   const binding = JSON.stringify({
     queryId,
     view: 'graph',
     versionId: input.versionId ?? null,
     recordId: input.recordId ?? null,
     assetId: input.assetId ?? null,
+    detail: detail ?? null,
+    relations: input.graph?.relations?.toSorted() ?? null,
   });
   let offset = 0;
   if (input.after !== undefined) {
@@ -44,7 +53,7 @@ export async function queryProvenanceGraph(
       offset = z
         .strictObject({
           binding: z.literal(binding),
-          offset: z.number().int().min(1).max(10000),
+          offset: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
         })
         .parse(
           JSON.parse(Buffer.from(input.after, 'base64url').toString('utf8')),
@@ -53,9 +62,10 @@ export async function queryProvenanceGraph(
       throw new DataCapabilityHandlerError('VALIDATION_FAILED');
     }
   }
-  if (offset > selected.length)
+  if (!detail && offset > selected.length)
     throw new DataCapabilityHandlerError('VALIDATION_FAILED');
-  const page = selected.slice(offset, offset + Math.min(input.first, 100));
+  const page = detail ? selected : selected.slice(offset, offset + first);
+  returned = page.length;
   const serialized = JSON.stringify(page);
   const nodes: ExplorationGraphNode[] = [];
   const edges: {
@@ -129,15 +139,33 @@ export async function queryProvenanceGraph(
         : row['record_values'],
     });
   }
+  if (focusedRecord && input.assetId && input.assetId !== focusedRecord.assetId)
+    throw new DataCapabilityHandlerError('NOT_FOUND');
   const assetId =
     spec.recordQuery?.assetId ?? focusedRecord?.assetId ?? input.assetId;
+  const assetLimit = detail === 'assets' ? first : detail ? 1 : 200;
   const assets = await client.query(
-    `select asset.asset_id,asset.version_id,ref->>'dataItemId' data_item_id,asset.media_type,encode(asset.content_hash,'hex') source_hash,analysis.source_paths from catalog.asset asset join jsonb_array_elements($1::jsonb) ref on asset.version_id=(ref->>'versionId')::uuid left join service.analysis_asset analysis on analysis.analysis_id=(ref->>'analysisId')::uuid and analysis.asset_id=asset.asset_id where ($2::uuid is null or asset.asset_id=$2) order by asset.version_id,asset.asset_id limit 201`,
-    [serialized, assetId ?? null],
+    `select count(*) over()::text total,asset.asset_id,asset.version_id,ref->>'dataItemId' data_item_id,asset.media_type,encode(asset.content_hash,'hex') source_hash,analysis.source_paths from catalog.asset asset join jsonb_array_elements($1::jsonb) ref on asset.version_id=(ref->>'versionId')::uuid left join service.analysis_asset analysis on analysis.analysis_id=(ref->>'analysisId')::uuid and analysis.asset_id=asset.asset_id where ($2::uuid is null or asset.asset_id=$2) order by asset.version_id,asset.asset_id limit $3::integer offset $4::integer`,
+    [
+      serialized,
+      assetId ?? null,
+      assetLimit + 1,
+      detail === 'assets' ? offset : 0,
+    ],
   );
   if (assetId !== undefined && assets.rows.length === 0)
     throw new DataCapabilityHandlerError('NOT_FOUND');
-  for (const row of assets.rows.slice(0, 200)) {
+  if (detail === 'assets') {
+    total = z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .parse(assets.rows[0]?.['total'] ?? 0);
+    returned = Math.min(assets.rows.length, first);
+  }
+  for (const row of detail === 'evidence'
+    ? []
+    : assets.rows.slice(0, assetLimit)) {
     const versionId = z.uuid().parse(row['version_id']),
       id = z.uuid().parse(row['asset_id']);
     const paths = z
@@ -155,11 +183,24 @@ export async function queryProvenanceGraph(
     });
     connect(`version:${versionId}`, nodeId, 'HAS_ASSET');
   }
+  const evidenceLimit = detail === 'evidence' ? first : detail ? 0 : 100;
   const evidence = await client.query(
-    `select evidence.evidence_fragment_id evidence_id,evidence.version_id,ref->>'dataItemId' data_item_id from knowledge.evidence_fragment evidence join jsonb_array_elements($1::jsonb) ref on evidence.version_id=(ref->>'versionId')::uuid order by evidence.version_id,evidence.evidence_fragment_id limit 101`,
-    [serialized],
+    `select count(*) over()::text total,evidence.evidence_fragment_id evidence_id,evidence.version_id,ref->>'dataItemId' data_item_id from knowledge.evidence_fragment evidence join jsonb_array_elements($1::jsonb) ref on evidence.version_id=(ref->>'versionId')::uuid order by evidence.version_id,evidence.evidence_fragment_id limit $2::integer offset $3::integer`,
+    [
+      serialized,
+      evidenceLimit ? evidenceLimit + 1 : 0,
+      detail === 'evidence' ? offset : 0,
+    ],
   );
-  for (const row of evidence.rows.slice(0, 100)) {
+  if (detail === 'evidence') {
+    total = z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .parse(evidence.rows[0]?.['total'] ?? 0);
+    returned = Math.min(evidence.rows.length, first);
+  }
+  for (const row of evidence.rows.slice(0, evidenceLimit)) {
     const evidenceId = z.uuid().parse(row['evidence_id']),
       versionId = z.uuid().parse(row['version_id']);
     const id = `evidence:${versionId}:${evidenceId}`;
@@ -173,12 +214,49 @@ export async function queryProvenanceGraph(
     });
     connect(`version:${versionId}`, id, 'HAS_EVIDENCE');
   }
-  if (focusedRecord !== undefined) {
+  const recordNodes = focusedRecord ? [focusedRecord] : [];
+  if (detail === 'records') {
+    const ref = page[0]!;
+    const rows = await queryFilteredRecords(client, {
+      analysisId: ref.analysisId ?? null,
+      assetId: input.assetId!,
+      first,
+      offset,
+      query: spec.recordQuery ?? { assetId: input.assetId!, filters: [] },
+      ...(spec.spatialBounds ? { spatialBounds: spec.spatialBounds } : {}),
+      maximumBytes:
+        RECORD_PAGE_BYTES -
+        Buffer.byteLength(JSON.stringify({ nodes, edges, spec }), 'utf8') -
+        16384,
+    });
+    total = z.coerce.number().int().nonnegative().parse(rows.total);
+    for (const row of rows.rows.slice(0, first))
+      recordNodes.push(
+        ExplorationRecordSchema.parse({
+          recordId: row['record_id'],
+          featureId: row['geometry'] === null ? null : row['record_id'],
+          dataItemId: ref.dataItemId,
+          versionId: ref.versionId,
+          analysisId: ref.analysisId,
+          assetId: row['asset_id'],
+          sourceId: row['source_id'],
+          index: z.coerce.number().parse(row['record_index']),
+          values: row['record_values'],
+        }),
+      );
+    returned = recordNodes.length;
+    if (offset < total && returned === 0)
+      throw new DataCapabilityHandlerError('VALIDATION_FAILED');
+  }
+  for (const focusedRecord of recordNodes) {
     const id = `record:${focusedRecord.analysisId}:${focusedRecord.recordId}`;
     nodes.push({
       id,
       kind: 'RECORD',
-      label: focusedRecord.sourceId ?? String(focusedRecord.index),
+      label: (focusedRecord.sourceId || String(focusedRecord.index)).slice(
+        0,
+        2048,
+      ),
       dataItemId: focusedRecord.dataItemId,
       versionId: focusedRecord.versionId,
       assetId: focusedRecord.assetId,
@@ -190,20 +268,41 @@ export async function queryProvenanceGraph(
       'HAS_RECORD',
     );
   }
-  const more = offset + page.length < selected.length;
+  if (detail && offset > 0 && (returned === 0 || offset >= total))
+    throw new DataCapabilityHandlerError('VALIDATION_FAILED');
+  const more = offset + returned < total;
+  const filteredEdges = input.graph?.relations
+    ? edges.filter((edge) =>
+        input.graph!.relations!.some((relation) => relation === edge.relation),
+      )
+    : edges;
+  const pathInput = input.graph?.path;
+  if (
+    pathInput &&
+    (!nodes.some((node) => node.id === pathInput.from) ||
+      !nodes.some((node) => node.id === pathInput.to))
+  )
+    throw new DataCapabilityHandlerError('NOT_FOUND');
+  const path = pathInput
+    ? findExplorationPath({ nodes, edges: filteredEdges }, pathInput)
+    : undefined;
   return {
     view: 'graph' as const,
     resources: [],
-    totalCount: selected.length,
+    totalCount: total,
     graph: ExplorationGraphSchema.parse({
       nodes,
-      edges,
-      truncated: more || assets.rows.length > 200 || evidence.rows.length > 100,
+      edges: filteredEdges,
+      grain: detail ?? 'versions',
+      ...(path ? { path } : {}),
+      truncated:
+        more ||
+        (!detail && (assets.rows.length > 200 || evidence.rows.length > 100)),
     }),
     ...(more
       ? {
           nextCursor: Buffer.from(
-            JSON.stringify({ binding, offset: offset + page.length }),
+            JSON.stringify({ binding, offset: offset + returned }),
           ).toString('base64url'),
         }
       : {}),

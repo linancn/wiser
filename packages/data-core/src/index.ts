@@ -6,3 +6,4 @@ export * from './publication/index.js';
 export * from './quality/index.js';
 export * from './security/index.js';
 export * from './exploration-readiness.js';
+export * from './exploration-path.js';

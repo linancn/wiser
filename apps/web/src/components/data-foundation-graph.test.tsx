@@ -9,6 +9,7 @@ const engine = vi.hoisted(() => ({
   render: vi.fn().mockResolvedValue(undefined),
   destroy: vi.fn(),
   resize: vi.fn(),
+  fitView: vi.fn().mockResolvedValue(undefined),
   draw: vi.fn().mockResolvedValue(undefined),
   updateNodeData: vi.fn(),
   updateEdgeData: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock('@antv/g6', () => ({
     render = engine.render;
     destroy = engine.destroy;
     resize = engine.resize;
+    fitView = engine.fitView;
     draw = engine.draw;
     updateNodeData = engine.updateNodeData;
     updateEdgeData = engine.updateEdgeData;
@@ -43,6 +45,10 @@ class WorkerDouble {
   }
 }
 class ResizeDouble {
+  static callback: () => void;
+  constructor(callback: () => void) {
+    ResizeDouble.callback = callback;
+  }
   observe() {}
   disconnect() {}
 }
@@ -91,6 +97,12 @@ it('renders worker positions, preserves the canvas on selection and disposes aft
   );
   expect(engine.options?.data?.nodes?.[0].style?.x).toBe(12);
   expect(engine.options?.layout).toBeUndefined();
+  Object.defineProperties(screen.getByRole('img'), {
+    clientWidth: { value: 390 },
+    clientHeight: { value: 440 },
+  });
+  act(() => ResizeDouble.callback());
+  await waitFor(() => expect(engine.fitView).toHaveBeenCalledOnce());
   expect(WorkerDouble.current.terminate).toHaveBeenCalledOnce();
   rendered.rerender(
     <KnowledgeGraphCanvas
@@ -103,7 +115,23 @@ it('renders worker positions, preserves the canvas on selection and disposes aft
   );
   await waitFor(() =>
     expect(engine.setElementState).toHaveBeenLastCalledWith(
-      { a: [], b: ['selected'] },
+      { a: [], b: ['selected'], ab: [] },
+      false,
+    ),
+  );
+  rendered.rerender(
+    <KnowledgeGraphCanvas
+      locale="zh-CN"
+      result={result}
+      selectedId="b"
+      path={{ nodeIds: ['a', 'b'], edgeIds: ['ab'] }}
+      onSelect={selected}
+      hierarchical
+    />,
+  );
+  await waitFor(() =>
+    expect(engine.setElementState).toHaveBeenLastCalledWith(
+      { a: ['path'], b: ['path', 'selected'], ab: ['path'] },
       false,
     ),
   );

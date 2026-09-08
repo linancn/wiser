@@ -13,6 +13,68 @@ test.skip(
   'Requires the admitted private water research case.',
 );
 
+test('real provenance expands records and highlights a directed path without rebuilding its canvas', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  await page.getByRole('tab', { name: '知识图谱', exact: true }).click();
+  const graph = page.getByTestId('explorer-graph');
+  await expect(graph.getByTestId('knowledge-graph')).toHaveAttribute(
+    'data-state',
+    'ready',
+  );
+  await graph
+    .getByRole('button', { name: /^文件 · .*DS-0558/ })
+    .first()
+    .click();
+  await graph.getByRole('button', { name: '展开记录', exact: true }).click();
+  await expect(graph).toContainText('匹配记录 · 1');
+  await expect(graph.getByTestId('knowledge-graph')).toHaveAttribute(
+    'data-state',
+    'ready',
+  );
+  await graph.getByText('关系筛选与路径', { exact: true }).click();
+  await graph
+    .getByRole('combobox', { name: '路径起点', exact: true })
+    .selectOption('version:3c9220e3-a5dc-5254-b134-4cc0f6944108');
+  const target =
+    'record:a95e670e-4c30-44d7-93f8-495b17b1b181:89baed67-b350-8e92-a713-27d8c2c6c894';
+  await graph
+    .getByRole('combobox', { name: '路径终点', exact: true })
+    .selectOption(target);
+  await graph
+    .locator('canvas')
+    .first()
+    .evaluate((element) => element.setAttribute('data-retained', 'true'));
+  await graph
+    .getByRole('button', { name: '查找有向路径', exact: true })
+    .click();
+  await expect(graph).toContainText('找到路径，已高亮 · 2');
+  await expect(graph.locator('canvas').first()).toHaveAttribute(
+    'data-retained',
+    'true',
+  );
+  await graph
+    .getByRole('checkbox', { name: '包含文件', exact: true })
+    .uncheck();
+  await expect(
+    graph.getByRole('button', { name: '查找有向路径', exact: true }),
+  ).toBeEnabled();
+  await graph
+    .getByRole('button', { name: '查找有向路径', exact: true })
+    .click();
+  await expect(graph).toContainText('当前页未找到路径');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 test('map layer controls and geographic refinement preserve the original authorized population', async ({
   page,
 }) => {

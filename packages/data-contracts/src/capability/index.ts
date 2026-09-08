@@ -15,6 +15,7 @@ import {
   ExplorationQueryInputV17Schema,
   ExplorationQueryInputV18Schema,
   ExplorationQueryInputV19Schema,
+  ExplorationQueryInputV110Schema,
   ExplorationResultSchema,
   ExplorationResultV1Schema,
   ExplorationResultV11Schema,
@@ -26,6 +27,7 @@ import {
   ExplorationResultV17Schema,
   ExplorationResultV18Schema,
   ExplorationResultV19Schema,
+  ExplorationResultV110Schema,
 } from '../exploration/index.ts';
 
 import {
@@ -901,7 +903,7 @@ const capabilityRegistry = {
   }),
   'data.explore.query': defineCapability({
     id: 'data.explore.query',
-    version: '1.10.0',
+    version: '1.11.0',
     kind: 'query',
     inputSchema: ExplorationQueryInputSchema,
     outputSchema: ExplorationResultSchema,
@@ -1008,6 +1010,12 @@ const capabilityArchive = {
       version: '1.9.0',
       inputSchema: ExplorationQueryInputV19Schema,
       outputSchema: ExplorationResultV19Schema,
+    }),
+    Object.freeze({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.10.0',
+      inputSchema: ExplorationQueryInputV110Schema,
+      outputSchema: ExplorationResultV110Schema,
     }),
   ]),
   'data.catalog.search': Object.freeze([

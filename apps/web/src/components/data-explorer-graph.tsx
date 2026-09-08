@@ -7,6 +7,9 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import {
   ExplorationResultSchema,
+  ExplorationGraphRelationSchema,
+  type ExplorationGraphOptions,
+  type ExplorationGraphRelation,
   type ExplorationResult,
   type ExplorationGraphNode,
   type ExplorationRecord,
@@ -34,19 +37,32 @@ export function DataExplorerGraph({
 }) {
   const copy = getDictionary(locale).dataFoundation.explorer;
   // Freeze the entry focus while users inspect nodes; selecting a node must not rebuild the graph.
-  const [focus, setFocus] = useState({
+  const [focus, setFocus] = useState<{
+    versionId: string | null;
+    recordId: string | null;
+    assetId?: string;
+    detail?: ExplorationGraphOptions['detail'];
+  }>({
     versionId,
     recordId: selectedRecord?.recordId ?? null,
   });
   const [result, setResult] = useState<ExplorationResult | null>(null);
   const [failure, setFailure] = useState(false);
+  const [busy, setBusy] = useState(true);
+  const [retry, setRetry] = useState(0);
+  const [relations, setRelations] = useState<ExplorationGraphRelation[]>([
+    ...ExplorationGraphRelationSchema.options,
+  ]);
+  const [path, setPath] = useState<ExplorationGraphOptions['path']>();
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
   const [page, setPage] = useState(0);
   const after = cursors[page];
   useEffect(() => {
     const controller = new AbortController();
     const frame = requestAnimationFrame(() => {
-      setResult(null);
+      setBusy(true);
       setFailure(false);
     });
     void (async () => {
@@ -62,6 +78,12 @@ export function DataExplorerGraph({
             first: 30,
             ...(focus.versionId ? { versionId: focus.versionId } : {}),
             ...(focus.recordId ? { recordId: focus.recordId } : {}),
+            ...(focus.assetId ? { assetId: focus.assetId } : {}),
+            graph: {
+              ...(focus.detail ? { detail: focus.detail } : {}),
+              relations,
+              ...(path ? { path } : {}),
+            },
             ...(after ? { after } : {}),
           }),
         });
@@ -74,9 +96,28 @@ export function DataExplorerGraph({
           throw new Error('Graph unavailable');
         }
         const next = ExplorationResultSchema.parse(await response.json());
+        if (next.queryId !== queryId || next.view !== 'graph')
+          throw new Error('Mismatched graph');
         if (!controller.signal.aborted) {
           cancelAnimationFrame(frame);
-          setResult(next);
+          setResult((previous) =>
+            previous?.graph &&
+            next.graph &&
+            JSON.stringify(previous.graph.nodes) ===
+              JSON.stringify(next.graph.nodes) &&
+            JSON.stringify(previous.graph.edges) ===
+              JSON.stringify(next.graph.edges)
+              ? {
+                  ...next,
+                  graph: {
+                    ...next.graph,
+                    nodes: previous.graph.nodes,
+                    edges: previous.graph.edges,
+                  },
+                }
+              : next,
+          );
+          setBusy(false);
           setFailure(false);
         }
       } catch {
@@ -84,6 +125,7 @@ export function DataExplorerGraph({
           cancelAnimationFrame(frame);
           setResult(null);
           setFailure(true);
+          setBusy(false);
         }
       }
     })();
@@ -91,21 +133,23 @@ export function DataExplorerGraph({
       controller.abort();
       cancelAnimationFrame(frame);
     };
-  }, [queryId, focus, after, onInvalidated]);
+  }, [queryId, focus, after, onInvalidated, relations, path, retry]);
   const graph = result?.graph;
+  const nodes = graph?.nodes;
+  const edges = graph?.edges;
   const canvas = useMemo(
     () => ({
-      nodes: (graph?.nodes ?? []).map((node) => ({
+      nodes: (nodes ?? []).map((node) => ({
         entityId: node.id,
         label: `${copy.graphNodeKinds[node.kind]} · ${node.kind === 'ASSET' ? node.label.split('/').at(-1) : node.kind === 'EVIDENCE' ? node.label.slice(0, 8) : node.label}`,
       })),
-      edges: (graph?.edges ?? []).map((edge) => ({
+      edges: (edges ?? []).map((edge) => ({
         edgeId: edge.id,
         fromEntityId: edge.source,
         toEntityId: edge.target,
       })),
     }),
-    [graph, copy],
+    [nodes, edges, copy],
   );
   const selectedId =
     selectedNode?.id ??
@@ -114,12 +158,24 @@ export function DataExplorerGraph({
       : versionId
         ? `version:${versionId}`
         : null);
+  const changeFocus = (next: typeof focus) => {
+    setFocus(next);
+    setPath(undefined);
+    setFrom('');
+    setTo('');
+    setPage(0);
+    setCursors([undefined]);
+  };
+  const activeNode = graph?.nodes.find((node) => node.id === selectedId);
   return (
     <div data-testid="explorer-graph" className={styles.graphView}>
       {failure ? (
-        <p role="alert" className={styles.empty}>
-          {copy.unavailable}
-        </p>
+        <div className={styles.empty}>
+          <p role="alert">{copy.unavailable}</p>
+          <button onClick={() => setRetry((value) => value + 1)}>
+            {copy.graphRetry}
+          </button>
+        </div>
       ) : !graph ? (
         <p role="status" className={styles.empty}>
           {copy.loadingView}
@@ -132,26 +188,149 @@ export function DataExplorerGraph({
           locale={locale}
           selectedId={selectedId}
           hierarchical
+          path={graph.path}
           onSelect={(id) => {
             const node = graph.nodes.find((node) => node.id === id);
             if (node) onSelect(node);
           }}
         />
       )}
+      {busy && graph ? <p role="status">{copy.loadingView}</p> : null}
       <div className={styles.graphToolbar}>
         <p>{copy.graphScope}</p>
         {focus.versionId ? (
           <button
             onClick={() => {
-              setFocus({ versionId: null, recordId: null });
-              setPage(0);
-              setCursors([undefined]);
+              changeFocus({ versionId: null, recordId: null });
             }}
           >
             {copy.graphOverview}
           </button>
         ) : null}
       </div>
+      <div className={styles.graphToolbar}>
+        {activeNode &&
+        ['RESOURCE', 'VERSION', 'ASSET'].includes(activeNode.kind) ? (
+          <>
+            <button
+              disabled={busy}
+              onClick={() =>
+                changeFocus({
+                  versionId: activeNode.versionId,
+                  recordId: null,
+                  detail: 'assets',
+                })
+              }
+            >
+              {copy.graphExpandAssets}
+            </button>
+            <button
+              disabled={busy}
+              onClick={() =>
+                changeFocus({
+                  versionId: activeNode.versionId,
+                  recordId: null,
+                  detail: 'evidence',
+                })
+              }
+            >
+              {copy.graphExpandEvidence}
+            </button>
+            {activeNode.assetId ? (
+              <button
+                disabled={busy}
+                onClick={() =>
+                  changeFocus({
+                    versionId: activeNode.versionId,
+                    recordId: null,
+                    assetId: activeNode.assetId!,
+                    detail: 'records',
+                  })
+                }
+              >
+                {copy.graphExpandRecords}
+              </button>
+            ) : null}
+          </>
+        ) : null}
+        {graph?.grain ? (
+          <span>
+            {copy.graphGrains[graph.grain]} · {result?.totalCount}
+          </span>
+        ) : null}
+      </div>
+      <details className={styles.graphOptions}>
+        <summary>{copy.graphRelationsAndPath}</summary>
+        <fieldset disabled={busy}>
+          <legend>{copy.graphRelations}</legend>
+          {ExplorationGraphRelationSchema.options.map((relation) => (
+            <label key={relation}>
+              <input
+                type="checkbox"
+                checked={relations.includes(relation)}
+                onChange={(event) => {
+                  setRelations((previous) =>
+                    event.target.checked
+                      ? [...previous, relation]
+                      : previous.filter((value) => value !== relation),
+                  );
+                  setPath(undefined);
+                  setPage(0);
+                  setCursors([undefined]);
+                }}
+              />
+              {copy.graphRelationsLabels[relation]}
+            </label>
+          ))}
+        </fieldset>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (from && to) setPath({ from, to, maxDepth: 8 });
+          }}
+        >
+          <p>{copy.graphPathScope}</p>
+          <label>
+            {copy.graphPathStart}
+            <select
+              disabled={busy}
+              value={from}
+              onChange={(event) => setFrom(event.target.value)}
+            >
+              <option value="">{copy.graphChooseNode}</option>
+              {nodes?.map((node) => (
+                <option key={node.id} value={node.id}>
+                  {copy.graphNodeKinds[node.kind]} · {node.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {copy.graphPathEnd}
+            <select
+              disabled={busy}
+              value={to}
+              onChange={(event) => setTo(event.target.value)}
+            >
+              <option value="">{copy.graphChooseNode}</option>
+              {nodes?.map((node) => (
+                <option key={node.id} value={node.id}>
+                  {copy.graphNodeKinds[node.kind]} · {node.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button disabled={busy || !from || !to} type="submit">
+            {copy.graphFindPath}
+          </button>
+        </form>
+        {graph?.path ? (
+          <p role="status">
+            {graph.path.found ? copy.graphPathFound : copy.graphPathAbsent}
+            {graph.path.found ? ` · ${graph.path.edgeIds.length}` : ''}
+          </p>
+        ) : null}
+      </details>
       {graph?.truncated ? (
         <p role="status" className={styles.graphNotice}>
           {copy.graphTruncated}
@@ -171,8 +350,13 @@ export function DataExplorerGraph({
       </ul>
       <footer className={styles.pagination}>
         <button
-          disabled={page === 0 || result === null}
-          onClick={() => setPage((value) => value - 1)}
+          disabled={page === 0 || result === null || busy}
+          onClick={() => {
+            setPath(undefined);
+            setFrom('');
+            setTo('');
+            setPage((value) => value - 1);
+          }}
         >
           {copy.previous}
         </button>
@@ -180,8 +364,11 @@ export function DataExplorerGraph({
           {copy.page} {page + 1}
         </span>
         <button
-          disabled={!result?.nextCursor}
+          disabled={!result?.nextCursor || busy}
           onClick={() => {
+            setPath(undefined);
+            setFrom('');
+            setTo('');
             setCursors((values) => {
               const next = [...values];
               next[page + 1] = result?.nextCursor;
