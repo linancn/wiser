@@ -83,3 +83,5 @@ Data exploration at `/[locale]/data-foundation/explore` uses shared `@wiser/data
 Data Explorer links resource, record and MapLibre views through one authorized query and shared selection. Dev/build automatically prepares matching MapLibre 6.8.0 worker modules. The checked-in Natural Earth overview basemap is public-domain and has a source/hash manifest in `public/basemap/source.json`. Business records and geometries continue to come exclusively from the authenticated HTTP API.
 
 Exploration invalidation and expiry clear all rendered views and selection together while retaining editable form conditions for retry. / 探索授权失效或到期时，各视图与选择一起清除，表单条件保留以便重新查询。
+
+Record conditions, sorting and column selection create one authorized file query reused by record, map and provenance views. / 记录条件、排序和列配置创建同一授权文件查询，并在记录、地图和溯源视图间复用。

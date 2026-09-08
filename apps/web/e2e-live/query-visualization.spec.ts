@@ -13,6 +13,66 @@ test.skip(
   'Requires the admitted private water research case.',
 );
 
+test('record controls filter the real station across views and restore configuration after reload', async ({
+  page,
+}) => {
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  await page
+    .getByRole('button', { name: 'DS-0558 · NLDI API', exact: true })
+    .click();
+  await page.getByRole('tab', { name: '记录', exact: true }).click();
+  await expect(page.getByTestId('explorer-records')).toContainText(
+    'USGS-01646500',
+  );
+  await page.getByText('记录条件', { exact: true }).click();
+  await page.getByRole('button', { name: '添加条件', exact: true }).click();
+  await page.getByLabel('值', { exact: true }).fill('USGS-01646500');
+  const previous = await page
+    .getByTestId('data-explorer')
+    .getAttribute('data-query-id');
+  await page.getByRole('button', { name: '应用到所有视图' }).click();
+  await expect(page.getByTestId('data-explorer')).not.toHaveAttribute(
+    'data-query-id',
+    previous!,
+  );
+  await expect(page.getByTestId('explorer-records')).toContainText(
+    'USGS-01646500',
+  );
+  const filtered = await page
+    .getByTestId('data-explorer')
+    .getAttribute('data-query-id');
+  await page.reload();
+  await expect(page.getByLabel('值', { exact: true })).toHaveValue(
+    'USGS-01646500',
+  );
+  await expect(page.getByTestId('data-explorer')).toHaveAttribute(
+    'data-query-id',
+    filtered!,
+  );
+  await page.getByRole('tab', { name: '地图', exact: true }).click();
+  await expect(page.getByTestId('explorer-map')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  await expect(page.getByTestId('explorer-map')).toContainText('可上图记录 1');
+  await page.getByRole('tab', { name: '记录', exact: true }).click();
+  await page.getByLabel('值', { exact: true }).fill('missing-station');
+  await page.getByRole('button', { name: '应用到所有视图' }).click();
+  await expect(page.getByTestId('explorer-records')).not.toContainText(
+    'USGS-01646500',
+  );
+  await expect(
+    page.getByTestId('explorer-records').getByRole('row'),
+  ).toHaveCount(1);
+  await page.getByRole('tab', { name: '地图', exact: true }).click();
+  await expect(page.getByTestId('explorer-map')).toContainText('可上图记录 0');
+  await page.getByRole('tab', { name: '记录', exact: true }).click();
+  await page.getByRole('button', { name: '清除记录条件' }).click();
+  await expect(page.getByTestId('explorer-records')).toContainText(
+    'USGS-01646500',
+  );
+});
+
 test('large real asset numeric filtering and sorting fits the interactive request budget', async ({
   page,
 }) => {

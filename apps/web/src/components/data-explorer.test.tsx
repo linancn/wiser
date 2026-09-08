@@ -60,6 +60,108 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe('exploration query navigation', () => {
+  it('creates an owner-bound record query and restores the records view without a selected resource', async () => {
+    const initial = result(firstId, 'Station source', 'station');
+    const resource = initial.resources[0];
+    const assetId = '40000000-0000-4000-8000-000000000001';
+    const recordQuery = {
+      assetId,
+      filters: [
+        {
+          field: 'c1',
+          type: 'text' as const,
+          operator: 'eq' as const,
+          value: '0001',
+        },
+      ],
+    };
+    const filtered = {
+      ...initial,
+      queryId: secondId,
+      spec: {
+        text: 'station',
+        versions: [
+          { dataItemId: resource.dataItemId, versionId: resource.versionId },
+        ],
+        recordQuery,
+      },
+    };
+    const records = {
+      ...initial,
+      view: 'records',
+      resources: [],
+      selectedAssetId: assetId,
+      assets: [
+        {
+          assetId,
+          sourceHash: 'a'.repeat(64),
+          status: 'READY',
+          recordCount: 1,
+          featureCount: 0,
+          reason: null,
+          paths: ['station.csv'],
+          columns: [{ key: 'c1', label: 'Station' }],
+        },
+      ],
+      records: [
+        {
+          recordId: '50000000-0000-4000-8000-000000000001',
+          featureId: null,
+          dataItemId: resource.dataItemId,
+          versionId: resource.versionId,
+          analysisId: '60000000-0000-4000-8000-000000000001',
+          assetId,
+          sourceId: null,
+          index: 1,
+          values: { c1: '0001' },
+        },
+      ],
+    };
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(records))
+      .mockResolvedValueOnce(Response.json(filtered))
+      .mockResolvedValueOnce(
+        Response.json({ ...records, queryId: secondId, spec: filtered.spec }),
+      );
+    vi.stubGlobal('fetch', fetch);
+    const user = userEvent.setup();
+    render(
+      <DataExplorer
+        locale="en"
+        initialResult={initial}
+        initialFailure={null}
+        initialText=""
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Station source' }));
+    await user.click(screen.getByRole('tab', { name: 'Records' }));
+    await screen.findByText('0001');
+    await user.click(screen.getByText('Record conditions'));
+    await user.click(screen.getByRole('button', { name: 'Add condition' }));
+    await user.type(screen.getByLabelText('Value'), '0001');
+    await user.click(
+      screen.getByRole('button', { name: 'Apply to all views' }),
+    );
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    expect(inputBody(fetch.mock.calls[1][1] as RequestInit)).toEqual({
+      spec: filtered.spec,
+      view: 'resources',
+      first: 25,
+    });
+    expect(inputBody(fetch.mock.calls[2][1] as RequestInit)).toMatchObject({
+      queryId: secondId,
+      view: 'records',
+      versionId: resource.versionId,
+    });
+    await screen.findByText('0001');
+    expect(window.location.search).toBe(`?query=${secondId}&view=records`);
+    expect(
+      screen
+        .getByRole('tab', { name: 'Records' })
+        .getAttribute('aria-selected'),
+    ).toBe('true');
+  });
   it('submits all visible filters as one query and pages without changing its identity', async () => {
     const initial = result(firstId, 'First source', 'first');
     const filtered = {

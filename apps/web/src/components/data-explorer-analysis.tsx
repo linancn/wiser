@@ -9,7 +9,9 @@ import {
   ExplorationResultSchema,
   type ExplorationRecord,
   type ExplorationResult,
+  type RecordQuery,
 } from '@wiser/data-contracts';
+import { DataExplorerRecordControls } from './data-explorer-record-controls';
 import { getDictionary, type Locale } from '@/lib/i18n';
 import styles from './data-explorer.module.css';
 
@@ -23,6 +25,8 @@ export function DataExplorerAnalysis({
   onSelect,
   onInvalidated,
   onData,
+  onConfigure,
+  configuring = false,
 }: {
   readonly locale: Locale;
   readonly onInvalidated: InvalidateExploration;
@@ -32,6 +36,8 @@ export function DataExplorerAnalysis({
   readonly selectedRecord: ExplorationRecord | null;
   readonly onSelect: (record: ExplorationRecord) => void;
   readonly onData: (result: ExplorationResult) => void;
+  readonly onConfigure?: (configuration: RecordQuery | undefined) => void;
+  readonly configuring?: boolean;
 }) {
   const copy = getDictionary(locale).dataFoundation.explorer;
   const [result, setResult] = useState<ExplorationResult | null>(null);
@@ -124,12 +130,18 @@ export function DataExplorerAnalysis({
   );
   const assets =
     result.assets?.filter((asset) => asset.status !== 'MANIFEST') ?? [];
+  const visibleColumns = selectedAsset?.columns.filter(
+    (column) =>
+      !result.spec.recordQuery?.columns ||
+      result.spec.recordQuery.columns.includes(column.key),
+  );
   return (
     <div data-testid="explorer-records" aria-busy={busy}>
       <div className={styles.recordToolbar}>
         <label>
           {copy.sourceFile}
           <select
+            disabled={result.spec.recordQuery !== undefined || configuring}
             value={result.selectedAssetId ?? ''}
             onChange={(event) => {
               setAssetId(event.target.value);
@@ -148,12 +160,23 @@ export function DataExplorerAnalysis({
           {result.totalCount.toLocaleString(locale)} {copy.records}
         </span>
       </div>
+      {selectedAsset && onConfigure ? (
+        <DataExplorerRecordControls
+          key={`${queryId}:${selectedAsset.assetId}`}
+          locale={locale}
+          assetId={selectedAsset.assetId}
+          columns={selectedAsset.columns}
+          value={result.spec.recordQuery}
+          onApply={onConfigure}
+          busy={configuring}
+        />
+      ) : null}
       <div className={styles.tableScroll}>
         <table className={styles.recordTable}>
           <thead>
             <tr>
               <th scope="col">#</th>
-              {selectedAsset?.columns.map((column) => (
+              {visibleColumns?.map((column) => (
                 <th key={column.key} scope="col">
                   {column.label}
                 </th>
@@ -175,7 +198,7 @@ export function DataExplorerAnalysis({
                     {record.index.toLocaleString(locale)}
                   </button>
                 </td>
-                {selectedAsset?.columns.map((column) => (
+                {visibleColumns?.map((column) => (
                   <td key={column.key}>
                     {formatRecordValue(record.values[column.key])}
                   </td>

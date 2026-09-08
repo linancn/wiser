@@ -28,6 +28,7 @@ import {
   type ExplorationGraphNode,
   type ExplorationAnalysisAsset,
   type QuerySpec,
+  type RecordQuery,
 } from '@wiser/data-contracts';
 import { getDictionary, type Locale } from '@/lib/i18n';
 import { explorationSelectionReducer } from '@/lib/exploration-selection';
@@ -207,6 +208,7 @@ export function DataExplorer({
     targetPage: number,
     reset: boolean,
     restoreView?: ExplorationView,
+    historyAction?: 'pushState' | 'replaceState',
   ) {
     pending.current?.abort();
     const controller = new AbortController();
@@ -226,7 +228,9 @@ export function DataExplorer({
         if (invalidatesExploration(response.status) && activeQueryId.current)
           invalidate(activeQueryId.current, response.status);
         setFailure(
-          [404, 409, 422].includes(response.status) ? 'expired' : 'unavailable',
+          [404, 409, 410, 422].includes(response.status)
+            ? 'expired'
+            : 'unavailable',
         );
         return;
       }
@@ -253,7 +257,8 @@ export function DataExplorer({
         });
       if (restoreView) setView(restoreView);
       const method =
-        reset && restoreView === undefined ? 'pushState' : 'replaceState';
+        historyAction ??
+        (reset && restoreView === undefined ? 'pushState' : 'replaceState');
       window.history[method](
         window.history.state,
         '',
@@ -334,6 +339,37 @@ export function DataExplorer({
       ...(quality ? { qualityGrades: [quality as 'A' | 'B' | 'C'] } : {}),
     };
     void query({ spec, view: 'resources', first: 25 }, 0, true);
+  }
+  function configureRecords(recordQuery: RecordQuery | undefined) {
+    if (!result) return;
+    const versionId =
+      selectedRecord?.versionId ??
+      selectedNode?.versionId ??
+      selected?.versionId ??
+      result.spec.versions?.[0]?.versionId;
+    const dataItemId =
+      selectedRecord?.dataItemId ??
+      selectedNode?.dataItemId ??
+      selected?.dataItemId ??
+      result.spec.versions?.[0]?.dataItemId;
+    if (!versionId || !dataItemId) return;
+    const { recordQuery: previous, ...spec } = result.spec;
+    void previous;
+    void query(
+      {
+        spec: {
+          ...spec,
+          versions: [{ dataItemId, versionId }],
+          ...(recordQuery ? { recordQuery } : {}),
+        },
+        view: 'resources',
+        first: 25,
+      },
+      0,
+      true,
+      'records',
+      'pushState',
+    );
   }
   function nextPage() {
     if (!result?.nextCursor) return;
@@ -686,6 +722,7 @@ export function DataExplorer({
                 selectedRecord?.versionId ??
                 selectedNode?.versionId ??
                 selected?.versionId ??
+                result.spec.versions?.[0]?.versionId ??
                 null
               }
               selectedRecord={selectedRecord}
@@ -703,11 +740,14 @@ export function DataExplorer({
                 selectedRecord?.versionId ??
                 selectedNode?.versionId ??
                 selected?.versionId ??
+                result.spec.versions?.[0]?.versionId ??
                 null
               }
               selectedRecord={selectedRecord}
               onSelect={selectRecord}
               onData={onAnalysisData}
+              onConfigure={configureRecords}
+              configuring={busy}
               onInvalidated={invalidate}
             />
           ) : null}

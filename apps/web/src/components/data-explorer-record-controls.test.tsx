@@ -98,7 +98,7 @@ it('restores conditions and handles null checks, removing conditions and clearin
       busy={false}
     />,
   );
-  expect((screen.getByLabelText('Comparison') as HTMLSelectElement).value).toBe(
+  expect(screen.getByLabelText<HTMLSelectElement>('Comparison').value).toBe(
     'isNull',
   );
   expect(screen.queryByLabelText('Value')).toBeNull();
@@ -137,7 +137,7 @@ it('requires at least one displayed column and keeps the filter count bounded', 
   for (let index = 0; index < 8; index++)
     await user.click(screen.getByRole('button', { name: 'Add condition' }));
   expect(
-    (screen.getByRole('button', { name: 'Add condition' }) as HTMLButtonElement)
+    screen.getByRole<HTMLButtonElement>('button', { name: 'Add condition' })
       .disabled,
   ).toBe(true);
 });

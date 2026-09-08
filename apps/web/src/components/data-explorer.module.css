@@ -593,3 +593,66 @@
 .viewTabs {
   flex-wrap: wrap;
 }
+
+.recordControls {
+  margin: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.6rem;
+  background: var(--surface);
+}
+.recordControls summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.recordConfiguration {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.recordConfiguration p {
+  color: var(--text-secondary);
+}
+.recordCondition {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.65rem;
+  margin: 0.8rem 0;
+  padding: 0.65rem;
+  border: 1px solid var(--border-subtle);
+  min-width: 0;
+}
+.recordCondition label {
+  display: grid;
+  gap: 0.3rem;
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+.recordCondition input,
+.recordCondition select {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+}
+.columnChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  border: 1px solid var(--border-subtle);
+  max-height: 12rem;
+  overflow: auto;
+}
+.columnChoices label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  overflow-wrap: anywhere;
+}
+.recordActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
