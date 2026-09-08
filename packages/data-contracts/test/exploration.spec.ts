@@ -10,6 +10,23 @@ const version = '10000000-0000-4000-8000-000000000002';
 const query = '10000000-0000-4000-8000-000000000003';
 
 describe('unified exploration contracts', () => {
+  it('accepts explicit provider, registration kind and analytical readiness filters', () => {
+    expect(
+      QuerySpecSchema.safeParse({
+        providers: ['National water service'],
+        kinds: ['DATASET_INTERFACE'],
+        readiness: {
+          records: ['METADATA_ONLY', 'EMPTY'],
+          spatial: ['CRS_UNVERIFIED', 'NO_SPATIAL_DATA'],
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      QuerySpecSchema.safeParse({ readiness: { spatial: ['INVENTED'] } })
+        .success,
+    ).toBe(false);
+    expect(QuerySpecSchema.safeParse({ providers: [] }).success).toBe(false);
+  });
   it('supports a bounded provenance graph with record focus pinned to a query and version', () => {
     expect(
       ExplorationQueryInputSchema.safeParse({
