@@ -97,6 +97,8 @@ Web 与 Docs 通过公开的 `WISER_AGENT_SETUP_URL` 生成可复制的智能体
 
 Data Foundation Skill 的研究数据包辅助脚本使用 Python 3 标准库。清点阶段校验包清单和下载清单，将注册入口合并到完整数据源目录，并核对清单外文件，保持来源目录不变。运行 `python3 -B skills/wiser-data-foundation/scripts/water_bundle.py inventory --bundle /absolute/source --out /absolute/output/inventory.json`。这是本机准备步骤；正式入库只能通过统一 HTTP API。Skill 参考文档说明凭据排除、脱敏副本、完整性状态与显式启用的真实案例测试。
 
+Compose 的 `DATA_INGESTION_MAX_OBJECT_BYTES` 默认是 64 MiB，并允许显式环境配置覆盖，可容纳本案例最大的 36,378,636 字节文件。这是 Worker 的单对象上限；来源登记仍逐一校验精确内容，不把部分下载或未解析内容宣称为可分析数据。
+
 `.env.example` 是变量目录，不是可直接用于生产的配置。完整栈会把本机生成的秘密保存在被 Git 忽略的 `.wiser/local/runtime-secrets.json`。不要提交 `.env`、数据库 URL、S3 key、Supabase service-role、HMAC key、MCP token 或 Codex 登录文件。
 
 浏览器只能接收 `NEXT_PUBLIC_SUPABASE_URL` 与 publishable key；数据库、对象存储、投影与 operator credential 必须保留在服务端。
