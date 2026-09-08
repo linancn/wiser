@@ -423,6 +423,73 @@ describe('authorized exploration result sets in PostgreSQL', () => {
           analysis: { analysisId: analysis },
           readiness: { records: 'READY', spatial: 'READY' },
         });
+        const spatialQuery = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              baseQueryId: analyzed.queryId,
+              spec: { spatialBounds: [-78, 38, -77, 39] },
+              view: 'resources',
+            },
+            context,
+          ),
+        );
+        expect(spatialQuery.totalCount).toBe(1);
+        for (const view of ['records', 'map'] as const) {
+          const spatialRows = ExplorationResultSchema.parse(
+            await executor.execute(
+              { queryId: spatialQuery.queryId, view, versionId: version },
+              context,
+            ),
+          );
+          expect(spatialRows.totalCount).toBe(1);
+          if (view === 'records')
+            expect(spatialRows.records?.[0]?.recordId).toBe(record);
+          else expect(spatialRows.features?.[0]?.id).toBe(record);
+        }
+        const spatialAggregate = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              queryId: spatialQuery.queryId,
+              versionId: version,
+              view: 'aggregate',
+              aggregate: { assetId: asset, measure: { operation: 'count' } },
+            },
+            context,
+          ),
+        );
+        expect(spatialAggregate.totalCount).toBe(1);
+        await expect(
+          executor.execute(
+            {
+              queryId: spatialQuery.queryId,
+              versionId: version,
+              view: 'graph',
+              recordId: secondRecord,
+            },
+            context,
+          ),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+        const emptySpatial = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              baseQueryId: spatialQuery.queryId,
+              spec: { spatialBounds: [100, 10, 101, 11] },
+              view: 'resources',
+            },
+            context,
+          ),
+        );
+        expect(emptySpatial.totalCount).toBe(0);
+        const restoredSpatial = ExplorationResultSchema.parse(
+          await executor.execute(
+            { baseQueryId: emptySpatial.queryId, spec: {}, view: 'resources' },
+            context,
+          ),
+        );
+        expect(restoredSpatial.totalCount).toBe(1);
+        expect(restoredSpatial.resources[0]?.analysis?.analysisId).toBe(
+          analysis,
+        );
         const readyOnly = ExplorationResultSchema.parse(
           await executor.execute(
             {
