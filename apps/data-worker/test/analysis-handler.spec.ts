@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   AnalysisContentError,
+  bindAnalysisRecord,
+  type AnalysisContentEvent,
   type ClaimedDataJob,
   type DataPostgresPool,
 } from '@wiser/data-infra';
@@ -43,7 +45,23 @@ const bytes = new TextEncoder().encode(
   }),
 );
 
-function fixture(leaseValid = true, inputBytes = bytes, readError?: Error) {
+function fixture(
+  leaseValid = true,
+  inputBytes = bytes,
+  readError?: Error,
+  external?: {
+    mediaType: string;
+    parse: (input: {
+      bytes: Uint8Array;
+      sourceHash: string;
+      dataItemId: string;
+      versionId: string;
+      assetId: string;
+      format: string;
+      path: string;
+    }) => AsyncIterable<AnalysisContentEvent>;
+  },
+) {
   const calls: { sql: string; values: readonly unknown[] }[] = [];
   const pool: DataPostgresPool = {
     async connect() {
@@ -70,7 +88,7 @@ function fixture(leaseValid = true, inputBytes = bytes, readError?: Error) {
                 {
                   asset_id: assetId,
                   source_hash: createHash('sha256').update(bytes).digest('hex'),
-                  media_type: 'application/geo+json',
+                  media_type: external?.mediaType ?? 'application/geo+json',
                   byte_size: String(bytes.length),
                 },
               ],
@@ -88,6 +106,7 @@ function fixture(leaseValid = true, inputBytes = bytes, readError?: Error) {
     calls,
     handler: createAnalysisHandler({
       pool,
+      ...(external ? { parseExternal: external.parse } : {}),
       read: () =>
         readError ? Promise.reject(readError) : Promise.resolve(inputBytes),
     }),
@@ -95,6 +114,76 @@ function fixture(leaseValid = true, inputBytes = bytes, readError?: Error) {
 }
 
 describe('version analysis worker', () => {
+  it('persists external document text and discloses partial content at asset and run level', async () => {
+    const value = fixture(true, bytes, undefined, {
+      mediaType: 'text/markdown',
+      async *parse(input) {
+        expect(input.format).toBe('md');
+        expect(input.path).toBe(`${assetId}.md`);
+        yield { type: 'schema', columns: [{ key: 'c1', label: 'Text' }] };
+        yield bindAnalysisRecord(input, {
+          index: 1,
+          values: { c1: 'Source content' },
+          geometry: null,
+          sourceId: null,
+          sourceCrs: null,
+        });
+        yield {
+          type: 'summary',
+          recordCount: 1,
+          featureCount: 0,
+          status: 'PARTIAL',
+          reason: 'TEXT_LIMIT',
+        };
+      },
+    });
+    expect(await value.handler(job)).toMatchObject({
+      status: 'SUCCEEDED',
+      result: { recordCount: 1, partialAssetCount: 1 },
+    });
+    expect(
+      value.calls
+        .find((call) => call.sql.includes('analysis.finish-asset'))
+        ?.values.slice(2, 6),
+    ).toEqual(['PARTIAL', 'TEXT_LIMIT', 1, 0]);
+    expect(
+      value.calls.find((call) => call.sql.includes('analysis.finish-run'))
+        ?.values,
+    ).toEqual([analysisId, 'PARTIAL']);
+  });
+  it('rolls back external partial writes when parsing exceeds capacity', async () => {
+    const value = fixture(true, bytes, undefined, {
+      mediaType: 'application/pdf',
+      async *parse(input) {
+        yield { type: 'schema', columns: [{ key: 'c1', label: 'Text' }] };
+        for (let index = 1; index <= 500; index += 1)
+          yield bindAnalysisRecord(input, {
+            index,
+            values: { c1: 'text' },
+            geometry: null,
+            sourceId: null,
+            sourceCrs: null,
+          });
+        throw new AnalysisContentError('CAPACITY_LIMIT');
+      },
+    });
+    expect(await value.handler(job)).toMatchObject({
+      result: { recordCount: 0, unsupportedAssetCount: 1 },
+    });
+    expect(
+      value.calls.some((call) => call.sql.includes('analysis.insert-records')),
+    ).toBe(true);
+    expect(
+      value.calls.some(
+        (call) => call.sql === 'rollback to savepoint analysis_asset_records',
+      ),
+    ).toBe(true);
+    expect(
+      value.calls
+        .find((call) => call.sql.includes('analysis.finish-asset'))
+        ?.values.slice(2, 6),
+    ).toEqual(['UNSUPPORTED', 'CAPACITY_LIMIT', null, null]);
+  });
   it('classifies parser resource limits separately from invalid source content', async () => {
     const value = fixture(
       true,
