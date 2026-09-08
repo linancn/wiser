@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
+import { promisify } from 'node:util';
 
 import { ROOT_DIRECTORY } from './operations.mjs';
 
@@ -80,4 +82,36 @@ test('serializes authority and pgSTAC migrations on a fresh database', async () 
     pgstacMigration,
     /depends_on:[\s\S]*?data-postgres:[\s\S]*?condition:\s*service_healthy/,
   );
+});
+
+test('starts certificate consumers after initialization without enabling Data in the base stack', async () => {
+  const compose = async (args) => {
+    const { stdout } = await promisify(execFile)(
+      'docker',
+      ['compose', ...args, 'config', '--format', 'json'],
+      { cwd: ROOT_DIRECTORY, maxBuffer: 1024 * 1024 },
+    );
+    return JSON.parse(stdout).services;
+  };
+  const services = await compose(['--profile', 'data-foundation']);
+  const awaitsCertificate = (service) =>
+    Object.entries(services[service].depends_on ?? {}).some(
+      ([dependency, gate]) =>
+        dependency === 'opensearch-icu-init'
+          ? gate.condition === 'service_completed_successfully'
+          : gate.condition === 'service_healthy' &&
+            awaitsCertificate(dependency),
+    );
+
+  for (const consumer of ['api', 'data-worker']) {
+    assert.ok(
+      awaitsCertificate(consumer),
+      `${consumer} must load its CA after certificate initialization completes`,
+    );
+  }
+
+  const base = await compose([]);
+  assert.ok(base.api);
+  assert.equal(base['opensearch-icu-init'], undefined);
+  assert.equal(base.opensearch, undefined);
 });
