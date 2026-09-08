@@ -1,3 +1,4 @@
+import { verifySavedExploration } from './fixtures/exploration-saved.js';
 import { verifyExplorationTiles } from './fixtures/exploration-tiles.js';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -201,6 +202,19 @@ describe('authorized exploration result sets in PostgreSQL', () => {
             'utf8',
           ),
         );
+        if (
+          !(
+            await client.query(
+              "select to_regclass('service.exploration_saved_view') present",
+            )
+          ).rows[0]?.present
+        )
+          await client.query(
+            await readFile(
+              'infrastructure/data-foundation/postgres/migrations/0020_exploration_saved_views.sql',
+              'utf8',
+            ),
+          );
         await client.query(
           `create role ${role} nologin nosuperuser nobypassrls`,
         );
@@ -215,6 +229,13 @@ describe('authorized exploration result sets in PostgreSQL', () => {
         );
         await client.query(
           `grant insert, delete on service.exploration_snapshot to ${role}`,
+        );
+        await client.query(`grant usage on schema event to ${role}`);
+        await client.query(
+          `grant select,insert on event.outbox_event,security.audit_event to ${role}`,
+        );
+        await client.query(
+          `grant insert,update on service.exploration_saved_view to ${role}`,
         );
         for (const [id, name] of [
           [item, 'Alpha water'],
@@ -1064,6 +1085,17 @@ describe('authorized exploration result sets in PostgreSQL', () => {
             context,
           ),
         ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+        await verifySavedExploration({
+          client,
+          pool: scopedPool(client, role),
+          context,
+          queryId: analyzed.queryId,
+          versionId: version,
+          dataItemId: item,
+          assetId: asset,
+          analysisId: analysis,
+          secondRecord,
+        });
         const aggregateQuery = ExplorationResultSchema.parse(
           await executor.execute(
             {
