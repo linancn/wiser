@@ -94,3 +94,10 @@ describe('bounded graph layout', () => {
     );
   });
 });
+
+it('lays out narrow-screen provenance vertically while preserving stable identities', async () => {
+  const positions = await computeGraphLayout({ ...input, direction: 'TB' });
+  expect(validGraphPositions(positions, input)).toBe(true);
+  expect(positions[1].y).toBeGreaterThan(positions[0].y);
+  expect(positions[1].x).toBe(positions[0].x);
+});
