@@ -113,11 +113,26 @@ export async function queryAnalysisView(
   );
   if (offset > totalCount)
     throw new DataCapabilityHandlerError('VALIDATION_FAILED');
-  const page = await client.query(
-    `select record.*,ref->>'dataItemId' data_item_id,ref->>'versionId' version_id,st_asgeojson(record.geom)::jsonb geometry ${RECORDS}
-    order by ref->>'dataItemId',ref->>'versionId',record.asset_id,record.record_index limit $6::integer offset $7::integer`,
-    [...params, input.first + 1, offset],
-  );
+  const page =
+    input.view === 'records'
+      ? await client.query(
+          `select record.*,$1::text data_item_id,$2::text version_id,st_asgeojson(record.geom)::jsonb geometry
+       from catalog.analysis_record record where record.analysis_id=$3::uuid and record.asset_id=$4::uuid
+       order by record.record_index limit $5::integer offset $6::integer`,
+          [
+            ref?.dataItemId ?? null,
+            ref?.versionId ?? null,
+            ref?.analysisId ?? null,
+            selectedAssetId ?? null,
+            input.first + 1,
+            offset,
+          ],
+        )
+      : await client.query(
+          `select record.*,ref->>'dataItemId' data_item_id,ref->>'versionId' version_id,st_asgeojson(record.geom)::jsonb geometry ${RECORDS}
+      order by ref->>'dataItemId',ref->>'versionId',record.asset_id,record.record_index limit $6::integer offset $7::integer`,
+          [...params, input.first + 1, offset],
+        );
   const records = page.rows.slice(0, input.first).map((row) =>
     ExplorationRecordSchema.parse({
       recordId: row['record_id'],

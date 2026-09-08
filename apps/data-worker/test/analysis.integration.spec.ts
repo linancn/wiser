@@ -57,6 +57,15 @@ it.skipIf(process.env['WISER_DATA_PG_INTEGRATION'] !== '1')(
           ),
         );
       }
+      await client.query(
+        await readFile(
+          new URL(
+            '../../../infrastructure/data-foundation/postgres/migrations/0013_analysis_query_scope.sql',
+            import.meta.url,
+          ),
+          'utf8',
+        ),
+      );
       await client.query(`create role ${role} nologin nosuperuser nobypassrls`);
       await client.query(
         `grant usage on schema catalog,service,ingestion,security,event,public to ${role}`,
@@ -190,6 +199,20 @@ it.skipIf(process.env['WISER_DATA_PG_INTEGRATION'] !== '1')(
         ),
       ).rejects.toMatchObject({ code: '55000' });
       await client.query('rollback to savepoint immutable_analysis');
+      for (const [key, forbidden, restored] of [
+        ['wiser.max_security_level', 'L0_PUBLIC', 'L1_INTERNAL'],
+        ['wiser.policy_version', '0', '1'],
+        ['wiser.tenant_id', randomUUID(), tenant],
+      ]) {
+        await client.query('select set_config($1,$2,true)', [key, forbidden]);
+        expect(
+          (await client.query('select * from catalog.analysis_record')).rows,
+        ).toHaveLength(0);
+        await client.query('select set_config($1,$2,true)', [key, restored]);
+        expect(
+          (await client.query('select * from catalog.analysis_record')).rows,
+        ).toHaveLength(1);
+      }
       await client.query("select set_config('wiser.project_id',$1,true)", [
         randomUUID(),
       ]);

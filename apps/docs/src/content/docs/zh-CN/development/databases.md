@@ -164,3 +164,5 @@ WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
 设置 `WISER_DATA_PG_INTEGRATION=1` 和指向已迁移数据库的 `DATA_TEST_DATABASE_URL`，运行 `apps/api/test/data-exploration.integration.spec.ts`。合成数据和临时不可绕过 RLS 的角色均处于最终回滚的事务内，验证稳定分页、新旧固定版本、历史版本查询、空结果、用户/项目/租户/Purpose/授权版本/安全上限隔离及过期处理。
 
 迁移 `0012_analysis.sql` 在独立数据底座数据库中增加按作用域与版本绑定的分析批次、逐资产结果及 PostGIS 记录。使用校验和迁移工具升级，不重置已登记的源数据。
+
+迁移 `0013_analysis_query_scope.sql` 保留分析记录的强制 RLS 及相同的租户、项目、安全等级、策略版本条件，将请求内恒定的辅助函数改为每条语句计算一次。记录分页按选定分析批次和文件的索引顺序读取；总数仍统计获授权的记录，不以更宽范围的资产元数据代替。真实 361,379 行水库来源纳入有界分页的浏览器性能测试。

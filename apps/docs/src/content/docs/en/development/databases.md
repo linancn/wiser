@@ -164,3 +164,5 @@ The repository does not currently provide a standard command that creates a temp
 Run `apps/api/test/data-exploration.integration.spec.ts` with `WISER_DATA_PG_INTEGRATION=1` and `DATA_TEST_DATABASE_URL` against a migrated database. Its synthetic rows and temporary non-bypass role are contained in a rolled-back transaction; it verifies stable pagination, new versus pinned versions, exact historical queries, empty results, actor/project/tenant/purpose/policy/security isolation and expiry.
 
 Migration `0012_analysis.sql` adds scoped, version-bound analysis runs, per-asset outcomes and PostGIS-backed records in the independent Data Foundation database. Re-run the checksum migration runner; do not reset registered source data.
+
+Migration `0013_analysis_query_scope.sql` keeps forced analytical-record RLS and the same tenant, project, security-level and policy predicates, while evaluating request-constant helpers once per statement. Record pages use the selected analysis/asset index order; totals still count authorized rows rather than trusting broader asset metadata. The real 361,379-row reservoir source is covered by a bounded-page browser performance test.

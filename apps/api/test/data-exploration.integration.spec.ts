@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { Pool, type PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { ExplorationResultSchema } from '@wiser/data-contracts';
@@ -105,6 +106,15 @@ describe('authorized exploration result sets in PostgreSQL', () => {
       };
       try {
         await client.query('begin');
+        await client.query(
+          await readFile(
+            new URL(
+              '../../../infrastructure/data-foundation/postgres/migrations/0013_analysis_query_scope.sql',
+              import.meta.url,
+            ),
+            'utf8',
+          ),
+        );
         await client.query(
           `create role ${role} nologin nosuperuser nobypassrls`,
         );

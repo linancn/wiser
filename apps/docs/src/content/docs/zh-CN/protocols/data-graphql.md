@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/graphql-module.ts
   - packages/data-contracts/src/capability/**
 lastReviewedAt: 2026-09-08
-lastReviewedCommit: 1d84dca1e69b00ebebe22dd6c6b5b76a06ce2d82
+lastReviewedCommit: 68d6fc6b28b22b0a2db132fa9263fb57598acf11
 ---
 
 ## 入口与权威契约
