@@ -299,7 +299,11 @@ export function createAnalysisHandler(options: {
             await client.query('rollback to savepoint analysis_asset_records');
             await client.query('release savepoint analysis_asset_records');
             if (!(error instanceof AnalysisContentError)) throw error;
-            status = 'INVALID';
+            status = ['RECORD_LIMIT', 'SIZE_LIMIT', 'UNKNOWN_CRS'].includes(
+              error.code,
+            )
+              ? 'UNSUPPORTED'
+              : 'INVALID';
             reason = error.code;
             records = null;
             features = null;

@@ -217,8 +217,8 @@ export async function* parseAnalysisContent(
     createHash('sha256').update(input.bytes).digest('hex') !== input.sourceHash
   )
     fail('HASH_MISMATCH');
-  const maximum = input.maximumRecords ?? 1000000;
-  if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > 1000000)
+  const maximum = input.maximumRecords ?? 2000000;
+  if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > 2000000)
     fail('RECORD_LIMIT');
   let text: string;
   try {

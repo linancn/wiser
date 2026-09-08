@@ -100,3 +100,5 @@ pnpm data:smoke
 - [测试与验证](../docs/src/content/docs/zh-CN/development/testing.md) / [Testing and verification](../docs/src/content/docs/en/development/testing.md)
 
 Version analysis jobs (`data.analysis.process`) read already admitted objects using their immutable version and content hash. CSV and GeoJSON parsing writes bounded batches into scoped analysis tables. Each asset retains a parse outcome independently of source completeness and registration quality. The worker checks its current job lease before committing; a lost lease rolls back the analysis. Unsupported formats retain unknown counts. The original assets are never replaced.
+
+CSV/JSON analysis is bounded at 64 MiB and 2,000,000 records per asset. Capacity and unknown-CRS failures retain unknown counts with an `UNSUPPORTED` reason; malformed content and hash mismatches remain `INVALID`. / CSV/JSON 分析按资产限制为 64 MiB、2,000,000 条记录。容量或未知坐标系问题保留未知计数与 `UNSUPPORTED` 原因，格式错误或哈希不符仍为 `INVALID`。
