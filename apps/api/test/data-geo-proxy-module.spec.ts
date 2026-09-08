@@ -67,6 +67,7 @@ function appWith(options: {
   const requests: DataFoundationGeoProxyRequest[] = [];
   const audits: DataFoundationGeoAuditRecord[] = [];
   const authority = {
+    authorizeExplorationQuery: vi.fn(() => Promise.resolve()),
     authorizeVectorVersion: vi.fn(() => Promise.resolve()),
     resolveRasterVersion: vi.fn(() =>
       Promise.resolve({
@@ -117,6 +118,65 @@ function appWith(options: {
 }
 
 describe('Data Foundation governed GIS proxy', () => {
+  it('reauthorizes query tiles and derives all seven upstream scope values', async () => {
+    const resolved = {
+      ...context,
+      authorization: {
+        ...context.authorization,
+        scopes: ['data.geo.read', 'data.query.execute', 'data.catalog.read'],
+      },
+    };
+    const fixture = appWith({
+      resolved,
+      response: {
+        status: 200,
+        contentType: 'application/vnd.mapbox-vector-tile',
+        body: new Uint8Array([1, 2]),
+      },
+    });
+    const url = `/api/data/v1/geo/tiles/vector/queries/${VERSION_ID}/0/0/0.pbf`;
+    const response = await fixture.app.inject({ method: 'GET', url, headers });
+    expect(response.statusCode).toBe(200);
+    expect(fixture.authority.authorizeExplorationQuery).toHaveBeenCalledWith({
+      context: expect.objectContaining({
+        principal: resolved.principal,
+        authorization: resolved.authorization,
+      }),
+      queryId: VERSION_ID,
+    });
+    expect(fixture.requests[0]?.path).toBe('/wiser_exploration_mvt/0/0/0');
+    expect(Object.fromEntries(fixture.requests[0]!.query)).toEqual({
+      tenantId: TENANT_ID,
+      projectId: PROJECT_ID,
+      actorId: ACTOR_ID,
+      queryId: VERSION_ID,
+      purpose: 'map-review',
+      maxSecurityLevel: 'L2_RESTRICTED',
+      policyVersion: '7',
+    });
+    fixture.authority.authorizeExplorationQuery.mockRejectedValueOnce(
+      new DataFoundationGeoProxyError('NOT_FOUND'),
+    );
+    expect(
+      (await fixture.app.inject({ method: 'GET', url, headers })).statusCode,
+    ).toBe(404);
+    expect(fixture.requests).toHaveLength(1);
+    expect(
+      (
+        await fixture.app.inject({
+          method: 'GET',
+          url: url + '?actorId=' + ACTOR_ID,
+          headers,
+        })
+      ).statusCode,
+    ).toBe(422);
+    const denied = appWith({});
+    expect(
+      (await denied.app.inject({ method: 'GET', url, headers })).statusCode,
+    ).toBe(403);
+    expect(denied.requests).toHaveLength(0);
+  });
+
   it('publishes explicit bearer-authenticated OpenAPI contracts for every GIS route family', async () => {
     const fixture = appWith({});
     const response = await fixture.app.inject({
