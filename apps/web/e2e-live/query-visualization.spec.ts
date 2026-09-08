@@ -13,6 +13,55 @@ test.skip(
   'Requires the admitted private water research case.',
 );
 
+test('large original Shapefile records use byte-bounded pages with contiguous cursors', async ({
+  page,
+}) => {
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  const versionId = '29f117aa-d1fb-5d17-9af9-d27dfd5e8367';
+  const response = await page.request.post('/api/data-foundation/explore', {
+    data: {
+      spec: {
+        versions: [
+          { dataItemId: 'c3be43c7-65c8-4e5e-aaa9-fc9707cb60ae', versionId },
+        ],
+      },
+      view: 'resources',
+    },
+  });
+  expect(response.status()).toBe(200);
+  const query = ExplorationResultSchema.parse(await response.json());
+  let after: string | undefined;
+  let previous = 0;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const recordsResponse = await page.request.post(
+      '/api/data-foundation/explore',
+      {
+        data: {
+          queryId: query.queryId,
+          view: 'records',
+          versionId,
+          assetId: 'f666ce4b-3854-4be7-a250-ef3aa5a33454',
+          first: 200,
+          after,
+        },
+      },
+    );
+    expect(recordsResponse.status()).toBe(200);
+    expect((await recordsResponse.body()).byteLength).toBeLessThanOrEqual(
+      3 * 1024 * 1024,
+    );
+    const result = ExplorationResultSchema.parse(await recordsResponse.json());
+    expect(result.totalCount).toBe(3955);
+    expect(result.records!.length).toBeGreaterThan(0);
+    for (const record of result.records!) {
+      expect(record.index).toBe(previous + 1);
+      previous = record.index;
+    }
+    expect(result.nextCursor).toBeTruthy();
+    after = result.nextCursor;
+  }
+});
+
 test('source statistics aggregate the real station and drill into the same filtered records', async ({
   page,
 }) => {
