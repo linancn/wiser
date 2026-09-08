@@ -63,6 +63,30 @@ describe('Supabase Auth adapters', () => {
     await expect(verify('service-role-token')).resolves.toBeNull();
   });
 
+  it('never treats a third-party OAuth token as an unrestricted human session', async () => {
+    const client: SupabaseClaimsClient = {
+      getClaims: () =>
+        Promise.resolve({
+          data: {
+            claims: {
+              sub: USER_ID,
+              session_id: SESSION_ID,
+              role: 'authenticated',
+              exp: 1_800_000_000,
+              client_id: 'd1000000-0000-4000-8000-000000000005',
+              aud: 'https://mcp.example.test/mcp',
+            },
+          },
+          error: null,
+        }),
+    };
+
+    const verify = createSupabaseJwtClaimsVerifier(client, {
+      now: () => new Date('2026-09-08T00:00:00.000Z'),
+    });
+    await expect(verify('oauth-client-token')).resolves.toBeNull();
+  });
+
   it('loads active session membership roles and scopes from the control plane', async () => {
     const query: AuthorizationQuery = vi.fn(() =>
       Promise.resolve({
