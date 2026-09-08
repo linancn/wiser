@@ -12,6 +12,7 @@ const PROJECT_ID = 'ca000000-0000-4000-8000-000000000002';
 const ACTOR_ID = 'ca000000-0000-4000-8000-000000000003';
 const SESSION_ID = 'ca000000-0000-4000-8000-000000000004';
 const VERSION_ID = 'ca000000-0000-4000-8000-000000000005';
+const ASSET_ID = 'ca000000-0000-4000-8000-000000000006';
 const HASH = 'a'.repeat(64);
 
 const context: PlatformRequestContext = {
@@ -40,6 +41,67 @@ afterEach(async () => {
 });
 
 describe('governed version asset download', () => {
+  async function downloadApp() {
+    const assetDownload = {
+      createDownload: vi.fn(() =>
+        Promise.resolve({
+          url: 'http://127.0.0.1:18333/selected-asset',
+          expiresAt: '2026-09-08T05:00:00.000Z',
+        }),
+      ),
+    };
+    const app = buildApp({
+      logger: false,
+      modules: [
+        createDataFoundationRestModule({
+          resolver: { resolve: () => Promise.resolve(context) },
+          handler: { execute: () => Promise.resolve({}) },
+          assetDownload,
+        }),
+      ],
+    });
+    apps.push(app);
+    return { app, assetDownload };
+  }
+
+  it('downloads a specified asset from a source registration containing several files', async () => {
+    const { app, assetDownload } = await downloadApp();
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/data/v1/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/assets/${ASSET_ID}`,
+      headers: {
+        authorization: 'Bearer verified-token',
+        'x-wiser-tenant-id': TENANT_ID,
+        'x-wiser-project-id': PROJECT_ID,
+        'x-wiser-purpose': 'operate',
+      },
+    });
+    expect(response.statusCode).toBe(303);
+    expect(response.headers['cache-control']).toContain('no-store');
+    expect(assetDownload.createDownload).toHaveBeenCalledWith({
+      context,
+      versionId: VERSION_ID,
+      assetId: ASSET_ID,
+    });
+  });
+
+  it('rejects path scope mismatches before resolving or signing an asset', async () => {
+    const { app, assetDownload } = await downloadApp();
+    for (const asset of ['source', ASSET_ID]) {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/data/v1/tenants/${ACTOR_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/assets/${asset}`,
+        headers: {
+          authorization: 'Bearer verified-token',
+          'x-wiser-tenant-id': TENANT_ID,
+          'x-wiser-project-id': PROJECT_ID,
+          'x-wiser-purpose': 'operate',
+        },
+      });
+      expect(response.statusCode).toBe(403);
+    }
+    expect(assetDownload.createDownload).not.toHaveBeenCalled();
+  });
   it('resolves unified Auth and returns only a short-lived signed redirect', async () => {
     const assetDownload = {
       createDownload: vi.fn(() =>
