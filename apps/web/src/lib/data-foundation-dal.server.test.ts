@@ -509,3 +509,42 @@ describe('Data Foundation server-only HTTP DAL', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 });
+
+it('forwards saved-view mutations with a stable command key and rejects malformed view identities before HTTP', async () => {
+  const order: string[] = [];
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockImplementation(() =>
+      Promise.resolve(Response.json({ viewId: GEO_VERSION_ID, revoked: true })),
+    );
+  const dal = createDataFoundationDal({
+    config: {
+      apiOrigin: 'http://api:3001',
+      tenantId: TENANT_ID,
+      projectId: PROJECT_ID,
+      purpose: 'data-steward-console',
+      requestTimeoutMs: 5000,
+      responseLimitBytes: 32768,
+    },
+    createAuthClient: () => Promise.resolve(authClient(order)),
+    fetch,
+    now: () => new Date('2026-08-22T00:00:00Z'),
+  });
+  await expect(
+    dal.explorationView('revoke', { viewId: GEO_VERSION_ID }, SESSION_ID),
+  ).resolves.toEqual({ viewId: GEO_VERSION_ID, revoked: true });
+  expect(fetch.mock.calls[0]?.[0]).toBe(
+    `http://api:3001/api/data/v1/explore/views/${GEO_VERSION_ID}/revoke`,
+  );
+  expect(
+    new Headers(fetch.mock.calls[0]?.[1]?.headers).get('Idempotency-Key'),
+  ).toBe(SESSION_ID);
+  expect(order).toEqual(['claims', 'session']);
+  expect(() => dal.explorationView('open', { viewId: '../secrets' })).toThrow(
+    DataFoundationApiError,
+  );
+  expect(() =>
+    dal.explorationView('revoke', { viewId: GEO_VERSION_ID }, 'invalid'),
+  ).toThrow(DataFoundationApiError);
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
