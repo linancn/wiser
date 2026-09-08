@@ -40,6 +40,8 @@ The running process advertises its current release; it does not promise retentio
 
 The prompt detects the current client and uses its supported project Skill location, preserving unrelated configuration and modified local Skills. It discovers the API's current Capabilities before any business operation. Skill installation and successful account connection are separate outcomes.
 
+Inside this repository, `.agents/skills/wiser-data-foundation` points to the canonical `skills/wiser-data-foundation` folder. This makes the same workflow available through Codex project discovery without duplicating its instructions or helpers. [OpenAI's Skill documentation](https://learn.chatgpt.com/docs/build-skills) describes repository discovery and support for symlinked Skill folders. Other clients should use their supported installation location and the verified release above.
+
 When configured, `mcpResource` advertises the deployment's native OAuth MCP transport. The client follows protected-resource discovery and PKCE S256, then uses the WISER consent flow to choose a project and bounded access. `wiser_connection` verifies the resulting identity and scope. Query access is the default; ingestion access is requested only for an ingestion assignment. Existing [Platform Auth](/en/architecture/unified-auth/) and [Data MCP](/en/protocols/data-mcp/) contracts govern the identity exchange.
 
 If the manifest has no `mcpResource`, the prompt explicitly uses the Skill's HTTP workflow with an identity supplied through a trusted WISER Auth assignment. It does not invent a native MCP connection. A client that lacks the required transport must report that limitation. Neither the setup prompt nor the clipboard contains a password, bearer or tenant-specific secret.

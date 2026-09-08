@@ -40,6 +40,8 @@ Portal 和文档页面提供**让智能体接入 WISER**。点击后，把复制
 
 接入指令识别当前客户端及其项目 Skill 位置，保留无关配置和有本地修改的 Skill。执行业务操作前先发现 API 的当前能力。Skill 安装完成与账户连接成功是两个独立结果。
 
+仓库内的 `.agents/skills/wiser-data-foundation` 指向唯一维护的 `skills/wiser-data-foundation` 目录，使 Codex 能通过项目 Skill 发现同一套流程，无需复制指令或辅助脚本。[OpenAI 的 Skill 文档](https://learn.chatgpt.com/docs/build-skills)说明了仓库发现位置及对符号链接目录的支持。其他客户端应使用各自支持的安装位置，并校验上述发行包。
+
 配置了 `mcpResource` 时，清单声明该部署的原生 OAuth MCP 入口。客户端通过受保护资源发现与 PKCE S256 完成连接，并在 WISER 授权流程中选择项目和受限访问范围；`wiser_connection` 用于核对实际身份与范围。默认只查询，需要执行入库任务时才请求入库权限。身份交换遵循既有 [Platform Auth](/architecture/unified-auth/) 与 [Data MCP](/protocols/data-mcp/) 契约。
 
 清单没有 `mcpResource` 时，指令明确使用 Skill 的 HTTP 流程，身份由受信任的 WISER Auth 任务上下文提供，不虚构原生 MCP 已连接。客户端不支持所需协议时必须说明限制。接入指令和剪贴板均不包含密码、Bearer 或租户秘密。
