@@ -89,6 +89,42 @@ const zhCN = {
   },
   dataFoundation: {
     explorer: {
+      aggregate: {
+        title: '记录统计',
+        scope: '统计当前查询中的来源记录，可点击分组回到对应记录。',
+        groupField: '分组字段',
+        groupType: '分组方式',
+        ungrouped: '全部记录',
+        histogram: '数值分桶',
+        interval: '分桶宽度',
+        operation: '统计方式',
+        operations: {
+          count: '记录数量',
+          mean: '平均值',
+          sum: '求和',
+          min: '最小值',
+          max: '最大值',
+        },
+        field: '数值字段',
+        unitField: '单位字段',
+        unknownUnit: '单位未注明',
+        chooseField: '选择字段',
+        checkFields: '请选择统计字段，并为数值分桶输入正数宽度。',
+        calculate: '计算统计',
+        matchingRecords: '匹配记录',
+        groups: '分组',
+        unitPolicy:
+          '数值按原始值计算；单位字段的不同值分别统计。未注明单位时，请确认原始值可比。',
+        truncated: '当前显示前 200 个分组，请缩小查询范围查看其余分组。',
+        unit: '单位',
+        value: '统计值',
+        count: '记录数',
+        valid: '有效数值',
+        missing: '缺失值',
+        invalid: '无效值',
+        inspect: '查看分组',
+        unknownGroup: '缺失或无法分组',
+      },
       recordControls: {
         title: '记录条件',
         scope:
@@ -1205,6 +1241,44 @@ const en: typeof zhCN = {
   },
   dataFoundation: {
     explorer: {
+      aggregate: {
+        title: 'Record statistics',
+        scope:
+          'Aggregate source records in this query. Select a group to inspect its records.',
+        groupField: 'Group field',
+        groupType: 'Grouping',
+        ungrouped: 'All records',
+        histogram: 'Numeric bins',
+        interval: 'Bin width',
+        operation: 'Measure',
+        operations: {
+          count: 'Record count',
+          mean: 'Mean',
+          sum: 'Sum',
+          min: 'Minimum',
+          max: 'Maximum',
+        },
+        field: 'Numeric field',
+        unitField: 'Unit field',
+        unknownUnit: 'Unit unspecified',
+        chooseField: 'Choose a field',
+        checkFields: 'Choose measure fields and a positive numeric bin width.',
+        calculate: 'Calculate',
+        matchingRecords: 'Matching records',
+        groups: 'Groups',
+        unitPolicy:
+          'Values use source numbers. Distinct unit-field values are aggregated separately. When units are unspecified, check that source values are comparable.',
+        truncated:
+          'Showing the first 200 groups. Narrow the query to inspect the remaining groups.',
+        unit: 'Unit',
+        value: 'Result',
+        count: 'Records',
+        valid: 'Valid values',
+        missing: 'Missing values',
+        invalid: 'Invalid values',
+        inspect: 'Inspect group',
+        unknownGroup: 'Missing or ungroupable',
+      },
       recordControls: {
         title: 'Record conditions',
         scope:

@@ -1,3 +1,4 @@
+import { recordProjection } from './exploration-record-sql.js';
 import type { RecordQuery } from '@wiser/data-contracts';
 import type { QueryAdapterPgClient } from './query-adapters.js';
 
@@ -18,49 +19,13 @@ export async function queryFilteredRecords(
     input.assetId,
     input.recordId ?? null,
   ];
-  const bind = (value: unknown, type: string) => {
-    parameters.push(value);
-    return `$${parameters.length}::${type}`;
-  };
-  const fields = new Map<string, string>();
-  const expressions: string[] = [];
-  const scalar = (field: string, type: 'text' | 'number' | 'presence') => {
-    const key = `${type}:${field}`;
-    const existing = fields.get(key);
-    if (existing) return existing;
-    const name = `field_${fields.size}`;
-    const parameter = bind(field, 'text');
-    const value = `r.record_values->(${parameter})`;
-    const expression =
-      type === 'number'
-        ? `service.exploration_number(${value})`
-        : type === 'presence'
-          ? `(nullif(${value},'null'::jsonb) is not null)`
-          : `(case when jsonb_typeof(${value}) in ('string','number','boolean') then r.record_values->>(${parameter}) end)`;
-    expressions.push(`${expression} ${name}`);
-    fields.set(key, name);
-    return name;
-  };
-  const operators = {
-    eq: '=',
-    ne: '<>',
-    gt: '>',
-    gte: '>=',
-    lt: '<',
-    lte: '<=',
-  } as const;
-  const predicates = input.query.filters.map((filter) => {
-    const field = scalar(filter.field, filter.type);
-    if (filter.type === 'presence')
-      return filter.operator === 'isNull' ? `not ${field}` : field;
-    const value = bind(
-      filter.value,
-      filter.type === 'number' ? 'numeric' : 'text',
-    );
-    return filter.operator === 'contains'
-      ? `strpos(${field},${value})>0`
-      : `${field} ${operators[filter.operator]} ${value}`;
-  });
+  const {
+    bind,
+    scalar,
+    expressions,
+    predicates: compile,
+  } = recordProjection(parameters);
+  const predicates = compile(input.query.filters);
   const sort = input.query.sort;
   const sortField = sort ? scalar(sort.field, sort.type) : null;
   const order = (prefix = '') =>

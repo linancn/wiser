@@ -85,3 +85,5 @@ Data Explorer links resource, record and MapLibre views through one authorized q
 Exploration invalidation and expiry clear all rendered views and selection together while retaining editable form conditions for retry. / 探索授权失效或到期时，各视图与选择一起清除，表单条件保留以便重新查询。
 
 Record conditions, sorting and column selection create one authorized file query reused by record, map and provenance views. / 记录条件、排序和列配置创建同一授权文件查询，并在记录、地图和溯源视图间复用。
+
+The statistics view aggregates a selected source through the shared HTTP query and offers keyboard group selection alongside its chart. / 统计视图通过共享 HTTP 查询聚合所选来源，图表配有键盘可用的分组选择。

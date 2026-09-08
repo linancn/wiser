@@ -45,6 +45,13 @@ const DataExplorerStatistics = dynamic(
     ),
   { ssr: false },
 );
+const DataExplorerAggregate = dynamic(
+  () =>
+    import('./data-explorer-aggregate').then(
+      (module) => module.DataExplorerAggregate,
+    ),
+  { ssr: false },
+);
 
 export function DataExplorer({
   locale,
@@ -691,28 +698,45 @@ export function DataExplorer({
               </footer>
             </>
           ) : result?.summary && view === 'statistics' ? (
-            <DataExplorerStatistics
-              summary={result.summary}
-              locale={locale}
-              onFilter={(dimension, status) => {
-                const readiness = {
-                  ...result.spec.readiness,
-                  [dimension]: [status],
-                };
-                if (dimension === 'records') setRecordReadiness(status);
-                else setSpatialReadiness(status);
-                setView('resources');
-                void query(
-                  {
-                    spec: { ...result.spec, readiness },
-                    view: 'resources',
-                    first: 25,
-                  },
-                  0,
-                  true,
-                );
-              }}
-            />
+            <>
+              <DataExplorerAggregate
+                key={result.queryId}
+                locale={locale}
+                queryId={result.queryId}
+                versionId={
+                  selectedRecord?.versionId ??
+                  selectedNode?.versionId ??
+                  selected?.versionId ??
+                  result.spec.versions?.[0]?.versionId ??
+                  null
+                }
+                recordQuery={result.spec.recordQuery}
+                onConfigure={configureRecords}
+                onInvalidated={invalidate}
+              />
+              <DataExplorerStatistics
+                summary={result.summary}
+                locale={locale}
+                onFilter={(dimension, status) => {
+                  const readiness = {
+                    ...result.spec.readiness,
+                    [dimension]: [status],
+                  };
+                  if (dimension === 'records') setRecordReadiness(status);
+                  else setSpatialReadiness(status);
+                  setView('resources');
+                  void query(
+                    {
+                      spec: { ...result.spec, readiness },
+                      view: 'resources',
+                      first: 25,
+                    },
+                    0,
+                    true,
+                  );
+                }}
+              />
+            </>
           ) : result && view === 'graph' ? (
             <DataExplorerGraph
               key={result.queryId}

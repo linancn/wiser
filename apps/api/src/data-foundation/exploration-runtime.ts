@@ -1,4 +1,5 @@
 import { AUTHORIZED } from './exploration-authorization.js';
+import { queryAggregate } from './exploration-aggregate.js';
 import {
   loadExplorationReadiness,
   explorationReadinessSummary,
@@ -149,21 +150,28 @@ export class PostgresExplorationExecutor {
           spec: snapshot.spec,
           createdAt: snapshot.created_at.toISOString(),
           expiresAt: snapshot.expires_at.toISOString(),
-          ...(await (input.view === 'graph'
-            ? queryProvenanceGraph(
+          ...(await (input.view === 'aggregate'
+            ? queryAggregate(
                 client,
                 snapshot.version_refs,
-                queryId,
                 input,
                 snapshot.spec,
               )
-            : queryAnalysisView(
-                client,
-                snapshot.version_refs,
-                queryId,
-                input,
-                snapshot.spec,
-              ))),
+            : input.view === 'graph'
+              ? queryProvenanceGraph(
+                  client,
+                  snapshot.version_refs,
+                  queryId,
+                  input,
+                  snapshot.spec,
+                )
+              : queryAnalysisView(
+                  client,
+                  snapshot.version_refs,
+                  queryId,
+                  input,
+                  snapshot.spec,
+                ))),
         });
         if (context.signal.aborted)
           throw new DataCapabilityHandlerError('CAPABILITY_TIMEOUT');

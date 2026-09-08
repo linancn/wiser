@@ -469,6 +469,51 @@ describe('authorized exploration result sets in PostgreSQL', () => {
         expect(filteredRecords.records?.[0]?.values).toEqual({
           c1: '00000001',
         });
+        const aggregateResult = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              queryId: filtered.queryId,
+              versionId: version,
+              view: 'aggregate',
+              aggregate: {
+                assetId: asset,
+                groupBy: { field: 'c1', type: 'text' },
+                measure: { operation: 'mean', field: 'c2' },
+              },
+            },
+            context,
+          ),
+        );
+        expect(aggregateResult.totalCount).toBe(1);
+        expect(aggregateResult.aggregate).toMatchObject({
+          groupCount: 1,
+          truncated: false,
+          groups: [
+            {
+              key: '00000001',
+              unit: null,
+              count: 1,
+              validCount: 1,
+              missingCount: 0,
+              invalidCount: 0,
+            },
+          ],
+        });
+        expect(Number(aggregateResult.aggregate?.groups[0]?.value)).toBe(2);
+        await expect(
+          executor.execute(
+            {
+              queryId: filtered.queryId,
+              versionId: version,
+              view: 'aggregate',
+              aggregate: {
+                assetId: asset,
+                measure: { operation: 'sum', field: 'not-a-column' },
+              },
+            },
+            context,
+          ),
+        ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
         const sortedQuery = ExplorationResultSchema.parse(
           await executor.execute(
             {
@@ -754,6 +799,201 @@ describe('authorized exploration result sets in PostgreSQL', () => {
         await expect(
           executor.execute({ queryId: expired, view: 'resources' }, context),
         ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+        await client.query('reset role');
+        const aggregateAnalysis = randomUUID(),
+          aggregateOperation = randomUUID();
+        await client.query(
+          `insert into service.operation(operation_id,tenant_id,project_id,capability_id,actor_id,status,progress_percent,idempotency_key,request_payload,security_level) values($1::uuid,$2,$3,'data.analysis.create',$4,'RUNNING',0,$1::text,'{}','L1_INTERNAL')`,
+          [aggregateOperation, tenant, project, actor],
+        );
+        await client.query(
+          `insert into service.analysis_run(analysis_id,tenant_id,project_id,version_id,operation_id,parser_version,security_level,policy_version) values($1,$2,$3,$4,$5,'1.0.0','L1_INTERNAL',1)`,
+          [aggregateAnalysis, tenant, project, version, aggregateOperation],
+        );
+        await client.query(
+          `insert into service.analysis_asset(analysis_id,asset_id,tenant_id,project_id,source_hash,status,record_count,feature_count,columns,security_level,policy_version) values($1,$2,$3,$4,decode(repeat('a',64),'hex'),'READY',207,0,'[{"key":"c1","label":"Unit"},{"key":"c2","label":"Value"}]','L1_INTERNAL',1)`,
+          [aggregateAnalysis, asset, tenant, project],
+        );
+        const aggregateValues = [
+          { c1: 'aggregate-m', c2: 1 },
+          { c1: 'aggregate-m', c2: '3' },
+          { c1: 'aggregate-m', c2: null },
+          { c1: 'aggregate-m', c2: 'invalid' },
+          { c1: 'aggregate-cm', c2: 100 },
+          { c1: 'aggregate-cm', c2: 200 },
+          ...Array.from({ length: 201 }, (_, index) => ({
+            c1: `group-${index}`,
+            c2: index,
+          })),
+        ];
+        await client.query(
+          `insert into catalog.analysis_record(analysis_id,record_id,asset_id,tenant_id,project_id,record_index,record_values,security_level,policy_version)
+          select $1,gen_random_uuid(),$2,$3,$4,ordinality,value,'L1_INTERNAL',1 from jsonb_array_elements($5::jsonb) with ordinality`,
+          [
+            aggregateAnalysis,
+            asset,
+            tenant,
+            project,
+            JSON.stringify(aggregateValues),
+          ],
+        );
+        await client.query(
+          "update service.analysis_run set status='READY',completed_at=clock_timestamp() where analysis_id=$1",
+          [aggregateAnalysis],
+        );
+        const aggregateQuery = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              spec: {
+                versions: [{ dataItemId: item, versionId: version }],
+                recordQuery: {
+                  assetId: asset,
+                  filters: [
+                    {
+                      field: 'c1',
+                      type: 'text',
+                      operator: 'contains',
+                      value: 'aggregate-',
+                    },
+                  ],
+                },
+              },
+              view: 'resources',
+            },
+            context,
+          ),
+        );
+        const aggregateInput = {
+          queryId: aggregateQuery.queryId,
+          versionId: version,
+          view: 'aggregate',
+          aggregate: {
+            assetId: asset,
+            measure: { operation: 'mean', field: 'c2', unitField: 'c1' },
+          },
+        };
+        const byUnit = ExplorationResultSchema.parse(
+          await executor.execute(aggregateInput, context),
+        );
+        expect(byUnit.totalCount).toBe(6);
+        expect(
+          byUnit.aggregate?.groups.map((group) => ({
+            ...group,
+            value: Number(group.value),
+          })),
+        ).toEqual([
+          {
+            key: null,
+            unit: 'aggregate-cm',
+            upperBound: null,
+            count: 2,
+            validCount: 2,
+            missingCount: 0,
+            invalidCount: 0,
+            value: 150,
+          },
+          {
+            key: null,
+            unit: 'aggregate-m',
+            upperBound: null,
+            count: 4,
+            validCount: 2,
+            missingCount: 1,
+            invalidCount: 1,
+            value: 2,
+          },
+        ]);
+        for (const [operation, expected] of [
+          ['sum', [300, 4]],
+          ['min', [100, 1]],
+          ['max', [200, 3]],
+        ] as const) {
+          const output = ExplorationResultSchema.parse(
+            await executor.execute(
+              {
+                ...aggregateInput,
+                aggregate: {
+                  ...aggregateInput.aggregate,
+                  measure: { ...aggregateInput.aggregate.measure, operation },
+                },
+              },
+              context,
+            ),
+          );
+          expect(
+            output.aggregate?.groups.map((group) => Number(group.value)),
+          ).toEqual(expected);
+        }
+        const histogram = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              ...aggregateInput,
+              aggregate: {
+                assetId: asset,
+                groupBy: { field: 'c2', type: 'number', interval: 100 },
+                measure: { operation: 'count' },
+              },
+            },
+            context,
+          ),
+        );
+        expect(
+          histogram.aggregate?.groups.map((group) => [group.key, group.count]),
+        ).toEqual([
+          ['0', 2],
+          ['100', 1],
+          ['200', 1],
+          [null, 2],
+        ]);
+        await expect(
+          executor.execute(aggregateInput, {
+            ...context,
+            principal: { ...context.principal, actorId: randomUUID() },
+          }),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+
+        const boundedQuery = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              spec: {
+                versions: [{ dataItemId: item, versionId: version }],
+                recordQuery: {
+                  assetId: asset,
+                  filters: [
+                    {
+                      field: 'c1',
+                      type: 'text',
+                      operator: 'contains',
+                      value: 'group-',
+                    },
+                  ],
+                },
+              },
+              view: 'resources',
+            },
+            context,
+          ),
+        );
+        const bounded = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              ...aggregateInput,
+              queryId: boundedQuery.queryId,
+              aggregate: {
+                assetId: asset,
+                groupBy: { field: 'c1', type: 'text' },
+                measure: { operation: 'count' },
+              },
+            },
+            context,
+          ),
+        );
+        expect(bounded.totalCount).toBe(201);
+        expect(bounded.aggregate).toMatchObject({
+          groupCount: 201,
+          truncated: true,
+        });
+        expect(bounded.aggregate?.groups).toHaveLength(200);
       } finally {
         await client.query('rollback');
         client.release();

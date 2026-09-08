@@ -13,6 +13,55 @@ test.skip(
   'Requires the admitted private water research case.',
 );
 
+test('source statistics aggregate the real station and drill into the same filtered records', async ({
+  page,
+}) => {
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  await page
+    .getByRole('button', { name: 'DS-0558 · NLDI API', exact: true })
+    .click();
+  await page.getByRole('tab', { name: '统计', exact: true }).click();
+  const statistics = page.getByTestId('explorer-aggregate');
+  await expect(statistics.getByLabel('来源文件')).toContainText('DS-0558');
+  await statistics.getByLabel('分组字段').selectOption('c1');
+  await statistics.getByLabel('统计方式').selectOption('mean');
+  await statistics
+    .getByRole('combobox', { name: '数值字段', exact: true })
+    .selectOption('c6');
+  const completed = page.waitForResponse((response) => {
+    if (!response.url().endsWith('/api/data-foundation/explore')) return false;
+    const body: unknown = response.request().postDataJSON();
+    return (
+      typeof body === 'object' &&
+      body !== null &&
+      'view' in body &&
+      body.view === 'aggregate'
+    );
+  });
+  await statistics.getByRole('button', { name: '计算统计' }).click();
+  const response = await completed;
+  expect(response.status()).toBe(200);
+  const result = ExplorationResultSchema.parse(await response.json());
+  expect(result.totalCount).toBe(1);
+  expect(Number(result.aggregate?.groups[0]?.value)).toBe(4512772);
+  await expect(page.getByTestId('explorer-aggregate-chart')).toHaveAttribute(
+    'data-state',
+    'ready',
+  );
+  await statistics
+    .getByRole('button', { name: '查看分组 USGS-01646500' })
+    .click();
+  await expect(
+    page.getByRole('tab', { name: '记录', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('explorer-records')).toContainText(
+    'USGS-01646500',
+  );
+  await expect(page.getByLabel('值', { exact: true })).toHaveValue(
+    'USGS-01646500',
+  );
+});
+
 test('record controls filter the real station across views and restore configuration after reload', async ({
   page,
 }) => {

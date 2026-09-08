@@ -1,71 +1,26 @@
 import { z } from 'zod';
 import {
-  QuerySpecSchema as PreviousQuerySpec,
-  ExplorationQueryInputV15Schema,
-  ExplorationResultV15Schema,
-} from './v15.ts';
-export * from './v15.ts';
-
-const Field = z.string().min(1).max(128);
-export const RecordFilterSchema = z.discriminatedUnion('type', [
-  z.strictObject({
-    type: z.literal('text'),
-    field: Field,
-    operator: z.enum(['eq', 'ne', 'contains']),
-    value: z.string().max(512),
-  }),
-  z.strictObject({
-    type: z.literal('number'),
-    field: Field,
-    operator: z.enum(['eq', 'ne', 'gt', 'gte', 'lt', 'lte']),
-    value: z.number().finite(),
-  }),
-  z.strictObject({
-    type: z.literal('presence'),
-    field: Field,
-    operator: z.enum(['isNull', 'isNotNull']),
-  }),
-]);
-export const RecordQuerySchema = z.strictObject({
-  assetId: z.uuid(),
-  filters: z.array(RecordFilterSchema).max(8).default([]),
-  sort: z
-    .strictObject({
-      field: Field,
-      type: z.enum(['text', 'number']),
-      direction: z.enum(['asc', 'desc']),
-    })
-    .optional(),
-  columns: z
-    .array(Field)
-    .min(1)
-    .max(32)
-    .refine(
-      (fields) => new Set(fields).size === fields.length,
-      'Columns must be unique',
-    )
-    .optional(),
-});
-export const QuerySpecSchema = PreviousQuerySpec.extend({
-  recordQuery: RecordQuerySchema.optional(),
-}).superRefine((spec, context) => {
-  if (spec.recordQuery && spec.versions?.length !== 1)
-    context.addIssue({
-      code: 'custom',
-      path: ['recordQuery'],
-      message: 'Record conditions require one explicit immutable version',
-    });
-});
+  ExplorationQueryInputV16Schema,
+  ExplorationResultV16Schema,
+} from './v16.ts';
+import {
+  ExplorationAggregateSpecSchema,
+  ExplorationAggregateSchema,
+} from './aggregate.ts';
+export * from './v16.ts';
+export * from './aggregate.ts';
+const View = z.enum(['resources', 'records', 'map', 'graph', 'aggregate']);
 export const ExplorationQueryInputSchema = z
   .strictObject({
-    ...ExplorationQueryInputV15Schema.shape,
-    spec: QuerySpecSchema.optional(),
+    ...ExplorationQueryInputV16Schema.shape,
+    view: View.default('resources'),
+    aggregate: ExplorationAggregateSpecSchema.optional(),
   })
   .superRefine((input, context) => {
-    const { recordQuery: _recordQuery, ...previousSpec } = input.spec ?? {};
-    const checked = ExplorationQueryInputV15Schema.safeParse({
-      ...input,
-      ...(input.spec === undefined ? {} : { spec: previousSpec }),
+    const { aggregate, ...previous } = input;
+    const checked = ExplorationQueryInputV16Schema.safeParse({
+      ...previous,
+      view: input.view === 'aggregate' ? 'records' : input.view,
     });
     if (!checked.success)
       for (const issue of checked.error.issues)
@@ -74,17 +29,33 @@ export const ExplorationQueryInputSchema = z
           path: issue.path,
           message: issue.message,
         });
+    if (
+      (input.view === 'aggregate') !== (aggregate !== undefined) ||
+      (input.view === 'aggregate' &&
+        (!input.queryId ||
+          !input.versionId ||
+          input.after ||
+          input.recordId ||
+          input.assetId ||
+          input.bbox))
+    )
+      context.addIssue({
+        code: 'custom',
+        message:
+          'Aggregation requires an authorized query, version and source specification without row pagination',
+      });
   });
 export const ExplorationResultSchema = z
   .strictObject({
-    ...ExplorationResultV15Schema.shape,
-    spec: QuerySpecSchema,
+    ...ExplorationResultV16Schema.shape,
+    view: View,
+    aggregate: ExplorationAggregateSchema.optional(),
   })
   .superRefine((result, context) => {
-    const { recordQuery: _recordQuery, ...previousSpec } = result.spec;
-    const checked = ExplorationResultV15Schema.safeParse({
-      ...result,
-      spec: previousSpec,
+    const { aggregate, ...previous } = result;
+    const checked = ExplorationResultV16Schema.safeParse({
+      ...previous,
+      view: result.view === 'aggregate' ? 'resources' : result.view,
     });
     if (!checked.success)
       for (const issue of checked.error.issues)
@@ -93,9 +64,21 @@ export const ExplorationResultSchema = z
           path: issue.path,
           message: issue.message,
         });
+    if ((result.view === 'aggregate') !== (aggregate !== undefined))
+      context.addIssue({
+        code: 'custom',
+        message: 'Aggregate results require bounded groups',
+      });
+    if (
+      aggregate &&
+      !aggregate.truncated &&
+      aggregate.groups.reduce((sum, group) => sum + group.count, 0) !==
+        result.totalCount
+    )
+      context.addIssue({
+        code: 'custom',
+        message: 'Aggregate group counts must cover all matched records',
+      });
   });
-export type RecordFilter = z.infer<typeof RecordFilterSchema>;
-export type RecordQuery = z.infer<typeof RecordQuerySchema>;
-export type QuerySpec = z.infer<typeof QuerySpecSchema>;
 export type ExplorationQueryInput = z.infer<typeof ExplorationQueryInputSchema>;
 export type ExplorationResult = z.infer<typeof ExplorationResultSchema>;
