@@ -100,6 +100,12 @@ class FakeClient implements PostgresDataCommandClient {
     ) {
       return Promise.resolve({ rows: [], rowCount: 0 });
     }
+    if (text.includes('data.analysis.version.lock')) {
+      return Promise.resolve({
+        rows: [{ security_level: 'L1_INTERNAL' }],
+        rowCount: 1,
+      });
+    }
     if (text.includes('data.upload.asset.insert')) {
       this.timeline.push('sql:asset-insert');
       return Promise.resolve({
@@ -624,6 +630,33 @@ class SavepointRollbackPool implements PostgresDataCommandPool {
 }
 
 describe('PostgreSQL Data Foundation command executors', () => {
+  it('queues version analysis atomically, replays idempotently, and rejects inaccessible versions', async () => {
+    const value = runtime();
+    const command = value.runtime.executors.find(
+      ({ id }) => String(id) === 'data.analysis.create',
+    );
+    expect(command).toBeDefined();
+    const input = { dataItemId: INGESTION_ID, versionId: ASSET_ID };
+    const output = await command!.execute(input, context);
+    expect(output).toMatchObject({
+      analysisId: expect.any(String),
+      operation: { status: 'RUNNING', capabilityId: 'data.analysis.create' },
+    });
+    expect(await command!.execute(input, context)).toEqual(output);
+    expect(
+      value.pool.client.calls.filter((call) =>
+        call.text.includes('data.analysis.job.insert'),
+      ),
+    ).toHaveLength(1);
+    expect(value.store.calls).toHaveLength(0);
+    const hidden = runtime();
+    hidden.pool.client.zeroRowCountFor = 'data.analysis.version.lock';
+    await expect(
+      hidden.runtime.executors
+        .find(({ id }) => String(id) === 'data.analysis.create')!
+        .execute(input, context),
+    ).rejects.toMatchObject({ category: 'NOT_FOUND' });
+  });
   it('provides exactly the eight concrete command capabilities', () => {
     const value = runtime();
     expect(value.runtime.executors.map(({ id }) => id)).toEqual([
