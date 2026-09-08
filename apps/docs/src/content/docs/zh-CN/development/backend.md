@@ -124,6 +124,7 @@ Telemetry Ingress ────────► internal OTel Collector
 - Tool 和 Resource schema 来自公开系统 contracts，输出有大小和结构校验；
 - MCP 不导入 API application service，也不查询数据库、journal 或投影；
 - HTTP transport 的 `/mcp` 自身需要 bearer token，下游 API 仍使用各系统的授权 credential；
+- HTTP host 也支持逐请求 authorizer，返回仅绑定当前调用者的 handler；它与共享 bearer handler 互斥。每次调用重新授权，成功响应禁止缓存，授权依赖不可用时失败关闭且不暴露上游细节；
 - 新模块必须有唯一点分 ID，并通过 `registerWiserMcpModules` 组合。
 
 ## Telemetry Ingress

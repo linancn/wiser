@@ -78,9 +78,10 @@ describe('WISER MCP Streamable HTTP boundary', () => {
         const actor = request.headers.authorization?.replace('Bearer ', '');
         if (actor === undefined || !active.has(actor)) return null;
         await new Promise<void>((resolve) => setImmediate(resolve));
-        return async (_request: IncomingMessage, response: ServerResponse) => {
+        return (_request: IncomingMessage, response: ServerResponse) => {
           response.setHeader('Content-Type', 'application/json');
           response.end(JSON.stringify({ actor, project: `${actor}-project` }));
+          return Promise.resolve();
         };
       },
     });
@@ -112,9 +113,10 @@ describe('WISER MCP Streamable HTTP boundary', () => {
   it('keeps authorization dependency failures private and health probes available', async () => {
     const server = createWiserMcpHttpServer({
       ready: () => true,
-      authorize: async () => {
-        throw new Error('private upstream credential and database details');
-      },
+      authorize: () =>
+        Promise.reject(
+          new Error('private upstream credential and database details'),
+        ),
     });
     servers.push(server);
     server.listen(0, '127.0.0.1');

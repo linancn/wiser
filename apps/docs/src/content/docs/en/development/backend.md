@@ -124,6 +124,7 @@ Preserve these boundaries:
 - Tool and Resource schemas come from public system contracts, and outputs are size- and shape-validated.
 - MCP does not import API application services or query databases, journals, or projections.
 - The HTTP transport's `/mcp` requires its own bearer token; downstream API requests still use each system's authorized credential.
+- The HTTP host also accepts a per-request authorizer that returns a handler bound to the current caller. It cannot be combined with the shared-bearer handler. Authorization is rechecked on every call, successful responses are non-cacheable, and unavailable authorization dependencies fail closed without exposing upstream details.
 - A new module has a unique dotted ID and composes through `registerWiserMcpModules`.
 
 ## Telemetry Ingress

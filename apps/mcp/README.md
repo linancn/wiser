@@ -65,6 +65,7 @@ pnpm --filter @wiser/mcp dev:http
 
 ## 配置边界 / Configuration boundary
 
+- HTTP host 支持固定 bearer 与逐请求 `authorize` 两种互斥配置。逐请求授权返回仅绑定当前调用的 handler，每次调用重新授权；授权依赖失败返回无敏感内容的 `503`，授权拒绝返回 `401`，健康检查独立可用。两种模式的 MCP 响应都禁止缓存。 / The HTTP host accepts mutually exclusive fixed-bearer or per-request `authorize` configuration. Each authorization returns a handler bound only to that request and is rechecked on every call. Authorization dependency failures return a private `503`, denials return `401`, and health probes remain independent. MCP responses in both modes are non-cacheable.
 - Gateway 总会初始化 EXCON client；只使用 Data 模块时也必须配置非空 `AGENT_EXCON_API_KEY`，但只有调用 `excon_*` 才要求它是绑定 RunAgent 的真实 credential。`AGENT_EXCON_API_URL` 仍必须与 protocol version 一致。 / The Gateway always initializes the EXCON client, so Data-only use still configures a non-empty key. It must be a real RunAgent-bound credential only when invoking `excon_*`.
 - Data 模块要求 `DATA_API_URL`、`DATA_API_BEARER_TOKEN`、`DATA_TENANT_ID`、`DATA_PROJECT_ID` 与 `DATA_PURPOSE` 五项全部存在；全部缺失时不注册 Data，部分配置时启动失败。 / The Data module requires all five values; no Data configuration omits the module, while partial configuration fails startup.
 - HTTP transport 要求 `DATA_MCP_BEARER_TOKEN`；`DATA_MCP_HOST` 与 `DATA_MCP_PORT` 只配置监听边界。 / HTTP transport requires `DATA_MCP_BEARER_TOKEN`; host and port configure only its listener.
