@@ -30,6 +30,7 @@ describe('WISER product navigation hierarchy', () => {
       'catalog',
       'ingestions',
       'quality',
+      'explore',
       'search',
       'knowledge',
       'graph',

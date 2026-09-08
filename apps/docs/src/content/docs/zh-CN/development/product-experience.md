@@ -140,3 +140,5 @@ WISER Portal
 - Skip link、一级/二级导航、主题、语言和主操作可由键盘到达；
 - reduced motion 下没有必要之外的动画；
 - 普通失败态不泄露服务器秘密或原始响应。
+
+`/[locale]/data-foundation/explore` 工作区与 API 共享严格探索契约。紧凑查询栏、资源表格与选择详情面板将结果区置于页面上方。服务端渲染建立或恢复授权结果集，后续请求经过验证当前 Session 的 Next.js 入口 `/api/data-foundation/explore`。调整筛选建立新版本清单，分页沿用同一 `queryId`。数据名称支持键盘操作，详情显示精确版本、就绪状态及来源限制；未知分析数量不会显示为零。

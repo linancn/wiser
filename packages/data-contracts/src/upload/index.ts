@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { OffsetDateTimeSchema, Sha256Schema } from '../common.js';
+import { OffsetDateTimeSchema, Sha256Schema } from '../common.ts';
 import { PlatformUuidSchema } from '@wiser/platform-contracts';
 
 const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024 * 1024 * 1024;

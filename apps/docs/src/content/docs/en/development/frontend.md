@@ -148,3 +148,5 @@ Playwright locators use user-visible roles, labels, text, or stable test IDs. Ap
 - Tests protect the EXCON reference/live boundary and Data Foundation's live-API-only boundary.
 - New routes, dictionary keys, data contracts, and authorization failures have focused coverage; screenshots support visual comparison but do not replace semantic assertions.
 - Related architecture, protocol, or development documentation is updated and passes Docpact plus root `pnpm verify`.
+
+The `/[locale]/data-foundation/explore` workspace shares the strict exploration contracts with the API. A compact query bar, resource table and selection inspector keep the result area near the top of the viewport. Server rendering starts or resumes an authorized result set; subsequent queries pass through the session-verified Next.js endpoint `/api/data-foundation/explore`. Filters start a new version manifest; paging keeps the same `queryId`. Keyboard-operable resource names expose exact versions, readiness and source limitations. Unknown analytical counts remain explicit instead of becoming zero.

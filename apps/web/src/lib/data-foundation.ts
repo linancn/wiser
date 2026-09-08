@@ -3,6 +3,7 @@ export const DATA_FOUNDATION_ROUTES = Object.freeze([
   { path: '/catalog', key: 'catalog' },
   { path: '/ingestions', key: 'ingestions' },
   { path: '/quality', key: 'quality' },
+  { path: '/explore', key: 'explore' },
   { path: '/search', key: 'search' },
   { path: '/knowledge', key: 'knowledge' },
   { path: '/graph', key: 'graph' },

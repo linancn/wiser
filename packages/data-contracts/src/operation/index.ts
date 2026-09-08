@@ -4,7 +4,7 @@ import {
   CursorSchema,
   OffsetDateTimeSchema,
   PageRequestFields,
-} from '../common.js';
+} from '../common.ts';
 import { PlatformUuidSchema } from '@wiser/platform-contracts';
 
 export const OperationStatusSchema = z.enum([

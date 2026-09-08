@@ -1,6 +1,11 @@
 import 'server-only';
 
 import { connection } from 'next/server';
+import {
+  ExplorationQueryInputSchema,
+  ExplorationResultSchema,
+  type ExplorationResult,
+} from '@wiser/data-contracts';
 
 import {
   parseCapabilityRegistry,
@@ -83,6 +88,7 @@ export class DataFoundationApiError extends Error {
 }
 
 export interface DataFoundationDal {
+  explore(input: unknown): Promise<ExplorationResult>;
   health(): Promise<DataHealthDto>;
   capabilities(): Promise<CapabilityRegistryDto>;
   catalog(input: {
@@ -357,6 +363,19 @@ export function createDataFoundationDal(
   }
 
   const dal: DataFoundationDal = {
+    explore: (input) => {
+      const criteria = ExplorationQueryInputSchema.safeParse(input);
+      if (!criteria.success)
+        throw new DataFoundationApiError('invalid-request', 422);
+      return parsed(
+        () =>
+          call('/api/data/v1/explore/query', {
+            method: 'POST',
+            body: criteria.data,
+          }),
+        (value) => ExplorationResultSchema.parse(value),
+      );
+    },
     health: () =>
       parsed(
         () =>

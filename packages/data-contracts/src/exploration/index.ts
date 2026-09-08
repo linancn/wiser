@@ -4,8 +4,8 @@ import {
   DataKeySchema,
   OffsetDateTimeSchema,
   PageRequestFields,
-} from '../common.js';
-import { QualityGradeSchema } from '../catalog/index.js';
+} from '../common.ts';
+import { QualityGradeSchema } from '../catalog/index.ts';
 
 export const ExplorationVersionRefSchema = z.strictObject({
   dataItemId: PlatformUuidSchema,

@@ -264,6 +264,9 @@ importers:
       '@supabase/supabase-js':
         specifier: 2.112.4
         version: 2.112.4
+      '@wiser/data-contracts':
+        specifier: workspace:*
+        version: link:../../packages/data-contracts
       maplibre-gl:
         specifier: 6.6.0
         version: 6.6.0

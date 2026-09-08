@@ -17,6 +17,7 @@
     "@antv/g6": "5.1.1",
     "@supabase/ssr": "0.12.5",
     "@supabase/supabase-js": "2.112.4",
+    "@wiser/data-contracts": "workspace:*",
     "maplibre-gl": "6.6.0",
     "next": "16.3.3",
     "react": "19.2.8",

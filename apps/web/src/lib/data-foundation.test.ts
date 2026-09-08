@@ -69,6 +69,7 @@ describe('Data Foundation browser-safe contracts', () => {
       '/catalog',
       '/ingestions',
       '/quality',
+      '/explore',
       '/search',
       '/knowledge',
       '/graph',

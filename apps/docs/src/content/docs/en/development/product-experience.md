@@ -140,3 +140,5 @@ Every product UI change verifies:
 - skip link, primary/context navigation, theme, locale, and primary actions are keyboard reachable;
 - reduced motion removes non-essential animation;
 - ordinary failures expose no server secret or raw upstream response.
+
+The `/[locale]/data-foundation/explore` workspace shares the strict exploration contracts with the API. A compact query bar, resource table and selection inspector keep the result area near the top of the viewport. Server rendering starts or resumes an authorized result set; subsequent queries pass through the session-verified Next.js endpoint `/api/data-foundation/explore`. Filters start a new version manifest; paging keeps the same `queryId`. Keyboard-operable resource names expose exact versions, readiness and source limitations. Unknown analytical counts remain explicit instead of becoming zero.

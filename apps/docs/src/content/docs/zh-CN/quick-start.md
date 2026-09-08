@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-09-08
-lastReviewedCommit: 7ab2bd8be45955cbf1c7e7c58dde27bccc145c50
+lastReviewedCommit: 5c6be8b65e2be503f96f5b0dbc15ff4f5786e8c1
 ---
 
 本页只覆盖第一次完整运行。日常的前后端单独启动、所有端口、环境变量和故障排查见[本机开发环境](/development/local-environment/)。
@@ -83,7 +83,7 @@ WiserLocalOperator-2026!
 
 这个账号和密码只能用于本机 seed，不能复制到共享或生产环境。
 
-完整栈会为 Data Foundation Web 与 Data MCP 注入真实的本机 Supabase 身份。共享 MCP 进程同时收到一个只够完成 EXCON client 配置的本机占位值；Data Tool 不使用它，但任何 `excon_*` 调用都会因没有绑定 RunAgent 的真实 credential 而鉴权失败。Agent EXCON Web 的 live 读模型也仍需要服务端 operator credential；缺失或无效时显式显示 unavailable，不回退伪造数据。
+完整栈会为 Data Foundation Web 与 Data MCP 注入真实的本机 Supabase 身份。共享 MCP 进程同时收到一个只够完成 EXCON client 配置的本机占位值；Data Tool 不使用它，但任何 `excon_*` 调用都会因没有绑定 RunAgent 的真实 credential 而鉴权失败。Agent EXCON Web 的 live 读模型使用已验证的当前 Supabase 用户 Session，并核查 operator 授权；身份缺失或无效时显式显示失败，不回退伪造数据。
 
 ## 验证 Agent EXCON 协议闭环
 
@@ -93,7 +93,7 @@ WiserLocalOperator-2026!
 pnpm cookbook:scripted
 ```
 
-该命令验证 Agent EXCON 系统，但不把完整栈 Web 的占位 credential 升级成 live operator/RunAgent 身份。真实 EXCON live 客户端仍必须从受信任的 Run 编组或 operator workflow 获得专用 credential。
+该命令验证 Agent EXCON 系统。EXCON MCP 从受信任的 Run 编组获得 RunAgent credential；live Web 使用具有 operator 授权的当前 Supabase 登录用户。
 
 ## 4. 停止
 

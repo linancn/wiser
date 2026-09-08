@@ -25,6 +25,7 @@ const DATA_ROUTE_GROUPS = {
   catalog: 'manage',
   ingestions: 'manage',
   quality: 'manage',
+  explore: 'explore',
   search: 'explore',
   knowledge: 'explore',
   graph: 'explore',

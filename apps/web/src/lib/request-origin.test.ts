@@ -15,7 +15,7 @@ describe('browser request origin behind a port-mapped host', () => {
       ),
     ).toBe(true);
   });
-  it.each([
+  it.each<Record<string, string>>([
     { host: 'wiser.test', origin: 'https://attacker.test' },
     {
       host: 'wiser.test',

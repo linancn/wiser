@@ -77,3 +77,5 @@ pnpm --filter @wiser/web test:e2e
 ```
 
 See [Frontend development](../docs/src/content/docs/en/development/frontend.md) / [前端开发](../docs/src/content/docs/zh-CN/development/frontend.md) for route, Auth, i18n, theme, and Playwright details.
+
+Data exploration at `/[locale]/data-foundation/explore` uses shared `@wiser/data-contracts` schemas and the verified-session `/api/data-foundation/explore` endpoint for version-pinned resource queries, pagination and selection details. / 数据探索页面通过共享契约与当前登录会话完成固定版本查询、分页和详情选择。

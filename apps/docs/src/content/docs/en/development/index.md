@@ -68,3 +68,5 @@ Then run Docpact route for the actual target paths before creating or changing f
 - Run `pnpm verify` before handoff; add focused database and browser integration tests when relevant.
 
 Repository `CONTRIBUTING.md` defines contribution rules; root `AGENTS.md` defines the immutable delivery contract for agents.
+
+Shared Data contracts use explicit `.ts` relative source imports so Turbopack can consume the same schema as Node services. The base TypeScript configuration enables `rewriteRelativeImportExtensions` to emit `.js` imports for runnable builds. Web has `allowImportingTsExtensions` with `noEmit`. Keep package imports on public exports, and verify both browser rendering and emitted Node imports when changing this boundary.

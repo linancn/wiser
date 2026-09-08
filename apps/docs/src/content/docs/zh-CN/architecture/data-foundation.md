@@ -200,3 +200,5 @@ npm 的精确版本由对应 `package.json` 与根 `pnpm-lock.yaml` 定义；Dat
 `data.explore.query` 从调用者可见的已发布版本建立有效期 30 分钟的结果集。声明式 `QuerySpec` 支持文本、数据项 ID、明确的版本对、业务领域和质量等级；未指定版本时选择每个数据项最新可访问的已发布版本。服务端清单固定最多 10,000 个版本引用，资源页最多 200 条；超过上限需要缩小查询范围。
 
 每次续查都绑定 Actor、Tenant、Project、Purpose、精确授权版本和安全上限。PostgreSQL 强制 RLS 保护清单，各视图还会重新核查引用的数据项及版本是否仍可访问且已发布。授权或发布变化使续查失效，不会静默改变结果集；新发布的版本也不会替换已固定版本。这固定的是版本成员，不是跨投影存储的分布式快照。就绪状态与分析数量独立：只有登记的资源返回 `NOT_PARSED`，未知记录数为 `null`。
+
+Web 的 `/zh-CN/data-foundation/explore` 工作区复用这些契约，通过 Next.js API adapter 使用当前 Supabase Session，提供紧凑资源表格、查询、固定结果集分页与精确版本详情。

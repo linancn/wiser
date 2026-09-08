@@ -103,3 +103,5 @@ Every page passes Chinese and English, light and dark, desktop and 390px, keyboa
 ### Data exploration workspaces
 
 Data workspaces use compact headings and bounded grid children so real long excerpts and identifiers wrap within narrow screens. Graph canvases use shared semantic colors, a readable text alternative and a version-aware selection inspector. Canvas selection has an outline as well as color, and node selection is available through keyboard-operated buttons.
+
+The `/[locale]/data-foundation/explore` workspace shares the strict exploration contracts with the API. A compact query bar, resource table and selection inspector keep the result area near the top of the viewport. Server rendering starts or resumes an authorized result set; subsequent queries pass through the session-verified Next.js endpoint `/api/data-foundation/explore`. Filters start a new version manifest; paging keeps the same `queryId`. Keyboard-operable resource names expose exact versions, readiness and source limitations. Unknown analytical counts remain explicit instead of becoming zero.

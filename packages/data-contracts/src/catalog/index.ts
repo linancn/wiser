@@ -7,7 +7,7 @@ import {
   OffsetDateTimeSchema,
   PageRequestFields,
   Sha256Schema,
-} from '../common.js';
+} from '../common.ts';
 import {
   PlatformScopeSchema,
   PlatformUuidSchema,

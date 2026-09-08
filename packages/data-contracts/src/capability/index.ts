@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   ExplorationQueryInputSchema,
   ExplorationResultSchema,
-} from '../exploration/index.js';
+} from '../exploration/index.ts';
 
 import {
   AcceptanceStatusSchema,
@@ -20,14 +20,14 @@ import {
   ProcessingStageSchema,
   QualityGradeSchema,
   SecurityLevelSchema,
-} from '../catalog/index.js';
+} from '../catalog/index.ts';
 import {
   CursorSchema,
   DataFieldNameSchema,
   DataKeySchema,
   OffsetDateTimeSchema,
   PageRequestFields,
-} from '../common.js';
+} from '../common.ts';
 import {
   ApproveIngestionInputSchema,
   GetIngestionInputSchema,
@@ -35,19 +35,19 @@ import {
   IngestionOutputV1Schema,
   RejectIngestionInputSchema,
   SourceRegistrationSchema,
-} from '../ingestion/index.js';
+} from '../ingestion/index.ts';
 import {
   CancelOperationInputSchema,
   GetOperationEventsInputSchema,
   OperationEventPageSchema,
   OperationSchema,
-} from '../operation/index.js';
+} from '../operation/index.ts';
 import {
   CompleteUploadSessionInputSchema,
   CompleteUploadSessionOutputSchema,
   CreateUploadSessionInputSchema,
   CreateUploadSessionOutputSchema,
-} from '../upload/index.js';
+} from '../upload/index.ts';
 import {
   PlatformScopeSchema,
   PlatformUuidSchema,

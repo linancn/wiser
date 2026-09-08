@@ -148,3 +148,5 @@ Playwright 使用用户可感知的 role、label、可见文本或稳定 test id
 - EXCON 的 reference/live 边界和 Data Foundation 的“只用实时 API”边界有测试保护。
 - 新路由、字典键、数据契约和权限失败都具有聚焦测试；截图用于视觉比较，不代替语义断言。
 - 相关架构、协议或开发文档同步更新，并通过 Docpact 和根目录 `pnpm verify`。
+
+`/[locale]/data-foundation/explore` 工作区与 API 共享严格探索契约。紧凑查询栏、资源表格与选择详情面板将结果区置于页面上方。服务端渲染建立或恢复授权结果集，后续请求经过验证当前 Session 的 Next.js 入口 `/api/data-foundation/explore`。调整筛选建立新版本清单，分页沿用同一 `queryId`。数据名称支持键盘操作，详情显示精确版本、就绪状态及来源限制；未知分析数量不会显示为零。
