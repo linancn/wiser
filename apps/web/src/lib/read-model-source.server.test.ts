@@ -57,12 +57,10 @@ describe('server read-model selection', () => {
         getClaims: vi
           .fn()
           .mockResolvedValue({ data: { claims: verified }, error: null }),
-        getSession: vi
-          .fn()
-          .mockResolvedValue({
-            data: { session: { access_token: token } },
-            error: null,
-          }),
+        getSession: vi.fn().mockResolvedValue({
+          data: { session: { access_token: token } },
+          error: null,
+        }),
       },
     });
   }

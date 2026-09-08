@@ -9,6 +9,8 @@ import {
   type WebDataMode,
   type WebReadModelSource,
 } from './read-model-source';
+import { createWiserServerSupabaseClient } from './supabase/server';
+import { verifiedSessionAccessToken } from './supabase/verified-session';
 
 async function configuredMode(): Promise<string | undefined> {
   await connection();
@@ -31,8 +33,32 @@ export async function getWebReadModelSource(): Promise<WebReadModelSource> {
       'AGENT_EXCON_WEB_DATA_MODE must be either reference or live.',
     );
   }
+  const authMode =
+    process.env.WISER_AUTH_MODE ??
+    (process.env.NODE_ENV === 'production' ? 'supabase' : 'off');
+  let accessToken: string;
+  if (authMode === 'supabase') {
+    try {
+      accessToken = await verifiedSessionAccessToken(
+        createWiserServerSupabaseClient,
+        () => new Date(),
+      );
+    } catch {
+      return createUnavailableReadModelSource(
+        'live',
+        'The current session could not be verified.',
+      );
+    }
+  } else if (authMode === 'off' && process.env.NODE_ENV !== 'production') {
+    accessToken = process.env.WISER_WEB_OPERATOR_TOKEN ?? '';
+  } else {
+    return createUnavailableReadModelSource(
+      'live',
+      'The authentication configuration is unavailable.',
+    );
+  }
   return createLiveReadModelSource({
     apiOrigin: process.env.AGENT_EXCON_API_INTERNAL_URL ?? '',
-    operatorToken: process.env.WISER_WEB_OPERATOR_TOKEN ?? '',
+    operatorToken: accessToken,
   });
 }

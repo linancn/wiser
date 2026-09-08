@@ -120,7 +120,7 @@ Web 使用 Supabase SSR Cookie。Server Component 转发当前 Access Token，Fa
 
 Shell 的用户状态只来自刚完成验证的 authenticated claims，不把用户可编辑 metadata 渲染成可信 Role 或管理员标签。Claims 无效、过期、带特权角色、服务不可用或格式畸形时，一律进入匿名/fail-closed 状态。
 
-`WISER_WEB_OPERATOR_TOKEN` 是服务端 operator/service identity，不是交互式用户 Session。需要平台诊断的服务账户必须拥有明确 Scope，且只能在服务端使用。
+Data 与 EXCON 交互式读取共用服务端 Session verifier：先验证未过期的 authenticated claims，再读取当前 Access Token，并要求其主体、Session、Role 和到期时间与已验证 claims 一致。Session 无效或错配时绝不回退到 `WISER_WEB_OPERATOR_TOKEN`；该 operator/service identity 仅用于显式关闭 Auth 的本机开发。生产 EXCON 读取使用当前登录用户并由 API 再次授权。
 
 ## Agent 与 MCP 委托
 
