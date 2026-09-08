@@ -199,3 +199,53 @@ it('retries an aborted snapshot transaction before exposing a saved list', async
   expect(attempts).toBe(2);
   expect(release).toHaveBeenCalledTimes(2);
 });
+
+it('reauthorizes every saved version before creating any new query', async () => {
+  const viewSpec = ExplorationViewSpecSchema.parse({
+    activeView: 'resources',
+    requests: { resources: { queryId: id, view: 'resources' } },
+  });
+  const query = vi.fn<
+    (sql: string) => Promise<{ rows: Record<string, unknown>[] }>
+  >((sql) =>
+    Promise.resolve({
+      rows: sql.includes('from service.exploration_saved_view')
+        ? [
+            {
+              view_id: id,
+              query_id: id,
+              actor_id: id,
+              title: 'Shared',
+              visibility: 'project',
+              spec: {},
+              version_refs: [
+                { dataItemId: id, versionId: id, analysisId: null },
+                { dataItemId: next, versionId: next, analysisId: null },
+              ],
+              view_spec: viewSpec,
+              created_at: '2026-09-08T00:00:00Z',
+              revoked_at: null,
+            },
+          ]
+        : sql.includes('count(*)::int as total')
+          ? [{ total: 1 }]
+          : [],
+    }),
+  );
+  const release = vi.fn();
+  const pool = {
+    connect: () => Promise.resolve({ query, release }),
+    end: () => Promise.resolve(),
+  };
+  const open = createExplorationSavedExecutors(pool).find(
+    (value) => value.id === 'data.explore.view.open',
+  )!;
+  await expect(open.execute({ viewId: id }, context)).rejects.toMatchObject({
+    code: 'CONFLICT',
+  });
+  expect(query.mock.calls.some(([sql]) => sql.startsWith('insert into'))).toBe(
+    false,
+  );
+  expect(query.mock.calls.at(-1)?.[0]).toBe('rollback');
+  expect(release).toHaveBeenCalledOnce();
+});

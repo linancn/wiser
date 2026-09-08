@@ -154,6 +154,21 @@ for (const serverOwnedField of [
 }
 
 const validCapabilityInputs = {
+  'data.explore.view.create': {
+    queryId: OPERATION_ID,
+    title: 'View',
+    viewSpec: {
+      activeView: 'resources',
+      requests: { resources: { queryId: OPERATION_ID, view: 'resources' } },
+    },
+  },
+  'data.explore.view.list': {},
+  'data.explore.view.open': { viewId: OPERATION_ID },
+  'data.explore.view.revoke': { viewId: OPERATION_ID },
+  'data.explore.export': {
+    request: { queryId: OPERATION_ID, view: 'resources' },
+  },
+
   'data.analysis.create': { dataItemId: DATA_ITEM_ID, versionId: VERSION_ID },
   'data.explore.query': { spec: {}, view: 'resources', first: 20 },
   'data.catalog.search': { query: 'monitoring station', first: 20 },
@@ -248,6 +263,63 @@ const validCapabilityInputs = {
 } satisfies Record<DataCapabilityId, Readonly<Record<string, unknown>>>;
 
 const expectedCapabilityMappings = {
+  'data.explore.view.create': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/views',
+      successStatus: 200,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'createDataExploreView',
+    },
+    mcpMapping: { toolName: 'data_explore_view_create' },
+    skillMapping: { operation: 'data.explore.view.create' },
+  },
+  'data.explore.view.list': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/explore/views',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataExploreViews' },
+    mcpMapping: { toolName: 'data_explore_view_list' },
+    skillMapping: { operation: 'data.explore.view.list' },
+  },
+  'data.explore.view.open': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/views/:viewId/open',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataExploreView' },
+    mcpMapping: { toolName: 'data_explore_view_open' },
+    skillMapping: { operation: 'data.explore.view.open' },
+  },
+  'data.explore.view.revoke': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/views/:viewId/revoke',
+      successStatus: 200,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'revokeDataExploreView',
+    },
+    mcpMapping: { toolName: 'data_explore_view_revoke' },
+    skillMapping: { operation: 'data.explore.view.revoke' },
+  },
+  'data.explore.export': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/export',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'exportDataExplore' },
+    mcpMapping: { toolName: 'data_explore_export' },
+    skillMapping: { operation: 'data.explore.export' },
+  },
+
   'data.analysis.create': {
     restMapping: {
       method: 'POST',
@@ -513,6 +585,12 @@ const expectedCapabilityMappings = {
 } satisfies Record<DataCapabilityId, unknown>;
 
 const expectedCapabilityScopes = {
+  'data.explore.view.create': ['data.query.execute', 'data.catalog.read'],
+  'data.explore.view.list': ['data.query.execute', 'data.catalog.read'],
+  'data.explore.view.open': ['data.query.execute', 'data.catalog.read'],
+  'data.explore.view.revoke': ['data.query.execute', 'data.catalog.read'],
+  'data.explore.export': ['data.query.execute', 'data.catalog.read'],
+
   'data.analysis.create': ['data.ingestion.write', 'data.catalog.read'],
   'data.explore.query': ['data.query.execute', 'data.catalog.read'],
   'data.catalog.search': ['data.catalog.read'],
@@ -547,6 +625,27 @@ const asynchronousCapabilityIds = new Set<DataCapabilityId>([
 ]);
 
 const expectedJsonSchemaHashes = {
+  'data.explore.view.create': {
+    input: 'b87e4f4b326ae62836ddd3a4411c5537a17fa2444fc73adf9e88dff049829fb4',
+    output: 'ae6e18d80bf0a0aa54c402a6a791d4e73ddc7e447ba7863539aab549efe12179',
+  },
+  'data.explore.view.list': {
+    input: 'f973399805c1c233633f5196cf8e2ad40ee100b94996d711dcd030813b671bc5',
+    output: '381e7efeb915aab342a66d9c8531f8135e7d84f666ab6d69e56aa5a68e359afc',
+  },
+  'data.explore.view.open': {
+    input: '79984f7329c030d9ebe5f8aed58146dee3e374936de3c0bbcbba95045b127cb3',
+    output: 'c92fba950266c2a830ad0a3da08bfc712dc5606ebc6568c333542ff5303a2509',
+  },
+  'data.explore.view.revoke': {
+    input: '79984f7329c030d9ebe5f8aed58146dee3e374936de3c0bbcbba95045b127cb3',
+    output: 'b64d20829012c71b47f3aedbab16def427e4962c0033cefb806309ae0db1f7a0',
+  },
+  'data.explore.export': {
+    input: '92f275799d61c10cdccc829dab89b48229380d5ee27d49277b44eb70f726ec32',
+    output: '3830a39891bc7b6b547d04c6c89242cdcf75d56f59a3ae900396a4c4e601ba4b',
+  },
+
   'data.analysis.create': {
     input: 'e506474b6ef13975dec248cd0e32b68a09754d04f420a710355c0d15b105aa6a',
     output: '157a58322075047c67537707e26c0307eb80090d55e7bf3443b704345d9e3d16',
@@ -978,6 +1077,11 @@ describe('Data Foundation capability registry', () => {
       'data.ingestion.reject',
       'data.operation.cancel',
       'data.operation.events',
+      'data.explore.view.create',
+      'data.explore.view.list',
+      'data.explore.view.open',
+      'data.explore.view.revoke',
+      'data.explore.export',
       'data.explore.query',
       'data.analysis.create',
     ]);
@@ -1206,7 +1310,7 @@ describe('Data Foundation capability registry', () => {
       }
     }
 
-    expect(checkedCapabilities).toBe(DATA_CAPABILITY_IDS.length - 1);
+    expect(checkedCapabilities).toBe(DATA_CAPABILITY_IDS.length - 2);
   });
 
   it('rejects raw database and projection-store languages', () => {

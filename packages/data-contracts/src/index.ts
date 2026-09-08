@@ -6,3 +6,4 @@ export * from './ingestion/index.ts';
 export * from './operation/index.ts';
 export * from './upload/index.ts';
 export * from './analysis/index.ts';
+export * from './exploration/saved.ts';

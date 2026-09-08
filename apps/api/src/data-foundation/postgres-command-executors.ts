@@ -1011,7 +1011,7 @@ function statementTimeout(context: DataCapabilityExecutionContext): string {
   return `${Math.min(context.timeoutMs, 120_000)}ms`;
 }
 
-class CommandTransactions {
+export class CommandTransactions {
   constructor(
     readonly pool: PostgresDataCommandPool,
     readonly idFactory: () => string,

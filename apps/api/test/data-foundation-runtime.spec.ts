@@ -68,6 +68,11 @@ const commandIds = DATA_CAPABILITY_IDS.filter(
     !readIds.includes(id as (typeof readIds)[number]) &&
     ![
       'data.query',
+      'data.explore.view.create',
+      'data.explore.view.list',
+      'data.explore.view.open',
+      'data.explore.view.revoke',
+      'data.explore.export',
       'data.explore.query',
       'data.search.federated',
       'data.knowledge.search',
@@ -79,6 +84,11 @@ const commandIds = DATA_CAPABILITY_IDS.filter(
 );
 const specialIds = [
   'data.query',
+  'data.explore.view.create',
+  'data.explore.view.list',
+  'data.explore.view.open',
+  'data.explore.view.revoke',
+  'data.explore.export',
   'data.explore.query',
   'data.search.federated',
   'data.knowledge.search',
@@ -224,7 +234,7 @@ describe('Data Foundation production runtime composition', () => {
         authRuntime,
         incomplete.value,
       ),
-    ).toThrow('24');
+    ).toThrow('29');
   });
 
   it('reports degraded readiness without leaking probe failures', async () => {

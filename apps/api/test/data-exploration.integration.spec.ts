@@ -204,7 +204,7 @@ describe('authorized exploration result sets in PostgreSQL', () => {
         );
         if (
           !(
-            await client.query(
+            await client.query<{ present: string | null }>(
               "select to_regclass('service.exploration_saved_view') present",
             )
           ).rows[0]?.present
@@ -232,7 +232,7 @@ describe('authorized exploration result sets in PostgreSQL', () => {
         );
         await client.query(`grant usage on schema event to ${role}`);
         await client.query(
-          `grant select,insert on event.outbox_event,security.audit_event to ${role}`,
+          `grant select,insert,update on event.outbox_event,security.audit_event to ${role}`,
         );
         await client.query(
           `grant insert,update on service.exploration_saved_view to ${role}`,

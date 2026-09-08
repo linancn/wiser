@@ -63,6 +63,7 @@ import {
 } from './runtime-config.js';
 import { createSpecialQueryExecutors } from './special-query-executors.js';
 import { PostgresExplorationExecutor } from './exploration-runtime.js';
+import { createExplorationSavedExecutors } from './exploration-saved.js';
 import type { PlatformAuthRuntime } from '../platform/auth-runtime.js';
 import type { WiserApiModule } from '../platform/modules.js';
 
@@ -249,6 +250,7 @@ const defaultFactories: DataFoundationRuntimeFactories = {
         geo: new PostgisGeoQueryPort({ pool: pg }),
       }),
       new PostgresExplorationExecutor(pg),
+      ...createExplorationSavedExecutors(pg),
     ];
   },
   createAssetDownloadPort(pool, objectStore) {

@@ -69,6 +69,21 @@ const point = {
 };
 
 const validInputs = {
+  'data.explore.view.create': {
+    queryId: OPERATION_ID,
+    title: 'View',
+    viewSpec: {
+      activeView: 'resources',
+      requests: { resources: { queryId: OPERATION_ID, view: 'resources' } },
+    },
+  },
+  'data.explore.view.list': {},
+  'data.explore.view.open': { viewId: OPERATION_ID },
+  'data.explore.view.revoke': { viewId: OPERATION_ID },
+  'data.explore.export': {
+    request: { queryId: OPERATION_ID, view: 'resources' },
+  },
+
   'data.analysis.create': { dataItemId: DATA_ITEM_ID, versionId: VERSION_ID },
   'data.explore.query': { spec: {}, view: 'resources', first: 20 },
   'data.catalog.search': {

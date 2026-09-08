@@ -1,6 +1,6 @@
 ---
 title: Data REST API
-description: Data Foundation 24 项 Capability、OpenAPI、受控 Resource、幂等、SSE 与资产下载协议。
+description: Data Foundation 29 项 Capability、OpenAPI、受控 Resource、幂等、SSE 与资产下载协议。
 docType: protocol-reference
 scope: data-rest-api
 status: active
@@ -21,7 +21,7 @@ lastReviewedCommit: ed4a009b6cd0d97e0c865148549a7405912864c4
 
 ## 协议边界
 
-Data REST 位于现有 Fastify 进程的 `/api/data/v1`，不是第二个服务。24 项业务路由全部调用同一个 `DataCapabilityHandler`；它以 `@wiser/data-contracts` 的 strict Zod 4 schema 校验输入/输出，再执行实时 Scope、安全等级、Purpose、timeout、幂等和 hash-only audit。
+Data REST 位于现有 Fastify 进程的 `/api/data/v1`，不是第二个服务。29 项业务路由全部调用同一个 `DataCapabilityHandler`；它以 `@wiser/data-contracts` 的 strict Zod 4 schema 校验输入/输出，再执行实时 Scope、安全等级、Purpose、timeout、幂等和 hash-only audit。
 
 MCP、Skill 和 Web 的服务端 DAL 都通过这个 HTTP 边界工作。任何客户端都不能提交 SQL、Cypher、OpenSearch DSL、shell 命令或任意对象存储 key。
 
@@ -32,7 +32,7 @@ MCP、Skill 和 Web 的服务端 DAL 都通过这个 HTTP 边界工作。任何�
 | 方法  | 路径                                               | 结果                                                          |
 | ----- | -------------------------------------------------- | ------------------------------------------------------------- |
 | `GET` | `/api/data/v1/health`                              | data-postgres、对象存储、Worker readiness；任一缺失返回 `503` |
-| `GET` | `/api/data/v1/capabilities`                        | 有序 24 项 Registry 与 draft-7 输入/输出 Schema、四种 mapping |
+| `GET` | `/api/data/v1/capabilities`                        | 有序 29 项 Registry 与 draft-7 输入/输出 Schema、四种 mapping |
 | `GET` | `/api/data/v1/capabilities/:capabilityId/:version` | 一个固定版本的完整 Capability；未知版本返回 `404`             |
 
 健康成功的核心形状：
@@ -51,7 +51,7 @@ MCP、Skill 和 Web 的服务端 DAL 都通过这个 HTTP 边界工作。任何�
 
 ## OpenAPI 契约投影
 
-共享 `GET /openapi.json` 返回 OpenAPI 3.1 文档，标题固定为 **WISER Platform API**，同时覆盖 Platform、Agent EXCON 与 Data Foundation。Data 的 24 项 Capability 不维护第二份手写 Schema：Fastify 在注册路由时直接把 Registry 的 Zod 4 输入/输出转换成 draft-7 JSON Schema，再按 path、query、body 与 required Header 投影为 OpenAPI operation。
+共享 `GET /openapi.json` 返回 OpenAPI 3.1 文档，标题固定为 **WISER Platform API**，同时覆盖 Platform、Agent EXCON 与 Data Foundation。Data 的 29 项 Capability 不维护第二份手写 Schema：Fastify 在注册路由时直接把 Registry 的 Zod 4 输入/输出转换成 draft-7 JSON Schema，再按 path、query、body 与 required Header 投影为 OpenAPI operation。
 
 每个 Data operation 都带 `data-foundation` tag、稳定 `operationId`、`bearerAuth`、成功状态的响应 Schema，以及 command 的 `Idempotency-Key` 和版本化 command 的 `If-Match`。Fastify 的 schema compiler 在这里服务于 OpenAPI 投影；运行时唯一业务门禁仍是同一 `DataCapabilityHandler` 的 strict Zod 输入/输出校验，不能让生成文档变成第二个行为来源。
 
@@ -85,7 +85,7 @@ If-Match: "v3"
 
 适用范围是 upload Session complete、ingestion submit/approve/reject 与 Operation cancel。Header 与 body 中已有的 `expectedVersion` 必须一致。成功响应在能找到聚合版本时返回 `ETag: "vN"`。所有身份、业务与错误响应使用 `private, no-store`。
 
-## 24 项 Capability 路由
+## 29 项 Capability 路由
 
 | Capability                    | 方法与路径                                                | 成功               |
 | ----------------------------- | --------------------------------------------------------- | ------------------ |
@@ -183,7 +183,7 @@ Publication consumer 尊重 Operation 终态：即使五个 completion target �
 
 ## Evidence 与 STAC Resource 读取
 
-以下两条受控 GET 不属于 24 项业务 Capability；它们专门承载 MCP Resource，并仍复用统一 Auth、data-postgres RLS、授权后审计与 no-store：
+以下两条受控 GET 不属于 29 项业务 Capability；它们专门承载 MCP Resource，并仍复用统一 Auth、data-postgres RLS、授权后审计与 no-store：
 
 | 路径                                                        | Scope                 | 权威与输出边界                                                                                                                 |
 | ----------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -292,3 +292,13 @@ Data REST 错误是扁平安全 envelope：
 探索协议 1.10 增加不可变的 `spec.spatialBounds`，按 WGS84 西、南、东、北排列。记录、聚合、图谱记录回查和查询 MVT 在聚合前使用相同的已验证几何相交条件。资源及来源图概览显示匹配版本；来源就绪统计仍表示已索引内容。查询清单保留底层授权范围的版本与批次，使通过 `baseQueryId` 清除或改变范围时不刷新解析结果、不丢失原始范围。即使位于地图范围外，所有固定成员仍需重新授权。地图提供点、线、面显隐、图例、本地字体聚合数量与视口筛选；图层显隐只改变呈现，不改变查询授权或计数。未验证坐标的数据明确排除。1.9 发现协议保持不可变。
 
 探索协议 1.11 增加 `graph.detail`（`assets`、`evidence`、`records`），按固定版本分页展开邻居；记录展开还需指定来源文件。`graph.grain` 标明 `totalCount` 的计数单位。游标绑定焦点、展开类型与关系筛选；记录复用共享条件、固定解析批次及字节预算。`graph.relations` 筛选包含／来源关系。可选 `graph.path` 在关系筛选后的当前返回页内查找最多八条边的有向最短路径；端点不在本页时明确失败，不泄露外部节点。未找到路径只说明本页中没有路径，不代表完整知识库中不存在。1.10 契约保持不可变。
+
+保存视图使用 `data.explore.view.create`、`.list`、`.open` 和 `.revoke`；`data.explore.export` 导出一次有界查询表示。均要求 `data.query.execute` 与 `data.catalog.read`。创建／撤销为同步命令，必须携带 UUID `Idempotency-Key`，并原子写入审计与命令账本。视图保存原 QuerySpec、版本／解析批次，以及类型化 ViewSpec（视图请求、分页历史、选择身份、地图视角与图层），不复制记录正文。每位用户在项目内最多保留 100 个有效视图。默认私人可见；显式项目分享仍需当前登录用户的项目范围、用途与安全级别检查，打开时重新授权每个固定成员。列表仅返回当前用户自己的保存配置。打开时重新签发本人绑定的 30 分钟查询和游标，不解析更新版本或批次；原临时查询到期不影响持久配置。仅创建者可以单向撤销。导出重新授权请求，返回原始值、来源、明确的返回／总量和计数单位；后续页或截断结果不会标成完整。各传输入口不会在 SSR/BFF 内排空所有分页。
+
+| Capability                 | HTTP path (under `/api/data/v1`)     |
+| -------------------------- | ------------------------------------ |
+| `data.explore.view.create` | `POST /explore/views`                |
+| `data.explore.view.list`   | `GET /explore/views`                 |
+| `data.explore.view.open`   | `POST /explore/views/:viewId/open`   |
+| `data.explore.view.revoke` | `POST /explore/views/:viewId/revoke` |
+| `data.explore.export`      | `POST /explore/export`               |
