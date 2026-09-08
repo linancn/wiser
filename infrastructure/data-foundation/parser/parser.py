@@ -343,6 +343,10 @@ def parse_asset(path, kind, maximum_records=MAX_RECORDS):
             events = legacy_workbook(path)
         elif kind in ("html", "md", "pdf", "txt"):
             events = document(path, kind)
+        elif kind in ("shp", "tif", "tiff", "adf", "nc"):
+            from geospatial import parse_geospatial
+
+            events = parse_geospatial(path, kind)
         elif kind == "zip":
             events = archive_inventory(path)
         else:

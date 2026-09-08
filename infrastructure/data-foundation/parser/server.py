@@ -22,7 +22,20 @@ MAX_RESPONSE = 1024 * 1024 * 1024
 MAX_SECONDS = 900
 LOGGER = logging.getLogger(__name__)
 SLOTS = threading.BoundedSemaphore(2)
-KINDS = {"xlsx", "xls", "html", "md", "pdf", "txt", "zip"}
+KINDS = {
+    "xlsx",
+    "xls",
+    "html",
+    "md",
+    "pdf",
+    "txt",
+    "zip",
+    "shp",
+    "tif",
+    "tiff",
+    "adf",
+    "nc",
+}
 
 
 def safe_name(name):

@@ -10,7 +10,7 @@ RUN uv venv --python /usr/bin/python3 --system-site-packages --no-python-downloa
   && rm /usr/local/bin/uv
 ENV PATH=/opt/wiser-venv/bin:${PATH}
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 OMP_NUM_THREADS=1 GDAL_CACHEMAX=64 PROJ_NETWORK=OFF
-COPY parser.py server.py test_parser.py test_server.py ./
+COPY parser.py server.py geospatial.py test_parser.py test_server.py test_geospatial.py ./
 RUN python -c 'from osgeo import gdal; import openpyxl, xlrd, pypdf; assert gdal.VersionInfo() == "3130300"'
 USER 65532:65532
 EXPOSE 3005
