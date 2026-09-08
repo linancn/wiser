@@ -62,6 +62,96 @@ test('large original Shapefile records use byte-bounded pages with contiguous cu
   }
 });
 
+test('real reservoir time buckets select the same records with explicit source offsets', async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const chartErrors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error' && message.text().includes('ECharts'))
+      chartErrors.push(message.text());
+  });
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  const versionId = 'e139f0d1-972f-5401-bd35-71d842142185';
+  const response = await page.request.post('/api/data-foundation/explore', {
+    data: {
+      spec: {
+        versions: [
+          { dataItemId: 'e9087b50-2094-4a68-9032-d4d56e35952e', versionId },
+        ],
+        recordQuery: {
+          assetId: 'c3697270-8a1b-4392-9781-25f0de8032ed',
+          filters: [
+            { field: 'c3', type: 'number', operator: 'gte', value: 20 },
+          ],
+        },
+      },
+      view: 'resources',
+    },
+  });
+  expect(response.status()).toBe(200);
+  const query = ExplorationResultSchema.parse(await response.json());
+  await page.goto(
+    `/zh-CN/data-foundation/explore?query=${query.queryId}&view=statistics`,
+  );
+  const statistics = page.getByTestId('explorer-aggregate');
+  await expect(statistics.getByLabel('来源文件')).toContainText('水库');
+  await statistics.getByLabel('分组字段').selectOption('c2');
+  await statistics.getByLabel('分组方式').selectOption('time');
+  await statistics.getByLabel('源时间格式').selectOption('dmy-local');
+  await statistics.getByLabel('固定 UTC 偏移').fill('+08:00');
+  const complete = page.waitForResponse((response) => {
+    if (!response.url().endsWith('/api/data-foundation/explore')) return false;
+    const body: unknown = response.request().postDataJSON();
+    return (
+      typeof body === 'object' &&
+      body !== null &&
+      'view' in body &&
+      body.view === 'aggregate'
+    );
+  });
+  await statistics.getByRole('button', { name: '计算统计' }).click();
+  const aggregated = await complete;
+  expect(aggregated.status()).toBe(200);
+  const result = ExplorationResultSchema.parse(await aggregated.json());
+  expect(result.totalCount).toBe(360839);
+  await expect(page.getByTestId('explorer-aggregate-chart')).toHaveAttribute(
+    'data-state',
+    'ready',
+  );
+  expect(chartErrors).toEqual([]);
+  const first = result.aggregate!.groups[0];
+  await statistics.getByLabel('结束时间段').selectOption(first.key);
+  await statistics.getByRole('button', { name: '应用时间范围' }).click();
+  await expect(
+    page.getByRole('tab', { name: '记录', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('explorer-records')).toContainText('水库编码', {
+    timeout: 20000,
+  });
+  const id = await page
+    .getByTestId('data-explorer')
+    .getAttribute('data-query-id');
+  const records = await page.request.post('/api/data-foundation/explore', {
+    data: { queryId: id, versionId, view: 'records', first: 1 },
+  });
+  expect(records.status()).toBe(200);
+  const selected = ExplorationResultSchema.parse(await records.json());
+  expect(selected.totalCount).toBe(first.count);
+  expect(selected.spec.recordQuery?.filters).toContainEqual({
+    field: 'c2',
+    type: 'time',
+    format: 'dmy-local',
+    utcOffsetMinutes: 480,
+    operator: 'lt',
+    value: first.upperBound,
+  });
+  await page.reload();
+  await expect(page.getByLabel('固定 UTC 偏移').first()).toHaveValue('+08:00', {
+    timeout: 20000,
+  });
+});
+
 test('source statistics aggregate the real station and drill into the same filtered records', async ({
   page,
 }) => {

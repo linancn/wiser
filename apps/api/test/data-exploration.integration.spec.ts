@@ -196,6 +196,12 @@ describe('authorized exploration result sets in PostgreSQL', () => {
         );
         expect((await evaluate()).rows).toEqual(previousPredicates.rows);
         await client.query(
+          await readFile(
+            'infrastructure/data-foundation/postgres/migrations/0018_exploration_time.sql',
+            'utf8',
+          ),
+        );
+        await client.query(
           `create role ${role} nologin nosuperuser nobypassrls`,
         );
         await client.query(
@@ -811,13 +817,13 @@ describe('authorized exploration result sets in PostgreSQL', () => {
           [aggregateAnalysis, tenant, project, version, aggregateOperation],
         );
         await client.query(
-          `insert into service.analysis_asset(analysis_id,asset_id,tenant_id,project_id,source_hash,status,record_count,feature_count,columns,security_level,policy_version) values($1,$2,$3,$4,decode(repeat('a',64),'hex'),'READY',209,0,'[{"key":"c1","label":"Unit"},{"key":"c2","label":"Value"}]','L1_INTERNAL',1)`,
+          `insert into service.analysis_asset(analysis_id,asset_id,tenant_id,project_id,source_hash,status,record_count,feature_count,columns,security_level,policy_version) values($1,$2,$3,$4,decode(repeat('a',64),'hex'),'READY',209,0,'[{"key":"c1","label":"Unit"},{"key":"c2","label":"Value"},{"key":"c3","label":"Time"}]','L1_INTERNAL',1)`,
           [aggregateAnalysis, asset, tenant, project],
         );
         const aggregateValues = [
-          { c1: 'aggregate-m', c2: 1 },
-          { c1: 'aggregate-m', c2: '3' },
-          { c1: 'aggregate-m', c2: null },
+          { c1: 'aggregate-m', c2: 1, c3: '29/2/2024 23:59:59.123456' },
+          { c1: 'aggregate-m', c2: '3', c3: '1/3/2024 00:00:00' },
+          { c1: 'aggregate-m', c2: null, c3: '31/2/2024 00:00:00' },
           { c1: 'aggregate-m', c2: 'invalid' },
           { c1: 'aggregate-cm', c2: 100 },
           { c1: 'aggregate-cm', c2: 200 },
@@ -874,6 +880,36 @@ describe('authorized exploration result sets in PostgreSQL', () => {
             measure: { operation: 'mean', field: 'c2', unitField: 'c1' },
           },
         };
+        const temporal = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              ...aggregateInput,
+              aggregate: {
+                assetId: asset,
+                groupBy: {
+                  field: 'c3',
+                  type: 'time',
+                  format: 'dmy-local',
+                  utcOffsetMinutes: 480,
+                  bucket: 'month',
+                },
+                measure: { operation: 'count' },
+              },
+            },
+            context,
+          ),
+        );
+        expect(
+          temporal.aggregate?.groups.map((group) => [
+            group.key,
+            group.upperBound,
+            group.count,
+          ]),
+        ).toEqual([
+          ['2024-01-31T16:00:00.000000Z', '2024-02-29T16:00:00.000000Z', 1],
+          ['2024-02-29T16:00:00.000000Z', '2024-03-31T16:00:00.000000Z', 1],
+          [null, null, 4],
+        ]);
         const byUnit = ExplorationResultSchema.parse(
           await executor.execute(aggregateInput, context),
         );

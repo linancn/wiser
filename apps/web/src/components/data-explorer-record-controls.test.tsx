@@ -141,3 +141,42 @@ it('requires at least one displayed column and keeps the filter count bounded', 
       .disabled,
   ).toBe(true);
 });
+
+it('requires an explicit offset and preserves source-time semantics when applying and restoring filters', async () => {
+  const onApply = vi.fn();
+  const user = userEvent.setup();
+  render(
+    <DataExplorerRecordControls
+      locale="en"
+      assetId={assetId}
+      columns={columns}
+      onApply={onApply}
+      busy={false}
+    />,
+  );
+  await user.click(screen.getByText('Record conditions'));
+  await user.click(screen.getByRole('button', { name: 'Add condition' }));
+  await user.selectOptions(screen.getByLabelText('Interpret as'), 'time');
+  await user.selectOptions(
+    screen.getByLabelText('Source time format'),
+    'dmy-local',
+  );
+  await user.type(screen.getByLabelText('Value'), '2024-02-29T16:00:00Z');
+  await user.click(screen.getByRole('button', { name: 'Apply to all views' }));
+  expect(onApply).not.toHaveBeenCalled();
+  await user.type(screen.getByLabelText('Fixed UTC offset'), '+08:00');
+  await user.click(screen.getByRole('button', { name: 'Apply to all views' }));
+  expect(onApply).toHaveBeenCalledWith({
+    assetId,
+    filters: [
+      {
+        field: 'c1',
+        type: 'time',
+        format: 'dmy-local',
+        utcOffsetMinutes: 480,
+        operator: 'eq',
+        value: '2024-02-29T16:00:00Z',
+      },
+    ],
+  });
+});

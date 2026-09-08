@@ -89,6 +89,23 @@ const zhCN = {
   },
   dataFoundation: {
     explorer: {
+      time: {
+        label: '时间',
+        format: '源时间格式',
+        iso: 'ISO 日期时间（含 UTC 偏移）',
+        dmy: '日/月/年 时:分:秒',
+        ymd: '年-月-日 时:分:秒',
+        offset: '固定 UTC 偏移',
+        policy:
+          '请根据数据来源填写 UTC 偏移（如 +08:00）。使用固定偏移，不推断夏令时；时间条件的值需包含 Z 或 UTC 偏移。',
+        bucket: '时间间隔',
+        buckets: { hour: '小时', day: '日', month: '月', year: '年' },
+        start: '起始时间段',
+        end: '结束时间段',
+        apply: '应用时间范围',
+        brush: '可拖动图表选择完整时间段，也可使用下方时间范围控件。',
+        invalid: '请检查源时间格式、UTC 偏移和包含偏移的时间值。',
+      },
       aggregate: {
         title: '记录统计',
         scope: '统计当前查询中的来源记录，可点击分组回到对应记录。',
@@ -1241,6 +1258,25 @@ const en: typeof zhCN = {
   },
   dataFoundation: {
     explorer: {
+      time: {
+        label: 'Time',
+        format: 'Source time format',
+        iso: 'ISO date-time with UTC offset',
+        dmy: 'Day/month/year hour:minute:second',
+        ymd: 'Year-month-day hour:minute:second',
+        offset: 'Fixed UTC offset',
+        policy:
+          'Enter the source UTC offset, such as +08:00. The offset is fixed; daylight saving is not inferred. Condition values must include Z or a UTC offset.',
+        bucket: 'Time interval',
+        buckets: { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' },
+        start: 'First time bucket',
+        end: 'Last time bucket',
+        apply: 'Apply time range',
+        brush:
+          'Drag across the chart to select complete time buckets, or use the time range controls below.',
+        invalid:
+          'Check the source format, UTC offset and time values with an offset.',
+      },
       aggregate: {
         title: 'Record statistics',
         scope:

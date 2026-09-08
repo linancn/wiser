@@ -51,15 +51,25 @@ export async function queryAggregate(
     recordProjection(parameters);
   const where = predicates(spec.recordQuery?.filters ?? []);
   const group = aggregate.groupBy;
-  const grouping = group ? scalar(group.field, group.type) : null;
+  const grouping = group
+    ? scalar(group.field, group.type, group.type === 'time' ? group : undefined)
+    : null;
   const interval =
     group?.type === 'number' ? bind(group.interval, 'numeric') : null;
+  const offset =
+    group?.type === 'time' ? bind(group.utcOffsetMinutes, 'integer') : null;
+  const calendar = group?.type === 'time' ? bind(group.bucket, 'text') : null;
+  const timeKey = `((date_trunc(${calendar},${grouping} at time zone 'UTC'+make_interval(mins=>${offset}))-make_interval(mins=>${offset})) at time zone 'UTC')`;
+  const instantText = (expression: string) =>
+    `to_char((${expression}) at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
   const key =
-    group?.type === 'number'
-      ? `(floor(${grouping}/${interval})*${interval})::text`
-      : grouping
-        ? `(case when length(${grouping})<=4096 then ${grouping} end)`
-        : 'null::text';
+    group?.type === 'time'
+      ? instantText(timeKey)
+      : group?.type === 'number'
+        ? `(floor(${grouping}/${interval})*${interval})::text`
+        : grouping
+          ? `(case when length(${grouping})<=4096 then ${grouping} end)`
+          : 'null::text';
   const numeric =
     'field' in measure ? scalar(measure.field, 'number') : '1::numeric';
   const present =
@@ -75,6 +85,14 @@ export async function queryAggregate(
     min: `min(value)`,
     max: `max(value)`,
   }[measure.operation];
+  const upperBound =
+    group?.type === 'time'
+      ? instantText(
+          `(((page.key::timestamptz at time zone 'UTC')+make_interval(mins=>${offset})+${bind(`1 ${group.bucket}`, 'interval')}-make_interval(mins=>${offset})) at time zone 'UTC')`,
+        )
+      : group?.type === 'number'
+        ? `(page.key::numeric+${interval})::text`
+        : 'null::text';
   const result = await client.query(
     `with valued as materialized (
     select ${expressions.length ? expressions.join(',') : '1 placeholder'} from catalog.analysis_record r where r.analysis_id=$1::uuid and r.asset_id=$2::uuid
@@ -82,7 +100,7 @@ export async function queryAggregate(
   grouped as materialized (
     select key,unit,count(*)::text count,count(value)::text valid_count,count(*) filter(where not present)::text missing_count,count(*) filter(where present and value is null)::text invalid_count,(${operation})::text value
     from matched group by key,unit
-  ) select totals.*,page.*,${group?.type === 'number' ? `(page.key::numeric+${interval})::text` : 'null::text'} upper_bound from (select count(*)::text group_count,coalesce(sum(count::numeric),0)::text total from grouped) totals
+  ) select totals.*,page.*,${upperBound} upper_bound from (select count(*)::text group_count,coalesce(sum(count::numeric),0)::text total from grouped) totals
   left join lateral (select * from grouped order by ${group?.type === 'number' ? 'key::numeric' : 'key collate "C"'} nulls last,unit collate "C" nulls last limit 200) page on true`,
     parameters,
   );

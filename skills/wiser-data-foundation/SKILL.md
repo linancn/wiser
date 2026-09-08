@@ -77,3 +77,5 @@ Call only the WISER REST API or registered Data Foundation MCP tools/resources. 
 At handoff, report the trusted context identifiers (never the credential), exact Capability, immutable resource/version IDs, current cursor or Operation version, idempotency status, observed governance dimensions, limitations, and the next safe action.
 
 Map results may include `spatial.bounds` and `mercatorFeatureCount` for the complete authorized result, independent of the bounded feature page. Query MVT uses the governed HTTP `/geo/tiles/vector/queries/{queryId}/{z}/{x}/{y}.pbf` route with the same authorization; do not connect to Martin directly.
+
+- For temporal source queries, explicitly set `format` (`iso-offset`, `dmy-local`, `ymd-local`) and `utcOffsetMinutes` (fixed offset, −840…840). Use offset-bearing absolute values for time predicates; calendar aggregates accept `bucket: "hour" | "day" | "month" | "year"`. Apply returned lower/upper boundaries with `gte`/`lt`; never infer a time zone from a file name or silently normalize invalid dates.

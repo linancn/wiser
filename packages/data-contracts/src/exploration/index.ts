@@ -1,26 +1,94 @@
 import { z } from 'zod';
 import {
-  ExplorationQueryInputV16Schema,
-  ExplorationResultV16Schema,
-} from './v16.ts';
+  ExplorationQueryInputV17Schema,
+  ExplorationResultV17Schema,
+  QuerySpecSchema as PreviousSpec,
+  RecordQuerySchema as PreviousRecordQuery,
+  RecordFilterSchema as PreviousFilter,
+} from './v17.ts';
 import {
   ExplorationAggregateSpecSchema,
   ExplorationAggregateSchema,
+  type ExplorationAggregateSpec,
 } from './aggregate.ts';
-export * from './v16.ts';
-export * from './aggregate.ts';
-const View = z.enum(['resources', 'records', 'map', 'graph', 'aggregate']);
+import {
+  ExplorationTimeFilterSchema,
+  ExplorationTimeSortSchema,
+} from './time.ts';
+export * from './v17.ts';
+export {
+  ExplorationAggregateSpecSchema,
+  ExplorationAggregateSchema,
+} from './aggregate.ts';
+export type {
+  ExplorationAggregateSpec,
+  ExplorationAggregate,
+} from './aggregate.ts';
+export * from './time.ts';
+export const RecordFilterSchema = z.discriminatedUnion('type', [
+  ...PreviousFilter.options,
+  ExplorationTimeFilterSchema,
+]);
+export const RecordQuerySchema = PreviousRecordQuery.extend({
+  filters: z.array(RecordFilterSchema).max(8).default([]),
+  sort: z
+    .union([PreviousRecordQuery.shape.sort.unwrap(), ExplorationTimeSortSchema])
+    .optional(),
+});
+const QueryShape = z.strictObject({
+  ...PreviousSpec.shape,
+  recordQuery: RecordQuerySchema.optional(),
+});
+export const QuerySpecSchema = QueryShape.superRefine((spec, context) => {
+  const checked = PreviousSpec.safeParse(previousSpec(spec));
+  if (!checked.success)
+    for (const issue of checked.error.issues)
+      context.addIssue({
+        code: 'custom',
+        path: issue.path,
+        message: issue.message,
+      });
+});
+function previousSpec(spec: z.infer<typeof QueryShape>) {
+  return {
+    ...spec,
+    ...(spec.recordQuery
+      ? {
+          recordQuery: {
+            ...spec.recordQuery,
+            filters: spec.recordQuery.filters.filter(
+              (filter) => filter.type !== 'time',
+            ),
+            sort:
+              spec.recordQuery.sort?.type === 'time'
+                ? undefined
+                : spec.recordQuery.sort,
+          },
+        }
+      : {}),
+  };
+}
+function previousAggregate(spec: ExplorationAggregateSpec) {
+  return {
+    ...spec,
+    ...(spec.groupBy?.type === 'time'
+      ? { groupBy: { field: spec.groupBy.field, type: 'text' as const } }
+      : {}),
+  };
+}
 export const ExplorationQueryInputSchema = z
   .strictObject({
-    ...ExplorationQueryInputV16Schema.shape,
-    view: View.default('resources'),
+    ...ExplorationQueryInputV17Schema.shape,
+    spec: QuerySpecSchema.optional(),
     aggregate: ExplorationAggregateSpecSchema.optional(),
   })
   .superRefine((input, context) => {
-    const { aggregate, ...previous } = input;
-    const checked = ExplorationQueryInputV16Schema.safeParse({
-      ...previous,
-      view: input.view === 'aggregate' ? 'records' : input.view,
+    const checked = ExplorationQueryInputV17Schema.safeParse({
+      ...input,
+      ...(input.spec ? { spec: previousSpec(input.spec) } : {}),
+      ...(input.aggregate
+        ? { aggregate: previousAggregate(input.aggregate) }
+        : {}),
     });
     if (!checked.success)
       for (const issue of checked.error.issues)
@@ -29,33 +97,25 @@ export const ExplorationQueryInputSchema = z
           path: issue.path,
           message: issue.message,
         });
-    if (
-      (input.view === 'aggregate') !== (aggregate !== undefined) ||
-      (input.view === 'aggregate' &&
-        (!input.queryId ||
-          !input.versionId ||
-          input.after ||
-          input.recordId ||
-          input.assetId ||
-          input.bbox))
-    )
-      context.addIssue({
-        code: 'custom',
-        message:
-          'Aggregation requires an authorized query, version and source specification without row pagination',
-      });
   });
 export const ExplorationResultSchema = z
   .strictObject({
-    ...ExplorationResultV16Schema.shape,
-    view: View,
+    ...ExplorationResultV17Schema.shape,
+    spec: QuerySpecSchema,
     aggregate: ExplorationAggregateSchema.optional(),
   })
   .superRefine((result, context) => {
-    const { aggregate, ...previous } = result;
-    const checked = ExplorationResultV16Schema.safeParse({
-      ...previous,
-      view: result.view === 'aggregate' ? 'resources' : result.view,
+    const checked = ExplorationResultV17Schema.safeParse({
+      ...result,
+      spec: previousSpec(result.spec),
+      ...(result.aggregate
+        ? {
+            aggregate: {
+              ...result.aggregate,
+              spec: previousAggregate(result.aggregate.spec),
+            },
+          }
+        : {}),
     });
     if (!checked.success)
       for (const issue of checked.error.issues)
@@ -64,21 +124,9 @@ export const ExplorationResultSchema = z
           path: issue.path,
           message: issue.message,
         });
-    if ((result.view === 'aggregate') !== (aggregate !== undefined))
-      context.addIssue({
-        code: 'custom',
-        message: 'Aggregate results require bounded groups',
-      });
-    if (
-      aggregate &&
-      !aggregate.truncated &&
-      aggregate.groups.reduce((sum, group) => sum + group.count, 0) !==
-        result.totalCount
-    )
-      context.addIssue({
-        code: 'custom',
-        message: 'Aggregate group counts must cover all matched records',
-      });
   });
+export type RecordFilter = z.infer<typeof RecordFilterSchema>;
+export type RecordQuery = z.infer<typeof RecordQuerySchema>;
+export type QuerySpec = z.infer<typeof QuerySpecSchema>;
 export type ExplorationQueryInput = z.infer<typeof ExplorationQueryInputSchema>;
 export type ExplorationResult = z.infer<typeof ExplorationResultSchema>;

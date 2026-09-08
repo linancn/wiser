@@ -2,11 +2,18 @@
 import { useState, type FormEvent } from 'react';
 import { RecordQuerySchema, type RecordQuery } from '@wiser/data-contracts';
 import { getDictionary, type Locale } from '@/lib/i18n';
+import {
+  DataExplorerTimeControls,
+  offsetMinutes,
+  timeDraft,
+  type TimeDraft,
+} from './data-explorer-time-controls';
 import styles from './data-explorer.module.css';
 
 type Draft = {
   field: string;
-  type: 'text' | 'number' | 'presence';
+  type: 'text' | 'number' | 'presence' | 'time';
+  time: TimeDraft;
   operator: string;
   value: string;
 };
@@ -14,6 +21,7 @@ const operators = {
   text: ['eq', 'ne', 'contains'],
   number: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte'],
   presence: ['isNull', 'isNotNull'],
+  time: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte'],
 } as const;
 
 export function DataExplorerRecordControls({
@@ -32,15 +40,20 @@ export function DataExplorerRecordControls({
   readonly busy: boolean;
 }) {
   const copy = getDictionary(locale).dataFoundation.explorer.recordControls;
+  const timeCopy = getDictionary(locale).dataFoundation.explorer.time;
   const [filters, setFilters] = useState<Draft[]>(
     () =>
       value?.filters.map((filter) => ({
         ...filter,
+        time: timeDraft(filter.type === 'time' ? filter : undefined),
         value: 'value' in filter ? String(filter.value) : '',
       })) ?? [],
   );
   const [sortField, setSortField] = useState(value?.sort?.field ?? '');
   const [sortType, setSortType] = useState(value?.sort?.type ?? 'text');
+  const [sortTime, setSortTime] = useState(() =>
+    timeDraft(value?.sort?.type === 'time' ? value.sort : undefined),
+  );
   const [direction, setDirection] = useState(value?.sort?.direction ?? 'asc');
   const [selectedColumns, setSelectedColumns] = useState<string[] | null>(
     value?.columns ?? null,
@@ -67,12 +80,31 @@ export function DataExplorerRecordControls({
       setError(copy.invalidNumber);
       return;
     }
+    if (
+      filters.some(
+        (filter) =>
+          filter.type === 'time' &&
+          offsetMinutes(filter.time.offset) === undefined,
+      ) ||
+      (sortField &&
+        sortType === 'time' &&
+        offsetMinutes(sortTime.offset) === undefined)
+    ) {
+      setError(timeCopy.invalid);
+      return;
+    }
     const parsed = RecordQuerySchema.safeParse({
       assetId,
       filters: filters.map((filter) => ({
         field: filter.field,
         type: filter.type,
         operator: filter.operator,
+        ...(filter.type === 'time'
+          ? {
+              format: filter.time.format,
+              utcOffsetMinutes: offsetMinutes(filter.time.offset),
+            }
+          : {}),
         ...(filter.type === 'presence'
           ? {}
           : {
@@ -81,12 +113,28 @@ export function DataExplorerRecordControls({
             }),
       })),
       ...(sortField
-        ? { sort: { field: sortField, type: sortType, direction } }
+        ? {
+            sort: {
+              field: sortField,
+              type: sortType,
+              direction,
+              ...(sortType === 'time'
+                ? {
+                    format: sortTime.format,
+                    utcOffsetMinutes: offsetMinutes(sortTime.offset),
+                  }
+                : {}),
+            },
+          }
         : {}),
       ...(selectedColumns ? { columns: selectedColumns } : {}),
     });
     if (!parsed.success) {
-      setError(copy.invalidColumns);
+      setError(
+        filters.some((filter) => filter.type === 'time')
+          ? timeCopy.invalid
+          : copy.invalidColumns,
+      );
       return;
     }
     setError(null);
@@ -133,6 +181,7 @@ export function DataExplorerRecordControls({
                 >
                   <option value="text">{copy.text}</option>
                   <option value="number">{copy.number}</option>
+                  <option value="time">{timeCopy.label}</option>
                   <option value="presence">{copy.presence}</option>
                 </select>
               </label>
@@ -151,6 +200,13 @@ export function DataExplorerRecordControls({
                   ))}
                 </select>
               </label>
+              {filter.type === 'time' ? (
+                <DataExplorerTimeControls
+                  locale={locale}
+                  value={filter.time}
+                  onChange={(time) => update(index, { time })}
+                />
+              ) : null}
               {filter.type !== 'presence' ? (
                 <label>
                   {copy.value}
@@ -184,6 +240,7 @@ export function DataExplorerRecordControls({
                 {
                   field: columns[0].key,
                   type: 'text',
+                  time: timeDraft(),
                   operator: 'eq',
                   value: '',
                 },
@@ -213,11 +270,12 @@ export function DataExplorerRecordControls({
                 disabled={!sortField}
                 value={sortType}
                 onChange={(event) =>
-                  setSortType(event.target.value as 'text' | 'number')
+                  setSortType(event.target.value as 'text' | 'number' | 'time')
                 }
               >
                 <option value="text">{copy.text}</option>
                 <option value="number">{copy.number}</option>
+                <option value="time">{timeCopy.label}</option>
               </select>
             </label>
             <label>
@@ -234,6 +292,13 @@ export function DataExplorerRecordControls({
               </select>
             </label>
           </div>
+          {sortField && sortType === 'time' ? (
+            <DataExplorerTimeControls
+              locale={locale}
+              value={sortTime}
+              onChange={setSortTime}
+            />
+          ) : null}
           <fieldset className={styles.columnChoices}>
             <legend>{copy.columns}</legend>
             {columns.map((column) => (

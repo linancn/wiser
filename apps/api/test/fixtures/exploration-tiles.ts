@@ -65,6 +65,12 @@ export async function verifyExplorationTiles(
       'utf8',
     ),
   );
+  await client.query(
+    await readFile(
+      'infrastructure/data-foundation/postgres/migrations/0018_exploration_time.sql',
+      'utf8',
+    ),
+  );
   const tileRole = `wiser_tile_test_${randomUUID().replaceAll('-', '')}`;
   await client.query(`create role ${tileRole} nologin nosuperuser nobypassrls`);
   await client.query(`grant usage on schema service to ${tileRole}`);
@@ -184,7 +190,7 @@ export async function verifyExplorationTiles(
     [analysis, scope.analysis, scope.asset],
   );
   await client.query(
-    `insert into catalog.analysis_record(analysis_id,record_id,asset_id,tenant_id,project_id,record_index,record_values,geom,security_level,policy_version) select $1,gen_random_uuid(),$2,$3,$4,n,'{}',st_setsrid(st_makepoint(-170+(n%1000)*0.34,-70+(n/1000)*1.4),4326),'L1_INTERNAL',1 from generate_series(1,100000) n`,
+    `insert into catalog.analysis_record(analysis_id,record_id,asset_id,tenant_id,project_id,record_index,record_values,geom,security_level,policy_version) select $1,gen_random_uuid(),$2,$3,$4,n,jsonb_build_object('time',case when n%2=0 then '29/2/2024 23:59:59' else '1/3/2024 00:00:00' end),st_setsrid(st_makepoint(-170+(n%1000)*0.34,-70+(n/1000)*1.4),4326),'L1_INTERNAL',1 from generate_series(1,100000) n`,
     [analysis, scope.asset, scope.tenant, scope.project],
   );
   await client.query(
@@ -214,6 +220,35 @@ export async function verifyExplorationTiles(
   expect(counts.reduce((a, b) => a + b, 0)).toBe(100000);
   expect(stress.length).toBeLessThanOrEqual(4096);
   expect(bytes.byteLength).toBeLessThan(1024 * 1024);
+  const temporalQuery = randomUUID();
+  await client.query(
+    `insert into service.exploration_snapshot select $1,tenant_id,project_id,actor_id,purpose,security_level,policy_version,jsonb_set(spec,'{recordQuery}',$3::jsonb),version_refs,created_at,expires_at from service.exploration_snapshot where query_id=$2`,
+    [
+      temporalQuery,
+      query,
+      JSON.stringify({
+        assetId: scope.asset,
+        filters: [
+          {
+            field: 'time',
+            type: 'time',
+            format: 'dmy-local',
+            utcOffsetMinutes: 480,
+            operator: 'lt',
+            value: '2024-02-29T16:00:00Z',
+          },
+        ],
+      }),
+    ],
+  );
+  const temporalTile = new VectorTile(
+    new PbfReader(await tile({ ...params, queryId: temporalQuery })),
+  ).layers['exploration']!;
+  expect(
+    Array.from({ length: temporalTile.length }, (_, index) =>
+      Number(temporalTile.feature(index).properties['count']),
+    ).reduce((a, b) => a + b, 0),
+  ).toBe(50000);
   console.info(
     'Authorized MVT stress',
     JSON.stringify({

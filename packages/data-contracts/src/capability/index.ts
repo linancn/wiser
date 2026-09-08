@@ -12,6 +12,7 @@ import {
   ExplorationQueryInputV14Schema,
   ExplorationQueryInputV15Schema,
   ExplorationQueryInputV16Schema,
+  ExplorationQueryInputV17Schema,
   ExplorationResultSchema,
   ExplorationResultV1Schema,
   ExplorationResultV11Schema,
@@ -20,6 +21,7 @@ import {
   ExplorationResultV14Schema,
   ExplorationResultV15Schema,
   ExplorationResultV16Schema,
+  ExplorationResultV17Schema,
 } from '../exploration/index.ts';
 
 import {
@@ -895,7 +897,7 @@ const capabilityRegistry = {
   }),
   'data.explore.query': defineCapability({
     id: 'data.explore.query',
-    version: '1.7.0',
+    version: '1.8.0',
     kind: 'query',
     inputSchema: ExplorationQueryInputSchema,
     outputSchema: ExplorationResultSchema,
@@ -984,6 +986,12 @@ const capabilityArchive = {
       version: '1.6.0',
       inputSchema: ExplorationQueryInputV16Schema,
       outputSchema: ExplorationResultV16Schema,
+    }),
+    defineCapability({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.7.0',
+      inputSchema: ExplorationQueryInputV17Schema,
+      outputSchema: ExplorationResultV17Schema,
     }),
   ]),
   'data.catalog.search': Object.freeze([

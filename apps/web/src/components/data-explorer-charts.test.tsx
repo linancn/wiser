@@ -15,6 +15,8 @@ const charts = vi.hoisted(() => ({
     resize: ReturnType<typeof vi.fn>;
     dispose: ReturnType<typeof vi.fn>;
     click?: (event: unknown) => void;
+    brush?: (event: unknown) => void;
+    dispatchAction: ReturnType<typeof vi.fn>;
   }[],
 }));
 vi.mock('echarts/core', () => ({
@@ -22,11 +24,14 @@ vi.mock('echarts/core', () => ({
   init: () => {
     const instance = {
       setOption: vi.fn(),
+      dispatchAction: vi.fn(),
+      brush: undefined as ((event: unknown) => void) | undefined,
       resize: vi.fn(),
       dispose: vi.fn(),
       click: undefined as ((event: unknown) => void) | undefined,
-      on: (_event: string, callback: (event: unknown) => void) => {
-        instance.click = callback;
+      on: (event: string, callback: (event: unknown) => void) => {
+        if (event === 'brushEnd') instance.brush = callback;
+        else instance.click = callback;
       },
     };
     charts.instances.push(instance);
@@ -176,4 +181,78 @@ it('keeps exact aggregate rows for selection and omits numbers outside the chart
   rendered.unmount();
   expect(charts.instances[0].dispose).toHaveBeenCalledOnce();
   expect(resize.disconnects[0]).toHaveBeenCalledOnce();
+});
+
+it('separates temporal unit series and snaps a brush to exact complete calendar buckets', () => {
+  const group = {
+    key: '2024-01-31T16:00:00.000000Z',
+    upperBound: '2024-02-29T16:00:00.000000Z',
+    unit: 'm',
+    count: 1,
+    validCount: 1,
+    missingCount: 0,
+    invalidCount: 0,
+    value: '1',
+  };
+  const result: ExplorationAggregate = {
+    spec: {
+      assetId: '10000000-0000-4000-8000-000000000001',
+      groupBy: {
+        field: 'time',
+        type: 'time',
+        format: 'dmy-local',
+        utcOffsetMinutes: 480,
+        bucket: 'month',
+      },
+      measure: { operation: 'mean', field: 'level', unitField: 'unit' },
+    },
+    groupCount: 3,
+    truncated: false,
+    groups: [
+      group,
+      { ...group, unit: 'cm', value: '100' },
+      { ...group, key: null, upperBound: null },
+    ],
+  };
+  const onPick = vi.fn(),
+    onRange = vi.fn();
+  render(
+    <DataExplorerAggregateChart
+      locale="en"
+      result={result}
+      onPick={onPick}
+      onRange={onRange}
+    />,
+  );
+  expect(charts.instances[0].setOption).toHaveBeenCalledWith(
+    expect.objectContaining({
+      xAxis: expect.objectContaining({ type: 'time' }) as unknown,
+      series: [
+        expect.objectContaining({ type: 'line', name: 'm' }),
+        expect.objectContaining({ type: 'line', name: 'cm' }),
+      ],
+    }),
+    expect.anything(),
+  );
+  charts.instances[0].brush?.({
+    areas: [
+      {
+        coordRange: [
+          Date.parse('2024-02-02T00:00:00Z'),
+          Date.parse('2024-02-10T00:00:00Z'),
+        ],
+      },
+    ],
+  });
+  expect(onRange).toHaveBeenCalledWith(group.key, group.key);
+  charts.instances[0].click?.({ dataIndex: 0, seriesIndex: 1 });
+  expect(onPick).toHaveBeenCalledWith(result.groups[1]);
+  for (const event of [
+    null,
+    {},
+    { areas: [] },
+    { areas: [{ coordRange: [NaN, Infinity] }] },
+  ])
+    charts.instances[0].brush?.(event);
+  expect(onRange).toHaveBeenCalledTimes(1);
 });

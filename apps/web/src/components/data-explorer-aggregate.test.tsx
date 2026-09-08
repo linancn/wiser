@@ -122,3 +122,79 @@ it('requires source selection and propagates authorization failures', async () =
   await waitFor(() => expect(onInvalidated).toHaveBeenCalledWith(id, 403));
   await screen.findByRole('alert');
 });
+it('uses explicit calendar boundaries for accessible time-range selection', async () => {
+  const temporal = {
+    ...result,
+    aggregate: {
+      ...result.aggregate,
+      spec: {
+        assetId: id,
+        groupBy: {
+          field: 'c1',
+          type: 'time',
+          format: 'dmy-local',
+          utcOffsetMinutes: 480,
+          bucket: 'month',
+        },
+        measure: { operation: 'count' },
+      },
+      groups: [
+        {
+          ...result.aggregate.groups[0],
+          key: '2024-01-31T16:00:00.000000Z',
+          upperBound: '2024-02-29T16:00:00.000000Z',
+        },
+      ],
+    },
+  };
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json(metadata))
+    .mockResolvedValueOnce(Response.json(temporal));
+  vi.stubGlobal('fetch', fetch);
+  const onConfigure = vi.fn();
+  const user = userEvent.setup();
+  render(
+    <DataExplorerAggregate
+      locale="en"
+      queryId={id}
+      versionId={id}
+      onConfigure={onConfigure}
+      onInvalidated={vi.fn()}
+    />,
+  );
+  await screen.findByRole('option', { name: 'source.csv' });
+  await user.selectOptions(screen.getByLabelText('Group field'), 'c1');
+  await user.selectOptions(screen.getByLabelText('Grouping'), 'time');
+  await user.selectOptions(
+    screen.getByLabelText('Source time format'),
+    'dmy-local',
+  );
+  await user.type(screen.getByLabelText('Fixed UTC offset'), '+08:00');
+  await user.selectOptions(screen.getByLabelText('Time interval'), 'month');
+  await user.click(screen.getByRole('button', { name: 'Calculate' }));
+  await user.click(
+    await screen.findByRole('button', { name: 'Apply time range' }),
+  );
+  expect(onConfigure).toHaveBeenCalledWith({
+    assetId: id,
+    filters: [
+      {
+        field: 'c1',
+        type: 'time',
+        format: 'dmy-local',
+        utcOffsetMinutes: 480,
+        operator: 'gte',
+        value: '2024-01-31T16:00:00.000000Z',
+      },
+      {
+        field: 'c1',
+        type: 'time',
+        format: 'dmy-local',
+        utcOffsetMinutes: 480,
+        operator: 'lt',
+        value: '2024-02-29T16:00:00.000000Z',
+      },
+    ],
+  });
+});

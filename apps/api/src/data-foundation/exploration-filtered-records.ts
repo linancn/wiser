@@ -34,7 +34,9 @@ export async function queryFilteredRecords(
   } = recordProjection(parameters);
   const predicates = compile(input.query.filters);
   const sort = input.query.sort;
-  const sortField = sort ? scalar(sort.field, sort.type) : null;
+  const sortField = sort
+    ? scalar(sort.field, sort.type, sort.type === 'time' ? sort : undefined)
+    : null;
   const order = (prefix = '') =>
     sort
       ? `${prefix}${sortField}${sort.type === 'text' ? ' collate "C"' : ''} ${sort.direction} nulls last,${prefix}record_index`

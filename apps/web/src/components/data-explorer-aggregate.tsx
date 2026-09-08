@@ -15,6 +15,11 @@ import {
   type InvalidateExploration,
 } from '@/lib/exploration-request';
 import { DataExplorerAggregateChart } from './data-explorer-aggregate-chart';
+import {
+  DataExplorerTimeControls,
+  offsetMinutes,
+  timeDraft,
+} from './data-explorer-time-controls';
 import styles from './data-explorer.module.css';
 
 function groupQuery(
@@ -33,7 +38,14 @@ function groupQuery(
         operator: 'eq',
         value: group.key,
       });
-    else {
+    else if (grouping.type === 'time') {
+      if (group.upperBound === null) return undefined;
+      const { bucket: _bucket, ...time } = grouping;
+      filters.push(
+        { ...time, operator: 'gte', value: group.key },
+        { ...time, operator: 'lt', value: group.upperBound },
+      );
+    } else {
       if (group.upperBound === null) return undefined;
       filters.push(
         {
@@ -91,6 +103,10 @@ export function DataExplorerAggregate({
   const [assetId, setAssetId] = useState('');
   const [groupField, setGroupField] = useState('');
   const [groupType, setGroupType] = useState('text');
+  const [time, setTime] = useState(() => timeDraft());
+  const [bucket, setBucket] = useState('month');
+  const [rangeStart, setRangeStart] = useState('');
+  const [rangeEnd, setRangeEnd] = useState('');
   const [interval, setInterval] = useState('10');
   const [operation, setOperation] = useState('count');
   const [field, setField] = useState('');
@@ -158,6 +174,13 @@ export function DataExplorerAggregate({
               field: groupField,
               type: groupType,
               ...(groupType === 'number' ? { interval: Number(interval) } : {}),
+              ...(groupType === 'time'
+                ? {
+                    format: time.format,
+                    utcOffsetMinutes: offsetMinutes(time.offset),
+                    bucket,
+                  }
+                : {}),
             },
           }
         : {}),
@@ -200,6 +223,12 @@ export function DataExplorerAggregate({
       const data = ExplorationResultSchema.parse(await response.json());
       if (!controller.signal.aborted) {
         setResult(data.aggregate ?? null);
+        const timed =
+          data.aggregate?.groups.filter(
+            (group) => group.key !== null && group.upperBound !== null,
+          ) ?? [];
+        setRangeStart(timed[0]?.key ?? '');
+        setRangeEnd(timed.at(-1)?.key ?? '');
         setTotal(data.totalCount);
       }
     } catch {
@@ -213,6 +242,43 @@ export function DataExplorerAggregate({
     if (!result) return;
     const next = groupQuery(result, group, recordQuery);
     if (next) onConfigure(next);
+  };
+  const range = (start: string, end: string) => {
+    if (!result || result.spec.groupBy?.type !== 'time') return;
+    const first = result.groups.find((group) => group.key === start);
+    const last = result.groups.find((group) => group.key === end);
+    if (!first?.key || !last?.upperBound || first.key > last.key!) return;
+    const { bucket: _bucket, ...timeGroup } = result.spec.groupBy;
+    const checked = RecordQuerySchema.safeParse({
+      ...recordQuery,
+      assetId: result.spec.assetId,
+      filters: [
+        ...(recordQuery?.filters ?? []),
+        { ...timeGroup, operator: 'gte', value: first.key },
+        { ...timeGroup, operator: 'lt', value: last.upperBound },
+      ],
+    });
+    if (checked.success) onConfigure(checked.data);
+    else setError(copy.checkFields);
+  };
+  const timeGroups =
+    result?.spec.groupBy?.type === 'time'
+      ? result.groups
+          .filter((group) => group.key !== null && group.upperBound !== null)
+          .filter(
+            (group, index, groups) =>
+              groups.findIndex((entry) => entry.key === group.key) === index,
+          )
+      : [];
+  const timeLabel = (instant: string) => {
+    const offset =
+      result?.spec.groupBy?.type === 'time'
+        ? result.spec.groupBy.utcOffsetMinutes
+        : 0;
+    return new Date(Date.parse(instant) + offset * 60000)
+      .toISOString()
+      .slice(0, 16)
+      .replace('T', ' ');
   };
   return (
     <section
@@ -272,8 +338,31 @@ export function DataExplorerAggregate({
             >
               <option value="text">{all.recordControls.text}</option>
               <option value="number">{copy.histogram}</option>
+              <option value="time">{all.time.label}</option>
             </select>
           </label>
+          {groupField && groupType === 'time' ? (
+            <>
+              <DataExplorerTimeControls
+                locale={locale}
+                value={time}
+                onChange={setTime}
+              />
+              <label>
+                {all.time.bucket}
+                <select
+                  value={bucket}
+                  onChange={(event) => setBucket(event.target.value)}
+                >
+                  {(['hour', 'day', 'month', 'year'] as const).map((key) => (
+                    <option key={key} value={key}>
+                      {all.time.buckets[key]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          ) : null}
           {groupField && groupType === 'number' ? (
             <label>
               {copy.interval}
@@ -349,7 +438,45 @@ export function DataExplorerAggregate({
             locale={locale}
             result={result}
             onPick={pick}
+            onRange={range}
           />
+          {timeGroups.length ? (
+            <fieldset className={styles.recordCondition}>
+              <legend>{all.time.brush}</legend>
+              <label>
+                {all.time.start}
+                <select
+                  value={rangeStart}
+                  onChange={(event) => setRangeStart(event.target.value)}
+                >
+                  {timeGroups.map((group) => (
+                    <option key={group.key} value={group.key!}>
+                      {timeLabel(group.key!)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {all.time.end}
+                <select
+                  value={rangeEnd}
+                  onChange={(event) => setRangeEnd(event.target.value)}
+                >
+                  {timeGroups.map((group) => (
+                    <option key={group.key} value={group.key!}>
+                      {timeLabel(group.key!)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                disabled={!rangeStart || !rangeEnd || rangeStart > rangeEnd}
+                onClick={() => range(rangeStart, rangeEnd)}
+              >
+                {all.time.apply}
+              </button>
+            </fieldset>
+          ) : null}
           <div className={styles.tableScroll}>
             <table>
               <thead>
