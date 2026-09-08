@@ -4,6 +4,41 @@ import { loadLiveCredentials } from './support/live-fixture';
 const credentials = loadLiveCredentials();
 const hydroAtlasId = 'e90d54eb-4740-4f21-a85e-1d497cc2cc57';
 
+test('real NLDI records select the same station on the exploration map', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  await page
+    .getByRole('button', { name: 'DS-0558 · NLDI API', exact: true })
+    .click();
+  await page.getByRole('tab', { name: '记录', exact: true }).click();
+  const records = page.getByTestId('explorer-records');
+  await expect(records).toContainText('USGS-01646500');
+  await records
+    .getByRole('button', { name: '选择记录 1', exact: true })
+    .click();
+  await expect(page.getByTestId('explorer-inspector')).toContainText(
+    'USGS-01646500',
+  );
+  await page.getByRole('tab', { name: '地图', exact: true }).click();
+  await expect(page.getByTestId('explorer-map')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  await expect(page.getByTestId('explorer-map')).toHaveAttribute(
+    'data-selected-record',
+    /^[0-9a-f-]{36}$/,
+  );
+  await expect(page.getByTestId('explorer-inspector')).toContainText(
+    '3c9220e3-a5dc-5254-b134-4cc0f6944108',
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+    .toBeLessThanOrEqual(390);
+});
+
 test('exploration queries real resources and preserves version selection across pagination', async ({
   page,
 }) => {
