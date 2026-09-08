@@ -72,6 +72,8 @@ Worker 的 authority 写入必须沿合法状态边且每次精确推进一个 `
 
 ## Health and metrics / 健康与指标
 
+来源登记通过现有入库 Handler 执行扫描、指纹与严格清单核对，保留声明的样本/部分/空文件状态，生成 `METADATA_QUALITY` / `DECLARED` 版本；其质量只评价登记完整性。该流程不调用 Tika 或 AI 映射计划，受限来源仍等待有权限的复核，临时清单读取失败可以重试。 / Source registration uses the existing ingestion Handler for scanning, fingerprints and exact manifest reconciliation. It retains sample/partial/empty states and creates `METADATA_QUALITY` / `DECLARED` versions whose quality measures registration integrity. It calls neither Tika nor an AI mapping planner; restricted sources still require authorized review, and temporary manifest reads remain retryable.
+
 - `GET /health/live`: scheduler 未停止时为成功。 / Succeeds while the scheduler is not stopped.
 - `GET /health/ready`: scheduler 运行且最近一次 job poll 成功后为成功；排空或 poll failure 时返回 `503`。 / Succeeds while running after a successful job poll; draining or a poll failure returns `503`.
 - `GET /metrics`: Prometheus text，包含 job outcome、recovery、in-flight 与 readiness counters；它是运行指标，不是业务或 publication authority。 / Prometheus text for job outcomes, recovery, in-flight work, and readiness; it is operational telemetry, not business or publication authority.

@@ -151,6 +151,10 @@ MapLibre never embeds the API Bearer in a tile URL. An authenticated browser req
 
 ## Upload and ingestion
 
+`data.ingestion.create` 1.1 accepts optional `sourceRegistration`; ingestion get/reject 1.1 preserve that descriptor. Their 1.0 schemas remain in the immutable discovery archive. Obtain the full strict schema from discovery. The descriptor contains source/bundle identity, kind, name, provider, access state, explicit completeness, limitations, and `manifestAssetId` / `manifestSha256`. The manifest asset must be among the completed upload assets supplied to ingestion.
+
+The manifest uses `wiser.source-registration.v1`, a matching `sourceId`, a source `record`, and `files`. Each nonempty file binds an `assetId` to original/prepared size and SHA-256, relative path, artifact class, completeness, disposition and related source IDs. Empty inputs require zero sizes and the empty-content hash. Manifests are limited to 512 KiB and 1,000 file entries. Registration publication preserves raw files and declared source metadata; it does not establish analytical usability. The immutable Version and all retrieval limitations retain this distinction.
+
 Recommended sequence:
 
 1. `POST /upload-sessions` with file name, media type, size, optional SHA-256, and `PRESIGNED_PUT`/`MULTIPART` preference;

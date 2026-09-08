@@ -115,6 +115,7 @@ input CreateIngestionInput {
   ownerProjectId: ID!
   intendedUses: [String!]!
   requestedSecurityLevel: String!
+  sourceRegistration: JSON
 }
 input ApprovalInput {
   expectedVersion: Int!

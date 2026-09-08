@@ -77,6 +77,8 @@ Agent 授权与交换集成测试通过 `WISER_AGENT_TEST_DATABASE_URL` 连接�
 
 ## Data Foundation 变更流程
 
+`0010_source_registration.sql` 在 `ingestion.session` 中增加不可变的来源登记 JSON，复用现有强制 RLS。状态转换不能修改来源身份与声明限制；正式版本清单也冻结该描述。聚焦测试 `packages/data-infra/test/migrations/source-registration.spec.ts` 使用 `WISER_DATA_PG_INTEGRATION=1`，并将 `DATA_TEST_DATABASE_URL` 指向可丢弃且已迁移的数据库，验证无 BYPASSRLS 的角色、跨项目不可见、合法转换和描述修改拒绝。真实研究材料不进入 seed 或 Git。
+
 `infrastructure/data-foundation/postgres/migrations` 是 Data Foundation 唯一的业务 schema 历史。文件名必须是连续、唯一的 `NNNN_descriptive_name.sql`，且只能追加。
 
 1. 为目标不变量增加失败测试。SQL 结构、runner 和 repository 测试位于 `packages/data-infra/test`；部署流程测试位于 `scripts/data-foundation/*.test.mjs`。

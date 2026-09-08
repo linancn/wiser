@@ -151,6 +151,10 @@ MapLibre 不把 API Bearer 放进 tile URL。登录后的浏览器只请求同�
 
 ## 上传与入库
 
+`data.ingestion.create` 1.1 接受可选 `sourceRegistration`，ingestion get/reject 1.1 保留该描述；1.0 schema 仍可从不可变发现归档读取。完整严格字段以 discovery 为准，包含来源/数据包身份、类型、名称、提供方、访问状态、明确的完整性、限制说明以及 `manifestAssetId` / `manifestSha256`。清单资产必须属于本次入库引用的已完成上传资产。
+
+清单使用 `wiser.source-registration.v1`，包含一致的 `sourceId`、来源 `record` 和 `files`。每个非空文件以 `assetId` 绑定原始/准备后大小与 SHA-256、相对路径、材料类别、完整性、处理方式和关联来源 ID。空文件要求大小为零且哈希等于空内容哈希。清单最多 512 KiB、1,000 个文件条目。来源登记的发布保留原始文件和声明元数据，不证明分析可用性；不可变版本和检索限制均保留这一区分。
+
 推荐流程：
 
 1. `POST /upload-sessions`，声明文件名、media type、size、可选 SHA-256 与 `PRESIGNED_PUT`/`MULTIPART` 偏好；

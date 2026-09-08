@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import type { SourceRegistration } from '@wiser/data-contracts';
+import { parseSourceRegistration } from './source-registration.js';
 
 import {
   DATA_INGESTION_PROCESS_JOB_TYPE,
@@ -110,6 +112,7 @@ export interface IngestionAuthorityPort {
     readonly policyVersion: number;
     readonly assets: readonly IngestionAssetCheckpoint[];
     readonly frozenCheckpoint?: FrozenIngestionCheckpoint;
+    readonly sourceRegistration?: SourceRegistration;
   }>;
   transition(request: IngestionTransitionRequest): Promise<{
     readonly state: PipelineIngestionState;
@@ -168,6 +171,9 @@ export interface IngestionAuthorityPort {
 
 export interface IngestionPipelineOptions {
   readonly authority: IngestionAuthorityPort;
+  readonly sourceRegistration?: {
+    readManifest(objectRef: string): Promise<string>;
+  };
   readonly quarantine: {
     put(input: {
       readonly tenantId: string;
@@ -813,6 +819,7 @@ export function createIngestionPipelineHandler(
     let assets = validatedAuthorityAssets(checkpoint.assets);
     let state: PipelineIngestionState = checkpoint.state;
     let version = checkpoint.version;
+    const sourceRegistration = checkpoint.sourceRegistration;
 
     const advance = async (
       toState: PipelineIngestionState,
@@ -1051,6 +1058,34 @@ export function createIngestionPipelineHandler(
       );
     }
 
+    let registered: ReturnType<typeof parseSourceRegistration> | undefined;
+    if (sourceRegistration !== undefined) {
+      const manifest = assets.find(
+        (asset) => asset.assetId === sourceRegistration.manifestAssetId,
+      );
+      if (manifest === undefined || options.sourceRegistration === undefined)
+        throw safeFailure(
+          'SOURCE_REGISTRATION_UNAVAILABLE',
+          false,
+          'Source registration validation is unavailable.',
+        );
+      const manifestText = await options.sourceRegistration.readManifest(
+        manifest.objectRef,
+      );
+      try {
+        registered = parseSourceRegistration({
+          registration: sourceRegistration,
+          assets,
+          manifestText,
+        });
+      } catch {
+        throw safeFailure(
+          'SOURCE_REGISTRATION_INVALID',
+          false,
+          'The source manifest does not match its authority assets.',
+        );
+      }
+    }
     const parsedAssets: Array<{
       readonly assetId: string;
       readonly kind: 'document' | 'geojson';
@@ -1062,11 +1097,15 @@ export function createIngestionPipelineHandler(
       readonly profileHash: string;
     }> = [];
     for (const asset of quarantined) {
-      const parsed = await options.parser.parse({
-        objectRef: asset.objectRef,
-        mediaType: asset.mediaType,
-        sourceKind: asset.sourceKind,
-      });
+      const parsed =
+        registered?.parsedAssets.find(
+          (item) => item.assetId === asset.assetId,
+        ) ??
+        (await options.parser.parse({
+          objectRef: asset.objectRef,
+          mediaType: asset.mediaType,
+          sourceKind: asset.sourceKind,
+        }));
       if (
         !isRecord(parsed) ||
         parsed.kind !== asset.sourceKind ||
@@ -1127,14 +1166,28 @@ export function createIngestionPipelineHandler(
     }
     await advance('CLASSIFIED', 'classify', profiles, classifications);
 
-    const rawPlan = await options.aiPlanner.propose({
-      parsedAssets,
-      profiles,
-      classifications,
-    });
+    const registrationPlan = {
+      schemaPlan: {
+        mode: 'source-registration-v1',
+        validationScope: 'SOURCE_REGISTRATION',
+      },
+      semanticPlan: { mode: 'preserve-declared-source', transform: 'identity' },
+      confidence: 1,
+    };
+    const rawPlan =
+      registered === undefined
+        ? await options.aiPlanner.propose({
+            parsedAssets,
+            profiles,
+            classifications,
+          })
+        : registrationPlan;
     let plan: ReturnType<IngestionPipelineOptions['aiValidator']['validate']>;
     try {
-      plan = options.aiValidator.validate(rawPlan);
+      plan =
+        registered === undefined
+          ? options.aiValidator.validate(rawPlan)
+          : registrationPlan;
     } catch {
       throw safeFailure(
         'AI_PLAN_INVALID',
@@ -1159,17 +1212,21 @@ export function createIngestionPipelineHandler(
     }
     await advance(
       'SCHEMA_MAPPED',
-      'ai-schema-plan',
+      registered === undefined
+        ? 'ai-schema-plan'
+        : 'source-registration-schema',
       classifications,
       plan.schemaPlan,
-      true,
+      registered === undefined,
     );
     await advance(
       'SEMANTIC_MAPPED',
-      'ai-semantic-plan',
+      registered === undefined
+        ? 'ai-semantic-plan'
+        : 'source-registration-semantics',
       plan.schemaPlan,
       plan.semanticPlan,
-      true,
+      registered === undefined,
     );
 
     const transformed = await options.transformer.transform({
@@ -1179,11 +1236,21 @@ export function createIngestionPipelineHandler(
     });
     const artifactRef = boundedText(transformed.artifactRef);
     sha256(transformed.outputHash);
-    const checks = await options.quality.check({
-      parsedAssets,
-      profiles,
-      transformed,
-    });
+    const checks =
+      registered === undefined
+        ? await options.quality.check({
+            parsedAssets,
+            profiles,
+            transformed,
+          })
+        : [
+            {
+              ruleId: 'source-registration.manifest-integrity',
+              status: 'PASSED' as const,
+              weight: 1,
+              blocking: true,
+            },
+          ];
     const quality = evaluateQualityGate({
       checks,
       minimumPassingScore: options.minimumQualityScore,
@@ -1218,6 +1285,9 @@ export function createIngestionPipelineHandler(
     );
 
     const assetManifest = Object.freeze({
+      ...(sourceRegistration === undefined
+        ? {}
+        : { sourceRegistration, validationScope: 'SOURCE_REGISTRATION' }),
       assets: quarantined.map((asset, index) => {
         const evidenceExcerpt = optionalEvidenceExcerpt(
           parsedAssets[index]!.metadata,

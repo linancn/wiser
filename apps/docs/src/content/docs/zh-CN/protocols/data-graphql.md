@@ -82,6 +82,8 @@ Connection 返回 `nodes` 与 `pageInfo { endCursor hasNextPage }`。其余分�
 
 ## Mutation fields
 
+`CreateIngestionInput.sourceRegistration` 是入库 1.1 严格描述的可选 JSON 映射。GraphQL 与 REST 使用相同的清单绑定、授权、幂等、校验和“仅来源登记”语义；JSON scalar 不绕过 Capability schema。
+
 | Field                       | Capability                    | 结果                                  |
 | --------------------------- | ----------------------------- | ------------------------------------- |
 | `createDataIngestion`       | `data.ingestion.create`       | 创建异步 Operation                    |

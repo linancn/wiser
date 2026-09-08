@@ -23,6 +23,7 @@ export interface ProjectionAuthoritySnapshot {
     readonly policyVersion: number;
   };
   readonly version: {
+    readonly limitations?: readonly string[];
     readonly versionId: string;
     readonly sourceHash: string;
     readonly qualityGrade: QualityGrade;
@@ -306,7 +307,7 @@ export class ProjectionInputHydrator {
         policyVersion: event.policyVersion,
         businessDomains: snapshot.dataItem.businessDomains,
         channels,
-        limitations: [],
+        limitations: snapshot.version.limitations ?? [],
         documentId: event.dataItemId,
         pageOrSection: `asset-${asset.ordinal}`,
         language: 'und',
@@ -329,7 +330,7 @@ export class ProjectionInputHydrator {
         publicationStatus: 'PUBLISHED',
         businessDomains: snapshot.dataItem.businessDomains,
         channels,
-        limitations: [],
+        limitations: snapshot.version.limitations ?? [],
         confidence: snapshot.quality.score,
         reviewStatus: 'APPROVED',
         validFrom: snapshot.version.committedAt,
@@ -360,7 +361,7 @@ export class ProjectionInputHydrator {
       publicationStatus: 'PUBLISHED' as const,
       businessDomains: snapshot.dataItem.businessDomains,
       channels,
-      limitations: [] as const,
+      limitations: snapshot.version.limitations ?? [],
       confidence: snapshot.quality.score,
       reviewStatus: 'APPROVED' as const,
       validFrom: snapshot.version.committedAt,

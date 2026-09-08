@@ -77,6 +77,8 @@ The Agent consent/exchange integration test uses `WISER_AGENT_TEST_DATABASE_URL`
 
 ## Data Foundation change workflow
 
+`0010_source_registration.sql` adds immutable source-registration JSON to `ingestion.session`, under its existing forced RLS. Source identity and declared limitations cannot change during state transitions; the descriptor is also frozen into the committed Version manifest. The focused `packages/data-infra/test/migrations/source-registration.spec.ts` test runs with `WISER_DATA_PG_INTEGRATION=1` and `DATA_TEST_DATABASE_URL` pointing to a disposable migrated database. It verifies a role without BYPASSRLS, cross-project invisibility, legal transitions and rejection of descriptor edits. Real research files remain outside seed data and Git.
+
 `infrastructure/data-foundation/postgres/migrations` is the sole Data Foundation business-schema history. Filenames are unique, contiguous `NNNN_descriptive_name.sql` entries and are append-only.
 
 1. Add a failing test for the intended invariant. SQL shape, runner, and repository tests live under `packages/data-infra/test`; deployment workflow tests live in `scripts/data-foundation/*.test.mjs`.

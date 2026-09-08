@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { once } from 'node:events';
 import { createConnection } from 'node:net';
 import { Readable } from 'node:stream';
+import { SourceRegistrationSchema } from '@wiser/data-contracts';
 
 import {
   IngestionPipelinePortError,
@@ -43,7 +44,7 @@ const LOAD_SQL = `
 /* ingestion.runtime.load */
 select session.state, session.row_version, session.requested_security_level,
   session.security_level, session.policy_version, session.operation_id,
-  session.expected_version,
+  session.expected_version, session.source_registration,
   version.version_id, frozen.plan as frozen_checkpoint,
   asset.asset_id, input.ordinal, asset.storage_key, asset.media_type,
   asset.byte_size, blob.content_blob_id,
@@ -111,7 +112,7 @@ order by input.ordinal, asset.asset_id
 const LOCK_SQL = `
 /* ingestion.runtime.lock */
 select state, row_version, requested_security_level, security_level,
-  policy_version, operation_id, intended_uses, expected_version
+  policy_version, operation_id, intended_uses, expected_version, source_registration
 from ingestion.session
 where tenant_id = $1::uuid and project_id = $2::uuid
   and ingestion_id = $3::uuid
@@ -360,9 +361,9 @@ insert into catalog.data_item (
   security_level, version, update_mode, policy_version, row_version
 ) values (
   $1::uuid, $2::uuid, $3::uuid, $3::uuid, $4,
-  array['unclassified'], array['uploaded'], array['ingestion'], 'RAW',
-  $5::text[], 'WISER ingestion', 'data.catalog.read', '{}', '[]', '[]', '[]',
-  'OBSERVED', $6, 'PASSED', 'UNPUBLISHED', $7, 1, 'SNAPSHOT', $8::bigint, 1
+  array['unclassified'], array['uploaded'], array['ingestion'], $9,
+  $5::text[], $10, 'data.catalog.read', $11::text[], '[]', '[]', '[]',
+  $12, $6, 'PASSED', 'UNPUBLISHED', $7, 1, 'SNAPSHOT', $8::bigint, 1
 ) on conflict (data_item_id) do nothing
 `;
 
@@ -375,7 +376,7 @@ insert into catalog.data_item_version (
   security_level, policy_version, row_version, committed_at
 ) values (
   $1::uuid, $2::uuid, $3::uuid, $4::uuid, 1, $5::jsonb,
-  decode($6, 'hex'), decode($7, 'hex'), 'RAW', 'OBSERVED', $8,
+  decode($6, 'hex'), decode($7, 'hex'), $11, $12, $8,
   'PASSED', 'UNPUBLISHED', $9, $10::bigint, 1, clock_timestamp()
 ) on conflict (tenant_id, project_id, version_id) do nothing
 returning version_id
@@ -806,6 +807,10 @@ export class PostgresIngestionAuthority implements IngestionAuthorityPort {
       if (result.rows.length < 1)
         throw runtimeError('INGESTION_NOT_FOUND', false);
       const first = result.rows[0]!;
+      const sourceRegistration =
+        first.source_registration == null
+          ? undefined
+          : SourceRegistrationSchema.parse(first.source_registration);
       const state = text(first, 'state') as PipelineIngestionState;
       const securityLevel = text(
         first,
@@ -839,6 +844,7 @@ export class PostgresIngestionAuthority implements IngestionAuthorityPort {
           objectRef,
           mediaType,
           sourceKind:
+            sourceRegistration === undefined &&
             normalizedMediaType === 'application/geo+json'
               ? 'geojson'
               : 'document',
@@ -856,6 +862,7 @@ export class PostgresIngestionAuthority implements IngestionAuthorityPort {
         securityLevel,
         policyVersion,
         assets: Object.freeze(assets),
+        ...(sourceRegistration === undefined ? {} : { sourceRegistration }),
         ...(typeof versionId === 'string' ? { versionId } : {}),
         ...(persistedFrozen === null || persistedFrozen === undefined
           ? {}
@@ -1296,6 +1303,17 @@ export class PostgresIngestionAuthority implements IngestionAuthorityPort {
       throw runtimeError('INGESTION_AUTHORITY_CONFLICT', false);
     }
     const versionId = uuidV5(`${request.ingestionId}:${checkpoint.reviewHash}`);
+    const sourceRegistration =
+      checkpoint.assetManifest['sourceRegistration'] === undefined
+        ? undefined
+        : SourceRegistrationSchema.parse(
+            checkpoint.assetManifest['sourceRegistration'],
+          );
+    if (
+      canonicalPipelineHash(sourceRegistration ?? null) !==
+      canonicalPipelineHash(persisted.sourceRegistration ?? null)
+    )
+      throw runtimeError('SOURCE_REGISTRATION_INVALID', false);
     const committedObjects: Array<{
       readonly asset: FrozenAssetFact;
       readonly contentBlobId: string;
@@ -1335,6 +1353,9 @@ export class PostgresIngestionAuthority implements IngestionAuthorityPort {
       throw runtimeError('INGESTION_AUTHORITY_INVALID', false);
     }
     const finalManifest = Object.freeze({
+      ...(sourceRegistration === undefined
+        ? {}
+        : { sourceRegistration, validationScope: 'SOURCE_REGISTRATION' }),
       assets: committedObjects.map(
         ({ asset, contentBlobId, raw, version }) => ({
           assetId: asset.assetId,
@@ -1414,16 +1435,31 @@ export class PostgresIngestionAuthority implements IngestionAuthorityPort {
         quality: checkpoint.quality,
         alignment: checkpoint.alignment,
         evidence: request.evidence,
+        ...(sourceRegistration === undefined ? {} : { sourceRegistration }),
       });
       await client.query(DATA_ITEM_SQL, [
         dataItemId,
         request.tenantId,
         request.projectId,
-        `Ingestion ${request.ingestionId}`,
+        sourceRegistration === undefined
+          ? `Ingestion ${request.ingestionId}`
+          : `${sourceRegistration.sourceId} · ${sourceRegistration.name}`.slice(
+              0,
+              256,
+            ),
         intendedUses,
         checkpoint.quality.grade,
         security,
         request.policyVersion,
+        sourceRegistration === undefined ? 'RAW' : 'METADATA_QUALITY',
+        sourceRegistration?.providerName ?? 'WISER ingestion',
+        sourceRegistration === undefined
+          ? []
+          : [
+              `Source: ${sourceRegistration.sourceId}; bundle: ${sourceRegistration.bundleId}`,
+              ...sourceRegistration.limitations,
+            ],
+        sourceRegistration === undefined ? 'OBSERVED' : 'DECLARED',
       ]);
       const insertedVersion = await client.query(VERSION_SQL, [
         versionId,
@@ -1436,6 +1472,8 @@ export class PostgresIngestionAuthority implements IngestionAuthorityPort {
         checkpoint.quality.grade,
         security,
         request.policyVersion,
+        sourceRegistration === undefined ? 'RAW' : 'METADATA_QUALITY',
+        sourceRegistration === undefined ? 'OBSERVED' : 'DECLARED',
       ]);
       if (insertedVersion.rows.length !== 1) {
         throw runtimeError('INGESTION_VERSION_IMMUTABLE_CONFLICT', false);

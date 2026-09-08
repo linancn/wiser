@@ -7,6 +7,8 @@ import {
   Sha256Schema,
 } from '../common.js';
 import { PlatformUuidSchema } from '@wiser/platform-contracts';
+import { SourceRegistrationSchema } from './source-registration.js';
+export * from './source-registration.js';
 
 export const IngestionStateSchema = z.enum([
   'RECEIVED',
@@ -30,7 +32,7 @@ export const IngestionStateSchema = z.enum([
 ]);
 export type IngestionState = z.infer<typeof IngestionStateSchema>;
 
-export const IngestionSchema = z.strictObject({
+export const IngestionV1Schema = z.strictObject({
   ingestionId: PlatformUuidSchema,
   tenantId: PlatformUuidSchema,
   projectId: PlatformUuidSchema,
@@ -42,6 +44,9 @@ export const IngestionSchema = z.strictObject({
   version: z.number().int().positive(),
   createdAt: OffsetDateTimeSchema,
   updatedAt: OffsetDateTimeSchema,
+});
+export const IngestionSchema = IngestionV1Schema.extend({
+  sourceRegistration: SourceRegistrationSchema.optional(),
 });
 export type IngestionDto = z.infer<typeof IngestionSchema>;
 
@@ -90,6 +95,9 @@ export const IngestionOutputSchema = z.strictObject({
     .array(ProjectionStatusSummarySchema)
     .max(200)
     .optional(),
+});
+export const IngestionOutputV1Schema = IngestionOutputSchema.extend({
+  ingestion: IngestionV1Schema,
 });
 
 export const GetIngestionInputSchema = z.strictObject({

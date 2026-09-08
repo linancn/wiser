@@ -26,6 +26,7 @@ select item.data_item_id, item.name, item.business_domains,
   version.version_id, encode(version.source_hash, 'hex') as version_source_hash,
   version.quality_grade, version.acceptance_status,
   version.publication_status, version.committed_at,
+  coalesce(version.asset_manifest -> 'sourceRegistration' -> 'limitations', '[]'::jsonb) as source_limitations,
   version.security_level as version_security_level,
   version.policy_version as version_policy_version
 from catalog.data_item as item
@@ -486,6 +487,9 @@ export class PostgresProjectionHydrationAuthority implements ProjectionHydration
           policyVersion: integer(row, 'item_policy_version'),
         },
         version: {
+          ...(row['source_limitations'] == null
+            ? {}
+            : { limitations: stringArray(row, 'source_limitations') }),
           versionId: text(row, 'version_id'),
           sourceHash: text(row, 'version_source_hash'),
           qualityGrade: text(

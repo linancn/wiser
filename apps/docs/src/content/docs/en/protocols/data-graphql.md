@@ -82,6 +82,8 @@ Connections expose `nodes` and `pageInfo { endCursor hasNextPage }`; other pages
 
 ## Mutation fields
 
+`CreateIngestionInput.sourceRegistration` is an optional JSON projection of the strict ingestion 1.1 descriptor. GraphQL and REST use the same manifest binding, authorization, idempotency, validation and source-registration-only semantics; the JSON scalar does not bypass the Capability schema.
+
 | Field                       | Capability                    | Result                                         |
 | --------------------------- | ----------------------------- | ---------------------------------------------- |
 | `createDataIngestion`       | `data.ingestion.create`       | Create an asynchronous Operation               |
