@@ -10,6 +10,41 @@ const version = '10000000-0000-4000-8000-000000000002';
 const query = '10000000-0000-4000-8000-000000000003';
 
 describe('unified exploration contracts', () => {
+  it('supports a bounded provenance graph with record focus pinned to a query and version', () => {
+    expect(
+      ExplorationQueryInputSchema.safeParse({
+        queryId: query,
+        view: 'graph',
+        versionId: version,
+        recordId: item,
+      }).success,
+    ).toBe(true);
+    expect(
+      ExplorationQueryInputSchema.safeParse({
+        queryId: query,
+        view: 'graph',
+        recordId: item,
+      }).success,
+    ).toBe(false);
+    expect(
+      ExplorationQueryInputSchema.safeParse({
+        queryId: query,
+        view: 'resources',
+        recordId: item,
+      }).success,
+    ).toBe(false);
+    expect(
+      ExplorationResultSchema.safeParse({
+        queryId: query,
+        spec: {},
+        createdAt: '2026-09-08T10:00:00.000Z',
+        expiresAt: '2026-09-08T10:30:00.000Z',
+        view: 'graph',
+        totalCount: 0,
+        resources: [],
+      }).success,
+    ).toBe(false);
+  });
   it('binds records and map views to an existing result set without accepting a foreign analysis identifier', () => {
     expect(
       ExplorationQueryInputSchema.safeParse({

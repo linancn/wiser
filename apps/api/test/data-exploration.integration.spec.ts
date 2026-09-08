@@ -345,6 +345,76 @@ describe('authorized exploration result sets in PostgreSQL', () => {
             context,
           ),
         );
+        const graph = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              queryId: analyzed.queryId,
+              view: 'graph',
+              versionId: version,
+              recordId: record,
+            },
+            context,
+          ),
+        );
+        expect(graph.graph?.nodes).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: `version:${version}`,
+              kind: 'VERSION',
+              versionId: version,
+            }),
+            expect.objectContaining({
+              id: `asset:${version}:${asset}`,
+              kind: 'ASSET',
+              assetId: asset,
+              sourceHash: 'a'.repeat(64),
+            }),
+            expect.objectContaining({
+              id: `record:${analysis}:${record}`,
+              kind: 'RECORD',
+              record: expect.objectContaining({
+                recordId: record,
+                featureId: record,
+                values: { c1: '01646500', c2: 0 },
+              }),
+            }),
+          ]),
+        );
+        expect(graph.graph?.edges).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              source: `version:${version}`,
+              target: `asset:${version}:${asset}`,
+              relation: 'HAS_ASSET',
+            }),
+            expect.objectContaining({
+              source: `asset:${version}:${asset}`,
+              target: `record:${analysis}:${record}`,
+              relation: 'HAS_RECORD',
+            }),
+          ]),
+        );
+        await expect(
+          executor.execute(
+            {
+              queryId: historical.queryId,
+              view: 'graph',
+              versionId: version,
+              recordId: record,
+            },
+            context,
+          ),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+        await expect(
+          executor.execute(
+            {
+              queryId: analyzed.queryId,
+              view: 'graph',
+              versionId: secondVersion,
+            },
+            context,
+          ),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' });
         expect(map.totalCount).toBe(1);
         expect(map.features?.[0]).toMatchObject({
           id: record,
