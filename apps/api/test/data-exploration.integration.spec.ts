@@ -372,14 +372,16 @@ describe('authorized exploration result sets in PostgreSQL', () => {
             expect.objectContaining({
               id: `record:${analysis}:${record}`,
               kind: 'RECORD',
-              record: expect.objectContaining({
-                recordId: record,
-                featureId: record,
-                values: { c1: '01646500', c2: 0 },
-              }),
             }),
           ]),
         );
+        expect(
+          graph.graph?.nodes.find((node) => node.kind === 'RECORD')?.record,
+        ).toMatchObject({
+          recordId: record,
+          featureId: record,
+          values: { c1: '01646500', c2: 0 },
+        });
         expect(graph.graph?.edges).toEqual(
           expect.arrayContaining([
             expect.objectContaining({

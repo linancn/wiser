@@ -1,3 +1,4 @@
+import { queryProvenanceGraph } from './exploration-graph.js';
 import { randomUUID } from 'node:crypto';
 import { queryAnalysisView } from './exploration-views.js';
 import { z } from 'zod';
@@ -135,12 +136,9 @@ export class PostgresExplorationExecutor {
           spec: snapshot.spec,
           createdAt: snapshot.created_at.toISOString(),
           expiresAt: snapshot.expires_at.toISOString(),
-          ...(await queryAnalysisView(
-            client,
-            snapshot.version_refs,
-            queryId,
-            input,
-          )),
+          ...(await (
+            input.view === 'graph' ? queryProvenanceGraph : queryAnalysisView
+          )(client, snapshot.version_refs, queryId, input)),
         });
         if (context.signal.aborted)
           throw new DataCapabilityHandlerError('CAPABILITY_TIMEOUT');
