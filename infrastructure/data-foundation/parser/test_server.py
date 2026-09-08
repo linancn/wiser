@@ -62,6 +62,8 @@ class ParserServiceTest(unittest.TestCase):
                 self.assertEqual(
                     response.headers["Content-Type"], "application/x-ndjson"
                 )
+                self.assertEqual(response.version, 11)
+                self.assertEqual(response.headers["Transfer-Encoding"], "chunked")
                 events = [json.loads(line) for line in response]
             self.assertEqual(events[0]["type"], "source")
             self.assertEqual(events[0]["sha256"], payload()["files"][0]["sha256"])
