@@ -124,6 +124,11 @@ export {
   type SupabaseClaimsVerifierOptions,
 } from './supabase-claims.js';
 export {
+  createSupabaseAgentClaimsVerifier,
+  type VerifiedSupabaseAgentClaims,
+  type SupabaseAgentClaimsVerifier,
+} from './agent-claims.js';
+export {
   issueDelegatedCredential,
   parseDelegatedCredentialHmacKeyRing,
   parseDelegatedCredentialToken,

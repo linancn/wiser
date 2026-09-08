@@ -58,6 +58,8 @@ platform_private.agent_exchange_credentials
 
 Agent connection records bind one human and OAuth client to one existing `agent-data` Delegation and an exact MCP resource URL. Exchanged credentials retain an immutable OAuth Session binding and cannot outlive the OAuth token. The optional Supabase access-token hook preserves direct login claims, rejects unapproved OAuth clients, and binds approved claims to that resource and Delegation. The hook is invoked only by Supabase Auth; its presence does not enable the OAuth runtime. Ordinary human JWT resolution rejects tokens carrying `client_id`.
 
+`createSupabaseAgentClaimsVerifier` is the separate verifier for these signed claims. It requires exact configured issuer and single resource audience, authenticated role, valid user/session/client/Delegation IDs, and a future integer expiry. It never derives a Delegation from user metadata. Live connection and Session authorization remains the caller's responsibility after claim verification.
+
 - Actor represents a human, agent, or service; human actors reference `auth.users.id`.
 - Tenant is the top-level isolation boundary; Project is the resource-ownership boundary.
 - Tenant membership does not automatically grant access to every Project.
