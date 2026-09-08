@@ -15,8 +15,8 @@ checkPaths:
   - apps/web/**
   - apps/telemetry-ingress/**
   - infrastructure/observability/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: 6f70dba2505daf1286a33563bc3cd7db52f9508e
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: 55d09ef492aaff44402732a1d56e5bd20a4fbf96
 ---
 
 ## 一个 Run 是一次团队演练
