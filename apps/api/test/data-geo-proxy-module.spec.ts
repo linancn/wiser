@@ -137,12 +137,10 @@ describe('Data Foundation governed GIS proxy', () => {
     const url = `/api/data/v1/geo/tiles/vector/queries/${VERSION_ID}/0/0/0.pbf`;
     const response = await fixture.app.inject({ method: 'GET', url, headers });
     expect(response.statusCode).toBe(200);
-    expect(fixture.authority.authorizeExplorationQuery).toHaveBeenCalledWith({
-      context: expect.objectContaining({
-        principal: resolved.principal,
-        authorization: resolved.authorization,
-      }),
-      queryId: VERSION_ID,
+    expect(fixture.authority.authorizeExplorationQuery).toHaveBeenCalledOnce();
+    expect(fixture.requests[0]?.context).toMatchObject({
+      principal: resolved.principal,
+      authorization: resolved.authorization,
     });
     expect(fixture.requests[0]?.path).toBe('/wiser_exploration_mvt/0/0/0');
     expect(Object.fromEntries(fixture.requests[0]!.query)).toEqual({

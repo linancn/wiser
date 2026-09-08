@@ -1,3 +1,4 @@
+import { AUTHORIZED } from './exploration-authorization.js';
 import { Buffer } from 'node:buffer';
 
 import {
@@ -210,12 +211,23 @@ function validateProxyRequest(request: DataFoundationGeoProxyRequest): void {
       break;
     }
     case 'MARTIN': {
+      const isQuery = /^\/wiser_exploration_mvt\/\d{1,2}\/\d+\/\d+$/.test(
+        request.path,
+      );
+      const validTarget = isQuery
+        ? Object.keys(query).length === 7 &&
+          UUID_PATTERN.test(query['queryId'] ?? '') &&
+          query['actorId'] === context.data.principal.actorId &&
+          query['purpose'] === context.data.authorization.purpose
+        : /^\/wiser_spatial_extent_mvt\/\d{1,2}\/\d+\/\d+$/.test(
+            request.path,
+          ) &&
+          Object.keys(query).length === 5 &&
+          UUID_PATTERN.test(query['versionId'] ?? '');
       if (
-        !/^\/wiser_spatial_extent_mvt\/\d{1,2}\/\d+\/\d+$/.test(request.path) ||
-        Object.keys(query).length !== 5 ||
+        !validTarget ||
         query['tenantId'] !== context.data.authorization.tenantId ||
         query['projectId'] !== context.data.authorization.projectId ||
-        !UUID_PATTERN.test(query['versionId'] ?? '') ||
         query['maxSecurityLevel'] !==
           context.data.authorization.maxSecurityLevel ||
         query['policyVersion'] !==
@@ -491,6 +503,44 @@ export class PostgresDataFoundationGeoAuthorityPort
       context.authorization.maxSecurityLevel,
       String(context.authorization.authzVersion),
     ]);
+  }
+
+  async authorizeExplorationQuery(input: {
+    readonly context: PlatformRequestContext;
+    readonly queryId: string;
+  }): Promise<void> {
+    const context = validateAuthorityInput({
+      context: input.context,
+      versionId: input.queryId,
+    });
+    const client = await this.#client();
+    try {
+      await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
+      await this.#scope(client, context);
+      await client.query(
+        "select set_config('wiser.actor_id',$1,true),set_config('wiser.purpose',$2,true)",
+        [context.principal.actorId, context.authorization.purpose],
+      );
+      const snapshot = await client.query(
+        'select version_refs from service.exploration_snapshot where query_id=$1 and expires_at>clock_timestamp()',
+        [input.queryId],
+      );
+      const refs = snapshot.rows[0]?.['version_refs'];
+      if (!Array.isArray(refs)) throw proxyError('NOT_FOUND');
+      const checked = await client.query(
+        `${AUTHORIZED} select count(*)::int total from authorized`,
+        [JSON.stringify(refs)],
+      );
+      if (checked.rows[0]?.['total'] !== refs.length)
+        throw proxyError('NOT_FOUND');
+      await client.query('COMMIT');
+    } catch (error) {
+      await rollback(client);
+      if (error instanceof DataFoundationGeoProxyError) throw error;
+      throw proxyError('UPSTREAM_UNAVAILABLE', error);
+    } finally {
+      client.release();
+    }
   }
 
   async authorizeVectorVersion(input: {
