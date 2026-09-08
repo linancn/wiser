@@ -51,3 +51,21 @@ The synthetic safety tests create temporary files in memory-defined fixtures. Re
 WISER_WATER_BUNDLE=/absolute/path/to/research-bundle \
   node --test scripts/data-foundation/water-research-bundle.test.mjs
 ```
+
+## Analyze published registrations
+
+After publishing and verifying registrations, the HTTP-only `analyze_bundle.py` helper accepts a `registrations.json` containing the trusted `tenantId`, `projectId`, and registration entries (`sourceId`, `kind`, `name`, `dataItemId`, `versionId`, `filePaths`, `assets`). It submits `data.analysis.create`, polls authoritative Operations, queries the resulting pinned analysis through `data.explore.query`, and downloads the source manifest through the authorized asset redirect.
+
+```bash
+python3 -B skills/wiser-data-foundation/scripts/analyze_bundle.py \
+  --registrations /absolute/case/registrations.json \
+  --state-dir /absolute/private/analysis-state \
+  --api-origin https://api.example.org \
+  --token-file /absolute/private/access-token \
+  --tenant <trusted-tenant-uuid> --project <trusted-project-uuid> \
+  --purpose data-steward-console --workers 2
+```
+
+Use `--source-ids DS-0001,DS-0409` for a pilot. Resume with the same state directory, registration file, context and actor; the refreshed token remains only in the private transport file. A lost submit response replays the original key. Existing Operations are polled without creating replacements. Terminal failures and waiting states remain explicit; changing the state directory deliberately creates a new analysis run. Concurrency is bounded to two analyses, matching the isolated parser capacity.
+
+`progress.json` reports completed and reconciled sources. `last-run.json` records exact immutable versions, analysis and Operation IDs, per-asset parsing states, and every admitted path with original completeness classifications. Manifest hashes, asset hashes, path aliases and empty entries are checked; exit zero requires all selected sources and paths to reconcile. Unsupported, invalid or restricted content is accounted for with an explicit reason and unknown counts, never reported as successfully parsed. Indexed representation counts include alternate CSV/workbook representations, document paragraphs and archive member summaries; they are not deduplicated scientific observations. No provider endpoints or source scripts are executed.

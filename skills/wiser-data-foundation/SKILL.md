@@ -50,6 +50,8 @@ For a local research bundle, read [water-bundle.md](references/water-bundle.md) 
 
 Use its companion `water_import.py` for the resumable HTTP workflow. Preserve the same private checkpoint directory and trusted actor across retries. It keeps a source manifest per registration and verifies every published asset by download. Registration review requires an explicitly authorized reviewer; do not enable its approval option merely because the credential happens to have a publish scope.
 
+After publication, use `analyze_bundle.py` as described in [water-bundle.md](references/water-bundle.md) to submit and resume bounded content analyses through HTTP, then reconcile every admitted path against the published manifest and analytical asset states. Keep empty paths, aliases, unsupported content and unknown CRS explicit.
+
 ## Keep governance dimensions separate
 
 Read [governance-and-security.md](references/governance-and-security.md) whenever deciding whether data can be used, cited, shared, or published.

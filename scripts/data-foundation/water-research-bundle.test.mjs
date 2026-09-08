@@ -58,7 +58,15 @@ test('the Skill reconciles source registries and safely inventories every bundle
   );
   const result = execFileSync(
     'python3',
-    ['-B', '-m', 'unittest', '-v', 'test_water_bundle', 'test_water_import'],
+    [
+      '-B',
+      '-m',
+      'unittest',
+      '-v',
+      'test_water_bundle',
+      'test_water_import',
+      'test_analyze_bundle',
+    ],
     {
       cwd: directory,
       encoding: 'utf8',
