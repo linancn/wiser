@@ -4,6 +4,40 @@ import { loadLiveCredentials } from './support/live-fixture';
 const credentials = loadLiveCredentials();
 const hydroAtlasId = 'e90d54eb-4740-4f21-a85e-1d497cc2cc57';
 
+test('real large table returns an authorized bounded page within the interactive budget', async ({
+  page,
+}) => {
+  await login(page, '/zh-CN/data-foundation/explore?q=beijing_open_data');
+  const response = await page.request.post('/api/data-foundation/explore', {
+    data: {
+      spec: { dataItemIds: ['e9087b50-2094-4a68-9032-d4d56e35952e'] },
+      view: 'resources',
+    },
+  });
+  expect(response.status()).toBe(200);
+  const query = (await response.json()) as { queryId: string };
+  const started = Date.now();
+  const records = await page.request.post('/api/data-foundation/explore', {
+    data: {
+      queryId: query.queryId,
+      view: 'records',
+      versionId: 'e139f0d1-972f-5401-bd35-71d842142185',
+      assetId: 'c3697270-8a1b-4392-9781-25f0de8032ed',
+      first: 25,
+    },
+  });
+  expect(records.status()).toBe(200);
+  expect(Date.now() - started).toBeLessThan(1500);
+  const result = (await records.json()) as {
+    totalCount: number;
+    records: unknown[];
+    nextCursor?: string;
+  };
+  expect(result.totalCount).toBe(361379);
+  expect(result.records).toHaveLength(25);
+  expect(result.nextCursor).toBeTruthy();
+});
+
 test('real NLDI records select the same station on the exploration map', async ({
   page,
 }) => {
