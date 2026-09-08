@@ -150,6 +150,11 @@ class FakeClient implements PostgresDataReadClient {
     values?: readonly unknown[],
   ): Promise<{ readonly rows: readonly Record<string, unknown>[] }> {
     this.queries.push(values === undefined ? { text } : { text, values });
+    if (/data\.catalog\.count/.test(text)) {
+      return Promise.resolve({
+        rows: [{ total_count: this.notFound ? '0' : '2250' }],
+      });
+    }
     if (/data\.catalog\.search/.test(text)) {
       return Promise.resolve({
         rows: this.notFound
@@ -300,6 +305,37 @@ function executor(
 }
 
 describe('data-postgres RLS read executors', () => {
+  it('counts the complete filtered catalog independently of pagination in one snapshot', async () => {
+    const pool = new FakePool();
+    const runtime = createPostgresDataReadRuntime(pool);
+    const output = await executor(runtime, 'data.catalog.search').execute(
+      { query: 'river', qualityGrades: ['A'], first: 1, includeTotal: true },
+      context,
+    );
+    expect(output).toMatchObject({
+      totalCount: 2250,
+      items: [expect.objectContaining({ dataItemId: itemRow.data_item_id })],
+    });
+    const count = pool.client.queries.find(({ text }) =>
+      /data\.catalog\.count/.test(text),
+    );
+    expect(count?.values).toEqual(['river', null, null, null, ['A'], null]);
+    expect(count?.text).not.toMatch(/limit|offset/i);
+    expect(pool.client.queries[0]?.text).toBe(
+      'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY',
+    );
+  });
+
+  it('returns a real zero count for an empty catalog', async () => {
+    const pool = new FakePool();
+    pool.client.notFound = true;
+    const output = await executor(
+      createPostgresDataReadRuntime(pool),
+      'data.catalog.search',
+    ).execute({ first: 1, includeTotal: true }, context);
+    expect(output).toEqual({ totalCount: 0, items: [] });
+  });
+
   it('provides exactly the seven read capabilities', () => {
     const runtime = createPostgresDataReadRuntime(new FakePool());
     expect(runtime.executors.map(({ id }) => id)).toEqual([
