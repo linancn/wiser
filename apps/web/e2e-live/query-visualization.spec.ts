@@ -13,6 +13,43 @@ test.skip(
   'Requires the admitted private water research case.',
 );
 
+test('graph layouts run in a same-origin worker and release it after rendering', async ({
+  page,
+}) => {
+  const workers: { url: string; closed: boolean }[] = [];
+  page.on('worker', (worker) => {
+    const entry = { url: worker.url(), closed: false };
+    workers.push(entry);
+    worker.on('close', () => {
+      entry.closed = true;
+    });
+  });
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  await page.getByRole('tab', { name: '知识图谱', exact: true }).click();
+  await expect(page.getByTestId('knowledge-graph')).toHaveAttribute(
+    'data-state',
+    'ready',
+  );
+  await expect
+    .poll(
+      () =>
+        workers.filter((worker) => worker.url.includes('graph-layout')).length,
+    )
+    .toBeGreaterThan(0);
+  expect(
+    workers.every(
+      (worker) => new URL(worker.url).origin === new URL(page.url()).origin,
+    ),
+  ).toBe(true);
+  await expect
+    .poll(() =>
+      workers
+        .filter((worker) => worker.url.includes('graph-layout'))
+        .every((worker) => worker.closed),
+    )
+    .toBe(true);
+});
+
 test('query history reauthorizes conditions and restores the active view after reload', async ({
   page,
 }) => {
