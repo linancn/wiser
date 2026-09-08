@@ -93,6 +93,11 @@ const zhCN = {
       resourceView: '资源',
       mapView: '地图',
       graphView: '知识图谱',
+      statisticsView: '统计',
+      statisticsDimension: '统计维度',
+      statisticsScope: '全部匹配资源',
+      statisticsHint:
+        '点击图柱或下方分类，查看对应的数据来源。数量表示资源数。',
       graphOverview: '查看查询全图',
       graphScope: '资源、版本、文件与证据的来源关系',
       graphTruncated: '当前显示部分节点，可翻页或选择资源查看其关系。',
@@ -1165,6 +1170,11 @@ const en: typeof zhCN = {
       resourceView: 'Resources',
       mapView: 'Map',
       graphView: 'Knowledge graph',
+      statisticsView: 'Statistics',
+      statisticsDimension: 'Dimension',
+      statisticsScope: 'All matching resources',
+      statisticsHint:
+        'Select a bar or category below to inspect its sources. Values count resources.',
       graphOverview: 'Show query overview',
       graphScope:
         'Source relationships between resources, versions, files and evidence',

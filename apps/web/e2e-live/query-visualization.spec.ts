@@ -16,6 +16,9 @@ test('statistics renders authorized whole-query counts and links a category back
   page.on('pageerror', (error) => errors.push(error.message));
   await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
   for (let index = 0; index < 3; index += 1) {
+    const previousQuery = await page
+      .getByTestId('data-explorer')
+      .getAttribute('data-query-id');
     await page.getByRole('tab', { name: '统计', exact: true }).click();
     const chart = page.getByTestId('explorer-statistics-chart');
     await expect(chart).toHaveAttribute('data-state', 'ready');
@@ -25,6 +28,10 @@ test('statistics renders authorized whole-query counts and links a category back
       page.getByRole('tab', { name: '资源', exact: true }),
     ).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('explorer-total')).toContainText('1');
+    await expect(page.getByTestId('data-explorer')).not.toHaveAttribute(
+      'data-query-id',
+      previousQuery!,
+    );
   }
   await page.getByRole('tab', { name: '统计', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { DataExplorerGraph } from './data-explorer-graph';
 import {
   useEffect,
@@ -28,6 +29,14 @@ import {
   formatRecordValue,
 } from './data-explorer-analysis';
 import styles from './data-explorer.module.css';
+
+const DataExplorerStatistics = dynamic(
+  () =>
+    import('./data-explorer-statistics').then(
+      (module) => module.DataExplorerStatistics,
+    ),
+  { ssr: false },
+);
 
 export function DataExplorer({
   locale,
@@ -65,9 +74,9 @@ export function DataExplorer({
   const selected = selection.resource;
   const selectedRecord = selection.record;
   const selectedNode = selection.node;
-  const [view, setView] = useState<'resources' | 'records' | 'map' | 'graph'>(
-    'resources',
-  );
+  const [view, setView] = useState<
+    'resources' | 'records' | 'map' | 'graph' | 'statistics'
+  >('resources');
   const [recordAssets, setRecordAssets] = useState<
     readonly ExplorationAnalysisAsset[]
   >([]);
@@ -401,7 +410,9 @@ export function DataExplorer({
           role="tablist"
           aria-label={copy.viewLabel}
         >
-          {(['resources', 'records', 'map', 'graph'] as const).map((value) => (
+          {(
+            ['resources', 'records', 'map', 'graph', 'statistics'] as const
+          ).map((value) => (
             <button
               key={value}
               role="tab"
@@ -413,6 +424,7 @@ export function DataExplorer({
                   'records',
                   'map',
                   'graph',
+                  'statistics',
                 ] as const;
                 let index = values.indexOf(value);
                 if (event.key === 'ArrowRight')
@@ -437,7 +449,9 @@ export function DataExplorer({
                   ? copy.records
                   : value === 'map'
                     ? copy.mapView
-                    : copy.graphView}
+                    : value === 'graph'
+                      ? copy.graphView
+                      : copy.statisticsView}
             </button>
           ))}
         </div>
@@ -540,6 +554,29 @@ export function DataExplorer({
                 </button>
               </footer>
             </>
+          ) : result?.summary && view === 'statistics' ? (
+            <DataExplorerStatistics
+              summary={result.summary}
+              locale={locale}
+              onFilter={(dimension, status) => {
+                const readiness = {
+                  ...result.spec.readiness,
+                  [dimension]: [status],
+                };
+                if (dimension === 'records') setRecordReadiness(status);
+                else setSpatialReadiness(status);
+                setView('resources');
+                void query(
+                  {
+                    spec: { ...result.spec, readiness },
+                    view: 'resources',
+                    first: 25,
+                  },
+                  0,
+                  true,
+                );
+              }}
+            />
           ) : result && view === 'graph' ? (
             <DataExplorerGraph
               key={result.queryId}
