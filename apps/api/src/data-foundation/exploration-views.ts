@@ -66,6 +66,7 @@ export async function queryAnalysisView(
   const selectedAssetId =
     input.view === 'records'
       ? (input.assetId ??
+        assets.find((asset) => (asset.recordCount ?? 0) > 0)?.assetId ??
         assets.find((asset) =>
           ['READY', 'EMPTY', 'PARTIAL'].includes(asset.status),
         )?.assetId ??

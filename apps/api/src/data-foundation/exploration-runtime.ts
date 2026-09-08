@@ -87,12 +87,30 @@ function offset(after: string | undefined, queryId: string): number {
   }
 }
 
+class RetryableExplorationTransaction extends Error {}
+
 /** PostgreSQL owns the manifest; projections can become ready independently. */
 export class PostgresExplorationExecutor {
   readonly id = 'data.explore.query' as const;
   constructor(private readonly pool: QueryAdapterPgPool) {}
 
   async execute(
+    raw: unknown,
+    context: DataCapabilityExecutionContext,
+  ): Promise<unknown> {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await this.executeAttempt(raw, context);
+      } catch (error) {
+        if (!(error instanceof RetryableExplorationTransaction)) throw error;
+        if (context.signal.aborted)
+          throw new DataCapabilityHandlerError('CAPABILITY_TIMEOUT');
+      }
+    }
+    throw new DataCapabilityHandlerError('EXECUTION_FAILED');
+  }
+
+  private async executeAttempt(
     raw: unknown,
     context: DataCapabilityExecutionContext,
   ): Promise<unknown> {
@@ -256,6 +274,13 @@ export class PostgresExplorationExecutor {
     } catch (error) {
       await client.query('rollback').catch(() => undefined);
       if (error instanceof DataCapabilityHandlerError) throw error;
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error.code === '40001' || error.code === '40P01')
+      )
+        throw new RetryableExplorationTransaction();
       throw new DataCapabilityHandlerError('EXECUTION_FAILED');
     } finally {
       client.release();

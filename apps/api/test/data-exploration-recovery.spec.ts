@@ -39,10 +39,12 @@ describe('exploration recovery', () => {
       const statements: string[] = [];
       const pool = {
         async connect() {
+          await Promise.resolve();
           const attempt = ++attempts;
           return {
             release,
             async query(sql: string) {
+              await Promise.resolve();
               statements.push(sql);
               if (sql.startsWith('select set_config') && attempt === 1)
                 throw Object.assign(new Error('transient'), { code });
@@ -85,14 +87,17 @@ describe('exploration recovery', () => {
       ['40001', 3],
       ['23514', 1],
     ] as const) {
-      const connect = vi.fn(async () => ({
-        release() {},
-        async query(sql: string) {
-          if (sql !== 'rollback')
-            throw Object.assign(new Error('failure'), { code });
-          return { rows: [] };
-        },
-      }));
+      const connect = vi.fn(() =>
+        Promise.resolve({
+          release() {},
+          async query(sql: string) {
+            await Promise.resolve();
+            if (sql !== 'rollback')
+              throw Object.assign(new Error('failure'), { code });
+            return { rows: [] };
+          },
+        }),
+      );
       await expect(
         new PostgresExplorationExecutor({ connect }).execute(
           { queryId: id, view: 'resources' },
@@ -107,6 +112,7 @@ describe('exploration recovery', () => {
     const client = {
       release() {},
       async query(sql: string) {
+        await Promise.resolve();
         if (sql.includes('select asset_id,encode'))
           return {
             rows: [
