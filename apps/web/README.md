@@ -42,8 +42,8 @@ Run pages include overview, collaboration, replay, trace, and diagnostics. Data 
 - Supabase SSR handles login, cookie refresh, sign-out, and Data Foundation's authenticated server-only DAL.
 - In Supabase mode, Portal and Auth routes are public. Other localized product routes require verified authenticated claims and preserve the requested destination through sign-in. Auth-off is local preview only.
 - Data pages forward the current short-lived Session token from the Next.js server; browsers never receive database, S3, projection, or internal GIS credentials.
-- Agent EXCON `reference` mode renders the committed regression preview. `live` mode reads safe v2 operator DTOs server-side with `WISER_WEB_OPERATOR_TOKEN` and `cache: no-store`.
-- The complete stack's local Data operator Session does not automatically become the EXCON live operator credential. Missing/invalid EXCON identity produces an explicit unavailable state and never falls back to reference data.
+- Agent EXCON `reference` mode renders the committed regression preview. `live` mode reads safe v2 operator DTOs with the verified current Supabase user session and `cache: no-store`.
+- The API rechecks EXCON operator authorization for that user. An invalid session never falls back to a service identity or reference data. Static operator tokens remain limited to local Auth-off development.
 
 ## Run / 运行
 
@@ -59,7 +59,9 @@ Standalone EXCON preview needs no API:
 AGENT_EXCON_WEB_DATA_MODE=reference pnpm --filter @wiser/web dev
 ```
 
-Use `pnpm stack:full:up` for unified Auth and Data Foundation integration. Use the server-only `AGENT_EXCON_API_INTERNAL_URL` plus a real least-scope `WISER_WEB_OPERATOR_TOKEN` when testing EXCON `live` mode.
+Use `pnpm stack:full:up` for unified Auth and Data Foundation integration. Configure the server-only `AGENT_EXCON_API_INTERNAL_URL` and sign in as an authorized operator when testing EXCON `live` mode with Supabase.
+
+The graph workspace uses G6 5.1.1 with client-only loading, bounded HTTP results and accessible entity selection. / 图谱工作区按需加载 G6 5.1.1，并以有界 HTTP 结果提供画布和键盘实体选择。
 
 ## UI contract / 界面合同
 

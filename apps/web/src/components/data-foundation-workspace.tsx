@@ -20,6 +20,7 @@ import { getDictionary, type Locale } from '@/lib/i18n';
 
 import styles from './data-foundation-workspace.module.css';
 import { FailureState } from './failure-state';
+import { DataFoundationGraph } from './data-foundation-graph';
 
 type DataCopy = ReturnType<typeof getDictionary>['dataFoundation'];
 
@@ -926,57 +927,7 @@ export function GraphResultView({
   readonly locale: Locale;
   readonly result: GraphResultDto;
 }) {
-  const copy = getDictionary(locale).dataFoundation;
-  return (
-    <div className={styles.graphGrid}>
-      <section>
-        <SectionHeading title={copy.graphPage.nodesTitle} />
-        {result.nodes.length === 0 ? (
-          <DataEmpty
-            title={copy.graphPage.nodesTitle}
-            copy={copy.common.empty}
-          />
-        ) : (
-          <ul className={styles.nodeList}>
-            {result.nodes.map((node) => (
-              <li key={node.entityId}>
-                <strong>{node.label}</strong>
-                <ProtocolValue>{node.entityId}</ProtocolValue>
-                <span>
-                  {copy.common.confidence}: {node.confidence.toFixed(2)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      <section>
-        <SectionHeading title={copy.graphPage.edgesTitle} />
-        {result.edges.length === 0 ? (
-          <DataEmpty
-            title={copy.graphPage.edgesTitle}
-            copy={copy.common.empty}
-          />
-        ) : (
-          <ol className={styles.edgeList}>
-            {result.edges.map((edge) => (
-              <li key={edge.edgeId}>
-                <strong>{edge.relationType}</strong>
-                <span>
-                  {copy.graphPage.from}:{' '}
-                  <ProtocolValue>{edge.fromEntityId}</ProtocolValue>
-                </span>
-                <span>
-                  {copy.graphPage.to}:{' '}
-                  <ProtocolValue>{edge.toEntityId}</ProtocolValue>
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
-    </div>
-  );
+  return <DataFoundationGraph locale={locale} result={result} />;
 }
 
 export function GeoFeatureList({

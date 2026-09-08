@@ -1,0 +1,95 @@
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 1rem;
+  min-width: 0;
+}
+.canvasFrame {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-muted);
+}
+.canvas {
+  width: 100%;
+  height: clamp(360px, 56vh, 640px);
+}
+.status {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  margin: 0;
+  color: var(--text-secondary);
+}
+.inspector {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  overflow-wrap: anywhere;
+}
+.inspector h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+.inspector p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.nodes {
+  display: grid;
+  gap: 0.4rem;
+  max-height: 240px;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.nodes button {
+  width: 100%;
+  min-height: 44px;
+  text-align: start;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  background: var(--surface);
+  font: inherit;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.nodes button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.details {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.details h3 {
+  font-size: 1rem;
+}
+.details dl {
+  font-size: 0.75rem;
+}
+.details dd {
+  margin: 0.4rem 0 0.8rem;
+  font-family: var(--mono);
+}
+.details a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent-strong);
+}
+@media (max-width: 800px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .canvas {
+    height: 340px;
+  }
+}

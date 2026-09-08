@@ -173,6 +173,8 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 
 ## 协议与产品面
 
+图谱工作区在客户端按需加载 G6 5.1.1，只绘制受治理 HTTP 返回的有界结果。可用键盘操作的实体列表与选择详情保留精确 Version/Evidence 来源，画布不可用时仍可查看。等待在途绘制结束后释放画布资源，主题变化复用语义 token；初始布局是确定性的，不表示空间关系。
+
 数据总览使用 `includeTotal=true` 取得受授权的目录总数，指标不再取预览页大小。目录计数和当前页使用同一个短 repeatable-read 权威事务。该数量表示登记对象，不表示已经通过分析验证的记录。
 
 - REST：`/api/data/v1` 的 discovery、22 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；22 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。

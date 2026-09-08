@@ -77,7 +77,7 @@ Agent EXCON 页面支持两个明确的数据模式：
 | `reference` | 默认的确定性设计参考、构建和端到端测试数据                 | 页面明确标记为设计预览                                |
 | `live`      | Server Component 从 Agent EXCON v2 HTTP API 读取操作员投影 | 显示可操作的 unavailable/error 状态，绝不混入参考数据 |
 
-模式由服务端的 `AGENT_EXCON_WEB_DATA_MODE` 选择。`live` 请求使用 `cache: no-store`，API origin 和 `WISER_WEB_OPERATOR_TOKEN` 只能留在服务端。现有 DTO 没有提供的信息应显示覆盖缺口或空态，不能从参考样例补齐，也不能在前端推断 Agent、Span、回放视角或裁决事实。
+模式由服务端的 `AGENT_EXCON_WEB_DATA_MODE` 选择。`live` 请求使用 `cache: no-store`，API origin 和刚验证的当前用户 Access Token 只能留在服务端。Supabase 模式中 EXCON 与 Data 共用 Session verifier；静态 `WISER_WEB_OPERATOR_TOKEN` 仅用于本机 Auth-off 开发。现有 DTO 没有提供的信息应显示覆盖缺口或空态，不能从参考样例补齐，也不能在前端推断 Agent、Span、回放视角或裁决事实。
 
 ## Data Foundation 数据与身份
 
@@ -91,6 +91,8 @@ Data Foundation 没有 reference 模式。所有页面通过 `src/lib/data-found
 4. 浏览器只接收 Supabase URL 与 publishable key。数据库凭据、service-role、内部 API origin、operator token 和原始上游错误永不进入 Client Component 或序列化 props。
 
 地图瓦片也使用同源 Web 路由，由服务端代理附加身份和范围；不要把内部 GIS 地址或 access token 写进地图 URL。
+
+图谱页在客户端按需加载 G6 5.1.1，使用有界受控数据、共享主题 Token，以及带精确版本/证据链接的键盘实体列表。`e2e-live/query-visualization.spec.ts` 在桌面和手机宽度验证真实 HydroATLAS 图谱与长搜索摘要；需要已准入的研究案例和明确的本机测试登录信息。
 
 ## 实现一个新页面
 
@@ -123,7 +125,7 @@ pnpm --filter @wiser/docs test:e2e
 
 这两个标准 Playwright 配置自启隔离的开发服务器，主要验证 reference/fixture 驱动的路由、语言、主题和交互；它们不证明统一 Auth、Data 数据库或 EXCON live credential。Data 的登录与真实 API 纵切由 `pnpm stack:full:up` / `pnpm data:smoke` 覆盖。
 
-仓库当前没有自动签发 EXCON operator credential 的 full-stack Playwright 命令。验证 EXCON live 时，先通过受信任 operator 流程取得真实 `WISER_WEB_OPERATOR_TOKEN`，再以 `AGENT_EXCON_WEB_DATA_MODE=live` 和服务端 `AGENT_EXCON_API_INTERNAL_URL` 运行一个隔离 Web 实例或专用测试；没有这一步就必须把结果表述为 reference UI 验证，而不是 live/Auth E2E。
+在完整栈验证 EXCON live 时，通过 Supabase 登录具备 EXCON operator Role 的用户，并配置 `AGENT_EXCON_WEB_DATA_MODE=live` 和服务端 API origin。读模型转发经过验证的当前 Session；认证失败时不回退服务令牌。仅 reference 测试不能证明 live/Auth E2E。
 
 可复现的无模型 EXCON live Web 路径是 scripted Showcase。它启动隔离 Lab/API/Web，以 host-only operator token 配置 `live` read model，并在 status 中返回 `/collaboration` URL：
 

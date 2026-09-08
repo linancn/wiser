@@ -409,6 +409,11 @@ const zhCN = {
       prompt: '输入关键词开始检索。',
     },
     graphPage: {
+      canvasLabel: '知识图谱，可用下方实体列表进行键盘选择',
+      loading: '正在绘制关联…',
+      unavailable: '画布暂时无法显示，请使用实体列表查看数据。',
+      selectionHint: '点击节点或从列表选择，查看来源和版本。',
+      openData: '查看数据与证据',
       metaTitle: '知识图谱',
       eyebrow: '知识关联',
       title: '知识图谱',
@@ -1381,6 +1386,14 @@ const en: typeof zhCN = {
       prompt: 'Enter keywords to start searching.',
     },
     graphPage: {
+      canvasLabel:
+        'Knowledge graph; use the entity list for keyboard selection',
+      loading: 'Drawing relationships…',
+      unavailable:
+        'The canvas is unavailable. Use the entity list to inspect data.',
+      selectionHint:
+        'Choose a node or list entry to inspect its source and version.',
+      openData: 'View data and evidence',
       metaTitle: 'Knowledge graph',
       eyebrow: 'KNOWLEDGE RELATIONSHIPS',
       title: 'Knowledge graph',

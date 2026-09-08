@@ -99,3 +99,7 @@ The Data map implements this contract through accessible controls rather than ca
 ## Acceptance
 
 Every page passes Chinese and English, light and dark, desktop and 390px, keyboard focus, no browser errors, no horizontal overflow, and reduced-motion checks. Screenshot review compares EXCON and Data Foundation together; any local UI that looks like a second product is pulled back into shared tokens or components.
+
+### Data exploration workspaces
+
+Data workspaces use compact headings and bounded grid children so real long excerpts and identifiers wrap within narrow screens. Graph canvases use shared semantic colors, a readable text alternative and a version-aware selection inspector. Canvas selection has an outline as well as color, and node selection is available through keyboard-operated buttons.

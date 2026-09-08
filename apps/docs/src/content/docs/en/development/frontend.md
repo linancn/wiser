@@ -77,7 +77,7 @@ Agent EXCON pages support two explicit data modes:
 | `reference` | Default deterministic design reference, build, and end-to-end test data      | The page is clearly labeled as a design preview                                 |
 | `live`      | Server Components read operator projections from the Agent EXCON v2 HTTP API | An actionable unavailable/error state appears; reference data is never mixed in |
 
-The server-side `AGENT_EXCON_WEB_DATA_MODE` selects the mode. `live` requests use `cache: no-store`, and the API origin and `WISER_WEB_OPERATOR_TOKEN` remain server-only. When a current DTO does not provide the required fact, show a coverage gap or empty state. Never fill it from the reference sample or infer Agent, span, replay-perspective, or verdict facts in the frontend.
+The server-side `AGENT_EXCON_WEB_DATA_MODE` selects the mode. `live` requests use `cache: no-store`, and the API origin and verified current user access token remain server-only. In Supabase mode, EXCON and Data use the same server-only session verifier; a static `WISER_WEB_OPERATOR_TOKEN` is limited to local Auth-off development. When a current DTO does not provide the required fact, show a coverage gap or empty state. Never fill it from the reference sample or infer Agent, span, replay-perspective, or verdict facts in the frontend.
 
 ## Data Foundation data and identity
 
@@ -91,6 +91,8 @@ The access sequence is:
 4. The browser receives only the Supabase URL and publishable key. Database credentials, service-role keys, internal API origins, operator tokens, and raw upstream errors never enter Client Components or serialized props.
 
 Map tiles also use a same-origin Web route whose server proxy adds identity and scope. Never put an internal GIS origin or access token in a map URL.
+
+The graph page uses client-only lazy loading of G6 5.1.1, bounded governed data, shared theme tokens and a keyboard entity list with exact version/evidence links. `e2e-live/query-visualization.spec.ts` checks the real HydroATLAS graph and long search excerpts at desktop/mobile widths. It requires the admitted research case and explicit loopback test credentials.
 
 ## Implement a new page
 
@@ -123,7 +125,7 @@ pnpm --filter @wiser/docs test:e2e
 
 These standard Playwright configurations start isolated development servers and primarily verify reference/fixture-driven routes, locales, themes, and interactions. They do not prove unified Auth, the Data database, or an EXCON live credential. `pnpm stack:full:up` / `pnpm data:smoke` covers the authenticated Data vertical slice.
 
-The repository does not currently have a full-stack Playwright command that issues an EXCON operator credential. To verify EXCON live, obtain a real `WISER_WEB_OPERATOR_TOKEN` through a trusted operator flow, then run an isolated Web instance or dedicated test with `AGENT_EXCON_WEB_DATA_MODE=live` and server-side `AGENT_EXCON_API_INTERNAL_URL`. Without that step, report the result as reference-UI verification rather than live/Auth E2E.
+To verify EXCON live in the complete stack, sign in through Supabase as a user with the EXCON operator role, with `AGENT_EXCON_WEB_DATA_MODE=live` and the server-side API origin configured. The read model forwards that verified session; authentication failures never fall back to a service token. Reference-only tests do not prove live/Auth E2E.
 
 The reproducible model-free EXCON live Web path is the scripted Showcase. It starts an isolated Lab/API/Web, configures the `live` read model with a host-only operator token, and returns the `/collaboration` URL from status:
 
