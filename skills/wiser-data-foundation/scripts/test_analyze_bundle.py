@@ -3,6 +3,7 @@ import copy
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from analyze_bundle import AnalysisRunner, reconcile_paths
 from water_import import ImportFailure
@@ -91,3 +92,18 @@ class AnalysisTests(unittest.TestCase):
             runner.analyze(REG)
             with self.assertRaisesRegex(ImportFailure, "CHECKPOINT_SCOPE_MISMATCH"):
                 runner.analyze({**REG, "versionId": "different"})
+
+    def test_transient_batch_retry_preserves_the_original_command_and_backs_off(self):
+        with tempfile.TemporaryDirectory() as directory:
+            client = FakeClient()
+            runner = AnalysisRunner(client, Path(directory), {"actor": "one"}, "run", poll_seconds=0)
+            waits = []
+            with patch.object(runner, "process", side_effect=runner.analyze):
+                result = runner.process_with_retry(REG, pause=waits.append)
+            self.assertEqual(result["status"], "SUCCEEDED")
+            self.assertEqual(client.keys[0], client.keys[1])
+            self.assertEqual(waits, [2])
+            with patch.object(runner, "process", side_effect=ImportFailure("HTTP_403")) as process:
+                with self.assertRaisesRegex(ImportFailure, "HTTP_403"):
+                    runner.process_with_retry(REG, pause=waits.append)
+                self.assertEqual(process.call_count, 1)
