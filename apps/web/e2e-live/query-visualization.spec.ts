@@ -9,6 +9,37 @@ test.skip(
   'Requires the admitted private water research case.',
 );
 
+test('statistics renders authorized whole-query counts and links a category back to resources', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  for (let index = 0; index < 3; index += 1) {
+    await page.getByRole('tab', { name: '统计', exact: true }).click();
+    const chart = page.getByTestId('explorer-statistics-chart');
+    await expect(chart).toHaveAttribute('data-state', 'ready');
+    await expect(chart.locator('svg')).toHaveCount(1);
+    await page.getByRole('button', { name: '可用 · 1', exact: true }).click();
+    await expect(
+      page.getByRole('tab', { name: '资源', exact: true }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('explorer-total')).toContainText('1');
+  }
+  await page.getByRole('tab', { name: '统计', exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('explorer-statistics-chart')).toHaveAttribute(
+    'data-state',
+    'ready',
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 test('real query readiness filters agree with the complete result summary', async ({
   page,
 }) => {
