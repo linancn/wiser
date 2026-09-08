@@ -1,6 +1,6 @@
 ---
 title: Data REST API
-description: Data Foundation 22 项 Capability、OpenAPI、受控 Resource、幂等、SSE 与资产下载协议。
+description: Data Foundation 23 项 Capability、OpenAPI、受控 Resource、幂等、SSE 与资产下载协议。
 docType: protocol-reference
 scope: data-rest-api
 status: active
@@ -21,7 +21,7 @@ lastReviewedCommit: 25eee01796818498b02abd32f773c580ffb75f32
 
 ## 协议边界
 
-Data REST 位于现有 Fastify 进程的 `/api/data/v1`，不是第二个服务。22 项业务路由全部调用同一个 `DataCapabilityHandler`；它以 `@wiser/data-contracts` 的 strict Zod 4 schema 校验输入/输出，再执行实时 Scope、安全等级、Purpose、timeout、幂等和 hash-only audit。
+Data REST 位于现有 Fastify 进程的 `/api/data/v1`，不是第二个服务。23 项业务路由全部调用同一个 `DataCapabilityHandler`；它以 `@wiser/data-contracts` 的 strict Zod 4 schema 校验输入/输出，再执行实时 Scope、安全等级、Purpose、timeout、幂等和 hash-only audit。
 
 MCP、Skill 和 Web 的服务端 DAL 都通过这个 HTTP 边界工作。任何客户端都不能提交 SQL、Cypher、OpenSearch DSL、shell 命令或任意对象存储 key。
 
@@ -32,7 +32,7 @@ MCP、Skill 和 Web 的服务端 DAL 都通过这个 HTTP 边界工作。任何�
 | 方法  | 路径                                               | 结果                                                          |
 | ----- | -------------------------------------------------- | ------------------------------------------------------------- |
 | `GET` | `/api/data/v1/health`                              | data-postgres、对象存储、Worker readiness；任一缺失返回 `503` |
-| `GET` | `/api/data/v1/capabilities`                        | 有序 22 项 Registry 与 draft-7 输入/输出 Schema、四种 mapping |
+| `GET` | `/api/data/v1/capabilities`                        | 有序 23 项 Registry 与 draft-7 输入/输出 Schema、四种 mapping |
 | `GET` | `/api/data/v1/capabilities/:capabilityId/:version` | 一个固定版本的完整 Capability；未知版本返回 `404`             |
 
 健康成功的核心形状：
@@ -51,7 +51,7 @@ MCP、Skill 和 Web 的服务端 DAL 都通过这个 HTTP 边界工作。任何�
 
 ## OpenAPI 契约投影
 
-共享 `GET /openapi.json` 返回 OpenAPI 3.1 文档，标题固定为 **WISER Platform API**，同时覆盖 Platform、Agent EXCON 与 Data Foundation。Data 的 22 项 Capability 不维护第二份手写 Schema：Fastify 在注册路由时直接把 Registry 的 Zod 4 输入/输出转换成 draft-7 JSON Schema，再按 path、query、body 与 required Header 投影为 OpenAPI operation。
+共享 `GET /openapi.json` 返回 OpenAPI 3.1 文档，标题固定为 **WISER Platform API**，同时覆盖 Platform、Agent EXCON 与 Data Foundation。Data 的 23 项 Capability 不维护第二份手写 Schema：Fastify 在注册路由时直接把 Registry 的 Zod 4 输入/输出转换成 draft-7 JSON Schema，再按 path、query、body 与 required Header 投影为 OpenAPI operation。
 
 每个 Data operation 都带 `data-foundation` tag、稳定 `operationId`、`bearerAuth`、成功状态的响应 Schema，以及 command 的 `Idempotency-Key` 和版本化 command 的 `If-Match`。Fastify 的 schema compiler 在这里服务于 OpenAPI 投影；运行时唯一业务门禁仍是同一 `DataCapabilityHandler` 的 strict Zod 输入/输出校验，不能让生成文档变成第二个行为来源。
 
@@ -85,7 +85,7 @@ If-Match: "v3"
 
 适用范围是 upload Session complete、ingestion submit/approve/reject 与 Operation cancel。Header 与 body 中已有的 `expectedVersion` 必须一致。成功响应在能找到聚合版本时返回 `ETag: "vN"`。所有身份、业务与错误响应使用 `private, no-store`。
 
-## 22 项 Capability 路由
+## 23 项 Capability 路由
 
 | Capability                    | 方法与路径                                                | 成功               |
 | ----------------------------- | --------------------------------------------------------- | ------------------ |
@@ -183,7 +183,7 @@ Publication consumer 尊重 Operation 终态：即使五个 completion target �
 
 ## Evidence 与 STAC Resource 读取
 
-以下两条受控 GET 不属于 22 项业务 Capability；它们专门承载 MCP Resource，并仍复用统一 Auth、data-postgres RLS、授权后审计与 no-store：
+以下两条受控 GET 不属于 23 项业务 Capability；它们专门承载 MCP Resource，并仍复用统一 Auth、data-postgres RLS、授权后审计与 no-store：
 
 | 路径                                                        | Scope                 | 权威与输出边界                                                                                                                 |
 | ----------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -254,3 +254,9 @@ Data REST 错误是扁平安全 envelope：
 | `500` | 服务端契约/配置失败；响应仍不泄露内部详情           |
 
 模糊失败只能以完全相同的 actor、Tenant、Project、Purpose、method、path、body、`Idempotency-Key` 和 `If-Match` 重试。同 key/同 canonical hash 返回原结果；同 key/不同 hash 返回冲突。随后通过最小 GET 或 Operation event 对账。
+
+## 共享探索结果集
+
+`POST /api/data/v1/explore/query` 调用 `data.explore.query`，同时要求 `data.query.execute` 与 `data.catalog.read`。首次使用 `{"spec":{"text":"water"},"view":"resources","first":20}`；续查使用 `{"queryId":"<返回的 UUID>","view":"resources","first":20,"after":"<返回的游标>"}`。`spec` 与 `queryId` 必须二选一，续页必须引用已有结果集。响应包含 `queryId`、`spec`、建立和过期时间、授权范围内的 `totalCount`、固定版本的 `resources`、就绪状态及可选 `nextCursor`。
+
+清单有效期为 30 分钟。其他用户、Purpose/安全上限/授权版本变化以及过期 ID 返回 `404`；权威成员可见性变化返回 `409`；无效条件/游标或匹配超过 10,000 个版本返回 `422`。同一匹配的用户与上下文最多保留 32 个近期清单，新查询可能淘汰更早的结果集；失效后重新执行原查询条件。投影就绪状态可独立推进。接口不接受 SQL、Cypher 或租户、Actor 覆盖字段。

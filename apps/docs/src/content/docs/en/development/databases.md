@@ -156,3 +156,9 @@ WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
 `data:reset` continues only with the exact confirmation value and removes only resolved and validated WISER Data Foundation named volumes. That data is still unrecoverable. Confirm that no local uploads, versions, objects, or projections need to be retained. After a reset, use `pnpm stack:full:up` to rebuild, migrate, seed, and smoke the stack.
 
 The repository does not currently provide a standard command that creates a temporary Data database while retaining existing named volumes. Prove “replay from empty” in CI or disposable local state with confirmation-gated `data:reset → stack:full:up`. If local data must be retained, stop rather than treating a destructive reset as an ordinary test step.
+
+## Exploration manifests
+
+`0011_exploration_queries.sql` adds the private `service.exploration_snapshot` cache with forced owner RLS, immutable manifests, a 30-minute maximum lifetime, bounded version references and owner/expiry indexes. Query transactions additionally set `wiser.actor_id` and `wiser.purpose`; policy version and security ceiling must match exactly. Runtime provisioning grants deletion only for this cache and removes update permission. It does not relax append-only history tables. Creation prunes expired and excess manifests visible to the same owner/context. Expired manifests belonging to inactive contexts can be removed by a privileged operator using the expiry index; expiry alone does not imply physical deletion.
+
+Run `apps/api/test/data-exploration.integration.spec.ts` with `WISER_DATA_PG_INTEGRATION=1` and `DATA_TEST_DATABASE_URL` against a migrated database. Its synthetic rows and temporary non-bypass role are contained in a rolled-back transaction; it verifies stable pagination, new versus pinned versions, exact historical queries, empty results, actor/project/tenant/purpose/policy/security isolation and expiry.

@@ -62,6 +62,7 @@ import {
   type DataFoundationApiRuntimeConfig,
 } from './runtime-config.js';
 import { createSpecialQueryExecutors } from './special-query-executors.js';
+import { PostgresExplorationExecutor } from './exploration-runtime.js';
 import type { PlatformAuthRuntime } from '../platform/auth-runtime.js';
 import type { WiserApiModule } from '../platform/modules.js';
 
@@ -233,19 +234,22 @@ const defaultFactories: DataFoundationRuntimeFactories = {
         bearerToken: config.stac.bearerToken,
       }),
     });
-    return createSpecialQueryExecutors({
-      search,
-      data: new PostgresStructuredDataQueryPort({ pool: pg }),
-      graph: new Neo4jGraphQueryPort({
-        baseUrl: config.neo4j.url,
-        database: config.neo4j.database,
-        authorization: `Basic ${Buffer.from(
-          `${config.neo4j.username}:${config.neo4j.password}`,
-        ).toString('base64')}`,
-        http: boundedHttpClient,
+    return [
+      ...createSpecialQueryExecutors({
+        search,
+        data: new PostgresStructuredDataQueryPort({ pool: pg }),
+        graph: new Neo4jGraphQueryPort({
+          baseUrl: config.neo4j.url,
+          database: config.neo4j.database,
+          authorization: `Basic ${Buffer.from(
+            `${config.neo4j.username}:${config.neo4j.password}`,
+          ).toString('base64')}`,
+          http: boundedHttpClient,
+        }),
+        geo: new PostgisGeoQueryPort({ pool: pg }),
       }),
-      geo: new PostgisGeoQueryPort({ pool: pg }),
-    });
+      new PostgresExplorationExecutor(pg),
+    ];
   },
   createAssetDownloadPort(pool, objectStore) {
     return new PostgresDataAssetDownloadPort({
@@ -305,7 +309,7 @@ function exactExecutors(
     DATA_CAPABILITY_IDS.some((id) => !ids.includes(id))
   ) {
     throw new Error(
-      'Data Foundation runtime must compose exactly 22 Capability executors.',
+      `Data Foundation runtime must compose exactly ${DATA_CAPABILITY_IDS.length} Capability executors.`,
     );
   }
   return Object.freeze([...executors]);

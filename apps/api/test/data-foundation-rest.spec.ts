@@ -69,6 +69,7 @@ const point = {
 };
 
 const validInputs = {
+  'data.explore.query': { spec: {}, view: 'resources', first: 20 },
   'data.catalog.search': {
     query: 'station',
     includeTotal: true,

@@ -133,6 +133,7 @@ type Query {
   ): DataItemConnection!
   dataItem(id: ID!, version: ID): DataItem
   dataQuery(input: JSON!): JSON!
+  dataExplore(input: JSON!): JSON!
   dataSearch(input: DataSearchInput!): SearchResultConnection!
   knowledgeSearch(input: KnowledgeSearchInput!): SearchResultConnection!
   graphExpand(input: GraphExpandInput!): GraphResult!
@@ -167,6 +168,7 @@ export const GRAPHQL_CAPABILITY_BY_FIELD: Readonly<
   dataCatalog: 'data.catalog.search',
   dataItem: 'data.catalog.get',
   dataQuery: 'data.query',
+  dataExplore: 'data.explore.query',
   dataSearch: 'data.search.federated',
   knowledgeSearch: 'data.knowledge.search',
   graphExpand: 'data.graph.expand',
@@ -290,6 +292,7 @@ function complexityRule(maximum: number): ValidationRule {
       Field(node: FieldNode) {
         const weight = [
           'dataQuery',
+          'dataExplore',
           'dataSearch',
           'knowledgeSearch',
           'graphExpand',
@@ -527,6 +530,11 @@ const resolvers = {
       args: { input: unknown },
       context: GraphqlContext,
     ) => executeQuery(context, 'data.query', args.input),
+    dataExplore: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeQuery(context, 'data.explore.query', args.input),
     dataSearch: (
       _: unknown,
       args: { input: unknown },

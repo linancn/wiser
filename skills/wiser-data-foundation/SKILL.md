@@ -18,6 +18,7 @@ Read [capability-protocol.md](references/capability-protocol.md) before the firs
 ## Choose the narrowest workflow
 
 - Use `data.catalog.search` and `data.catalog.get` to identify an immutable DataItem version before analysis.
+- Use `data.explore.query` for a shared result set of published resources. Start with `spec` and `view: "resources"`; preserve `queryId` and follow `nextCursor` in `after`. The API pins versions, expires the manifest after 30 minutes and reauthorizes every continuation. Re-run the specification after expiry. Keep `NOT_PARSED` and null analytical counts distinct from zero observations.
 - Use `data.query` for structured, bounded fields and filters. It never accepts SQL.
 - Use `data.search.federated` for governed full-text/semantic/graph/geo/STAC retrieval; use `data.knowledge.search` when evidence fragments and confidence are the goal.
 - Use `data.graph.expand` or `data.graph.findPath` for bounded graph traversal. They never accept Cypher.

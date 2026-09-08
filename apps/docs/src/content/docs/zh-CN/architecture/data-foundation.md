@@ -32,7 +32,7 @@ Data Foundation 是与 Agent EXCON 平级的 WISER 业务系统。它拥有 Data
 ```text
 Supabase principal + Tenant/Project/Purpose
   → Fastify REST / schema-first GraphQL
-  → 同一 DataCapabilityHandler（22 项静态 executor）
+  → 同一 DataCapabilityHandler（23 项静态 executor）
   → data-postgres RLS transaction / SeaweedFS S3
   → PostgreSQL durable job + Transactional Outbox
   → Data Worker
@@ -47,7 +47,7 @@ GeoServer、TiTiler 和 Martin 作为 Compose-internal GIS 服务存在于同一
 
 | 模块                                        | 职责                                                                        |
 | ------------------------------------------- | --------------------------------------------------------------------------- |
-| `@wiser/data-contracts`                     | 严格 Zod DTO、22 项 Capability、四种 transport mapping                      |
+| `@wiser/data-contracts`                     | 严格 Zod DTO、23 项 Capability、四种 transport mapping                      |
 | `@wiser/data-core`                          | 纯确定性的入库/Operation 状态机、质量、安全继承和发布门禁                   |
 | `@wiser/data-infra`                         | checksum migration、PostgreSQL/S3、任务/Outbox、投影、检索和 fake embedding |
 | `@wiser/data-worker`                        | 具体入库 Handler、Scheduler、投影 consumer、健康与指标                      |
@@ -177,9 +177,9 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 
 数据总览使用 `includeTotal=true` 取得受授权的目录总数，指标不再取预览页大小。目录计数和当前页使用同一个短 repeatable-read 权威事务。该数量表示登记对象，不表示已经通过分析验证的记录。
 
-- REST：`/api/data/v1` 的 discovery、22 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；22 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
-- GraphQL：`POST /graphql`，22 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
-- MCP：stdio/无状态 Streamable HTTP，22 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
+- REST：`/api/data/v1` 的 discovery、23 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；23 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
+- GraphQL：`POST /graphql`，23 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
+- MCP：stdio/无状态 Streamable HTTP，23 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
 - Skill：`skills/wiser-data-foundation` 定义发现、查询、上传、入库、Operation 与安全解释流程。
 - Web：现有 Next.js 应用中的 14 个 Data route，server-only DAL、真实 Supabase Session、双语/主题、不可变版本选择，以及 MapLibre 的 PostGIS authority GeoJSON、STAC extent、受控 vector MVT 与 raster 四图层。
 
@@ -194,3 +194,9 @@ Web 负责治理与查询，不在 Server Action 或 Route Handler 执行文件�
 npm 的精确版本由对应 `package.json` 与根 `pnpm-lock.yaml` 定义；Data 容器的稳定 tag、digest 与兼容注记由 `compose.yaml` 和 `infrastructure/data-foundation/versions.env` 定义。架构文档不复制这些会频繁变化的清单。
 
 `pnpm data:smoke` 从上传、扫描、解析、受控 Agent 计划、确定性转换、质量/人工门禁、权威提交与 Outbox 一直验证到全部投影，并通过 REST、GraphQL、MCP 和登录后的 Web 回读；重复消费同一 Outbox event 不得创建重复权威或投影对象。完整命令矩阵见[测试与验证](/development/testing/)，数据库重置与迁移纪律见[数据库与迁移](/development/databases/)。
+
+## 固定版本的统一探索
+
+`data.explore.query` 从调用者可见的已发布版本建立有效期 30 分钟的结果集。声明式 `QuerySpec` 支持文本、数据项 ID、明确的版本对、业务领域和质量等级；未指定版本时选择每个数据项最新可访问的已发布版本。服务端清单固定最多 10,000 个版本引用，资源页最多 200 条；超过上限需要缩小查询范围。
+
+每次续查都绑定 Actor、Tenant、Project、Purpose、精确授权版本和安全上限。PostgreSQL 强制 RLS 保护清单，各视图还会重新核查引用的数据项及版本是否仍可访问且已发布。授权或发布变化使续查失效，不会静默改变结果集；新发布的版本也不会替换已固定版本。这固定的是版本成员，不是跨投影存储的分布式快照。就绪状态与分析数量独立：只有登记的资源返回 `NOT_PARSED`，未知记录数为 `null`。

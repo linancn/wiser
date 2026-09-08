@@ -1,6 +1,6 @@
 ---
 title: Data MCP 接入
-description: 通过共享 WISER MCP Gateway 调用 22 项 Data Capability 与 5 类受控 Resource。
+description: 通过共享 WISER MCP Gateway 调用 23 项 Data Capability 与 5 类受控 Resource。
 docType: protocol-reference
 scope: data-mcp-adapter
 status: active
@@ -25,7 +25,7 @@ lastReviewedCommit: 25eee01796818498b02abd32f773c580ffb75f32
 
 Data MCP 是现有 WISER MCP Gateway 的静态 `WiserMcpModule`，不是第二套业务实现。stdio 与无状态 Streamable HTTP 都调用 `/api/data/v1`，从不连接 data-postgres、SeaweedFS 或任一投影，也不持有 Supabase service-role key。
 
-模块从 `@wiser/data-contracts` 的有序 Registry 注册 22 个 strict Zod Tool。Tool name、输入 schema、query/command 注解和 REST mapping 在运行时来自同一 Capability definition；不存在 AST 扫描、通用 SQL/Cypher/DSL Tool 或自动发现的数据库命令。
+模块从 `@wiser/data-contracts` 的有序 Registry 注册 23 个 strict Zod Tool。Tool name、输入 schema、query/command 注解和 REST mapping 在运行时来自同一 Capability definition；不存在 AST 扫描、通用 SQL/Cypher/DSL Tool 或自动发现的数据库命令。
 
 ## Data API 配置
 
@@ -88,7 +88,7 @@ pnpm --filter @wiser/mcp start:http
 
 禁止把任一 token 放进 query、Tool 参数、Resource URI、日志、Telemetry 或 Git。`GET /health/live` 与 `/health/ready` 无需认证且禁止缓存；优雅关闭先让 ready 变为 false，再排空在途请求。每个 `/mcp` 请求创建新 server/transport，当前入口不签发或恢复 MCP session。
 
-## 22 个 Tools
+## 23 个 Tools
 
 | MCP Tool                       | Capability                    | 类型    |
 | ------------------------------ | ----------------------------- | ------- |
@@ -201,3 +201,7 @@ URI segment 只接受安全字母数字与 `._:-`，不允许斜线、遍历、q
 Query 用相同 cursor/filters 重试。Command 只能用相同 principal、Tenant、Project、Purpose、Tool、arguments 与 `idempotencyKey` 重试；版本化 command 的 `expectedVersion` 也必须不变。模糊失败后用 `data_operation_get` 或最小 catalog/ingestion GET 对账，不生成新 key 盲目重复。
 
 MCP 不替调用方保存 bearer、upload id、multipart ETag 或 Operation cursor。调用方负责把这些状态保存在受保护、可恢复且不会进入 Agent 可见正文的位置。
+
+## 共享探索
+
+`data_explore_query` 通过 `POST /api/data/v1/explore/query` 调用 `data.explore.query`。首次使用 `{"spec":{"text":"water"},"view":"resources","first":20}`，续查引用返回的 `queryId`，将 `nextCursor` 传入 `after`。API 固定已发布版本，清单有效期最长 30 分钟，每次调用重新授权所属用户和上下文。MCP Gateway 不访问结果集数据库。`NOT_PARSED` 和空分析数量表示登记就绪情况，不能用来推断没有观测数据。

@@ -102,6 +102,7 @@ type Query {
   ): DataItemConnection!
   dataItem(id: ID!, version: ID): DataItem
   dataQuery(input: JSON!): JSON!
+  dataExplore(input: JSON!): JSON!
   dataSearch(input: DataSearchInput!): SearchResultConnection!
   knowledgeSearch(input: KnowledgeSearchInput!): SearchResultConnection!
   graphExpand(input: GraphExpandInput!): GraphResult!

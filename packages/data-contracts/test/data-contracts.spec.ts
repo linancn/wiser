@@ -154,6 +154,7 @@ for (const serverOwnedField of [
 }
 
 const validCapabilityInputs = {
+  'data.explore.query': { spec: {}, view: 'resources', first: 20 },
   'data.catalog.search': { query: 'monitoring station', first: 20 },
   'data.catalog.get': { dataItemId: DATA_ITEM_ID },
   'data.query': {
@@ -246,6 +247,16 @@ const validCapabilityInputs = {
 } satisfies Record<DataCapabilityId, Readonly<Record<string, unknown>>>;
 
 const expectedCapabilityMappings = {
+  'data.explore.query': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/query',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataExplore' },
+    mcpMapping: { toolName: 'data_explore_query' },
+    skillMapping: { operation: 'data.explore.query' },
+  },
   'data.catalog.search': {
     restMapping: {
       method: 'GET',
@@ -491,6 +502,7 @@ const expectedCapabilityMappings = {
 } satisfies Record<DataCapabilityId, unknown>;
 
 const expectedCapabilityScopes = {
+  'data.explore.query': ['data.query.execute', 'data.catalog.read'],
   'data.catalog.search': ['data.catalog.read'],
   'data.catalog.get': ['data.catalog.read'],
   'data.query': ['data.query.execute'],
@@ -522,6 +534,10 @@ const asynchronousCapabilityIds = new Set<DataCapabilityId>([
 ]);
 
 const expectedJsonSchemaHashes = {
+  'data.explore.query': {
+    input: '89b9b8cf3785125f4639df7306663edb8d2a17becfeb72aaa2c1c623bc3a0622',
+    output: 'da354e008d49bba639f7fd9b518d9c6dc3c38c9d67975bf6bf8f66bcca149f09',
+  },
   'data.catalog.search': {
     input: '9fa0f09f57dc5063f42406cdaefd0e19b0ab8e019a3a4ba9824a3445c24139be',
     output: '35a4dfc5c6f6d983c58ad3d209f6177979bd17cdbd96fe3f4109b149956ec02c',
@@ -945,6 +961,7 @@ describe('Data Foundation capability registry', () => {
       'data.ingestion.reject',
       'data.operation.cancel',
       'data.operation.events',
+      'data.explore.query',
     ]);
     expect(Object.keys(DATA_CAPABILITY_REGISTRY)).toEqual(DATA_CAPABILITY_IDS);
 

@@ -156,4 +156,12 @@ grant usage, select on sequences to wiser_data_runtime;
 alter default privileges in schema ingestion, security
 grant execute on functions to wiser_data_runtime;
 
+-- Query manifests are immutable, expiring caches owned by the verified caller.
+do $$ begin
+  if to_regclass('service.exploration_snapshot') is not null then
+    grant select, insert, delete on service.exploration_snapshot to wiser_data_runtime;
+    revoke update on service.exploration_snapshot from wiser_data_runtime;
+  end if;
+end $$;
+
 commit;

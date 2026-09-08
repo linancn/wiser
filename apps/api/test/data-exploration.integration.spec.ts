@@ -25,7 +25,13 @@ function scopedPool(client: PoolClient, role: string): QueryAdapterPgPool {
             await client.query('release savepoint exploration');
             return { rows: [] };
           }
-          return client.query(sql, [...values]);
+          try {
+            return await client.query(sql, [...values]);
+          } catch (error) {
+            // The fixture contains synthetic data only; surface PostgreSQL diagnostics.
+            console.error(error);
+            throw error;
+          }
         },
         release() {},
       };
@@ -104,6 +110,9 @@ describe('authorized exploration result sets in PostgreSQL', () => {
         );
         await client.query(
           `grant usage on schema catalog, knowledge, security, service to ${role}`,
+        );
+        await client.query(
+          `grant execute on all functions in schema security to ${role}`,
         );
         await client.query(
           `grant select on all tables in schema catalog, knowledge, service to ${role}`,

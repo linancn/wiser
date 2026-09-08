@@ -1,6 +1,6 @@
 ---
 title: Data MCP integration
-description: Invoke 22 Data Capabilities and five governed Resources through the shared WISER MCP Gateway.
+description: Invoke 23 Data Capabilities and five governed Resources through the shared WISER MCP Gateway.
 docType: protocol-reference
 scope: data-mcp-adapter
 status: active
@@ -88,7 +88,7 @@ The two credentials have different jobs:
 
 Never place either token in a query, Tool argument, Resource URI, log, telemetry, or Git. `GET /health/live` and `/health/ready` are unauthenticated and non-cacheable. Graceful shutdown makes readiness false before draining requests. Every `/mcp` request gets a fresh server/transport; the boundary does not issue or resume MCP sessions.
 
-## The 22 Tools
+## The 23 Tools
 
 | MCP Tool                       | Capability                    | Kind    |
 | ------------------------------ | ----------------------------- | ------- |
@@ -201,3 +201,7 @@ This distinction preserves only the identity class; it never forwards API `detai
 Retry a Query with the same cursor and filters. Retry a command only with identical principal, Tenant, Project, Purpose, Tool, arguments, and `idempotencyKey`; a versioned command preserves `expectedVersion`. After an ambiguous failure, reconcile with `data_operation_get` or the smallest catalog/ingestion GET instead of blindly generating a new key.
 
 MCP does not persist bearers, upload ids, multipart ETags, or Operation cursors for the caller. Keep that state in a protected, recoverable location outside Agent-visible content.
+
+## Shared exploration
+
+`data_explore_query` invokes `data.explore.query` through `POST /api/data/v1/explore/query`. Start with `{"spec":{"text":"water"},"view":"resources","first":20}`; continue with the returned `queryId` and `nextCursor` in `after`. The API pins published versions for up to 30 minutes and reauthorizes the owner/context on every request. The MCP gateway has no result-set database access. `NOT_PARSED` and null analytical counts are registration readiness, not evidence of zero observations.

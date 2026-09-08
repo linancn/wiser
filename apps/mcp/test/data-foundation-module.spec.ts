@@ -48,6 +48,7 @@ const EXPECTED_DATA_TOOLS = [
   'data_ingestion_reject',
   'data_operation_cancel',
   'data_operation_events',
+  'data_explore_query',
 ] as const;
 
 class StubExconHttpClient implements AgentExconHttpClient {

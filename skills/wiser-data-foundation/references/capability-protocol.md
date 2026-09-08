@@ -33,6 +33,8 @@ Commands require a UUID `Idempotency-Key`. Versioned commands also require a str
 | `data.operation.cancel`       | `POST /operations/{operationId}/cancel`                     | `data_operation_cancel`        |
 | `data.operation.events`       | `GET /operations/{operationId}/events` (SSE snapshot)       | `data_operation_events`        |
 
+| `data.explore.query` | `POST /explore/query` | `data_explore_query` |
+
 The Registry schema is authoritative if this table ever differs from a running server.
 
 ## Operations

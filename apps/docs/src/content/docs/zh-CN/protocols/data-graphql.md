@@ -28,7 +28,7 @@ POST /graphql
 Content-Type: application/json
 ```
 
-实现使用 Mercurius 的 schema-first SDL，不使用 decorator 或 TypeScript AST 扫描。GraphQL field 只是 22 项 Capability 的投影；resolver 与 REST 调用同一个 `DataCapabilityHandler`，因此输入/输出 Zod 校验、Scope、安全 ceiling、Purpose、timeout、幂等和 audit 语义一致。
+实现使用 Mercurius 的 schema-first SDL，不使用 decorator 或 TypeScript AST 扫描。GraphQL field 只是 23 项 Capability 的投影；resolver 与 REST 调用同一个 `DataCapabilityHandler`，因此输入/输出 Zod 校验、Scope、安全 ceiling、Purpose、timeout、幂等和 audit 语义一致。
 
 GraphQL 与 Mercurius 的精确兼容版本由 `apps/api/package.json` 和根 lockfile 定义，并由 API typecheck/build 验证。协议文档不复制会随依赖升级变化的版本清单。
 
@@ -175,3 +175,7 @@ GraphQL validation/execution error 返回固定安全 message，`extensions.code
 无效/过大的请求通常返回 HTTP `400`；身份缺失返回 `401`；成功进入 GraphQL 执行但 field 失败时响应通常为 HTTP `200` 加 `errors`。调用方必须同时检查 HTTP 与 GraphQL envelope。
 
 Query 可按相同 cursor 安全重试。Mutation 只能以相同身份、operation、variables 与 `Idempotency-Key` 重试；同 key 不同 variables 是冲突。之后通过 `dataOperation` 或最小资源 Query 对账。
+
+## 共享探索
+
+`dataExplore(input: JSON!): JSON!` 调用 `data.explore.query`，与 REST 共享严格 `QuerySpec`、绑定用户的 `queryId`、固定版本成员、有效期与资源响应。要求 `data.query.execute` 和 `data.catalog.read`，复杂度权重与 `dataQuery` 相同。首次输入 `{spec:{text:"water"},view:"resources",first:20}`，后续使用返回的 `queryId`，并将 `nextCursor` 传入 `after`。

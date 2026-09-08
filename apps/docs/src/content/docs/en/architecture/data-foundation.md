@@ -32,7 +32,7 @@ The default Data runtime composes:
 ```text
 Supabase principal + Tenant/Project/Purpose
   → Fastify REST / schema-first GraphQL
-  → one DataCapabilityHandler (22 static executors)
+  → one DataCapabilityHandler (23 static executors)
   → data-postgres RLS transaction / SeaweedFS S3
   → PostgreSQL durable job + Transactional Outbox
   → Data Worker
@@ -47,7 +47,7 @@ GeoServer, TiTiler, and Martin run as Compose-internal GIS services in the same 
 
 | Module                                      | Responsibility                                                                      |
 | ------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `@wiser/data-contracts`                     | Strict Zod DTOs, 22 Capabilities, four transport mappings                           |
+| `@wiser/data-contracts`                     | Strict Zod DTOs, 23 Capabilities, four transport mappings                           |
 | `@wiser/data-core`                          | Pure ingestion/Operation state, quality, security inheritance, publication gates    |
 | `@wiser/data-infra`                         | Checksum migration, PostgreSQL/S3, jobs/Outbox, projections, search, fake embedding |
 | `@wiser/data-worker`                        | Concrete ingestion Handler, Scheduler, projection consumer, health and metrics      |
@@ -177,9 +177,9 @@ The graph workspace lazily loads G6 5.1.1 on the client and renders only the bou
 
 The Data overview reads the scoped catalog total with `includeTotal=true`; its metric is independent of the preview page size. Catalog count and page use one short repeatable-read authority transaction. Counts describe registered objects, not analytically validated records.
 
-- REST: `/api/data/v1` discovery, 22 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 22 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
-- GraphQL: `POST /graphql`, 22 schema-first fields sharing the same Handler; see [Data GraphQL](/en/protocols/data-graphql/).
-- MCP: stdio/stateless Streamable HTTP, 22 Tools and governed Resources that call HTTP only; see [Data MCP](/en/protocols/data-mcp/).
+- REST: `/api/data/v1` discovery, 23 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 23 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
+- GraphQL: `POST /graphql`, 23 schema-first fields sharing the same Handler; see [Data GraphQL](/en/protocols/data-graphql/).
+- MCP: stdio/stateless Streamable HTTP, 23 Tools and governed Resources that call HTTP only; see [Data MCP](/en/protocols/data-mcp/).
 - Skill: `skills/wiser-data-foundation` documents discovery, query, upload, ingestion, Operation, and security workflows.
 - Web: 14 Data routes in the existing Next.js app with server-only DAL, real Supabase session, both locales/themes, immutable-version selection, and four MapLibre layers: PostGIS authority GeoJSON, STAC extents, governed vector MVT, and raster.
 
@@ -194,3 +194,9 @@ Web governs and queries; it never performs file parsing, vectorization, GIS tran
 Exact npm versions come from the relevant `package.json` files and the root `pnpm-lock.yaml`. Stable Data container tags, digests, and compatibility notes come from `compose.yaml` and `infrastructure/data-foundation/versions.env`. Architecture prose does not duplicate those frequently changing inventories.
 
 `pnpm data:smoke` validates upload, scanning, parsing, controlled Agent planning, deterministic transformation, quality/human gates, authority commit, Outbox, and all projections, then reads the result through REST, GraphQL, MCP, and authenticated Web. Reprocessing the same Outbox event must create no duplicate authority or projection object. See [Testing and verification](/en/development/testing/) for the command matrix and [Databases and migrations](/en/development/databases/) for reset and migration discipline.
+
+## Versioned exploration
+
+`data.explore.query` creates a 30-minute result set from caller-visible published versions. Its declarative `QuerySpec` supports text, item IDs, explicit version pairs, business domains and quality grades. Without explicit version pairs, it selects the latest authorized published version per item. A server-side manifest pins up to 10,000 version references; resource pages contain at most 200 entries. Broader searches must be narrowed.
+
+Every continuation binds the result set to Actor, Tenant, Project, Purpose, exact authorization version and security ceiling. PostgreSQL forced RLS protects the manifest; each view also checks its published item/version references against current authority. Permission or publication changes invalidate continuation instead of silently changing the result set. New publications do not replace pinned versions. This fixes version membership, not a distributed snapshot of all projections. Readiness and analytical counts remain separate: registration-only resources report `NOT_PARSED` and unknown counts as `null`.

@@ -156,3 +156,9 @@ WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
 `data:reset` 只有在确认值正确时才会继续，并只删除脚本解析和校验过的 WISER Data Foundation named volumes；这些数据仍不可恢复。执行前先确认没有需要保留的本机上传、版本、对象或投影。重置后使用 `pnpm stack:full:up` 重建、迁移、seed 并 smoke。
 
 仓库当前没有保留现有命名卷同时创建临时 Data 数据库的标准命令。“从空库重放”应在 CI 或可丢弃的本机环境中，以确认式 `data:reset → stack:full:up` 证明；需要保留本机数据时停止，不要把破坏性 reset 当普通测试步骤。
+
+## 探索清单
+
+`0011_exploration_queries.sql` 增加私有 `service.exploration_snapshot` 缓存，具有强制所属用户 RLS、不可变清单、最长 30 分钟有效期、有界版本引用，以及用户和过期索引。查询事务额外设置 `wiser.actor_id`、`wiser.purpose`；授权版本与安全上限必须精确匹配。Runtime provisioning 仅为此缓存授予删除并撤销更新权限，不放宽历史表的只追加约束。建立新查询会清理同一可见用户与上下文的过期或超额清单。不活跃上下文留下的过期清单可由特权运维通过过期索引清理；过期不代表已经物理删除。
+
+设置 `WISER_DATA_PG_INTEGRATION=1` 和指向已迁移数据库的 `DATA_TEST_DATABASE_URL`，运行 `apps/api/test/data-exploration.integration.spec.ts`。合成数据和临时不可绕过 RLS 的角色均处于最终回滚的事务内，验证稳定分页、新旧固定版本、历史版本查询、空结果、用户/项目/租户/Purpose/授权版本/安全上限隔离及过期处理。

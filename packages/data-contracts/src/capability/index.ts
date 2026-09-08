@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  ExplorationQueryInputSchema,
+  ExplorationResultSchema,
+} from '../exploration/index.js';
 
 import {
   AcceptanceStatusSchema,
@@ -72,6 +76,7 @@ export const DATA_CAPABILITY_IDS = [
   'data.ingestion.reject',
   'data.operation.cancel',
   'data.operation.events',
+  'data.explore.query',
 ] as const;
 
 export const DataCapabilityIdSchema = z.enum(DATA_CAPABILITY_IDS);
@@ -868,6 +873,27 @@ const capabilityRegistry = {
     graphqlMapping: { operationType: 'query', field: 'dataOperationEvents' },
     mcpMapping: { toolName: 'data_operation_events' },
     skillMapping: { operation: 'data.operation.events' },
+  }),
+  'data.explore.query': defineCapability({
+    id: 'data.explore.query',
+    version: '1.0.0',
+    kind: 'query',
+    inputSchema: ExplorationQueryInputSchema,
+    outputSchema: ExplorationResultSchema,
+    requiredScopes: ['data.query.execute', 'data.catalog.read'],
+    maxSecurityLevel: 'L3_CONFIDENTIAL',
+    executionMode: 'SYNCHRONOUS',
+    timeout: 30000,
+    idempotent: true,
+    auditLevel: 'DETAILED',
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/query',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataExplore' },
+    mcpMapping: { toolName: 'data_explore_query' },
+    skillMapping: { operation: 'data.explore.query' },
   }),
 } satisfies Record<DataCapabilityId, Readonly<CapabilityDefinition>>;
 

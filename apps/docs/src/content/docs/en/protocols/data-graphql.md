@@ -28,7 +28,7 @@ POST /graphql
 Content-Type: application/json
 ```
 
-It uses Mercurius with schema-first SDL and no decorator or TypeScript AST scanning. GraphQL fields are projections of the 22 Capabilities. Resolvers and REST call the same `DataCapabilityHandler`, preserving Zod input/output validation, scopes, security ceiling, purpose, timeout, idempotency, and audit semantics.
+It uses Mercurius with schema-first SDL and no decorator or TypeScript AST scanning. GraphQL fields are projections of the 23 Capabilities. Resolvers and REST call the same `DataCapabilityHandler`, preserving Zod input/output validation, scopes, security ceiling, purpose, timeout, idempotency, and audit semantics.
 
 `apps/api/package.json` and the root lockfile define the exact compatible GraphQL and Mercurius versions, and API typecheck/build verifies that combination. Protocol prose does not duplicate a version inventory that changes during dependency upgrades.
 
@@ -175,3 +175,7 @@ GraphQL validation/execution errors expose a fixed safe message and a stable `ex
 Invalid or oversized requests usually return HTTP `400`; missing identity returns `401`; a field failure after GraphQL execution usually returns HTTP `200` with `errors`. Always inspect both HTTP and the GraphQL envelope.
 
 Queries can retry with the same cursor. A mutation retries only with the same identity, operation, variables, and `Idempotency-Key`; different variables under the same key conflict. Reconcile through `dataOperation` or the smallest resource Query.
+
+## Shared exploration
+
+`dataExplore(input: JSON!): JSON!` invokes `data.explore.query` with the same strict `QuerySpec`, user-bound `queryId`, immutable version membership, expiry and resource envelope as REST. It requires `data.query.execute` and `data.catalog.read`; the field has the same elevated complexity weight as `dataQuery`. Use `{spec:{text:"water"},view:"resources",first:20}` initially, then the returned `queryId` and `nextCursor`.
