@@ -10,6 +10,30 @@ const version = '10000000-0000-4000-8000-000000000002';
 const query = '10000000-0000-4000-8000-000000000003';
 
 describe('unified exploration contracts', () => {
+  it('binds records and map views to an existing result set without accepting a foreign analysis identifier', () => {
+    expect(
+      ExplorationQueryInputSchema.safeParse({
+        queryId: query,
+        view: 'records',
+        versionId: version,
+      }).success,
+    ).toBe(true);
+    expect(
+      ExplorationQueryInputSchema.safeParse({
+        queryId: query,
+        view: 'map',
+        bbox: [-180, -90, 180, 90],
+      }).success,
+    ).toBe(true);
+    for (const input of [
+      { queryId: query, view: 'records' },
+      { spec: {}, view: 'records', versionId: version },
+      { queryId: query, view: 'map', bbox: [10, 20, -10, 30] },
+      { queryId: query, view: 'map', analysisId: item },
+      { queryId: query, view: 'resources', assetId: item },
+    ])
+      expect(ExplorationQueryInputSchema.safeParse(input).success).toBe(false);
+  });
   it('accepts bounded declarative filters and immutable version references', () => {
     expect(
       QuerySpecSchema.parse({
