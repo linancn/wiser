@@ -30,24 +30,14 @@ test('graph layouts run in a same-origin worker and release it after rendering',
     'data-state',
     'ready',
   );
-  await expect
-    .poll(
-      () =>
-        workers.filter((worker) => worker.url.includes('graph-layout')).length,
-    )
-    .toBeGreaterThan(0);
+  // Production chunk names are content hashes, so observe Worker lifecycle itself.
+  await expect.poll(() => workers.length).toBeGreaterThan(0);
   expect(
     workers.every(
       (worker) => new URL(worker.url).origin === new URL(page.url()).origin,
     ),
   ).toBe(true);
-  await expect
-    .poll(() =>
-      workers
-        .filter((worker) => worker.url.includes('graph-layout'))
-        .every((worker) => worker.closed),
-    )
-    .toBe(true);
+  await expect.poll(() => workers.every((worker) => worker.closed)).toBe(true);
 });
 
 test('query history reauthorizes conditions and restores the active view after reload', async ({

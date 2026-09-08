@@ -267,6 +267,9 @@ importers:
       '@antv/g6':
         specifier: 5.1.1
         version: 5.1.1
+      '@antv/layout':
+        specifier: 2.0.0
+        version: 2.0.0
       '@supabase/ssr':
         specifier: 0.12.5
         version: 0.12.5(@supabase/supabase-js@2.112.4)

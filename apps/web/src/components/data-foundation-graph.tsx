@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { GraphResultDto } from '@/lib/data-foundation';
 import { getDictionary, type Locale } from '@/lib/i18n';
+import { layoutGraph } from '@/lib/graph-layout';
 import styles from './data-foundation-graph.module.css';
 
 export interface CanvasGraphData {
@@ -44,6 +45,7 @@ export function KnowledgeGraphCanvas({
     const container = target.current;
     if (container === null) return;
     let disposed = false;
+    const layoutController = new AbortController();
     let instance: Graph | null = null;
     let resize: ResizeObserver | null = null;
     let theme: MutationObserver | null = null;
@@ -60,6 +62,24 @@ export function KnowledgeGraphCanvas({
     const initialize = async () => {
       const { Graph: GraphConstructor, NodeEvent } = await import('@antv/g6');
       if (disposed) return;
+      const positions = hierarchical
+        ? new Map(
+            (
+              await layoutGraph(
+                {
+                  nodes: result.nodes.map((node) => ({ id: node.entityId })),
+                  edges: result.edges.map((edge) => ({
+                    id: edge.edgeId,
+                    source: edge.fromEntityId,
+                    target: edge.toEntityId,
+                  })),
+                },
+                layoutController.signal,
+              )
+            ).map((node) => [node.id, node]),
+          )
+        : null;
+      if (disposed) return;
       const palette = colors();
       const columns = Math.max(1, Math.ceil(Math.sqrt(result.nodes.length)));
       instance = new GraphConstructor({
@@ -67,16 +87,6 @@ export function KnowledgeGraphCanvas({
         width: container.clientWidth,
         height: container.clientHeight,
         animation: false,
-        ...(hierarchical
-          ? {
-              layout: {
-                type: 'dagre',
-                rankdir: 'LR',
-                nodesep: 40,
-                ranksep: 120,
-              },
-            }
-          : {}),
         autoFit: 'view',
         zoomRange: [0.15, 1.5],
         padding: 48,
@@ -85,8 +95,10 @@ export function KnowledgeGraphCanvas({
             id: node.entityId,
             data: { label: node.label },
             style: {
-              x: (index % columns) * 180,
-              y: Math.floor(index / columns) * 100,
+              x: positions?.get(node.entityId)?.x ?? (index % columns) * 180,
+              y:
+                positions?.get(node.entityId)?.y ??
+                Math.floor(index / columns) * 100,
             },
           })),
           edges: result.edges.map((edge) => ({
@@ -175,6 +187,7 @@ export function KnowledgeGraphCanvas({
     });
     return () => {
       disposed = true;
+      layoutController.abort();
       cancelAnimationFrame(frame);
       resize?.disconnect();
       theme?.disconnect();
