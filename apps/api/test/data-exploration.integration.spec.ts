@@ -849,6 +849,44 @@ describe('authorized exploration result sets in PostgreSQL', () => {
           "update service.analysis_run set status='READY',completed_at=clock_timestamp() where analysis_id=$1",
           [aggregateAnalysis],
         );
+        const refined = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              baseQueryId: analyzed.queryId,
+              spec: {
+                versions: [{ dataItemId: item, versionId: version }],
+                recordQuery: {
+                  assetId: asset,
+                  filters: [
+                    {
+                      field: 'c1',
+                      type: 'text',
+                      operator: 'eq',
+                      value: '01646500',
+                    },
+                  ],
+                },
+              },
+              view: 'resources',
+            },
+            context,
+          ),
+        );
+        expect(refined.resources[0]?.analysis?.analysisId).toBe(analysis);
+        const refinedRecords = ExplorationResultSchema.parse(
+          await executor.execute(
+            { queryId: refined.queryId, versionId: version, view: 'records' },
+            context,
+          ),
+        );
+        expect(refinedRecords.totalCount).toBe(1);
+        expect(refinedRecords.records?.[0]?.recordId).toBe(record);
+        await expect(
+          executor.execute(
+            { baseQueryId: expired, spec: {}, view: 'resources' },
+            context,
+          ),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' });
         const aggregateQuery = ExplorationResultSchema.parse(
           await executor.execute(
             {
