@@ -136,6 +136,10 @@ class InventoryTests(unittest.TestCase):
         content = b'requires_login_or_credential,credential_ref\r\nyes,env:PROVIDER_TOKEN\r\n'
         self.assertEqual(file_admission(Path("requirements.csv"), content, sanitizer), ("IMPORT", content))
 
+    def test_does_not_treat_a_scientific_column_label_as_an_auth_header(self):
+        content = b'NRCS Watershed Dam Authorization,credential_ref\r\nPL1,env:PROVIDER_TOKEN\r\n'
+        self.assertEqual(file_admission(Path("dam.csv"), content, Sanitizer(self.root)), ("IMPORT", content))
+
     def test_rejects_a_manifest_path_escape(self):
         csv_file(self.root / "MANIFEST/package_files_manifest.csv", [{
             "relative_path": "../elsewhere", "size_bytes": 1, "sha256": "0" * 64,
