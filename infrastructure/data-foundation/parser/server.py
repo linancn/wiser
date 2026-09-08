@@ -23,6 +23,8 @@ MAX_SECONDS = 900
 LOGGER = logging.getLogger(__name__)
 SLOTS = threading.BoundedSemaphore(2)
 KINDS = {
+    "doc",
+    "docx",
     "xlsx",
     "xls",
     "html",

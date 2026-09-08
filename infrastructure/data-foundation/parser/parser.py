@@ -1,6 +1,5 @@
 """Bounded extraction of source content. Source files never supply executable code."""
 
-import hashlib
 import math
 import re
 import stat
@@ -285,6 +284,10 @@ def document(path, kind):
             (page.extract_text() or "", f"page:{index + 1}")
             for index, page in enumerate(reader.pages)
         )
+    elif kind in ("doc", "docx"):
+        from word_content import word_segments
+
+        segments = word_segments(path)
     else:
         text = path.read_text(encoding="utf-8-sig")
         if kind == "html":
@@ -309,24 +312,6 @@ def document(path, kind):
         yield {"type": "warning", "reason": "TEXT_UNAVAILABLE"}
 
 
-def archive_inventory(path):
-    yield schema(["Member path", "Bytes", "SHA-256"])
-    with safe_archive(path) as archive:
-        for entry in archive.infolist():
-            if entry.is_dir():
-                continue
-            digest = hashlib.sha256()
-            size = 0
-            with archive.open(entry) as member:
-                for chunk in iter(lambda: member.read(65536), b""):
-                    size += len(chunk)
-                    if size > entry.file_size or size > MAX_EXPANDED_BYTES:
-                        raise ParseError("ARCHIVE_LIMIT")
-                    digest.update(chunk)
-            yield record({"c1": entry.filename, "c2": size, "c3": digest.hexdigest()})
-    yield {"type": "warning", "reason": "ARCHIVE_MEMBERS_NOT_PARSED"}
-
-
 def parse_asset(path, kind, maximum_records=MAX_RECORDS):
     path = Path(path)
     if path.stat().st_size > MAX_INPUT_BYTES:
@@ -341,14 +326,16 @@ def parse_asset(path, kind, maximum_records=MAX_RECORDS):
             events = workbook(path)
         elif kind == "xls":
             events = legacy_workbook(path)
-        elif kind in ("html", "md", "pdf", "txt"):
+        elif kind in ("html", "md", "pdf", "txt", "doc", "docx"):
             events = document(path, kind)
         elif kind in ("shp", "tif", "tiff", "adf", "nc"):
             from geospatial import parse_geospatial
 
             events = parse_geospatial(path, kind)
         elif kind == "zip":
-            events = archive_inventory(path)
+            from archive_content import archive_content
+
+            events = archive_content(path)
         else:
             raise ParseError("FORMAT_UNSUPPORTED")
         for event in events:

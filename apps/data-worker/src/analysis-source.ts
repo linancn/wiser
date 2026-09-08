@@ -1,4 +1,8 @@
 const mediaTypes = {
+  doc: ['application/msword'],
+  docx: [
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ],
   csv: ['text/csv', 'application/csv'],
   json: ['application/json', 'application/geo+json'],
   xlsx: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],

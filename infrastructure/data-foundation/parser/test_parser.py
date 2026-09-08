@@ -88,8 +88,8 @@ class SourceParserTest(unittest.TestCase):
         events = self.events("safe.zip", output.getvalue(), "zip")
         self.assertEqual(events[-1]["status"], "PARTIAL")
         rows = [event for event in events if event["type"] == "record"]
-        self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[1]["values"]["c1"], "run.sh")
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(rows[-1]["values"]["c1"], "run.sh")
         self.assertEqual(len(rows[0]["values"]["c3"]), 64)
 
     def test_empty_content_is_explicit_and_record_budget_does_not_silently_truncate(
