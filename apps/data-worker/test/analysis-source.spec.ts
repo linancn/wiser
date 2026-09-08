@@ -39,6 +39,18 @@ describe('version-local analysis format groups', () => {
       resolveAnalysisSource('grid', 'application/octet-stream', files),
     ).toMatchObject({ format: null, companionOf: 'header' });
   });
+  it('routes Word uploads by their admitted MIME type', () => {
+    expect(
+      resolveAnalysisSource('word', 'application/msword', []),
+    ).toMatchObject({ format: 'doc' });
+    expect(
+      resolveAnalysisSource(
+        'word',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        [],
+      ),
+    ).toMatchObject({ format: 'docx' });
+  });
   it('recognizes actual admitted suffixes and falls back to MIME for uploads without source paths', () => {
     expect(
       resolveAnalysisSource('raster', 'application/octet-stream', [
