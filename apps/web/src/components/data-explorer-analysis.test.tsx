@@ -2,7 +2,12 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ExplorationResultSchema } from '@wiser/data-contracts';
+import { ExplorationViewContext } from './exploration-view-context';
+import { createExplorationViewState } from '@/lib/exploration-view-state';
+import {
+  ExplorationViewSpecSchema,
+  ExplorationResultSchema,
+} from '@wiser/data-contracts';
 import { DataExplorerAnalysis } from './data-explorer-analysis';
 
 function body(init: RequestInit): unknown {
@@ -161,4 +166,53 @@ it('does not invalidate the entire query for a temporary network failure', async
   render(<DataExplorerAnalysis {...callbacks} />);
   await screen.findByRole('alert');
   expect(callbacks.onInvalidated).not.toHaveBeenCalled();
+});
+
+it('restores the saved source page, keeps its selection, and reports the same cursor history', async () => {
+  const state = createExplorationViewState(
+    id(1),
+    ExplorationViewSpecSchema.parse({
+      activeView: 'records',
+      requests: {
+        records: {
+          queryId: id(1),
+          view: 'records',
+          versionId: id(3),
+          assetId: id(6),
+          first: 25,
+          after: 'page-two',
+        },
+      },
+      navigation: { records: { page: 1, cursors: [null, 'page-two'] } },
+    }),
+  );
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValue(
+      Response.json({ ...response(), records: [{ ...record, index: 26 }] }),
+    );
+  vi.stubGlobal('fetch', fetch);
+  render(
+    <ExplorationViewContext.Provider value={state}>
+      <DataExplorerAnalysis
+        {...props()}
+        selectedRecord={{ ...record, index: 26 }}
+      />
+    </ExplorationViewContext.Provider>,
+  );
+  await screen.findByRole('button', { name: 'Select record 26' });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(body(fetch.mock.calls[0][1]!)).toMatchObject({
+    after: 'page-two',
+    assetId: id(6),
+  });
+  expect(state.capture('records')?.navigation?.records).toEqual({
+    page: 1,
+    cursors: [null, 'page-two'],
+  });
+  expect(
+    screen
+      .getByRole('button', { name: 'Select record 26' })
+      .getAttribute('aria-pressed'),
+  ).toBe('true');
 });

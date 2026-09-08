@@ -540,6 +540,7 @@ it('forwards saved-view mutations with a stable command key and rejects malforme
     new Headers(fetch.mock.calls[0]?.[1]?.headers).get('Idempotency-Key'),
   ).toBe(SESSION_ID);
   expect(order).toEqual(['claims', 'session']);
+  expect(fetch.mock.calls[0]?.[1]?.body).toBe('{}');
   expect(() => dal.explorationView('open', { viewId: '../secrets' })).toThrow(
     DataFoundationApiError,
   );

@@ -2,6 +2,9 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, expect, it, vi } from 'vitest';
+import { ExplorationViewContext } from './exploration-view-context';
+import { createExplorationViewState } from '@/lib/exploration-view-state';
+import { ExplorationViewSpecSchema } from '@wiser/data-contracts';
 import type { ExplorationResult } from '@wiser/data-contracts';
 import { DataExplorerGraph } from './data-explorer-graph';
 const probe = vi.hoisted(() => ({
@@ -214,4 +217,50 @@ it('paginates bounded neighbors and ignores a response after cancellation', asyn
     await Promise.resolve();
   });
   expect(props.onInvalidated).not.toHaveBeenCalled();
+});
+
+it('restores saved graph focus, relation filtering and page navigation as one request', async () => {
+  const state = createExplorationViewState(
+    id,
+    ExplorationViewSpecSchema.parse({
+      activeView: 'graph',
+      requests: {
+        graph: {
+          queryId: id,
+          view: 'graph',
+          versionId: id,
+          first: 30,
+          after: 'neighbors-2',
+          graph: {
+            detail: 'assets',
+            relations: ['HAS_ASSET'],
+            path: { from: node.id, to: `asset:${id}:${id}`, maxDepth: 2 },
+          },
+        },
+      },
+      navigation: { graph: { page: 1, cursors: [null, 'neighbors-2'] } },
+    }),
+  );
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValue(Response.json(result));
+  vi.stubGlobal('fetch', fetch);
+  render(
+    <ExplorationViewContext.Provider value={state}>
+      <DataExplorerGraph {...props} />
+    </ExplorationViewContext.Provider>,
+  );
+  await waitFor(() =>
+    expect(state.capture('graph')?.requests.graph?.after).toBe('neighbors-2'),
+  );
+  expect(requestBody(fetch.mock.calls[0]?.[1]?.body)).toMatchObject({
+    versionId: id,
+    after: 'neighbors-2',
+    graph: {
+      detail: 'assets',
+      relations: ['HAS_ASSET'],
+      path: { from: node.id, to: `asset:${id}:${id}`, maxDepth: 2 },
+    },
+  });
+  expect(state.capture('graph')?.navigation?.graph?.page).toBe(1);
 });

@@ -89,6 +89,40 @@ const zhCN = {
   },
   dataFoundation: {
     explorer: {
+      saved: {
+        title: '保存、分享与导出',
+        description:
+          '保存当前视图与选择。项目链接需要登录，且接收者须有权查看每项来源。',
+        name: '视图名称',
+        visibility: '可查看的人',
+        private: '仅自己',
+        project: '有权限的项目成员',
+        save: '保存视图',
+        export: '导出当前页（JSON）',
+        exportScope:
+          '导出一次有界结果页及来源证据。地图导出包含初始记录页，不包含所有可见瓦片。',
+        saved: '视图已保存。',
+        failed: '操作未能完成，当前查询不受影响，请重试。',
+        wait: '请等待当前视图加载完成后重试。',
+        revoked: '视图链接已撤销。',
+        exported: '已导出',
+        complete: '完整结果',
+        partial: '部分结果',
+        link: '视图链接',
+        copy: '复制链接',
+        copied: '链接已复制。',
+        copyFallback: '请选中链接框中的内容并复制。',
+        revoke: '撤销链接',
+        empty: '还没有保存的视图。保存当前视图，便于稍后继续。',
+        units: {
+          resources: '资源',
+          records: '记录',
+          versions: '版本',
+          assets: '文件',
+          evidence: '证据',
+          groups: '分组',
+        },
+      },
       mapLayers: {
         title: '图层与图例',
         points: '点与聚合',
@@ -1296,6 +1330,41 @@ const en: typeof zhCN = {
   },
   dataFoundation: {
     explorer: {
+      saved: {
+        title: 'Save, share and export',
+        description:
+          'Save the current views and selection. Project links require sign-in and permission to every source.',
+        name: 'View name',
+        visibility: 'Who can open',
+        private: 'Only me',
+        project: 'Authorized project members',
+        save: 'Save view',
+        export: 'Export current page (JSON)',
+        exportScope:
+          'Exports one bounded result page with source evidence. Map export contains the initial record page, not all visible tiles.',
+        saved: 'View saved.',
+        failed:
+          'This action could not finish. Your query is unchanged; try again.',
+        wait: 'Wait for this view to finish loading, then try again.',
+        revoked: 'View link revoked.',
+        exported: 'Exported',
+        complete: 'Complete result',
+        partial: 'Partial result',
+        link: 'View link',
+        copy: 'Copy link',
+        copied: 'Link copied.',
+        copyFallback: 'Select and copy the link from the field.',
+        revoke: 'Revoke link',
+        empty: 'No saved views yet. Save your current view to return later.',
+        units: {
+          resources: 'resources',
+          records: 'records',
+          versions: 'versions',
+          assets: 'files',
+          evidence: 'evidence',
+          groups: 'groups',
+        },
+      },
       mapLayers: {
         title: 'Layers and legend',
         points: 'Points and clusters',

@@ -4,7 +4,8 @@ import {
   type InvalidateExploration,
 } from '@/lib/exploration-request';
 import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
+import { useExplorationViewState } from './exploration-view-context';
+import { useEffect, useRef, useState } from 'react';
 import {
   ExplorationResultSchema,
   type ExplorationRecord,
@@ -42,22 +43,43 @@ export function DataExplorerAnalysis({
   readonly configuring?: boolean;
   readonly onBounds?: (bounds: ExplorationBounds | undefined) => void;
 }) {
+  const viewState = useExplorationViewState();
+  const [seed] = useState(() => {
+    const candidate = viewState?.initial.requests[view];
+    return candidate && (view === 'map' || candidate.versionId === versionId)
+      ? candidate
+      : undefined;
+  });
+  const [navigation] = useState(() =>
+    seed && view === 'records'
+      ? viewState?.initial.navigation?.records
+      : undefined,
+  );
   const copy = getDictionary(locale).dataFoundation.explorer;
   const [result, setResult] = useState<ExplorationResult | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [assetId, setAssetId] = useState<string | undefined>(undefined);
-  const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
-  const [page, setPage] = useState(0);
+  const [recordId, setRecordId] = useState(seed?.recordId);
+  const [assetId, setAssetId] = useState<string | undefined>(seed?.assetId);
+  const [cursors, setCursors] = useState<(string | undefined)[]>(
+    navigation?.cursors.map((value) => value ?? undefined) ?? [undefined],
+  );
+  const [page, setPage] = useState(navigation?.page ?? 0);
   const cursor = cursors[page];
   const requestVersionId = view === 'records' ? versionId : null;
+  const identity = `${queryId}:${requestVersionId}:${view}`;
+  const previousIdentity = useRef(identity);
   useEffect(() => {
+    if (previousIdentity.current === identity) return;
+    previousIdentity.current = identity;
     setAssetId(undefined);
+    setRecordId(undefined);
     setPage(0);
     setCursors([undefined]);
   }, [queryId, requestVersionId, view]);
   useEffect(() => {
     const controller = new AbortController();
+    viewState?.report(view, null);
     setResult(null);
     setFailed(false);
     if (view === 'records' && requestVersionId === null)
@@ -71,11 +93,12 @@ export function DataExplorerAnalysis({
           body: JSON.stringify({
             queryId,
             view,
-            first: view === 'map' ? 1 : 25,
+            first: seed?.first ?? (view === 'map' ? 1 : 25),
             ...(view === 'records'
-              ? { versionId: requestVersionId, assetId }
+              ? { versionId: requestVersionId, assetId, recordId }
               : {}),
             after: cursor,
+            ...(view === 'map' && seed?.bbox ? { bbox: seed.bbox } : {}),
           }),
           signal: controller.signal,
           cache: 'no-store',
@@ -90,6 +113,28 @@ export function DataExplorerAnalysis({
         }
         const data = ExplorationResultSchema.parse(await response.json());
         if (controller.signal.aborted) return;
+        if (data.queryId !== queryId || data.view !== view)
+          throw new Error('Mismatched view');
+        viewState?.report(
+          view,
+          {
+            queryId,
+            view,
+            first: seed?.first ?? (view === 'map' ? 1 : 25),
+            ...(view === 'records' && requestVersionId
+              ? {
+                  versionId: requestVersionId,
+                  assetId: data.selectedAssetId,
+                  recordId,
+                }
+              : {}),
+            ...(cursor ? { after: cursor } : {}),
+            ...(view === 'map' && seed?.bbox ? { bbox: seed.bbox } : {}),
+          },
+          view === 'records'
+            ? { page, cursors: cursors.map((value) => value ?? null) }
+            : undefined,
+        );
         setResult(data);
         onData(data);
       } catch {
@@ -99,7 +144,16 @@ export function DataExplorerAnalysis({
       }
     })();
     return () => controller.abort();
-  }, [queryId, view, requestVersionId, assetId, cursor, onData, onInvalidated]);
+  }, [
+    queryId,
+    view,
+    requestVersionId,
+    assetId,
+    recordId,
+    cursor,
+    onData,
+    onInvalidated,
+  ]);
   if (view === 'records' && versionId === null)
     return (
       <div className={styles.empty}>
@@ -149,6 +203,7 @@ export function DataExplorerAnalysis({
             value={result.selectedAssetId ?? ''}
             onChange={(event) => {
               setAssetId(event.target.value);
+              setRecordId(undefined);
               setPage(0);
               setCursors([undefined]);
             }}

@@ -2,6 +2,15 @@ import 'server-only';
 
 import { connection } from 'next/server';
 import {
+  CreateExplorationViewInputSchema,
+  CreateExplorationViewOutputSchema,
+  ListExplorationViewsInputSchema,
+  ListExplorationViewsOutputSchema,
+  OpenExplorationViewInputSchema,
+  OpenExplorationViewOutputSchema,
+  RevokeExplorationViewOutputSchema,
+  ExportExplorationInputSchema,
+  ExportExplorationOutputSchema,
   ExplorationQueryInputSchema,
   ExplorationResultSchema,
   type ExplorationResult,
@@ -88,6 +97,11 @@ export class DataFoundationApiError extends Error {
 }
 
 export interface DataFoundationDal {
+  explorationView(
+    action: 'create' | 'list' | 'open' | 'revoke' | 'export',
+    input: unknown,
+    idempotencyKey?: string,
+  ): Promise<unknown>;
   explore(input: unknown): Promise<ExplorationResult>;
   health(): Promise<DataHealthDto>;
   capabilities(): Promise<CapabilityRegistryDto>;
@@ -291,6 +305,7 @@ export function createDataFoundationDal(
   async function call(
     path: string,
     init: {
+      readonly idempotencyKey?: string;
       readonly method?: 'GET' | 'POST';
       readonly body?: unknown;
       readonly acceptedStatuses?: readonly number[];
@@ -308,6 +323,8 @@ export function createDataFoundationDal(
       'X-WISER-Project-ID': options.config.projectId,
       'X-WISER-Purpose': options.config.purpose,
     });
+    if (init.idempotencyKey)
+      headers.set('Idempotency-Key', init.idempotencyKey);
     if (init.body !== undefined) {
       headers.set('Content-Type', 'application/json; charset=utf-8');
     }
@@ -363,6 +380,55 @@ export function createDataFoundationDal(
   }
 
   const dal: DataFoundationDal = {
+    explorationView: (action, input, idempotencyKey) => {
+      if (
+        (action === 'create' || action === 'revoke') &&
+        (!idempotencyKey || !UUID_PATTERN.test(idempotencyKey))
+      )
+        throw new DataFoundationApiError('invalid-request', 422);
+      const schemas = {
+        create: [
+          CreateExplorationViewInputSchema,
+          CreateExplorationViewOutputSchema,
+        ],
+        list: [
+          ListExplorationViewsInputSchema,
+          ListExplorationViewsOutputSchema,
+        ],
+        open: [OpenExplorationViewInputSchema, OpenExplorationViewOutputSchema],
+        revoke: [
+          OpenExplorationViewInputSchema,
+          RevokeExplorationViewOutputSchema,
+        ],
+        export: [ExportExplorationInputSchema, ExportExplorationOutputSchema],
+      } as const;
+      const [inputSchema, outputSchema] = schemas[action];
+      const checked = inputSchema.safeParse(input);
+      if (!checked.success)
+        throw new DataFoundationApiError('invalid-request', 422);
+      const path =
+        action === 'export'
+          ? '/api/data/v1/explore/export'
+          : action === 'open' || action === 'revoke'
+            ? `/api/data/v1/explore/views/${OpenExplorationViewInputSchema.parse(checked.data).viewId}/${action}`
+            : '/api/data/v1/explore/views';
+      return parsed(
+        () =>
+          call(path, {
+            method: action === 'list' ? 'GET' : 'POST',
+            ...(action === 'list'
+              ? {}
+              : {
+                  body:
+                    action === 'open' || action === 'revoke'
+                      ? {}
+                      : checked.data,
+                }),
+            ...(idempotencyKey ? { idempotencyKey } : {}),
+          }),
+        (value) => outputSchema.parse(value),
+      );
+    },
     explore: (input) => {
       const criteria = ExplorationQueryInputSchema.safeParse(input);
       if (!criteria.success)

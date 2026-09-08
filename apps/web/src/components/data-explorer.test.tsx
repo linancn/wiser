@@ -10,6 +10,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
+  OpenExplorationViewOutputSchema,
   ExplorationResultSchema,
   type ExplorationResult,
 } from '@wiser/data-contracts';
@@ -375,5 +376,54 @@ describe('exploration query navigation', () => {
     expect(screen.getByTestId('explorer-inspector').textContent).not.toContain(
       'Fixture provider',
     );
+  });
+});
+
+it('preserves the resource page size of views saved through the shared API', async () => {
+  const initial = result(firstId, 'Station source', 'station');
+  const saved = OpenExplorationViewOutputSchema.parse({
+    savedView: {
+      viewId: secondId,
+      title: 'One resource per page',
+      visibility: 'private',
+      createdAt: initial.createdAt,
+      revokedAt: null,
+    },
+    result: initial,
+    viewSpec: {
+      activeView: 'resources',
+      requests: {
+        resources: {
+          queryId: firstId,
+          view: 'resources',
+          first: 1,
+          after: 'resource-page-2',
+        },
+      },
+      navigation: {
+        resources: { page: 1, cursors: [null, 'resource-page-2'] },
+      },
+    },
+  });
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValueOnce(Response.json(initial));
+  vi.stubGlobal('fetch', fetch);
+  const user = userEvent.setup();
+  render(
+    <DataExplorer
+      locale="en"
+      initialResult={initial}
+      initialFailure={null}
+      initialText="station"
+      initialSaved={saved}
+    />,
+  );
+  await user.click(screen.getByRole('button', { name: 'Previous page' }));
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+  expect(inputBody(fetch.mock.calls[0]?.[1])).toMatchObject({
+    first: 1,
+    view: 'resources',
+    queryId: firstId,
   });
 });

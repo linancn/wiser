@@ -17,6 +17,7 @@ import {
 import { getDictionary, type Locale } from '@/lib/i18n';
 import { KnowledgeGraphCanvas } from './data-foundation-graph';
 import styles from './data-explorer.module.css';
+import { useExplorationViewState } from './exploration-view-context';
 
 export function DataExplorerGraph({
   queryId,
@@ -35,6 +36,9 @@ export function DataExplorerGraph({
   readonly selectedNode: ExplorationGraphNode | null;
   readonly onSelect: (node: ExplorationGraphNode) => void;
 }) {
+  const viewState = useExplorationViewState();
+  const [seed] = useState(() => viewState?.initial.requests.graph);
+  const [navigation] = useState(() => viewState?.initial.navigation?.graph);
   const copy = getDictionary(locale).dataFoundation.explorer;
   // Freeze the entry focus while users inspect nodes; selecting a node must not rebuild the graph.
   const [focus, setFocus] = useState<{
@@ -43,28 +47,51 @@ export function DataExplorerGraph({
     assetId?: string;
     detail?: ExplorationGraphOptions['detail'];
   }>({
-    versionId,
-    recordId: selectedRecord?.recordId ?? null,
+    versionId: seed ? (seed.versionId ?? null) : versionId,
+    recordId: seed
+      ? (seed.recordId ?? null)
+      : (selectedRecord?.recordId ?? null),
+    assetId: seed?.assetId,
+    detail: seed?.graph?.detail,
   });
   const [result, setResult] = useState<ExplorationResult | null>(null);
   const [failure, setFailure] = useState(false);
   const [busy, setBusy] = useState(true);
   const [retry, setRetry] = useState(0);
   const [relations, setRelations] = useState<ExplorationGraphRelation[]>([
-    ...ExplorationGraphRelationSchema.options,
+    ...(seed?.graph?.relations ?? ExplorationGraphRelationSchema.options),
   ]);
-  const [path, setPath] = useState<ExplorationGraphOptions['path']>();
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
-  const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
-  const [page, setPage] = useState(0);
+  const [path, setPath] = useState<ExplorationGraphOptions['path']>(
+    seed?.graph?.path,
+  );
+  const [from, setFrom] = useState(seed?.graph?.path?.from ?? '');
+  const [to, setTo] = useState(seed?.graph?.path?.to ?? '');
+  const [cursors, setCursors] = useState<(string | undefined)[]>(
+    navigation?.cursors.map((value) => value ?? undefined) ?? [undefined],
+  );
+  const [page, setPage] = useState(navigation?.page ?? 0);
   const after = cursors[page];
   useEffect(() => {
     const controller = new AbortController();
+    viewState?.report('graph', null);
     const frame = requestAnimationFrame(() => {
       setBusy(true);
       setFailure(false);
     });
+    const request = {
+      queryId,
+      view: 'graph' as const,
+      first: seed?.first ?? 30,
+      ...(focus.versionId ? { versionId: focus.versionId } : {}),
+      ...(focus.recordId ? { recordId: focus.recordId } : {}),
+      ...(focus.assetId ? { assetId: focus.assetId } : {}),
+      graph: {
+        ...(focus.detail ? { detail: focus.detail } : {}),
+        relations,
+        ...(path ? { path } : {}),
+      },
+      ...(after ? { after } : {}),
+    };
     void (async () => {
       try {
         const response = await fetch('/api/data-foundation/explore', {
@@ -72,20 +99,7 @@ export function DataExplorerGraph({
           headers: { 'content-type': 'application/json' },
           cache: 'no-store',
           signal: controller.signal,
-          body: JSON.stringify({
-            queryId,
-            view: 'graph',
-            first: 30,
-            ...(focus.versionId ? { versionId: focus.versionId } : {}),
-            ...(focus.recordId ? { recordId: focus.recordId } : {}),
-            ...(focus.assetId ? { assetId: focus.assetId } : {}),
-            graph: {
-              ...(focus.detail ? { detail: focus.detail } : {}),
-              relations,
-              ...(path ? { path } : {}),
-            },
-            ...(after ? { after } : {}),
-          }),
+          body: JSON.stringify(request),
         });
         if (!response.ok) {
           if (
@@ -100,6 +114,10 @@ export function DataExplorerGraph({
           throw new Error('Mismatched graph');
         if (!controller.signal.aborted) {
           cancelAnimationFrame(frame);
+          viewState?.report('graph', request, {
+            page,
+            cursors: cursors.map((value) => value ?? null),
+          });
           setResult((previous) =>
             previous?.graph &&
             next.graph &&

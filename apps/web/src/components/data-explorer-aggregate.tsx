@@ -5,6 +5,7 @@ import {
   ExplorationResultSchema,
   RecordQuerySchema,
   type ExplorationAggregate,
+  type ExplorationAggregateSpec,
   type ExplorationAnalysisAsset,
   type RecordFilter,
   type RecordQuery,
@@ -21,6 +22,7 @@ import {
   timeDraft,
 } from './data-explorer-time-controls';
 import styles from './data-explorer.module.css';
+import { useExplorationViewState } from './exploration-view-context';
 
 function groupQuery(
   result: ExplorationAggregate,
@@ -97,20 +99,40 @@ export function DataExplorerAggregate({
   readonly onConfigure: (query: RecordQuery) => void;
   readonly onInvalidated: InvalidateExploration;
 }) {
+  const viewState = useExplorationViewState();
+  const [seed] = useState(() => {
+    const request = viewState?.initial.requests.statistics;
+    return request?.versionId === versionId ? request.aggregate : undefined;
+  });
+  const restorePending = useRef(seed !== undefined);
   const all = getDictionary(locale).dataFoundation.explorer;
   const copy = all.aggregate;
   const [assets, setAssets] = useState<ExplorationAnalysisAsset[]>([]);
-  const [assetId, setAssetId] = useState('');
-  const [groupField, setGroupField] = useState('');
-  const [groupType, setGroupType] = useState('text');
-  const [time, setTime] = useState(() => timeDraft());
-  const [bucket, setBucket] = useState('month');
+  const [assetId, setAssetId] = useState(seed?.assetId ?? '');
+  const [groupField, setGroupField] = useState(seed?.groupBy?.field ?? '');
+  const [groupType, setGroupType] = useState<string>(
+    seed?.groupBy?.type ?? 'text',
+  );
+  const [time, setTime] = useState(() =>
+    timeDraft(seed?.groupBy?.type === 'time' ? seed.groupBy : undefined),
+  );
+  const [bucket, setBucket] = useState<string>(
+    seed?.groupBy?.type === 'time' ? seed.groupBy.bucket : 'month',
+  );
   const [rangeStart, setRangeStart] = useState('');
   const [rangeEnd, setRangeEnd] = useState('');
-  const [interval, setInterval] = useState('10');
-  const [operation, setOperation] = useState('count');
-  const [field, setField] = useState('');
-  const [unitField, setUnitField] = useState('');
+  const [interval, setInterval] = useState(
+    seed?.groupBy?.type === 'number' ? String(seed.groupBy.interval) : '10',
+  );
+  const [operation, setOperation] = useState<string>(
+    seed?.measure.operation ?? 'count',
+  );
+  const [field, setField] = useState(
+    seed && 'field' in seed.measure ? seed.measure.field : '',
+  );
+  const [unitField, setUnitField] = useState(
+    seed && 'unitField' in seed.measure ? (seed.measure.unitField ?? '') : '',
+  );
   const [result, setResult] = useState<ExplorationAggregate | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -150,7 +172,7 @@ export function DataExplorerAggregate({
         setAssets(
           data.assets?.filter((asset) => asset.status !== 'MANIFEST') ?? [],
         );
-        setAssetId(data.selectedAssetId ?? '');
+        setAssetId(seed?.assetId ?? data.selectedAssetId ?? '');
       } catch {
         if (!controller.signal.aborted) setError(all.unavailable);
       } finally {
@@ -195,6 +217,10 @@ export function DataExplorerAggregate({
       setError(copy.checkFields);
       return;
     }
+    await calculate(parsed.data);
+  }
+  async function calculate(aggregate: ExplorationAggregateSpec) {
+    viewState?.report('statistics', null);
     pending.current?.abort();
     const controller = new AbortController();
     pending.current = controller;
@@ -209,7 +235,7 @@ export function DataExplorerAggregate({
           queryId,
           versionId,
           view: 'aggregate',
-          aggregate: parsed.data,
+          aggregate,
         }),
         cache: 'no-store',
         signal: controller.signal,
@@ -222,6 +248,15 @@ export function DataExplorerAggregate({
       }
       const data = ExplorationResultSchema.parse(await response.json());
       if (!controller.signal.aborted) {
+        if (data.queryId !== queryId || data.view !== 'aggregate')
+          throw new Error('Mismatched aggregate');
+        viewState?.report('statistics', {
+          first: 25,
+          queryId,
+          versionId: versionId ?? undefined,
+          view: 'aggregate',
+          aggregate,
+        });
         setResult(data.aggregate ?? null);
         const timed =
           data.aggregate?.groups.filter(
@@ -237,6 +272,17 @@ export function DataExplorerAggregate({
       if (!controller.signal.aborted) setBusy(false);
     }
   }
+  useEffect(() => {
+    if (
+      restorePending.current &&
+      seed &&
+      assets.length &&
+      assets.some((asset) => asset.assetId === seed.assetId)
+    ) {
+      restorePending.current = false;
+      void calculate(seed);
+    }
+  }, [assets, seed]);
   if (!versionId) return <p className={styles.empty}>{all.selectForRecords}</p>;
   const pick = (group: ExplorationAggregate['groups'][number]) => {
     if (!result) return;

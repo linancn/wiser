@@ -2,6 +2,9 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ExplorationViewContext } from './exploration-view-context';
+import { createExplorationViewState } from '@/lib/exploration-view-state';
+import { ExplorationViewSpecSchema } from '@wiser/data-contracts';
 import { DataExplorerAggregate } from './data-explorer-aggregate';
 vi.mock('./data-explorer-aggregate-chart', () => ({
   DataExplorerAggregateChart: () => null,
@@ -197,4 +200,44 @@ it('uses explicit calendar boundaries for accessible time-range selection', asyn
       },
     ],
   });
+});
+
+it('restores a saved aggregate and its exact bin width without requiring another calculation click', async () => {
+  const state = createExplorationViewState(
+    id,
+    ExplorationViewSpecSchema.parse({
+      activeView: 'statistics',
+      requests: {
+        statistics: {
+          queryId: id,
+          view: 'aggregate',
+          versionId: id,
+          aggregate: result.aggregate.spec,
+        },
+      },
+    }),
+  );
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValueOnce(Response.json(metadata))
+    .mockResolvedValueOnce(Response.json(result));
+  vi.stubGlobal('fetch', fetch);
+  render(
+    <ExplorationViewContext.Provider value={state}>
+      <DataExplorerAggregate
+        locale="en"
+        queryId={id}
+        versionId={id}
+        onConfigure={vi.fn()}
+        onInvalidated={vi.fn()}
+      />
+    </ExplorationViewContext.Provider>,
+  );
+  await screen.findByRole('button', { name: 'Inspect group 0.2' });
+  expect(screen.getByLabelText<HTMLInputElement>('Bin width').value).toBe(
+    '0.1',
+  );
+  expect(
+    state.capture('statistics')?.requests.statistics?.aggregate?.groupBy,
+  ).toEqual(result.aggregate.spec.groupBy);
 });

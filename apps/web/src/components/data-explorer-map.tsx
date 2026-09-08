@@ -22,6 +22,7 @@ import {
 } from '@wiser/data-contracts';
 import { getDictionary, type Locale } from '@/lib/i18n';
 import styles from './data-explorer.module.css';
+import { useExplorationViewState } from './exploration-view-context';
 
 maplibre.setWorkerUrl('/vendor/maplibre/6.8.0/maplibre-gl-worker.mjs');
 
@@ -40,15 +41,23 @@ export default function DataExplorerMap({
   readonly onBounds?: (bounds: ExplorationBounds | undefined) => void;
   readonly onInvalidated: InvalidateExploration;
 }) {
+  const viewState = useExplorationViewState();
+  const [savedMap] = useState(() => viewState?.initial.map);
+  const camera = useRef(savedMap?.camera);
   const map = useRef<MapRef>(null);
   const [ready, setReady] = useState(false);
   const [renderedCount, setRenderedCount] = useState(0);
   const [failed, setFailed] = useState(false);
-  const [layers, setLayers] = useState({
-    points: true,
-    lines: true,
-    polygons: true,
-  });
+  const [layers, setLayers] = useState(
+    savedMap?.layers ?? {
+      points: true,
+      lines: true,
+      polygons: true,
+    },
+  );
+  useEffect(() => {
+    viewState?.reportMap({ camera: camera.current, layers });
+  }, [layers, viewState]);
   const [theme, setTheme] = useState(0);
   const copy = getDictionary(locale).dataFoundation.explorer;
   const controls = getDictionary(locale).dataFoundation.mapPage.controls;
@@ -150,7 +159,7 @@ export default function DataExplorerMap({
     }
   }
   useEffect(() => {
-    if (ready) fit();
+    if (ready && !savedMap?.camera) fit();
   }, [ready, result]);
   const tiles = useMemo(
     () => [
@@ -199,7 +208,9 @@ export default function DataExplorerMap({
         <Map
           ref={map}
           mapLib={maplibre}
-          initialViewState={{ longitude: 105, latitude: 35, zoom: 2 }}
+          initialViewState={
+            savedMap?.camera ?? { longitude: 105, latitude: 35, zoom: 2 }
+          }
           mapStyle={style}
           style={{ height: '100%', width: '100%' }}
           attributionControl={false}
@@ -217,6 +228,18 @@ export default function DataExplorerMap({
             'records-polygons',
           ]}
           onLoad={() => setReady(true)}
+          onMoveEnd={(event) => {
+            const { longitude, latitude, zoom, bearing, pitch } =
+              event.viewState;
+            camera.current = {
+              longitude: ((((longitude + 180) % 360) + 360) % 360) - 180,
+              latitude,
+              zoom,
+              bearing: ((((bearing + 180) % 360) + 360) % 360) - 180,
+              pitch,
+            };
+            viewState?.reportMap({ camera: camera.current, layers });
+          }}
           onIdle={() => {
             const instance = map.current?.getMap();
             if (!instance) return;
