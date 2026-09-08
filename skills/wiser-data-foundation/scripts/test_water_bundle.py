@@ -127,6 +127,15 @@ class InventoryTests(unittest.TestCase):
             with self.subTest(content=content), self.assertRaisesRegex(ValueError, "INVALID_CREDENTIAL_CSV"):
                 file_admission(Path("downloads/credentials.csv"), content, Sanitizer(self.root))
 
+    def test_preserves_boolean_access_requirements_without_exempting_credential_values(self):
+        sanitizer = Sanitizer(self.root)
+        self.assertEqual(sanitizer.row({"requires_login_or_credential": "yes", "password": "false"}),
+                         {"requires_login_or_credential": "yes", "password": "[REDACTED]"})
+        self.assertEqual(sanitizer.row({"requires_login_or_credential": "unexpected-private-value"}),
+                         {"requires_login_or_credential": "[REDACTED]"})
+        content = b'requires_login_or_credential,credential_ref\r\nyes,env:PROVIDER_TOKEN\r\n'
+        self.assertEqual(file_admission(Path("requirements.csv"), content, sanitizer), ("IMPORT", content))
+
     def test_rejects_a_manifest_path_escape(self):
         csv_file(self.root / "MANIFEST/package_files_manifest.csv", [{
             "relative_path": "../elsewhere", "size_bytes": 1, "sha256": "0" * 64,

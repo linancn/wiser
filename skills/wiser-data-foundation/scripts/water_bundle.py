@@ -7,6 +7,7 @@ the source directory remains untouched. HTTP ingestion is a separate phase.
 import argparse
 import csv
 import hashlib
+import io
 import json
 import mimetypes
 import os
@@ -102,8 +103,31 @@ class Sanitizer:
         value = re.sub(r"\beyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\b", "[REDACTED_JWT]", value)
         return value
 
+    @staticmethod
+    def cell(key, value):
+        if key.strip().lower() == "requires_login_or_credential" and value.lower() in {"yes", "no", "true", "false", "0", "1"}:
+            return value
+        return "[REDACTED]" if value and SECRET_KEY.search(key.strip()) else value
+
     def row(self, row):
-        return {key: self.text(value) for key, value in row.items()}
+        return {key: self.text(self.cell(key, value)) for key, value in row.items()}
+
+    def csv(self, value):
+        reader = csv.DictReader(io.StringIO(value, newline=""))
+        fields = reader.fieldnames or []
+        if not any(SECRET_KEY.search(key.strip()) for key in fields):
+            return value
+        rows = list(reader)
+        if len(fields) != len(set(fields)) or any(None in row or any(cell is None for cell in row.values()) for row in rows):
+            raise ValueError("INVALID_CREDENTIAL_CSV")
+        cleaned = [{key: self.cell(key, cell) for key, cell in row.items()} for row in rows]
+        if cleaned == rows:
+            return value
+        output = io.StringIO(newline="")
+        writer = csv.DictWriter(output, fieldnames=fields, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(cleaned)
+        return output.getvalue()
 
 
 def detected_media(path, content):
@@ -135,7 +159,8 @@ def file_admission(path, content, sanitizer):
     if path.suffix.lower() in TEXT_SUFFIXES or media.startswith("text/"):
         try:
             original = content.decode("utf-8")
-            cleaned = sanitizer.text(original).encode("utf-8")
+            text = sanitizer.csv(original) if path.suffix.lower() == ".csv" else original
+            cleaned = sanitizer.text(text).encode("utf-8")
             if cleaned != content:
                 return "SANITIZE_TEXT", cleaned
         except UnicodeDecodeError:
