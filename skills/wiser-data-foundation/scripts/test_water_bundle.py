@@ -8,7 +8,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from water_bundle import build_inventory
+from water_bundle import Sanitizer, build_inventory, file_admission, read_csv
 
 
 def csv_file(path, rows):
@@ -92,6 +92,40 @@ class InventoryTests(unittest.TestCase):
         self.write("output/downloads/DS-0001_sample.bin", b"changed bytes")
         with self.assertRaisesRegex(ValueError, "MANIFEST_INTEGRITY"):
             build_inventory(self.root)
+
+    def test_redacts_credential_columns_in_every_source_registry_without_env_values(self):
+        fields = {"password": "new-password", "API_KEY": "new-api-key", "access_token": "new-access-token"}
+        for relative in ["MANIFEST/registered_providers.csv", "MANIFEST/registered_data_entries.csv",
+                         "data_registry/catalog/data_sources_catalog.csv"]:
+            rows = read_csv(self.root, relative)
+            csv_file(self.root / relative, [{**row, **fields, "credential_ref": "env:PROVIDER_TOKEN"} for row in rows])
+        report = build_inventory(self.root)
+        for source in report["sources"]:
+            for kind in ["provider", "catalog", "registration"]:
+                if kind not in source:
+                    continue
+                for key in fields:
+                    self.assertEqual(source[kind][key], "[REDACTED]")
+                self.assertEqual(source[kind]["credential_ref"], "env:PROVIDER_TOKEN")
+        for value in fields.values():
+            self.assertNotIn(value, json.dumps(report))
+
+    def test_prepares_csv_assets_without_credential_cells_and_preserves_references(self):
+        path = Path("downloads/credentials.csv")
+        content = b'name,password,api_key,credential_ref\r\n"River, sample",p,"new,key",env:PROVIDER_TOKEN\r\nEmpty,,,\r\n'
+        self.write(path, content)
+        disposition, prepared = file_admission(path, content, Sanitizer(self.root))
+        self.assertEqual(disposition, "SANITIZE_TEXT")
+        self.assertEqual(list(csv.DictReader(prepared.decode().splitlines())), [
+            {"name": "River, sample", "password": "[REDACTED]", "api_key": "[REDACTED]", "credential_ref": "env:PROVIDER_TOKEN"},
+            {"name": "Empty", "password": "", "api_key": "", "credential_ref": ""},
+        ])
+        self.assertEqual((self.root / path).read_bytes(), content)
+
+    def test_rejects_ambiguous_credential_csv_before_admission(self):
+        for content in [b"name,password,password\nRiver,one,two\n", b"name,password\nRiver,one,two\n"]:
+            with self.subTest(content=content), self.assertRaisesRegex(ValueError, "INVALID_CREDENTIAL_CSV"):
+                file_admission(Path("downloads/credentials.csv"), content, Sanitizer(self.root))
 
     def test_rejects_a_manifest_path_escape(self):
         csv_file(self.root / "MANIFEST/package_files_manifest.csv", [{
