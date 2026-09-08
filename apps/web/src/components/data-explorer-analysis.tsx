@@ -56,7 +56,7 @@ export function DataExplorerAnalysis({
           body: JSON.stringify({
             queryId,
             view,
-            first: view === 'map' ? 200 : 25,
+            first: view === 'map' ? 1 : 25,
             ...(view === 'records'
               ? { versionId: requestVersionId, assetId }
               : {}),

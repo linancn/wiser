@@ -75,3 +75,5 @@ Read [governance-and-security.md](references/governance-and-security.md) wheneve
 Call only the WISER REST API or registered Data Foundation MCP tools/resources. Do not connect to PostgreSQL/PostGIS, object storage, Weaviate, OpenSearch, Neo4j, GeoServer, pgSTAC, TiTiler, Martin, Tika, or ClamAV. Do not invent arbitrary query, shell, filesystem, or administration tools. Do not expose tokens, signed upload URLs, internal endpoints, raw backend errors, hidden rows, or another Tenant/Project's identifiers.
 
 At handoff, report the trusted context identifiers (never the credential), exact Capability, immutable resource/version IDs, current cursor or Operation version, idempotency status, observed governance dimensions, limitations, and the next safe action.
+
+Map results may include `spatial.bounds` and `mercatorFeatureCount` for the complete authorized result, independent of the bounded feature page. Query MVT uses the governed HTTP `/geo/tiles/vector/queries/{queryId}/{z}/{x}/{y}.pbf` route with the same authorization; do not connect to Martin directly.

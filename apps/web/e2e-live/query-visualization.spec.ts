@@ -1,3 +1,4 @@
+import { ExplorationQueryInputSchema } from '@wiser/data-contracts';
 import { expect, test, type Page } from '@playwright/test';
 import { loadLiveCredentials } from './support/live-fixture';
 
@@ -213,8 +214,8 @@ test('real NLDI records select the same station on the exploration map', async (
   const lookup = page.waitForResponse(
     (response) =>
       response.url().endsWith('/api/data-foundation/explore') &&
-      response.request().postDataJSON()?.recordId ===
-        '89baed67-b350-8e92-a713-27d8c2c6c894' &&
+      ExplorationQueryInputSchema.safeParse(response.request().postDataJSON())
+        .data?.recordId === '89baed67-b350-8e92-a713-27d8c2c6c894' &&
       response.status() === 200,
   );
   await canvas.click({

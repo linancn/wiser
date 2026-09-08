@@ -344,6 +344,12 @@ export class FixedOriginDataFoundationGeoProxyPort implements DataFoundationGeoP
       if (request.signal.aborted) throw proxyError('TIMEOUT', error);
       throw proxyError('UPSTREAM_UNAVAILABLE', error);
     }
+    if (request.target === 'MARTIN' && response.status === 204)
+      return Object.freeze({
+        status: 200,
+        contentType: 'application/vnd.mapbox-vector-tile',
+        body: new Uint8Array(),
+      });
     const contentType = response.headers.get('content-type');
     if (contentType === null || contentType.length > 255) {
       throw proxyError('INVALID_RESPONSE');

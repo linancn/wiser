@@ -115,12 +115,12 @@ The Supabase EXCON journal is accessed by the non-superuser, `NOBYPASSRLS` `wise
 
 Data Foundation provisioning creates four explicit roles:
 
-| Role                 | Purpose and constraints                                                                                    |
-| -------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `wiser_data_runtime` | Non-login common privilege group with only the required schema, table, sequence, and function privileges   |
-| `wiser_data_api`     | API login that inherits runtime privileges; non-superuser and unable to bypass RLS                         |
-| `wiser_data_worker`  | Worker login that inherits runtime privileges with a separate password and timeouts                        |
-| `wiser_data_gis`     | Isolated GIS login that does not inherit the common runtime and can execute only the governed MVT function |
+| Role                 | Purpose and constraints                                                                                     |
+| -------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `wiser_data_runtime` | Non-login common privilege group with only the required schema, table, sequence, and function privileges    |
+| `wiser_data_api`     | API login that inherits runtime privileges; non-superuser and unable to bypass RLS                          |
+| `wiser_data_worker`  | Worker login that inherits runtime privileges with a separate password and timeouts                         |
+| `wiser_data_gis`     | Isolated GIS login that does not inherit the common runtime and can execute only the governed MVT functions |
 
 Every Data database transaction sets and validates transaction-local `wiser.tenant_id`, `wiser.project_id`, `wiser.max_security_level`, and `wiser.policy_version` values with `set_config`. Missing or mismatched context returns no rows or fails; it must never degrade into an unscoped query. All roles remain `NOSUPERUSER` and `NOBYPASSRLS`, and applications never connect as the migration owner at runtime.
 
@@ -168,3 +168,5 @@ Migration `0012_analysis.sql` adds scoped, version-bound analysis runs, per-asse
 Migration `0013_analysis_query_scope.sql` keeps forced analytical-record RLS and the same tenant, project, security-level and policy predicates, while evaluating request-constant helpers once per statement. Record pages use the selected analysis/asset index order; totals still count authorized rows rather than trusting broader asset metadata. The real 361,379-row reservoir source is covered by a bounded-page browser performance test.
 
 The internal query-tile source `service.wiser_exploration_mvt` (migration `0014_exploration_tiles.sql`) binds seven trusted parameters: tenant, project, actor, query, purpose, security ceiling and policy version. Its execute-only GIS role cannot read tables. The function reauthorizes every pinned member and rejects expired or unavailable queries before spatial selection. Each tile aggregates points into at most 4,096 cells; cluster counts cover only scoped records. Single features carry record/asset/analysis/version/item identities for exact lookup, while original values stay in record queries. Lines and polygons are clipped to the tile. The Web Mercator representation excludes polar regions outside its latitude domain, and tiles over 3 MiB fail rather than silently dropping features. A rolled-back PostgreSQL integration fixture decodes MVT and checks 100,000 point counts, bounded bytes, foreign scopes, expiry and missing membership.
+
+Exploration 1.5 adds optional map-wide `spatial.bounds` (WGS84 or null for an empty result) and `mercatorFeatureCount`, computed over the same authorized record set independently of pagination. The browser requests one initial record and this summary, fits the full result bounds, and loads same-origin query MVT by viewport. Clicking an individual feature performs a 1.4 exact-record lookup; a cluster click zooms in. The map distinguishes viewport feature/cluster counts from map-ready record totals. Tile-boundary ownership is corrected by append-only migration `0015_exploration_tile_boundaries.sql`, so points at tile seams contribute once. The 1.4 contract remains archived.

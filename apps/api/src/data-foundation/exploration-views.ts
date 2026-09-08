@@ -122,8 +122,8 @@ export async function queryAnalysisView(
     input.view === 'map',
     input.bbox ?? null,
   ];
-  const totalCount = COUNT.parse(
-    (input.view === 'records'
+  const counted = (
+    input.view === 'records'
       ? await client.query(
           'select count(*)::text total from catalog.analysis_record where analysis_id=$1::uuid and asset_id=$2::uuid and ($3::uuid is null or record_id=$3::uuid)',
           [
@@ -132,9 +132,12 @@ export async function queryAnalysisView(
             input.recordId ?? null,
           ],
         )
-      : await client.query(`select count(*)::text total ${RECORDS}`, params)
-    ).rows[0]?.['total'],
-  );
+      : await client.query(
+          `with coverage as (select count(*)::text total,st_extent(record.geom)::box2d bounds,count(*) filter(where st_intersects(record.geom,st_makeenvelope(-180,-85.0511287798066,180,85.0511287798066,4326)))::text mercator_count ${RECORDS}) select total,mercator_count,case when bounds is null then null else jsonb_build_array(st_xmin(bounds),st_ymin(bounds),st_xmax(bounds),st_ymax(bounds)) end bounds from coverage`,
+          params,
+        )
+  ).rows[0];
+  const totalCount = COUNT.parse(counted?.['total']);
   if (offset > totalCount)
     throw new DataCapabilityHandlerError('VALIDATION_FAILED');
   const page =
@@ -195,6 +198,10 @@ export async function queryAnalysisView(
           ...(selectedAssetId === undefined ? {} : { selectedAssetId }),
         }
       : {
+          spatial: {
+            bounds: counted?.['bounds'] ?? null,
+            mercatorFeatureCount: COUNT.parse(counted?.['mercator_count']),
+          },
           features: records.map((record, index) => ({
             type: 'Feature' as const,
             id: record.recordId,
