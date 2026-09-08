@@ -37,6 +37,7 @@ const errors = new Set<AnalysisContentError['code']>([
   'INCONSISTENT_COLUMNS',
   'CAPACITY_LIMIT',
   'PARSING_FAILED',
+  'MISSING_COMPANION',
 ]);
 function invalid(): never {
   throw new AnalysisContentError('INVALID_CONTENT');
@@ -88,11 +89,11 @@ async function* frames(
       while ((end = pending.indexOf('\n')) !== -1) {
         const line = pending.slice(0, end);
         pending = pending.slice(end + 1);
-        if (Buffer.byteLength(line) > 1024 * 1024)
+        if (Buffer.byteLength(line) > 4 * 1024 * 1024)
           throw new AnalysisContentError('SIZE_LIMIT');
         yield object(JSON.parse(line));
       }
-      if (Buffer.byteLength(pending) > 1024 * 1024)
+      if (Buffer.byteLength(pending) > 4 * 1024 * 1024)
         throw new AnalysisContentError('SIZE_LIMIT');
     }
     pending += decoder.decode();
@@ -178,7 +179,9 @@ export function createExternalAnalysisParser(options: {
       for await (const event of frames(response)) {
         if (summary) invalid();
         if (event['type'] === 'error') {
-          const code = event['code'] as AnalysisContentError['code'];
+          const code = (
+            event['code'] === 'RECORD_SIZE_LIMIT' ? 'SIZE_LIMIT' : event['code']
+          ) as AnalysisContentError['code'];
           throw new AnalysisContentError(
             errors.has(code) ? code : 'PARSING_FAILED',
           );

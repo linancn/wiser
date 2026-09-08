@@ -49,7 +49,8 @@ export class AnalysisContentError extends Error {
       | 'INVALID_FORMAT'
       | 'INCONSISTENT_COLUMNS'
       | 'CAPACITY_LIMIT'
-      | 'PARSING_FAILED',
+      | 'PARSING_FAILED'
+      | 'MISSING_COMPANION',
   ) {
     super(code);
     this.name = 'AnalysisContentError';

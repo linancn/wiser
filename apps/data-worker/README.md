@@ -106,3 +106,5 @@ CSV/JSON analysis is bounded at 64 MiB and 2,000,000 records per asset. Capacity
 独立解析适配器校验来源哈希、流式字段与完成总数，在本地绑定记录 ID；不完整结果必须回滚。 / The isolated parser adapter verifies source hashes, streamed schemas and completion totals, binds record IDs locally, and rejects incomplete results.
 
 `DATA_ANALYSIS_PARSER_URL` 配置内部解析器根地址，完整 Data profile 自动连接。XLSX/XLS、文档与压缩包逐资产解析，部分结果保留原因，容量失败回滚记录。 / `DATA_ANALYSIS_PARSER_URL` configures the private parser origin and is supplied by the complete Data profile. Workbook, document and archive analysis retains partial reasons and rolls back records on capacity failure.
+
+地理分析只读取同版本清单里的格式伴随文件，并逐文件核验哈希；ADF 头文件产生覆盖记录，其余成员保留为格式组附件。 / Geospatial analysis reads only same-version manifest companions and verifies each hash; the ADF header produces coverage records while other members remain accounted-for format companions.

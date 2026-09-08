@@ -17,7 +17,7 @@ from parser import MAX_INPUT_BYTES, ParseError, parse_asset
 
 MAX_REQUEST = 192 * 1024 * 1024
 MAX_FILES_BYTES = 128 * 1024 * 1024
-MAX_LINE = 1024 * 1024
+MAX_LINE = 4 * 1024 * 1024
 MAX_RESPONSE = 1024 * 1024 * 1024
 MAX_SECONDS = 900
 LOGGER = logging.getLogger(__name__)

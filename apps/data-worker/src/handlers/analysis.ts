@@ -13,6 +13,7 @@ import {
   type DataPostgresPool,
   type VersionObjectReadInput,
 } from '@wiser/data-infra';
+import { resolveAnalysisSource } from '../analysis-source.js';
 import type { ExternalAnalysisInput } from '../adapters/analysis-parser.js';
 import { DataJobHandlerError, type DataJobHandler } from './registry.js';
 
@@ -216,31 +217,12 @@ export function createAnalysisHandler(options: {
         result.assetCount += 1;
         const paths = files.filter((file) => file.assetId === asset.asset_id);
         const isManifest = asset.asset_id === registration?.manifestAssetId;
-        const suffixes = paths.map((file) =>
-          file.path.toLowerCase().split('.').at(-1),
+        const source = resolveAnalysisSource(
+          asset.asset_id,
+          asset.media_type,
+          files,
         );
-        const format =
-          asset.media_type.includes('csv') || suffixes.includes('csv')
-            ? 'csv'
-            : /(?:json|geo\+json)/.test(asset.media_type) ||
-                suffixes.includes('json') ||
-                suffixes.includes('geojson')
-              ? 'json'
-              : ((
-                  ['xlsx', 'xls', 'html', 'md', 'pdf', 'txt', 'zip'] as const
-                ).find(
-                  (kind) =>
-                    suffixes.includes(kind) ||
-                    {
-                      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                      xls: 'application/vnd.ms-excel',
-                      html: 'text/html',
-                      md: 'text/markdown',
-                      pdf: 'application/pdf',
-                      txt: 'text/plain',
-                      zip: 'application/zip',
-                    }[kind] === asset.media_type,
-                ) ?? null);
+        const { format } = source;
         let status = isManifest ? 'MANIFEST' : 'UNSUPPORTED';
         let reason: string | null = isManifest
           ? 'REGISTRATION_MANIFEST'
@@ -267,6 +249,12 @@ export function createAnalysisHandler(options: {
             job.policyVersion,
           ],
         );
+        if (!isManifest && source.companionOf) {
+          status = 'PARTIAL';
+          reason = 'FORMAT_COMPANION';
+          records = 0;
+          features = 0;
+        }
         if (
           !isManifest &&
           format !== null &&
@@ -311,7 +299,22 @@ export function createAnalysisHandler(options: {
                 ? parseAnalysisContent({ ...input, format })
                 : options.parseExternal!({
                     ...input,
-                    path: paths[0]?.path ?? `${asset.asset_id}.${format}`,
+                    path: source.path,
+                    companions: await Promise.all(
+                      source.companions.map(async (companion) => {
+                        const linked = assets.find(
+                          (candidate) =>
+                            candidate.asset_id === companion.assetId,
+                        );
+                        if (!linked)
+                          throw failure('ANALYSIS_ASSET_UNAVAILABLE');
+                        return {
+                          path: companion.path,
+                          bytes: await read(linked),
+                          sourceHash: linked.source_hash,
+                        };
+                      }),
+                    ),
                   });
             for await (const event of events) {
               if (event.type === 'schema') columns = event.columns;
@@ -340,6 +343,7 @@ export function createAnalysisHandler(options: {
               'ARCHIVE_LIMIT',
               'CAPACITY_LIMIT',
               'PARSING_FAILED',
+              'MISSING_COMPANION',
             ].includes(error.code)
               ? 'UNSUPPORTED'
               : error.code === 'ENCRYPTED_CONTENT'
