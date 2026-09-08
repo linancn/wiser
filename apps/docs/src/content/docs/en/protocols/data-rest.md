@@ -132,6 +132,8 @@ Current catalog get/version responses require `tileAvailability: { vector, raste
 
 SearchOrchestrator pushes authorization and publication filters into backends, applies fixed `RRF k=60`, deduplicates by DataItem+Version, and reauthorizes every hit.
 
+Graph expansion includes a visible isolated seed. A valid graph query with no visible match returns an empty `nodes`/`edges` result, not a dependency failure. The adapter merges all bounded path rows by entity/edge identity, rejects conflicting duplicates, and filters both nodes and relationships by tenant, project, security, policy, acceptance and publication. This does not create relationships absent from the projection.
+
 ## Governed GIS proxy
 
 GeoServer, STAC API, TiTiler, and Martin publish no host ports. Browsers, Agents, and external clients use only these Fastify GET/HEAD surfaces:

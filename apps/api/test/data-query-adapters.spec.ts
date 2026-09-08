@@ -313,7 +313,7 @@ describe('Neo4j graph query port', () => {
 
     const expand = http.requests[0]!.body as Record<string, unknown>;
     const path = http.requests[1]!.body as Record<string, unknown>;
-    expect(expand.statement).toContain('[*1..3]');
+    expect(expand.statement).toContain('[*0..3]');
     expect(path.statement).toContain('[*1..4]');
     expect(expand.statement).not.toContain('station:001');
     expect(expand.statement).toContain('tenantId = $tenantId');

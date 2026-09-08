@@ -132,6 +132,8 @@ If-Match: "v3"
 
 SearchOrchestrator 在后端下推权限与发布过滤，固定 `RRF k=60`，按 DataItem+Version 去重，再逐条重新授权。
 
+图谱展开包含可见的孤立种子。合法查询没有可见匹配时返回空 `nodes`/`edges`，不作为依赖失败。适配器按实体与边的身份合并全部有界路径行，拒绝内容冲突的重复身份，并对节点和关系同时过滤租户、项目、安全等级、策略、验收与发布状态；不会创建投影中不存在的关系。
+
 ## 受控 GIS 代理
 
 GeoServer、STAC API、TiTiler 与 Martin 没有宿主 published port；浏览器、Agent 和外部客户端唯一允许的 GIS 入口是下列 Fastify GET/HEAD：
