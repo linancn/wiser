@@ -116,6 +116,8 @@ Paths in the table are relative to `/api/data/v1`. Obtain exact inputs, outputs,
 
 ## Cursors, queries, and bounds
 
+Catalog search 1.1 accepts `includeTotal=true` and returns optional `totalCount`: the full caller-visible filtered count before pagination. Count and page share one short PostgreSQL repeatable-read transaction and identical RLS context and filters. Later pages are fresh requests, not a cross-request snapshot. Omit the flag when no count is needed; version 1.0 discovery schemas remain immutable in the archive.
+
 Lists use `first` and opaque `after`. GET arrays are comma-separated, for example `qualityGrades=A,B`. API rejects colliding path/query/body fields, prototype keys, unbounded numbers, and invalid arrays. Cursors bind to Tenant/Project, scope/filter, and authorization version and cannot cross contexts.
 
 Structured query accepts only allowlisted fields and operators:

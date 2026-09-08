@@ -54,6 +54,7 @@ type DataItem {
   selectedVersion: DataItemVersion
 }
 type DataItemConnection {
+  totalCount: Float
   nodes: [DataItem!]!
   pageInfo: PageInfo!
 }
@@ -83,6 +84,7 @@ type Operation {
 }
 
 input DataCatalogFilter {
+  includeTotal: Boolean
   query: String
   businessDomains: [String!]
 }
@@ -499,6 +501,7 @@ const resolvers = {
         typeof output['nextCursor'] === 'string' ? output['nextCursor'] : null;
       return {
         nodes: items,
+        totalCount: output['totalCount'] ?? null,
         pageInfo: { endCursor: nextCursor, hasNextPage: nextCursor !== null },
       };
     },

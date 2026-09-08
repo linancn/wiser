@@ -123,6 +123,8 @@ GET Tools encode only boolean, number, string, or string-array queries, and URL-
 
 ### Query
 
+`data_catalog_search` accepts `includeTotal: true` for an exact authorized filtered `totalCount`, independent of `first` and the page cursor. Use it for coverage and result summaries instead of counting one page or draining all pages. Discovery retains the immutable 1.0 schema and advertises 1.1.
+
 1. use `data_catalog_search` to obtain authorized DataItems and a cursor;
 2. pin immutable `versionId` through `data_catalog_get` or `data_catalog_version_get`;
 3. for an exact or historical map, pass that singular `versionId` to `data_geo_query`; otherwise select `data_query`, `data_search_federated`, `data_knowledge_search`, graph, or geo Tools as required;

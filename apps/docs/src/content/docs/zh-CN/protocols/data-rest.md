@@ -116,6 +116,8 @@ If-Match: "v3"
 
 ## 游标、查询和上限
 
+目录查询 1.1 接受 `includeTotal=true`，返回可选的 `totalCount`，表示分页前调用方可见且符合筛选的完整数量。计数与当前页在同一个短 PostgreSQL repeatable-read 事务中使用相同 RLS 上下文和筛选。后续页是新的请求，不代表跨请求快照。不需要计数时省略此参数；1.0 discovery schema 在归档中保持不可变。
+
 列表使用 `first` 与不透明 `after`。GET 数组参数使用逗号分隔，例如 `qualityGrades=A,B`；API 会拒绝重复 path/query/body 字段、prototype key、无界数字或无效数组。Cursor 与 Tenant/Project、Scope/filter 和授权版本绑定，不能跨上下文复用。
 
 结构化查询只接受 allowlist 字段与 operator：

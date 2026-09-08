@@ -71,6 +71,7 @@ const point = {
 const validInputs = {
   'data.catalog.search': {
     query: 'station',
+    includeTotal: true,
     businessDomains: ['water-monitoring'],
     first: 20,
   },

@@ -352,6 +352,11 @@ function normalizeQuery(
   const normalized: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(source)) {
     if (FORBIDDEN_KEYS.has(key)) return null;
+    if (key === 'includeTotal') {
+      if (entry !== 'true' && entry !== 'false') return null;
+      normalized[key] = entry === 'true';
+      continue;
+    }
     if (key === 'first') {
       if (typeof entry !== 'string' || !/^[1-9]\d{0,2}$/.test(entry)) {
         return null;

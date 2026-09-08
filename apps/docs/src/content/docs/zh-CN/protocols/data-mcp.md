@@ -123,6 +123,8 @@ GET Tool 只编码 boolean、number、string 或 string array query；path param
 
 ### 查询
 
+`data_catalog_search` 支持 `includeTotal: true`，取得不受 `first` 和当前页游标影响的已授权筛选总数 `totalCount`。覆盖统计和结果摘要应使用它，不能把一页大小当成总数，也不需要遍历全部分页。Discovery 保留不可变的 1.0 schema，并公布 1.1。
+
 1. 用 `data_catalog_search` 获取已授权 DataItem 和 cursor；
 2. 用 `data_catalog_get`/`data_catalog_version_get` 固定不可变 `versionId`；
 3. 查询精确或历史地图时，把该单数 `versionId` 传给 `data_geo_query`；其他情况按需选择 `data_query`、`data_search_federated`、`data_knowledge_search`、graph 或 geo Tool；

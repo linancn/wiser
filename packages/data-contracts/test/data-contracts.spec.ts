@@ -523,8 +523,8 @@ const asynchronousCapabilityIds = new Set<DataCapabilityId>([
 
 const expectedJsonSchemaHashes = {
   'data.catalog.search': {
-    input: '0200fec39a66bcfc428b442a5302a5171ec3d3d19fd98e937e1b85f60257ed49',
-    output: 'dd965149834a8f23f11449b6988ca7acee74fa394e4964d4e4fb610f5fd434d1',
+    input: '9fa0f09f57dc5063f42406cdaefd0e19b0ab8e019a3a4ba9824a3445c24139be',
+    output: '35a4dfc5c6f6d983c58ad3d209f6177979bd17cdbd96fe3f4109b149956ec02c',
   },
   'data.catalog.get': {
     input: '59f8155f67dd96336971960f7143c640e2fd75643846ab1b4c835a1602857078',

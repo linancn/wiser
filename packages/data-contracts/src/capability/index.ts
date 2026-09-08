@@ -77,12 +77,15 @@ export const DATA_CAPABILITY_IDS = [
 export const DataCapabilityIdSchema = z.enum(DATA_CAPABILITY_IDS);
 export type DataCapabilityId = z.infer<typeof DataCapabilityIdSchema>;
 
-export const DataItemPageSchema = z.strictObject({
+export const DataItemPageV1Schema = z.strictObject({
   items: z.array(DataItemSchema),
   nextCursor: CursorSchema.optional(),
 });
+export const DataItemPageSchema = DataItemPageV1Schema.extend({
+  totalCount: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+});
 
-export const DataCatalogSearchInputSchema = z.strictObject({
+export const DataCatalogSearchInputV1Schema = z.strictObject({
   query: z.string().min(1).max(512).optional(),
   businessDomains: z.array(DataKeySchema).max(64).optional(),
   processingStages: z.array(ProcessingStageSchema).max(6).optional(),
@@ -91,6 +94,10 @@ export const DataCatalogSearchInputSchema = z.strictObject({
   acceptanceStatuses: z.array(AcceptanceStatusSchema).max(6).optional(),
   ...PageRequestFields,
 });
+export const DataCatalogSearchInputSchema =
+  DataCatalogSearchInputV1Schema.extend({
+    includeTotal: z.boolean().optional(),
+  });
 
 export const DataCatalogGetInputSchema = z.strictObject({
   dataItemId: PlatformUuidSchema,
@@ -380,7 +387,7 @@ function defineCapability(
 const capabilityRegistry = {
   'data.catalog.search': defineCapability({
     id: 'data.catalog.search',
-    version: '1.0.0',
+    version: '1.1.0',
     kind: 'query',
     inputSchema: DataCatalogSearchInputSchema,
     outputSchema: DataItemPageSchema,
@@ -869,6 +876,14 @@ export const DATA_CAPABILITY_REGISTRY: Readonly<
 > = Object.freeze(capabilityRegistry);
 
 const capabilityArchive = {
+  'data.catalog.search': Object.freeze([
+    defineCapability({
+      ...capabilityRegistry['data.catalog.search'],
+      version: '1.0.0',
+      inputSchema: DataCatalogSearchInputV1Schema,
+      outputSchema: DataItemPageV1Schema,
+    }),
+  ]),
   'data.ingestion.reject': Object.freeze([
     defineCapability({
       ...capabilityRegistry['data.ingestion.reject'],

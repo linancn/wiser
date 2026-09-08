@@ -25,12 +25,12 @@ async function loadOverview() {
   const dal = await getDataFoundationDal();
   const [health, catalog, capabilities] = await Promise.all([
     dal.health(),
-    dal.catalog({ first: 6 }),
+    dal.catalog({ first: 1, includeTotal: true }),
     dal.capabilities(),
   ]);
   return {
     health,
-    catalogCount: catalog.items.length,
+    catalogCount: catalog.totalCount ?? '—',
     capabilityCount: capabilities.capabilities.length,
   };
 }

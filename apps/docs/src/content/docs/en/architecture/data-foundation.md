@@ -173,6 +173,8 @@ Matching query adapters push down Tenant, Project, Version, security, policy ver
 
 ## Protocol and product surfaces
 
+The Data overview reads the scoped catalog total with `includeTotal=true`; its metric is independent of the preview page size. Catalog count and page use one short repeatable-read authority transaction. Counts describe registered objects, not analytically validated records.
+
 - REST: `/api/data/v1` discovery, 22 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 22 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
 - GraphQL: `POST /graphql`, 22 schema-first fields sharing the same Handler; see [Data GraphQL](/en/protocols/data-graphql/).
 - MCP: stdio/stateless Streamable HTTP, 22 Tools and governed Resources that call HTTP only; see [Data MCP](/en/protocols/data-mcp/).

@@ -23,6 +23,7 @@ type DataItem {
   selectedVersion: DataItemVersion
 }
 type DataItemConnection {
+  totalCount: Float
   nodes: [DataItem!]!
   pageInfo: PageInfo!
 }
@@ -52,6 +53,7 @@ type Operation {
 }
 
 input DataCatalogFilter {
+  includeTotal: Boolean
   query: String
   businessDomains: [String!]
 }

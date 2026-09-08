@@ -57,6 +57,8 @@ Idempotency-Key: <uuid>
 
 ## Query fields
 
+`dataCatalog(filter: { includeTotal: true })` 在 `nodes`、`pageInfo` 之外返回可空的 `totalCount`。它是精确非负整数，使用 GraphQL Float 避免 32 位 Int 上限，并限制在 JavaScript 安全整数精度内。计数覆盖已授权且符合筛选的完整目录，不是当前页大小；省略参数时计数为 null。
+
 | Field                 | Capability                   | 作用                                                     |
 | --------------------- | ---------------------------- | -------------------------------------------------------- |
 | `dataCatalog`         | `data.catalog.search`        | 游标目录 connection                                      |

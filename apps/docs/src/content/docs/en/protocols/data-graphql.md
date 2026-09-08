@@ -57,6 +57,8 @@ One request may select only one mutation field, so one key maps to one command. 
 
 ## Query fields
 
+`dataCatalog(filter: { includeTotal: true })` exposes nullable `totalCount` alongside `nodes` and `pageInfo`. This exact nonnegative integer uses GraphQL Float to avoid the 32-bit Int limit and remains bounded by JavaScript safe integer precision. It counts the full authorized filtered catalog, not the current page; omission of the flag leaves the count null.
+
 | Field                 | Capability                   | Purpose                                           |
 | --------------------- | ---------------------------- | ------------------------------------------------- |
 | `dataCatalog`         | `data.catalog.search`        | Cursor catalog connection                         |

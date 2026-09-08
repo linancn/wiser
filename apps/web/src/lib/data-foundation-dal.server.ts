@@ -86,6 +86,7 @@ export interface DataFoundationDal {
   health(): Promise<DataHealthDto>;
   capabilities(): Promise<CapabilityRegistryDto>;
   catalog(input: {
+    readonly includeTotal?: boolean;
     readonly query?: string;
     readonly qualityGrades?: readonly string[];
     readonly first: number;
@@ -375,6 +376,8 @@ export function createDataFoundationDal(
         throw new DataFoundationApiError('invalid-request', 422);
       }
       const search = new URLSearchParams({ first: String(input.first) });
+      if (input.includeTotal !== undefined)
+        search.set('includeTotal', String(input.includeTotal));
       if (input.query !== undefined) {
         validateQuery(input.query, 512);
         search.set('query', input.query);
