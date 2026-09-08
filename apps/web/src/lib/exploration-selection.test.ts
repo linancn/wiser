@@ -31,6 +31,39 @@ const record: ExplorationRecord = {
   values: { station: '01646500' },
 };
 describe('shared exploration selection', () => {
+  it('links graph record identities to the same record and rejects stale graph selections', () => {
+    const state = explorationSelectionReducer(emptyExplorationSelection, {
+      type: 'query',
+      queryId: 'one',
+    });
+    const node = {
+      id: 'record:analysis:record',
+      kind: 'RECORD' as const,
+      label: 'Station',
+      dataItemId: 'item',
+      versionId: 'version',
+      record,
+    };
+    const selected = explorationSelectionReducer(state, {
+      type: 'node',
+      queryId: 'one',
+      node,
+      resource,
+    });
+    expect(selected.record).toBe(record);
+    expect(selected.node).toBe(node);
+    expect(
+      explorationSelectionReducer(selected, {
+        type: 'node',
+        queryId: 'old',
+        node,
+        resource,
+      }),
+    ).toBe(selected);
+    expect(
+      explorationSelectionReducer(selected, { type: 'query', queryId: 'two' }),
+    ).toMatchObject({ record: null, node: null, resource: null });
+  });
   it('links resource and record selections and rejects events from a stale query', () => {
     let state = explorationSelectionReducer(emptyExplorationSelection, {
       type: 'query',

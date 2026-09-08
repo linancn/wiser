@@ -21,6 +21,20 @@ test('real NLDI records select the same station on the exploration map', async (
   await expect(page.getByTestId('explorer-inspector')).toContainText(
     'USGS-01646500',
   );
+  await page.getByRole('tab', { name: '知识图谱', exact: true }).click();
+  const graph = page.getByTestId('explorer-graph');
+  await expect(graph.getByTestId('knowledge-graph')).toHaveAttribute(
+    'data-state',
+    'ready',
+  );
+  await expect(graph).toContainText('文件');
+  await graph
+    .getByRole('button', { name: '记录 · USGS-01646500', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('explorer-inspector')).toContainText(
+    'USGS-01646500',
+  );
   await page.getByRole('tab', { name: '地图', exact: true }).click();
   await expect(page.getByTestId('explorer-map')).toHaveAttribute(
     'data-ready',
