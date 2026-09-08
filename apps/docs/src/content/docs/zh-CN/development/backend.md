@@ -21,8 +21,8 @@ checkPaths:
   - packages/**
   - compose.yaml
   - package.json
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: 7f6b092316bcb7bbdb50168119f6e96fa7a705c6
 ---
 
 ## 后端拓扑
@@ -86,9 +86,12 @@ Telemetry Ingress ────────► internal OTel Collector
 
 `/health/ready` 验证 API 自身的 EXCON 服务；Data Foundation 另有 `/api/data/v1/health`，会分别反映数据库、对象存储和 Data Worker。不要用一个 liveness 结果代替完整依赖就绪证明。
 
+默认组合还注册 `platform.agent-setup`，提供 `/agent-setup/prompt.md`、发行清单和按内容固定的 Skill 文件。这个公开分发入口只读取仓库自有的允许文件，不接受调用者指定的文件系统路径或身份。公开地址配置、安装及连接验证见[智能体接入](/protocols/agent-setup/)。
+
 ### 身份和运行模式
 
 - Supabase Auth 是人类 Session 的唯一身份源；平台 resolver 同时接受经授权的委托凭据。
+- 配对配置 `WISER_AGENT_MCP_RESOURCE` 与 `WISER_AGENT_AUTH_ISSUER` 后启用 Platform Agent 授权、连接管理与交换 HTTP 模块，复用同一 Auth client、PostgreSQL Pool 和 HMAC key ring。即使 `SUPABASE_URL` 使用内部地址，公开 issuer 仍须匹配已签名 claims；所有 Agent API 响应禁止缓存。
 - 生产环境强制 `WISER_AUTH_MODE=supabase`。非生产可以显式使用 `off`，但 Data Foundation 在 Auth 关闭时拒绝启动。
 - Platform 请求上下文包含 Tenant、Project、Purpose、roles、scopes、安全上限和 authz version。系统 adapter 必须从该上下文授权，不能只检查“已登录”。
 - Agent EXCON 把 Platform roles 映射为 operator/run_agent；run_agent credential 还必须绑定具体 RunAgent。
@@ -124,6 +127,9 @@ Telemetry Ingress ────────► internal OTel Collector
 - Tool 和 Resource schema 来自公开系统 contracts，输出有大小和结构校验；
 - MCP 不导入 API application service，也不查询数据库、journal 或投影；
 - HTTP transport 的 `/mcp` 自身需要 bearer token，下游 API 仍使用各系统的授权 credential；
+- `WISER_MCP_AUTH_MODE=oauth` 通过 Platform API 逐请求交换调用者的 OAuth Token，仅注册项目绑定的 Data 模块和 `wiser_connection` / `wiser://connection`。该模式要求 `DATA_API_URL`、`WISER_AGENT_MCP_RESOURCE` 与 `WISER_AGENT_AUTH_ISSUER`，不初始化 EXCON 或固定 API 凭据；默认 `static` 模式保留已有的固定凭据组合；
+- OAuth 模式在 `/.well-known/oauth-protected-resource/mcp` 及根目录别名发布 resource metadata，通过 `401` 提示认证发现，并拒绝无关浏览器 Origin。API 交换使用 10 秒超时、64 KiB 响应限制、schema 校验且禁止重定向；只有交换后的 credential 会发往 Data API；
+- HTTP host 也支持逐请求 authorizer，返回仅绑定当前调用者的 handler；它与共享 bearer handler 互斥。每次调用重新授权，成功响应禁止缓存，授权依赖不可用时失败关闭且不暴露上游细节；
 - 新模块必须有唯一点分 ID，并通过 `registerWiserMcpModules` 组合。
 
 ## Telemetry Ingress

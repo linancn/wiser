@@ -167,6 +167,7 @@ describe('Data Foundation production runtime composition', () => {
       },
     );
     expect(modules.map(({ id }) => id)).toEqual([
+      'platform.agent-setup',
       'platform.auth-runtime',
       'data.foundation',
       'data.foundation.rest',

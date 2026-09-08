@@ -19,8 +19,8 @@ checkPaths:
   - apps/mcp/src/data-foundation/**
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: 1eb68e202252d65cea7db918135f9949931e4f7b
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: b6dc97b67860a37f5230518743dca84d2cb25fa1
 ---
 
 ## 权威边界
@@ -106,6 +106,12 @@ MCP Evidence/STAC Resource 通过真实 HTTP 权威边界读取。Evidence GET �
 正式版本只能从已批准且冻结的 review checkpoint 创建。一个 data-postgres 事务提交 DataItemVersion、质量/血缘事实、Operation event、Audit 与 Outbox；Supabase、data-postgres 和 S3 之间不伪造分布式事务。
 
 ## 确定性入库与 Agent 边界
+
+研究数据包可在入库时选择可选的 `sourceRegistration` 类型。迁移 `0010_source_registration.sql` 将不可变的来源描述保存在受 RLS 保护的 Ingestion Session 中。有界 JSON 清单把来源、原始路径与哈希、脱敏副本、部分下载/样本/空文件状态及每个上传资产绑定到精确大小和 SHA-256；缺失、重复、多余或内容变化都会失败。零字节来源单独登记，不伪造非空上传。
+
+准备后内容完全相同的不同路径可以引用同一个内容资产。每个路径仍保留各自的原始/准备后大小和哈希、处理方式、完整性与来源关联，且必须逐项匹配该资产；重复路径和重复的权威资产身份仍然无效。Skill 在每个来源登记内按准备后内容哈希只上传一次，并在清单和有界证据片段中保留全部路径别名。
+
+该类型的验证范围是**来源登记**：保留原始对象，通过确定性清单校验创建包含来源名称、提供方和限制说明的 `METADATA_QUALITY` / `DECLARED` 版本，不运行文档/GIS 解析或 AI 映射计划。质量通过只表示登记完整性检查通过，不推断分析有效性、数据集完整性、许可或地理正确性。病毒扫描、指纹、安全继承、复核、事务/审计/Outbox 与发布门禁仍然生效。冻结的来源限制会进入证据、图谱和 STAC 检索投影。
 
 入库使用 18 个状态：
 

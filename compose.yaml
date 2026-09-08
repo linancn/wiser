@@ -97,6 +97,10 @@ services:
         source: opensearch-ca
         target: /etc/wiser/opensearch
         read_only: true
+    depends_on:
+      opensearch-icu-init:
+        condition: service_completed_successfully
+        required: false
     healthcheck:
       test:
         - CMD
@@ -112,6 +116,7 @@ services:
     <<: *app
     command: pnpm --filter @wiser/web exec next dev --hostname 0.0.0.0 --port 3000
     environment:
+      WISER_AGENT_SETUP_URL: ${WISER_AGENT_SETUP_URL:-http://127.0.0.1:3101/agent-setup/prompt.md}
       AGENT_EXCON_API_INTERNAL_URL: http://api:3001
       AGENT_EXCON_WEB_DATA_MODE: ${AGENT_EXCON_WEB_DATA_MODE:-live}
       WISER_WEB_OPERATOR_TOKEN: ${WISER_WEB_OPERATOR_TOKEN:-local-demo-operator-token}
@@ -168,6 +173,8 @@ services:
   docs:
     <<: *app
     command: pnpm --filter @wiser/docs exec next dev --hostname 0.0.0.0 --port 4321
+    environment:
+      WISER_AGENT_SETUP_URL: ${WISER_AGENT_SETUP_URL:-http://127.0.0.1:3101/agent-setup/prompt.md}
     ports:
       - 127.0.0.1:4321:4321
     healthcheck:
@@ -787,7 +794,7 @@ services:
       DATA_S3_BUCKET: ${DATA_S3_BUCKET:-wiser-authority}
       DATA_S3_ACCESS_KEY_ID: ${DATA_S3_ACCESS_KEY_ID:-wiser-data-local-access}
       DATA_S3_SECRET_ACCESS_KEY: ${DATA_S3_SECRET_ACCESS_KEY:-wiser-local-s3-8c492a72f6d84e2e}
-      DATA_INGESTION_MAX_OBJECT_BYTES: '16777216'
+      DATA_INGESTION_MAX_OBJECT_BYTES: ${DATA_INGESTION_MAX_OBJECT_BYTES:-67108864}
       DATA_INGESTION_MIN_QUALITY_SCORE: '0.75'
       DATA_INGESTION_MIN_AI_CONFIDENCE: '0.8'
       DATA_CLAMAV_HOST: clamav

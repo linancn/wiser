@@ -18,13 +18,15 @@ checkPaths:
   - apps/docs/src/content/**
   - apps/docs/src/lib/**
   - apps/docs/e2e/**
-lastReviewedAt: 2026-08-26
-lastReviewedCommit: e048ff2ee4cc0f3c5065ca36947094463e3b1841
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: 61d5e49e9668c622c9fb01958a7716b1f95a9dac
 ---
 
 # WISER Docs / 文档应用
 
 `apps/docs` is the single Fumadocs site for WISER Platform, Agent EXCON, Data Foundation, and future systems. `apps/docs` 是所有 WISER 系统共用的 Fumadocs 文档站。
+
+首页和文档页提供双语智能体接入复制操作，地址由公开的 `WISER_AGENT_SETUP_URL` 配置；生产预渲染时在构建阶段提供该值。 / Home and document pages provide a bilingual Agent setup copy action configured with the public `WISER_AGENT_SETUP_URL`; supply it during the production prerender build. See [the protocol](./src/content/docs/en/protocols/agent-setup.md) / [接入协议](./src/content/docs/zh-CN/protocols/agent-setup.md).
 
 ## Entrypoints / 入口
 
@@ -58,5 +60,7 @@ pnpm --filter @wiser/docs typecheck
 pnpm --filter @wiser/docs build
 pnpm --filter @wiser/docs test:e2e
 ```
+
+The search browser check waits for the static index response and completed download before checking visible results, so a cold development build uses the bounded network wait. / 搜索浏览器测试先确认静态索引响应与下载完成，再检查可见结果；首次开发构建使用有界的网络等待。
 
 The human workflow is documented in [Development documentation](./src/content/docs/en/development/index.md) and [Quick start](./src/content/docs/en/quick-start.md). / 面向人的开发流程见[开发手册](./src/content/docs/zh-CN/development/index.md)与[快速开始](./src/content/docs/zh-CN/quick-start.md)。

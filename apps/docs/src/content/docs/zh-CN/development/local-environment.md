@@ -16,8 +16,8 @@ checkPaths:
   - compose.yaml
   - .env.example
   - scripts/data-foundation/**
-lastReviewedAt: 2026-08-26
-lastReviewedCommit: e048ff2ee4cc0f3c5065ca36947094463e3b1841
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: 7ab2bd8be45955cbf1c7e7c58dde27bccc145c50
 ---
 
 ## 运行模式
@@ -38,6 +38,7 @@ lastReviewedCommit: e048ff2ee4cc0f3c5065ca36947094463e3b1841
 - 部分镜像在 Apple Silicon 上使用显式 `linux/amd64` 模拟，首次拉取、初始化和健康检查会更久。
 - 安装和首次构建需要访问 npm registry 与容器 registry。
 - OpenSearch one-shot init 会下载并校验与 3.8.0 精确匹配的官方 `analysis-icu` 与 `analysis-smartcn` 插件；readiness 要求两者同时出现。插件使用独立命名卷，版本或 checksum 变化时应在可丢弃环境执行确认式 Data reset，再从权威数据重建版本化检索投影。
+- 启用 Data profile 时，API 会等待该初始化任务导出 OpenSearch CA 后才启动。Node 在进程启动时加载 `NODE_EXTRA_CA_CERTS`，之后补齐文件无法修复已启动 API 的信任配置。未启用 Data profile 时该依赖为可选，基础栈仍可独立启动。
 - 确认下表端口没有被其他进程或旧 Compose project 占用；端口冲突时先定位占用者，不要随意改一端而遗漏相关回调、CORS 或 smoke 配置。
 
 ## 主要端口
@@ -92,6 +93,12 @@ Data Foundation Web 使用 Supabase SSR Session，完整栈会为 Data smoke 和
 具体 header、scope 与调用顺序见 [Platform Auth](/architecture/unified-auth/)、[Agent EXCON HTTP](/protocols/http/) 和 [MCP](/protocols/mcp/)。
 
 ## 环境变量与秘密
+
+Web 与 Docs 通过公开的 `WISER_AGENT_SETUP_URL` 生成可复制的智能体接入指令，本机默认为 `http://127.0.0.1:3101/agent-setup/prompt.md`。部署时指向公开 API，生产 Docs 构建时也需提供。API 的 `DATA_PUBLIC_API_ORIGIN` 控制按内容固定的 Skill 下载地址。发行校验与独立的身份连接见[智能体接入](/protocols/agent-setup/)。
+
+Data Foundation Skill 的研究数据包辅助脚本使用 Python 3 标准库。清点阶段校验包清单和下载清单，将注册入口合并到完整数据源目录，并核对清单外文件，保持来源目录不变。运行 `python3 -B skills/wiser-data-foundation/scripts/water_bundle.py inventory --bundle /absolute/source --out /absolute/output/inventory.json`。这是本机准备步骤；正式入库只能通过统一 HTTP API。Skill 参考文档说明凭据排除、脱敏副本、完整性状态与显式启用的真实案例测试。
+
+Compose 的 `DATA_INGESTION_MAX_OBJECT_BYTES` 默认是 64 MiB，并允许显式环境配置覆盖，可容纳本案例最大的 36,378,636 字节文件。这是 Worker 的单对象上限；来源登记仍逐一校验精确内容，不把部分下载或未解析内容宣称为可分析数据。
 
 `.env.example` 是变量目录，不是可直接用于生产的配置。完整栈会把本机生成的秘密保存在被 Git 忽略的 `.wiser/local/runtime-secrets.json`。不要提交 `.env`、数据库 URL、S3 key、Supabase service-role、HMAC key、MCP token 或 Codex 登录文件。
 

@@ -17,8 +17,8 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - packages/data-contracts/src/capability/**
   - skills/wiser-data-foundation/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: 009852bdcfd26240fa31553e7d0e2254400aaf67
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: cf0c285878bbaa7811b03198ba51b733b252588a
 ---
 
 ## 只做 HTTP 适配
@@ -134,6 +134,8 @@ GET Tool 只编码 boolean、number、string 或 string array query；path param
 `data_geo_intersect` 先把 DataItem target 解析为可见已提交 Version，再收集全部 sibling extent，绝不回退旧 Version。当前 catalog/version Tool 输出必须带有 `tileAvailability`；Agent 可用布尔量决定是否提供受控 vector/raster route，但不得由此推断上游服务健康或 COG 合规。
 
 ### 入库
+
+`data_ingestion_create` 从共享 Registry 发现可选的 `sourceRegistration` 1.1 输入，用精确来源清单登记真实提供方、目录、接口和研究原始资产。必须保留样本、部分下载、空文件与未知状态；登记成功不表示分析数据完整。Skill 的 `references/water-bundle.md` 说明本机清点与准备流程。原生 OAuth MCP 模式见后端开发文档，上述静态配置保留为兼容模式。
 
 1. `data_upload_session_create` 生成 quarantine 上传计划；
 2. 调用方在 MCP 外使用受控预签名 URL 上传大文件；

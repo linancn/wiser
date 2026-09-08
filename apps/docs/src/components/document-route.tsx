@@ -13,6 +13,7 @@ import type { DocsLocale } from '@/lib/i18n';
 import { baseOptions } from '@/lib/layout.shared';
 import { source } from '@/lib/source';
 import { getMDXComponents } from '@/mdx-components';
+import { AgentSetup } from './agent-setup';
 
 function getPage(locale: DocsLocale, slugs?: string[]) {
   const page = source.getPage(slugs, locale);
@@ -54,11 +55,15 @@ export function DocumentRoute({
   const page = getPage(locale, slugs);
   const MDX = page.data.body;
   const layout = baseOptions(locale);
+  const setupUrl =
+    process.env['WISER_AGENT_SETUP_URL'] ??
+    'http://127.0.0.1:3101/agent-setup/prompt.md';
 
   if ((slugs?.length ?? 0) === 0) {
     return (
       <HomeLayout {...layout} className="wiser-home-layout">
         <div className="wiser-home">
+          <AgentSetup locale={locale} setupUrl={setupUrl} />
           <MDX components={getMDXComponents()} />
         </div>
       </HomeLayout>
@@ -79,6 +84,7 @@ export function DocumentRoute({
       >
         <DocsTitle>{page.data.title}</DocsTitle>
         <DocsDescription>{page.data.description}</DocsDescription>
+        <AgentSetup locale={locale} setupUrl={setupUrl} />
         <DocsBody>
           <MDX components={getMDXComponents()} />
         </DocsBody>

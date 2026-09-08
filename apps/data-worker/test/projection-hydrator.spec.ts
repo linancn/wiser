@@ -106,6 +106,41 @@ class FakeAuthority implements ProjectionHydrationAuthority {
 }
 
 describe('five-target projection hydrator', () => {
+  it('preserves immutable source limitations in evidence, graph and STAC retrieval', async () => {
+    const limitations = [
+      'Source registration only; partial bytes are not analytically validated.',
+    ];
+    const authority = {
+      load: () =>
+        Promise.resolve({
+          ...snapshot,
+          version: { ...snapshot.version, limitations },
+        }),
+      close: () => Promise.resolve(),
+    };
+    const hydrator = new ProjectionInputHydrator({
+      authority,
+      maximumCachedEvents: 8,
+      embedding: new DeterministicFakeEmbedding({
+        dimensions: 8,
+        version: '1.0.0-fixture',
+      }),
+    });
+    const result = await hydrator.hydrate(event);
+    expect(
+      result.evidence.every(
+        (entry) =>
+          JSON.stringify(entry.limitations) === JSON.stringify(limitations),
+      ),
+    ).toBe(true);
+    expect(
+      result.graph.every(
+        (entry) =>
+          JSON.stringify(entry.limitations) === JSON.stringify(limitations),
+      ),
+    ).toBe(true);
+    expect(result.stac?.limitations).toEqual(limitations);
+  });
   it('loads authority IDs once and creates exact governed inputs for every target', async () => {
     const authority = new FakeAuthority();
     const hydrator = new ProjectionInputHydrator({

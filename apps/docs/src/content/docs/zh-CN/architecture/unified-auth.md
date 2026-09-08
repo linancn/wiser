@@ -52,7 +52,17 @@ platform.delegations
 platform_private.delegated_credentials
 platform_private.authorization_audit_events
 platform_private.control_outbox
+platform_private.agent_connections
+platform_private.agent_exchange_credentials
 ```
+
+Agent 连接记录把一个 human 与 OAuth client 绑定到已有的 `agent-data` Delegation 和精确的 MCP resource URL。交换所得 credential 保留不可变的 OAuth Session 绑定，有效期不能超过 OAuth Token。可选的 Supabase access-token hook 保留直接登录的 claims，拒绝未授权 OAuth client，并把已批准 claims 绑定到对应 resource 与 Delegation。只有 Supabase Auth 可以调用该 hook；创建函数本身不会启用 OAuth runtime。普通 human JWT 解析会拒绝带有 `client_id` 的 Token。
+
+`createSupabaseAgentClaimsVerifier` 单独验证这类已签名 claims：要求配置的精确 issuer、单一 resource audience、authenticated role、有效的 user/session/client/Delegation ID，以及未到期的整数 expiry。它不会从用户 metadata 推导 Delegation。claims 验证之后，调用方仍须检查实时连接与 Session 授权。
+
+`PostgresAgentConnectionService` 提供请求检查、项目授权、连接列表与撤销，以及 credential 交换。授权要求实时有效的直接 human Session、`platform.delegation.manage`，以及目标 Project 的目录读取权限。查询模式仅授予调用方已有的读取 scopes；入库还要求用户明确选择且当前具备 `data.ingestion.write`，不授予发布权限。安全等级默认内部，不能超过调用方上限；授权有效期为 60–3600 秒。浏览器须先通过 Supabase 把 OAuth authorization request 关联到 human，再由服务提交授权。
+
+授权在一个控制面事务内创建平台 Agent、到期 Membership 与有边界的 Delegation。重新授权会撤销旧 Delegation。交换流程检查当前连接、OAuth client、consent 与 Session，再签发最长 60 秒且不超过 OAuth 和 Delegation 到期时间的 credential。`agent_exchange` credential 支持并发请求；普通 `delegated` credential 保留单枚有效约束。credential 类型和 OAuth 绑定不可变，延迟约束要求提交时绑定必须存在；每次委托 API 解析都会复查绑定的 Session、consent、client 和当前 Delegation。变更使用幂等锁与原子 Audit/Outbox，交换重放不能恢复明文。
 
 - Actor 统一表示 human、agent 与 service；human actor 关联 `auth.users.id`。
 - Tenant 是顶级隔离边界；Project 是业务资源所有权边界。
@@ -74,6 +84,18 @@ platform_private.control_outbox
 | `POST` | `/api/platform/v1/credentials/{credentialId}:revoke`             | 撤销单个 credential                                              |
 
 `/me` 与委托路由都要求 Bearer、Tenant、Project 与 Purpose。所有写操作要求 UUID `Idempotency-Key`；Delegation 命令还要求经过验证且具备 `platform.delegation.manage` 的 Supabase human。响应为 `private, no-store`，issue/rotate 的明文不可恢复。
+
+API 同时配置 `WISER_AGENT_MCP_RESOURCE`（精确的公开 `/mcp` URL）与 `WISER_AGENT_AUTH_ISSUER`（公开 Supabase `/auth/v1` issuer）后启用 Agent HTTP 路由。除回环地址外，两者都要求 HTTPS。内部 Supabase transport URL 与公开 issuer 分开配置；配置不完整时拒绝启动。
+
+| 方法   | 路径                                                       | 认证与结果                                                         |
+| ------ | ---------------------------------------------------------- | ------------------------------------------------------------------ |
+| `GET`  | `/api/platform/v1/agent-authorizations/{authorizationId}`  | 直接 human Session；OAuth client 信息与可授权项目                  |
+| `POST` | `/api/platform/v1/agent-connections`                       | 直接 human Session；有边界的项目授权                               |
+| `GET`  | `/api/platform/v1/agent-connections`                       | 直接 human Session；自己的安全连接 metadata                        |
+| `POST` | `/api/platform/v1/agent-connections/{connectionId}/revoke` | 直接 human Session；撤销自己的连接                                 |
+| `POST` | `/api/platform/v1/agent-connections/exchange`              | 绑定 resource 的 OAuth Token；短期 credential 与服务端绑定的上下文 |
+
+这些路由通过经过验证的 Session、持久化授权或 OAuth 绑定确定项目所有权。交换与撤销仅接受空 JSON body；所有写操作要求 UUID `Idempotency-Key`。入口统一校验输入和输出 schema，限制请求 body 为 16 KiB，并返回 no-store 响应和受控错误。数据库或 provider 故障不会暴露上游细节，管理视图不返回 credential。
 
 ## 请求处理
 

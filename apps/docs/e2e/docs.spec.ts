@@ -62,6 +62,11 @@ test('serves Chinese by default and preserves the English corpus', async ({
 test('keeps the migrated document routes and built-in search available', async ({
   page,
 }) => {
+  const searchIndex = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/search/' &&
+      response.request().method() === 'GET',
+  );
   await page.goto('/architecture/multi-agent-observability/');
   await expect(
     page.getByRole('heading', { name: '多智能体导调与可观测性' }),
@@ -71,6 +76,9 @@ test('keeps the migrated document routes and built-in search available', async (
   await searchButton.click();
   const searchDialog = page.getByRole('dialog', { name: '搜索文档' });
   await searchDialog.getByRole('textbox').fill('OpenTelemetry');
+  const response = await searchIndex;
+  expect(response.ok()).toBe(true);
+  await response.finished();
   await expect(searchDialog).toContainText(
     /Agent EXCON 架构|多智能体导调与可观测性/,
   );

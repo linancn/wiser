@@ -16,8 +16,8 @@ checkPaths:
   - compose.yaml
   - .env.example
   - scripts/data-foundation/**
-lastReviewedAt: 2026-08-26
-lastReviewedCommit: e048ff2ee4cc0f3c5065ca36947094463e3b1841
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: 7ab2bd8be45955cbf1c7e7c58dde27bccc145c50
 ---
 
 ## Runtime modes
@@ -38,6 +38,7 @@ lastReviewedCommit: e048ff2ee4cc0f3c5065ca36947094463e3b1841
 - Some images use explicit `linux/amd64` emulation on Apple Silicon, so the first pull, initialization, and health checks take longer.
 - Installation and the first build need access to npm and container registries.
 - The OpenSearch one-shot init downloads and verifies the official `analysis-icu` and `analysis-smartcn` plugins at the exact 3.8.0 version; readiness requires both. Each plugin uses a named volume. A plugin version or checksum change is applied through a confirmation-gated Data reset in disposable state, followed by rebuilding the versioned search projections from authority.
+- With the Data profile enabled, API startup waits for that initializer to export the OpenSearch CA. Node loads `NODE_EXTRA_CA_CERTS` when its process starts, so creating the file afterward cannot repair an already-running API. This dependency is optional when the Data profile is disabled, keeping the base stack independent.
 - Confirm the ports below are free from another process or old Compose project. When a port conflicts, identify the owner rather than changing one side and leaving callback, CORS, or smoke configuration inconsistent.
 
 ## Primary ports
@@ -92,6 +93,12 @@ The shared MCP process always initializes its EXCON HTTP client. Even Data-only 
 See [Platform Auth](/en/architecture/unified-auth/), [Agent EXCON HTTP](/en/protocols/http/), and [MCP](/en/protocols/mcp/) for headers, scopes, and invocation order.
 
 ## Environment variables and secrets
+
+Web and Docs use the public `WISER_AGENT_SETUP_URL` for their copyable Agent instructions; its local default is `http://127.0.0.1:3101/agent-setup/prompt.md`. Point it to the deployment's public API and supply it during production Docs builds. The API's `DATA_PUBLIC_API_ORIGIN` controls content-pinned Skill download URLs. See [Agent setup](/en/protocols/agent-setup/) for release verification and the separate authenticated connection.
+
+The Data Foundation Skill's research-bundle helper uses Python 3 with the standard library. Its inventory phase checks package/download manifests, joins registered interfaces to the full source catalog, and accounts for unlisted files without changing the source directory. Run `python3 -B skills/wiser-data-foundation/scripts/water_bundle.py inventory --bundle /absolute/source --out /absolute/output/inventory.json`. This is local preparation; only the unified HTTP API may perform business ingestion. The Skill reference documents credential exclusions, sanitized derivatives, completeness and the opt-in real-case test.
+
+Compose defaults `DATA_INGESTION_MAX_OBJECT_BYTES` to 64 MiB and honors an explicit environment override. This covers the research case's largest 36,378,636-byte file. It is the Worker's per-object bound; source registration still verifies exact bytes and does not turn partial or unparsed content into analytical data.
 
 `.env.example` is a variable catalog, not a production-ready configuration. The complete stack writes generated local secrets to ignored `.wiser/local/runtime-secrets.json`. Never commit `.env`, database URLs, S3 keys, Supabase service-role keys, HMAC keys, MCP tokens, or Codex login files.
 

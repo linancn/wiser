@@ -15,8 +15,8 @@ checkPaths:
   - apps/api/src/data-foundation/schema.graphql
   - apps/api/src/data-foundation/graphql-module.ts
   - packages/data-contracts/src/capability/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: 2b365e92de940ca7b13bdd1720ff452540754222
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: b6dc97b67860a37f5230518743dca84d2cb25fa1
 ---
 
 ## 入口与权威契约
@@ -81,6 +81,8 @@ Connection 返回 `nodes` 与 `pageInfo { endCursor hasNextPage }`。其余分�
 `geoIntersect` 会先选择 DataItem target 的可见已提交 Version，再收集全部 sibling extent；target 缺失、不可见、无 extent 或彼此不相交时返回同样的空结果，绝不回退历史版本。当前 catalog 输出必须包含 `DataItemVersion.tileAvailability { vector raster }`；它表示受控 source 可路由，不代表 GIS 上游健康或 COG 证明。
 
 ## Mutation fields
+
+`CreateIngestionInput.sourceRegistration` 是入库 1.1 严格描述的可选 JSON 映射。GraphQL 与 REST 使用相同的清单绑定、授权、幂等、校验和“仅来源登记”语义；JSON scalar 不绕过 Capability schema。
 
 | Field                       | Capability                    | 结果                                  |
 | --------------------------- | ----------------------------- | ------------------------------------- |

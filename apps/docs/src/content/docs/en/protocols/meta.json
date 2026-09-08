@@ -1,6 +1,7 @@
 {
   "title": "Protocols",
   "pages": [
+    "agent-setup",
     "---Agent EXCON---",
     "http",
     "mcp",

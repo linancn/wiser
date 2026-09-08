@@ -194,6 +194,22 @@ join platform.projects as project
   on project.id = delegation.project_id
  and project.tenant_id = delegation.tenant_id
 where credential.key_id = $1
+  and (
+    credential.credential_kind='delegated'
+    or exists (
+      select 1 from platform_private.agent_exchange_credentials exchange
+      join platform_private.agent_connections connection on connection.id=exchange.connection_id
+        and connection.delegation_id=credential.delegation_id
+      join auth.sessions session on session.id=exchange.oauth_session_id
+        and session.user_id=connection.owner_actor_id and session.oauth_client_id=connection.oauth_client_id
+      join auth.oauth_clients client on client.id=connection.oauth_client_id and client.deleted_at is null
+      join auth.oauth_consents consent on consent.user_id=connection.owner_actor_id
+        and consent.client_id=connection.oauth_client_id and consent.revoked_at is null
+      where exchange.credential_id=credential.id
+        and exchange.oauth_token_expires_at>statement_timestamp()
+        and (session.not_after is null or session.not_after>statement_timestamp())
+    )
+  )
 limit 1
 `;
 

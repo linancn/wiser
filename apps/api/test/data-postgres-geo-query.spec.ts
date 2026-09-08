@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   PostgisGeoQueryPort,
+  PostgresStructuredDataQueryPort,
   type QueryAdapterPgClient,
   type QueryAdapterPgPool,
 } from '../src/data-foundation/query-adapters.js';
@@ -244,7 +245,7 @@ function featureIds(output: unknown): readonly string[] {
     .toSorted();
 }
 
-describe('PostGIS geo query PostgreSQL integration', () => {
+describe('Data authority query PostgreSQL integration', () => {
   realPostgresTest(
     'selects the latest immutable version before extents and fails closed across authority boundaries',
     async () => {
@@ -293,10 +294,10 @@ describe('PostGIS geo query PostgreSQL integration', () => {
           `create role ${roleName} nologin nosuperuser nocreatedb nocreaterole noinherit nobypassrls`,
         );
         await admin.query(
-          `grant usage on schema catalog, security to ${roleName}`,
+          `grant usage on schema catalog, knowledge, security to ${roleName}`,
         );
         await admin.query(
-          `grant select on catalog.data_item, catalog.data_item_version, catalog.spatial_extent to ${roleName}`,
+          `grant select on catalog.data_item, catalog.data_item_version, catalog.spatial_extent, knowledge.evidence_fragment to ${roleName}`,
         );
         await admin.query(
           `grant execute on all functions in schema security to ${roleName}`,
@@ -474,6 +475,73 @@ describe('PostGIS geo query PostgreSQL integration', () => {
           longitude: 116.8,
           latitude: 39.7,
         });
+
+        for (const [station, flow, tags, securityLevel, policyVersion] of [
+          ['A', 16.7, ['water', 'daily'], 'L1_INTERNAL', 1],
+          ['B', 5, ['water'], 'L1_INTERNAL', 1],
+          ['hidden-security', 100, ['daily'], 'L3_CONFIDENTIAL', 1],
+          ['hidden-policy', 100, ['daily'], 'L1_INTERNAL', 2],
+        ] as const) {
+          await fixtureClient.query(
+            `insert into knowledge.evidence_fragment (
+              tenant_id, project_id, data_item_id, version_id,
+              locator, content_hash, security_level, policy_version
+            ) values ($1, $2, $3, $4, $5::jsonb, decode(repeat('a', 64), 'hex'), $6, $7)`,
+            [
+              visibleScope.tenantId,
+              visibleScope.projectId,
+              primaryDataItemId,
+              primaryVersionOneId,
+              JSON.stringify({ record: { station, flow, tags } }),
+              securityLevel,
+              policyVersion,
+            ],
+          );
+        }
+        const structured = new PostgresStructuredDataQueryPort({
+          pool: new SavepointQueryPool(fixtureClient, roleName),
+        });
+        const structuredInput = {
+          dataItemId: primaryDataItemId,
+          versionId: primaryVersionOneId,
+          fields: ['station', 'flow'],
+        };
+        // Registration-only versions have no analytical records. Even an
+        // empty filter must execute valid PostgreSQL and return an empty page.
+        await expect(
+          structured.query(
+            intersectRequest(visibleScope, {
+              ...structuredInput,
+              versionId: primaryVersionTwoId,
+            }),
+          ),
+        ).resolves.toMatchObject({ versionId: primaryVersionTwoId, rows: [] });
+        for (const [field, operator, value, stations] of [
+          ['station', 'EQ', 'A', ['A']],
+          ['station', 'NE', 'A', ['B']],
+          ['station', 'IN', ['A', 'C'], ['A']],
+          ['tags', 'CONTAINS', ['daily'], ['A']],
+          ['flow', 'GT', 10, ['A']],
+          ['flow', 'GTE', 16.7, ['A']],
+          ['flow', 'LT', 6, ['B']],
+          ['flow', 'LTE', 5, ['B']],
+        ] as const) {
+          const output = (await structured.query(
+            intersectRequest(visibleScope, {
+              ...structuredInput,
+              filters: [{ field, operator, value }],
+            }),
+          )) as { rows: { station: string }[] };
+          expect(output.rows.map(({ station }) => station).toSorted()).toEqual(
+            stations,
+          );
+        }
+        const unfiltered = (await structured.query(
+          intersectRequest(visibleScope, structuredInput),
+        )) as { rows: { station: string }[] };
+        expect(
+          unfiltered.rows.map(({ station }) => station).toSorted(),
+        ).toEqual(['A', 'B']);
 
         const port = new PostgisGeoQueryPort({
           pool: new SavepointQueryPool(fixtureClient, roleName),

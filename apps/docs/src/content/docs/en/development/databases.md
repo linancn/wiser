@@ -61,7 +61,8 @@ Keep all four Supabase artifacts synchronized: ordered migrations are replayable
 
    - `00_agent_excon.sql`: v1 Agent EXCON relations;
    - `01_multi_agent_run.sql`: v2 Runs, Tasks, Receipts, journals, and private EXCON facts;
-   - `02_platform_auth.sql`: unified identity, tenants/projects, authorization, and delegation.
+   - `02_platform_auth.sql`: unified identity, tenants/projects, authorization, and delegation;
+   - `03_agent_connections.sql`: private Agent connections, immutable OAuth credential bindings, token hook, and direct-session restrictions on exposed tables.
 
 5. If local development identities or deterministic cases need new data, update `supabase/seed.sql`. Seeds must be repeatable, contain no real credentials, and agree with the pgTAP assertions.
 6. Run the complete gate:
@@ -72,7 +73,11 @@ Keep all four Supabase artifacts synchronized: ordered migrations are replayable
 
 `supabase:verify` first executes `db reset --local`, then runs pgTAP, database lint, and all advisors. It deletes local Supabase data; never point it at a shared or production database. Never rename, reorder, or edit a migration that has entered history. Append another migration instead.
 
+The Agent consent/exchange integration test uses `WISER_AGENT_TEST_DATABASE_URL` with a disposable, migrated and seeded Supabase database. Run `pnpm exec vitest run apps/api/test/platform-agent-connections.integration.spec.ts` with that variable set. It creates synthetic OAuth Sessions, clients, consents and Agent memberships; run it after pgTAP, not concurrently with seed-count assertions. Without the variable, the integration suite is skipped. Normal unit tests remain independent of databases and AI providers.
+
 ## Data Foundation change workflow
+
+`0010_source_registration.sql` adds immutable source-registration JSON to `ingestion.session`, under its existing forced RLS. Source identity and declared limitations cannot change during state transitions; the descriptor is also frozen into the committed Version manifest. The focused `packages/data-infra/test/migrations/source-registration.spec.ts` test runs with `WISER_DATA_PG_INTEGRATION=1` and `DATA_TEST_DATABASE_URL` pointing to a disposable migrated database. It verifies a role without BYPASSRLS, cross-project invisibility, legal transitions and rejection of descriptor edits. Real research files remain outside seed data and Git.
 
 `infrastructure/data-foundation/postgres/migrations` is the sole Data Foundation business-schema history. Filenames are unique, contiguous `NNNN_descriptive_name.sql` entries and are append-only.
 

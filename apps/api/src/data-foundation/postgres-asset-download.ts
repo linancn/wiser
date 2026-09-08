@@ -33,15 +33,21 @@ const LOOKUP_SQL = `
 select encode(asset.content_hash, 'hex') as content_hash,
   asset.security_level, asset.policy_version
 from catalog.asset as asset
+join catalog.data_item_version as version
+  on version.tenant_id = asset.tenant_id and version.project_id = asset.project_id
+ and version.version_id = asset.version_id
 join ingestion.input_asset as input
   on input.tenant_id = asset.tenant_id
  and input.project_id = asset.project_id
  and input.asset_id = asset.asset_id
 where asset.tenant_id = $1::uuid and asset.project_id = $2::uuid
   and asset.version_id = $3::uuid and asset.lifecycle_state = 'RAW'
+  and ($4::uuid is null or asset.asset_id = $4::uuid)
   and asset.content_hash is not null and asset.content_blob_id is not null
   and security.authorized_row(asset.tenant_id, asset.project_id,
     asset.security_level, asset.policy_version)
+  and security.authorized_row(version.tenant_id, version.project_id,
+    version.security_level, version.policy_version)
 order by input.ordinal, asset.asset_id
 limit 1
 for key share of asset
@@ -55,7 +61,7 @@ insert into security.audit_event (
 ) values (
   $1::uuid, $2::uuid, $3::uuid, 'data.asset.download',
   'data-item-version', $4, 'ALLOWED', $5,
-  jsonb_build_object('traceId', $6::text), $7, $8::bigint, 1
+  jsonb_build_object('traceId', $6::text, 'assetId', $9::text), $7, $8::bigint, 1
 )
 `;
 
@@ -96,6 +102,7 @@ export class PostgresDataAssetDownloadPort {
   async createDownload(input: {
     readonly context: PlatformRequestContext;
     readonly versionId: string;
+    readonly assetId?: string;
   }): Promise<{ readonly url: string; readonly expiresAt: string }> {
     let client: AssetDownloadClient;
     try {
@@ -115,6 +122,7 @@ export class PostgresDataAssetDownloadPort {
         input.context.authorization.tenantId,
         input.context.authorization.projectId,
         input.versionId,
+        input.assetId ?? null,
       ]);
       const row = result.rows[0];
       const contentHash = row?.['content_hash'];
@@ -147,6 +155,7 @@ export class PostgresDataAssetDownloadPort {
         input.context.traceId,
         securityLevel,
         policyVersion,
+        input.assetId ?? null,
       ]);
       await client.query('COMMIT');
       return Object.freeze({ url: signed.url, expiresAt: signed.expiresAt });

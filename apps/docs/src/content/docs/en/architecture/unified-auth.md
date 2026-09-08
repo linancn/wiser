@@ -52,7 +52,17 @@ platform.delegations
 platform_private.delegated_credentials
 platform_private.authorization_audit_events
 platform_private.control_outbox
+platform_private.agent_connections
+platform_private.agent_exchange_credentials
 ```
+
+Agent connection records bind one human and OAuth client to one existing `agent-data` Delegation and an exact MCP resource URL. Exchanged credentials retain an immutable OAuth Session binding and cannot outlive the OAuth token. The optional Supabase access-token hook preserves direct login claims, rejects unapproved OAuth clients, and binds approved claims to that resource and Delegation. The hook is invoked only by Supabase Auth; its presence does not enable the OAuth runtime. Ordinary human JWT resolution rejects tokens carrying `client_id`.
+
+`createSupabaseAgentClaimsVerifier` is the separate verifier for these signed claims. It requires exact configured issuer and single resource audience, authenticated role, valid user/session/client/Delegation IDs, and a future integer expiry. It never derives a Delegation from user metadata. Live connection and Session authorization remains the caller's responsibility after claim verification.
+
+`PostgresAgentConnectionService` provides request inspection, project consent, connection listing/revocation, and credential exchange. Consent requires a live direct human Session, `platform.delegation.manage`, and catalog access to the chosen Project. The query mode grants only available read scopes; ingestion additionally requires an explicit choice and current `data.ingestion.write`. Publication is excluded. Security level defaults to internal, cannot exceed the caller's ceiling, and the grant lasts 60–3600 seconds. The browser must first associate the OAuth authorization request with the human through Supabase before the service commits consent.
+
+Consent creates a platform Agent, expiring memberships, and one bounded Delegation in one control-plane transaction. Reconsent revokes the previous Delegation. Exchange verifies the current connection, OAuth client, consent and Session, then issues a credential for at most 60 seconds, also capped by OAuth and Delegation expiry. `agent_exchange` credentials allow concurrent requests; ordinary `delegated` credentials retain the single-active constraint. Credential kind and OAuth binding are immutable, a deferred constraint requires the binding at commit, and every delegated API resolution rechecks the bound Session, consent, client and current Delegation. Mutations use idempotency locks plus atomic Audit/Outbox; exchange replay cannot recover plaintext.
 
 - Actor represents a human, agent, or service; human actors reference `auth.users.id`.
 - Tenant is the top-level isolation boundary; Project is the resource-ownership boundary.
@@ -74,6 +84,18 @@ platform_private.control_outbox
 | `POST` | `/api/platform/v1/credentials/{credentialId}:revoke`             | Revoke one credential                                                       |
 
 `/me` and delegation routes require Bearer, Tenant, Project, and Purpose. Every write requires a UUID `Idempotency-Key`; Delegation commands also require a verified Supabase human with `platform.delegation.manage`. Responses are `private, no-store`, and issue/rotate plaintext is unrecoverable.
+
+Agent HTTP routes are enabled when the API receives both `WISER_AGENT_MCP_RESOURCE` (the exact public `/mcp` URL) and `WISER_AGENT_AUTH_ISSUER` (the public Supabase `/auth/v1` issuer). Both require HTTPS except on loopback. The internal Supabase transport URL remains independent of the public issuer. Partial configuration fails startup.
+
+| Method | Path                                                       | Authentication and result                                                    |
+| ------ | ---------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `GET`  | `/api/platform/v1/agent-authorizations/{authorizationId}`  | Direct human Session; OAuth client details and eligible projects             |
+| `POST` | `/api/platform/v1/agent-connections`                       | Direct human Session; bounded project consent                                |
+| `GET`  | `/api/platform/v1/agent-connections`                       | Direct human Session; own safe connection metadata                           |
+| `POST` | `/api/platform/v1/agent-connections/{connectionId}/revoke` | Direct human Session; revoke own connection                                  |
+| `POST` | `/api/platform/v1/agent-connections/exchange`              | Resource-bound OAuth token; short-lived credential plus server-bound context |
+
+These routes determine project ownership from the verified Session, persisted consent or OAuth binding. Exchange and revoke accept only an empty JSON body; all mutations require a UUID `Idempotency-Key`. Input/output schemas, 16 KiB request-body limits, no-store responses and controlled errors apply throughout. Database or provider failures expose no upstream details. Management views never return credentials.
 
 ## Request processing
 

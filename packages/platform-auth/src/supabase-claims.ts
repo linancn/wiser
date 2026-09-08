@@ -20,6 +20,7 @@ interface ClaimsRecord {
   readonly session_id?: unknown;
   readonly role?: unknown;
   readonly exp?: unknown;
+  readonly client_id?: unknown;
 }
 
 function claimsRecord(value: unknown): ClaimsRecord | null {
@@ -40,6 +41,7 @@ export function createSupabaseJwtClaimsVerifier(
     const sessionId = PlatformUuidSchema.safeParse(claims?.session_id);
     if (
       claims === null ||
+      claims.client_id !== undefined ||
       claims.role !== 'authenticated' ||
       !userId.success ||
       !sessionId.success ||

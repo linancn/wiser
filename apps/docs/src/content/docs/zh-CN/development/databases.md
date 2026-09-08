@@ -61,7 +61,8 @@ Supabase 的四类文件必须同步：顺序 migration 是可重放历史，dec
 
    - `00_agent_excon.sql`：v1 Agent EXCON 关系；
    - `01_multi_agent_run.sql`：v2 Run、Task、Receipt、journal 与 EXCON 私有事实；
-   - `02_platform_auth.sql`：统一身份、Tenant/Project、授权与委托。
+   - `02_platform_auth.sql`：统一身份、Tenant/Project、授权与委托；
+   - `03_agent_connections.sql`：私有 Agent 连接、不可变的 OAuth credential 绑定、token hook，以及暴露表的直接 Session 限制。
 
 5. 若本机开发身份或确定性案例需要新数据，同步更新 `supabase/seed.sql`。Seed 必须可重复、无真实凭据，并与 pgTAP 断言一致。
 6. 运行完整门禁：
@@ -72,7 +73,11 @@ Supabase 的四类文件必须同步：顺序 migration 是可重放历史，dec
 
 `supabase:verify` 会先对本机数据库执行 `db reset --local`，随后运行 pgTAP、数据库 lint 和全部 advisor。它会删除本机 Supabase 数据；不要把它指向共享或生产数据库。已经进入历史的 migration 不得改名、重排或改写，应追加新的 migration。
 
+Agent 授权与交换集成测试通过 `WISER_AGENT_TEST_DATABASE_URL` 连接已迁移并加载 seed 的一次性 Supabase 数据库。设置该变量后运行 `pnpm exec vitest run apps/api/test/platform-agent-connections.integration.spec.ts`。测试会创建合成 OAuth Session、client、consent 与 Agent Membership；应在 pgTAP 之后运行，不能与种子数量断言并发执行。未设置变量时跳过该集成套件，普通单元测试仍不依赖数据库与 AI provider。
+
 ## Data Foundation 变更流程
+
+`0010_source_registration.sql` 在 `ingestion.session` 中增加不可变的来源登记 JSON，复用现有强制 RLS。状态转换不能修改来源身份与声明限制；正式版本清单也冻结该描述。聚焦测试 `packages/data-infra/test/migrations/source-registration.spec.ts` 使用 `WISER_DATA_PG_INTEGRATION=1`，并将 `DATA_TEST_DATABASE_URL` 指向可丢弃且已迁移的数据库，验证无 BYPASSRLS 的角色、跨项目不可见、合法转换和描述修改拒绝。真实研究材料不进入 seed 或 Git。
 
 `infrastructure/data-foundation/postgres/migrations` 是 Data Foundation 唯一的业务 schema 历史。文件名必须是连续、唯一的 `NNNN_descriptive_name.sql`，且只能追加。
 

@@ -17,8 +17,8 @@ checkPaths:
   - packages/**
   - infrastructure/**
   - supabase/**
-lastReviewedAt: 2026-09-07
-lastReviewedCommit: 626cfd1c22e8c24fb38306520c4e9433a5984151
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: cd004c35cd46719da2abb2bd013800af348eeff3
 ---
 
 ## Decision summary
@@ -26,6 +26,8 @@ lastReviewedCommit: 626cfd1c22e8c24fb38306520c4e9433a5984151
 WISER is the product and platform context. Agent EXCON and Data Foundation are peer business systems, not feature folders inside each other. They reuse one Fastify, Next.js, MCP, Fumadocs, Supabase Auth, and observability entry surface while retaining separate domains, application use cases, workers, and authoritative facts.
 
 The composition roots wire unified Supabase Auth, platform identity/delegation, the durable EXCON v2 command journal, Data Capabilities, REST, GraphQL, MCP/Skill, system workers, projections, and bilingual Web. `pnpm stack:full:up` starts the default complete stack inside one platform identity boundary and runs the Data smoke. v1 Episodes remain an explicit in-memory compatibility path, not the unified platform's durable runtime.
+
+Portal and Docs share a copyable [Agent setup workflow](/en/protocols/agent-setup/). The API distributes a content-pinned Skill release and public transport metadata; these public resources grant no identity or data access. Installed Skills continue to call the unified HTTP/MCP boundary with a separately verified project assignment.
 
 “Unified identity” means one Supabase/Platform authority and authorization context, not one interactive credential reused by every client. Data Web uses the human Supabase SSR session; EXCON live Web uses a server-side operator credential; the MCP transport bearer, EXCON RunAgent credential, and Data API identity protect different boundaries and are not interchangeable.
 

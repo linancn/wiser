@@ -19,8 +19,8 @@ checkPaths:
   - apps/mcp/src/data-foundation/**
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: 1eb68e202252d65cea7db918135f9949931e4f7b
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: b6dc97b67860a37f5230518743dca84d2cb25fa1
 ---
 
 ## Authority boundary
@@ -106,6 +106,12 @@ MCP Evidence/STAC Resources read through real HTTP authority boundaries. Evidenc
 Only an approved frozen review checkpoint can create a formal version. One data-postgres transaction commits DataItemVersion, quality/lineage facts, Operation event, Audit, and Outbox. Supabase, data-postgres, and S3 never pretend to share a distributed transaction.
 
 ## Deterministic ingestion and Agent boundary
+
+Research bundles may select the optional `sourceRegistration` profile on ingestion. Migration `0010_source_registration.sql` stores its immutable descriptor on the RLS-protected ingestion Session. A bounded JSON manifest binds the declared source, original paths/hashes, sanitized derivatives, partial/sample/empty states, and every uploaded asset to exact size and SHA-256. It rejects missing, duplicate, unlisted or changed assets; zero-byte sources are explicitly recorded without fabricating a nonempty upload.
+
+Distinct paths with identical prepared bytes may reference one content asset. Each path still has its own original/prepared size and hash, disposition, completeness and associations, and every alias must match that asset exactly. Duplicate paths and duplicate authority asset identities remain invalid. The Skill uploads each prepared content hash once per source registration and retains all path aliases in its manifest and bounded evidence excerpt.
+
+This profile validates **source registration**. It preserves raw objects, uses deterministic manifest validation instead of document/GIS parsing or an AI mapping plan, and creates `METADATA_QUALITY` / `DECLARED` versions with source names, providers and limitations. Passing quality means the registration integrity checks passed; analytical validity, dataset completeness, licensing and geospatial correctness are not inferred. Scanning, fingerprinting, security inheritance, review, transaction/audit/Outbox and publication gates still apply. Frozen source limitations flow into evidence, graph and STAC search projections.
 
 Ingestion has exactly 18 states:
 

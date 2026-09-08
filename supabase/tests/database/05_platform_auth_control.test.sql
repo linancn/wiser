@@ -107,7 +107,8 @@ select is(
       and c.relrowsecurity
       and c.relforcerowsecurity
   ),
-  3::bigint,
+  (select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'platform_private' and c.relkind in ('r', 'p')),
   'every private platform table has forced RLS'
 );
 

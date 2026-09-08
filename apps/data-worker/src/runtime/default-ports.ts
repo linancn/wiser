@@ -189,6 +189,26 @@ export function createDefaultIngestionPipelineOptions(options: {
 
   return {
     authority: options.authority,
+    sourceRegistration: {
+      async readManifest(objectRef) {
+        const chunks: Uint8Array[] = [];
+        let size = 0;
+        try {
+          for await (const chunk of await read(objectRef)) {
+            size += chunk.byteLength;
+            if (size > 512 * 1024)
+              throw portError('SOURCE_REGISTRATION_TOO_LARGE', false);
+            chunks.push(chunk);
+          }
+          return new TextDecoder('utf-8', { fatal: true }).decode(
+            Buffer.concat(chunks),
+          );
+        } catch (error) {
+          if (error instanceof IngestionPipelinePortError) throw error;
+          throw portError('SOURCE_REGISTRATION_READ_FAILED');
+        }
+      },
+    },
     quarantine: {
       async put({ asset }) {
         try {

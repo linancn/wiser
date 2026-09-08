@@ -17,8 +17,8 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - packages/data-contracts/src/capability/**
   - skills/wiser-data-foundation/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: 009852bdcfd26240fa31553e7d0e2254400aaf67
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: cf0c285878bbaa7811b03198ba51b733b252588a
 ---
 
 ## HTTP adapter only
@@ -134,6 +134,8 @@ GET Tools encode only boolean, number, string, or string-array queries, and URL-
 `data_geo_intersect` resolves DataItem targets to a visible committed Version before collecting all sibling extents and never falls back to an older Version. Current catalog/version Tool outputs require `tileAvailability`; Agents may use its booleans to decide whether to offer governed vector/raster routes, but must not infer upstream service health or COG conformance.
 
 ### Ingestion
+
+`data_ingestion_create` discovers the optional `sourceRegistration` 1.1 input from the shared Registry. Use it to register real provider/catalog/interface records and raw research assets with an exact source manifest. Preserve sample, partial, empty and unknown states; successful registration does not assert analytical completeness. The Skill's `references/water-bundle.md` defines local inventory and preparation. Native OAuth MCP mode is documented in Backend development; the static configuration above remains the compatibility mode.
 
 1. `data_upload_session_create` produces a quarantine upload plan;
 2. the caller uploads large bodies outside MCP through the governed signed URLs;

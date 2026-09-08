@@ -30,6 +30,7 @@
     "@agent-excon/contracts": "workspace:*",
     "@modelcontextprotocol/sdk": "1.30.0",
     "@wiser/data-contracts": "workspace:*",
+    "@wiser/platform-contracts": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

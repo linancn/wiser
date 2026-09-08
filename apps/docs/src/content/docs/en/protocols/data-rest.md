@@ -15,8 +15,8 @@ checkPaths:
   - packages/data-contracts/src/capability/**
   - apps/api/src/data-foundation/**
   - skills/wiser-data-foundation/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: 2b365e92de940ca7b13bdd1720ff452540754222
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: b6dc97b67860a37f5230518743dca84d2cb25fa1
 ---
 
 ## Protocol boundary
@@ -126,6 +126,8 @@ Structured query accepts only allowlisted fields and operators:
 - `data.geo.intersect`: Geometry or DataItem targets. DataItem targets select latest/exact visible committed Version first, collect all sibling extents, and never fall back to an older Version. Missing, hidden, extent-free, or disjoint targets return an indistinguishable empty page; continuation uses the same snapshot/query/scope-bound cursor;
 - federated search: an allowlist of catalog/fulltext/semantic/graph/geo/stac sources.
 
+`data.query` reads structured evidence records from the selected committed version. A visible source-registration version without analytical records returns `200` with its exact `versionId`, requested columns and `rows: []`. Use catalog, evidence retrieval and governed asset download to inspect its source materials. Empty results do not imply that raw files were lost. JSON equality and containment filters compare complete extracted JSON operands; real PostgreSQL integration covers all eight operators, empty records and security/policy filtering.
+
 Current catalog get/version responses require `tileAvailability: { vector, raster }`. The flags describe a routable governed source, not GIS service health: vector requires a visible version-level extent; raster requires a visible RAW TIFF/GeoTIFF asset with blob/hash/input linkage and an exact content-addressed key.
 
 SearchOrchestrator pushes authorization and publication filters into backends, applies fixed `RRF k=60`, deduplicates by DataItem+Version, and reauthorizes every hit.
@@ -150,6 +152,10 @@ All four upstream origins come from startup-validated internal configuration; us
 MapLibre never embeds the API Bearer in a tile URL. An authenticated browser requests only same-origin `/api/data-foundation/geo/...`; the Next Route Handler revalidates the Supabase Session and forwards to these Fastify routes with a server-only access token and fixed Tenant/Project/Purpose while bounding path, query, content, and response size again. This Web path is not another GIS business implementation.
 
 ## Upload and ingestion
+
+`data.ingestion.create` 1.1 accepts optional `sourceRegistration`; ingestion get/reject 1.1 preserve that descriptor. Their 1.0 schemas remain in the immutable discovery archive. Obtain the full strict schema from discovery. The descriptor contains source/bundle identity, kind, name, provider, access state, explicit completeness, limitations, and `manifestAssetId` / `manifestSha256`. The manifest asset must be among the completed upload assets supplied to ingestion.
+
+The manifest uses `wiser.source-registration.v1`, a matching `sourceId`, a source `record`, and `files`. Each nonempty file binds an `assetId` to original/prepared size and SHA-256, relative path, artifact class, completeness, disposition and related source IDs. Empty inputs require zero sizes and the empty-content hash. Manifests are limited to 512 KiB and 1,000 file entries. Registration publication preserves raw files and declared source metadata; it does not establish analytical usability. The immutable Version and all retrieval limitations retain this distinction.
 
 Recommended sequence:
 
@@ -185,6 +191,8 @@ The Evidence transaction applies `security.authorized_row` to both fragment and 
 Both Resource responses are bounded to 256 KiB, `application/json`, and `private, no-store`. Invalid references return `422`, excessive output `413`, an invalid projection contract `502`, and unavailable dependencies `503`. Database details, internal STAC bearer/origin, upstream URLs, and raw errors never appear.
 
 ## Authorized asset download
+
+For a multi-file Version, replace the final `source` segment below with an exact `assetId` returned by the Version. The API binds that asset to the requested visible Version and repeats RLS for both. Tenant/Project path values must match the authenticated header context before any lookup or signing. `source` remains the compatibility alias for the first ordered asset; a hidden or unrelated asset returns `404`.
 
 Published STAC source assets use:
 

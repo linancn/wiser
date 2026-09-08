@@ -28,7 +28,9 @@ import {
   ApproveIngestionInputSchema,
   GetIngestionInputSchema,
   IngestionOutputSchema,
+  IngestionOutputV1Schema,
   RejectIngestionInputSchema,
+  SourceRegistrationSchema,
 } from '../ingestion/index.js';
 import {
   CancelOperationInputSchema,
@@ -265,11 +267,30 @@ export const GeoQueryOutputSchema = z.strictObject({
   nextCursor: CursorSchema.optional(),
 });
 
-export const CreateIngestionInputSchema = z.strictObject({
+export const CreateIngestionInputV1Schema = z.strictObject({
   assetIds: z.array(PlatformUuidSchema).min(1).max(10_000),
   ownerProjectId: PlatformUuidSchema,
   intendedUses: z.array(DataKeySchema).min(1).max(64),
   requestedSecurityLevel: SecurityLevelSchema,
+});
+export const CreateIngestionInputSchema = CreateIngestionInputV1Schema.extend({
+  sourceRegistration: SourceRegistrationSchema.optional(),
+}).superRefine((input, context) => {
+  if (new Set(input.assetIds).size !== input.assetIds.length)
+    context.addIssue({
+      code: 'custom',
+      path: ['assetIds'],
+      message: 'Asset identities must be unique.',
+    });
+  if (
+    input.sourceRegistration !== undefined &&
+    !input.assetIds.includes(input.sourceRegistration.manifestAssetId)
+  )
+    context.addIssue({
+      code: 'custom',
+      path: ['sourceRegistration', 'manifestAssetId'],
+      message: 'The source manifest must be an ingestion asset.',
+    });
 });
 
 export const CreateIngestionOutputSchema = z.strictObject({
@@ -548,7 +569,7 @@ const capabilityRegistry = {
   }),
   'data.ingestion.create': defineCapability({
     id: 'data.ingestion.create',
-    version: '1.0.0',
+    version: '1.1.0',
     kind: 'command',
     inputSchema: CreateIngestionInputSchema,
     outputSchema: CreateIngestionOutputSchema,
@@ -728,7 +749,7 @@ const capabilityRegistry = {
   }),
   'data.ingestion.get': defineCapability({
     id: 'data.ingestion.get',
-    version: '1.0.0',
+    version: '1.1.0',
     kind: 'query',
     inputSchema: GetIngestionInputSchema,
     outputSchema: IngestionOutputSchema,
@@ -773,7 +794,7 @@ const capabilityRegistry = {
   }),
   'data.ingestion.reject': defineCapability({
     id: 'data.ingestion.reject',
-    version: '1.0.0',
+    version: '1.1.0',
     kind: 'command',
     inputSchema: RejectIngestionInputSchema,
     outputSchema: IngestionOutputSchema,
@@ -848,6 +869,27 @@ export const DATA_CAPABILITY_REGISTRY: Readonly<
 > = Object.freeze(capabilityRegistry);
 
 const capabilityArchive = {
+  'data.ingestion.reject': Object.freeze([
+    defineCapability({
+      ...capabilityRegistry['data.ingestion.reject'],
+      version: '1.0.0',
+      outputSchema: IngestionOutputV1Schema,
+    }),
+  ]),
+  'data.ingestion.create': Object.freeze([
+    defineCapability({
+      ...capabilityRegistry['data.ingestion.create'],
+      version: '1.0.0',
+      inputSchema: CreateIngestionInputV1Schema,
+    }),
+  ]),
+  'data.ingestion.get': Object.freeze([
+    defineCapability({
+      ...capabilityRegistry['data.ingestion.get'],
+      version: '1.0.0',
+      outputSchema: IngestionOutputV1Schema,
+    }),
+  ]),
   'data.catalog.get': Object.freeze([
     defineCapability({
       id: 'data.catalog.get',

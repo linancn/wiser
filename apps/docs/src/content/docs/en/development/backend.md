@@ -21,8 +21,8 @@ checkPaths:
   - packages/**
   - compose.yaml
   - package.json
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: 7f6b092316bcb7bbdb50168119f6e96fa7a705c6
 ---
 
 ## Backend topology
@@ -86,9 +86,12 @@ Business modules implement `WiserApiModule`. A module ID must be a unique, dotte
 
 `/health/ready` checks the API's own EXCON services. Data Foundation has a separate `/api/data/v1/health` that reports database, object-store, and Data Worker status. Do not treat one liveness response as proof that every dependency is ready.
 
+The default composition also registers `platform.agent-setup`: `/agent-setup/prompt.md`, its manifest, and content-pinned allowlisted Skill files. This public distribution surface reads only repository-owned release files and never accepts a filesystem path or identity from a caller. See [Agent setup](/en/protocols/agent-setup/) for public-origin configuration and installation/connection verification.
+
 ### Identity and runtime modes
 
 - Supabase Auth is the only human Session authority. The platform resolver also accepts authorized delegated credentials.
+- Paired `WISER_AGENT_MCP_RESOURCE` and `WISER_AGENT_AUTH_ISSUER` configuration enables the Platform Agent consent, connection and exchange HTTP module. It reuses the same Auth client, PostgreSQL pool and HMAC key ring. The public issuer must match signed claims even when `SUPABASE_URL` uses an internal address; all Agent API responses are non-cacheable.
 - Production forces `WISER_AUTH_MODE=supabase`. Non-production may explicitly use `off`, but Data Foundation refuses to start while Auth is off.
 - A Platform request context contains Tenant, Project, Purpose, roles, scopes, security ceiling, and authz version. A system adapter authorizes from that context; “logged in” alone is not sufficient.
 - Agent EXCON maps Platform roles to operator/run_agent, and a run_agent credential must also be bound to the concrete RunAgent.
@@ -124,6 +127,9 @@ Preserve these boundaries:
 - Tool and Resource schemas come from public system contracts, and outputs are size- and shape-validated.
 - MCP does not import API application services or query databases, journals, or projections.
 - The HTTP transport's `/mcp` requires its own bearer token; downstream API requests still use each system's authorized credential.
+- `WISER_MCP_AUTH_MODE=oauth` exchanges each caller's OAuth token through the Platform API and registers only the project-bound Data module plus `wiser_connection` / `wiser://connection`. It requires `DATA_API_URL`, `WISER_AGENT_MCP_RESOURCE` and `WISER_AGENT_AUTH_ISSUER`, and does not initialize EXCON or fixed API credentials. The default `static` mode preserves existing fixed-credential composition.
+- OAuth mode publishes protected-resource metadata at `/.well-known/oauth-protected-resource/mcp` and its root alias, advertises discovery in `401`, and rejects unrelated browser Origins. API exchange has a 10-second timeout, 64 KiB response limit, schema validation and no redirects. Only the exchanged credential reaches the Data API.
+- The HTTP host also accepts a per-request authorizer that returns a handler bound to the current caller. It cannot be combined with the shared-bearer handler. Authorization is rechecked on every call, successful responses are non-cacheable, and unavailable authorization dependencies fail closed without exposing upstream details.
 - A new module has a unique dotted ID and composes through `registerWiserMcpModules`.
 
 ## Telemetry Ingress

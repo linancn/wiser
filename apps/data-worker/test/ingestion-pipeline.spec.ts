@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
+import type { SourceRegistration } from '@wiser/data-contracts';
 
 import type { ClaimedDataJob } from '@wiser/data-infra';
 
@@ -48,6 +50,7 @@ class FakeAuthority implements IngestionAuthorityPort {
   readonly transitions: IngestionTransitionRequest[] = [];
   commits = 0;
   frozenCheckpoint?: FrozenIngestionCheckpoint;
+  sourceRegistration?: SourceRegistration;
   state: PipelineIngestionState = 'RECEIVED';
   version = 1;
   versionId?: string;
@@ -76,6 +79,9 @@ class FakeAuthority implements IngestionAuthorityPort {
       securityLevel: this.securityLevel,
       policyVersion: 9,
       assets: this.assets,
+      ...(this.sourceRegistration === undefined
+        ? {}
+        : { sourceRegistration: this.sourceRegistration }),
       ...(this.frozenCheckpoint === undefined
         ? {}
         : { frozenCheckpoint: this.frozenCheckpoint }),
@@ -296,6 +302,7 @@ function setup(
   return {
     order,
     authority,
+    options,
     handler: (candidate: ClaimedDataJob) =>
       createIngestionPipelineHandler(options)({
         ...candidate,
@@ -305,6 +312,75 @@ function setup(
 }
 
 describe('Agent-native ingestion pipeline', () => {
+  it('retries a source manifest outage, then freezes source evidence without an AI plan or analytical parser', async () => {
+    const fixture = setup({ securityLevel: 'L2_RESTRICTED' });
+    const body = JSON.stringify({
+      schemaVersion: 'wiser.source-registration.v1',
+      sourceId: 'DS-0409',
+      record: { title: 'Partial HydroATLAS capture' },
+      files: [],
+    });
+    const hash = createHash('sha256').update(body).digest('hex');
+    fixture.authority.assets = [
+      {
+        ...fixture.authority.assets[0]!,
+        mediaType: 'application/json',
+        size: Buffer.byteLength(body),
+      },
+    ];
+    fixture.authority.sourceRegistration = {
+      sourceId: 'DS-0409',
+      kind: 'DATASET_INTERFACE',
+      name: 'Partial HydroATLAS capture',
+      bundleId: 'water-research-20260908',
+      providerName: 'HydroSHEDS',
+      accessStatus: 'bounded_sample_only',
+      completeness: 'PARTIAL',
+      manifestAssetId: fixture.authority.assets[0]!.assetId,
+      manifestSha256: hash,
+      limitations: ['Source registration only.'],
+    };
+    let unavailable = true;
+    const handler = createIngestionPipelineHandler({
+      ...fixture.options,
+      fingerprint: { sha256: () => Promise.resolve(hash) },
+      sourceRegistration: {
+        readManifest: () => {
+          if (unavailable) {
+            unavailable = false;
+            return Promise.reject(
+              new IngestionPipelinePortError(
+                'SOURCE_REGISTRATION_READ_FAILED',
+                true,
+                'Temporary dependency failure.',
+              ),
+            );
+          }
+          return Promise.resolve(body);
+        },
+      },
+    });
+    const candidate = { ...job, securityLevel: 'L2_RESTRICTED' as const };
+    await expect(handler(candidate)).rejects.toMatchObject({
+      category: 'SOURCE_REGISTRATION_READ_FAILED',
+      retryable: true,
+    });
+    expect(await handler(candidate)).toMatchObject({
+      status: 'WAITING_REVIEW',
+    });
+    expect(
+      fixture.authority.frozenCheckpoint?.assetManifest['sourceRegistration'],
+    ).toEqual(fixture.authority.sourceRegistration);
+    expect(fixture.order).not.toContain('ai-plan');
+    expect(fixture.order).not.toContain('validate-ai');
+    expect(fixture.order).not.toContain('parse');
+    expect(fixture.order).toContain('scan');
+    expect(
+      fixture.authority.transitions.some(
+        ({ evidence }) => evidence.agentRun !== undefined,
+      ),
+    ).toBe(false);
+  });
   it('has one static job type and strictly rejects malformed JSON payloads', async () => {
     expect(DATA_INGESTION_PROCESS_JOB_TYPE).toBe('data.ingestion.process');
     const { handler } = setup();

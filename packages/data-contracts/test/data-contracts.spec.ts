@@ -559,7 +559,7 @@ const expectedJsonSchemaHashes = {
     output: 'dc587a390c429b04bdaecc5ea2facc37b323400e31a9a63e5db3f018f8673047',
   },
   'data.ingestion.create': {
-    input: '2991848d7da6f56eb4640306c007e13e2f9727bff669d07d4f1dcbf7711ec2b4',
+    input: 'ad801d18f9de6359a4c2ddb115ea72c4bbb935abd5b49b60641380849e0e4a96',
     output: '7b19ccfcc5f4207960d70b1c1db9eec56640a2370c6a27f3dfaa97e61008c6f4',
   },
   'data.ingestion.submit': {
@@ -592,7 +592,7 @@ const expectedJsonSchemaHashes = {
   },
   'data.ingestion.get': {
     input: 'bf57edf9d7399573105b1a2ddcc13160b29c2a8de852e6b70e3aaba4dede9878',
-    output: '2ae981bc11bde3945596af53544f9a185a9ab08e9760232f49ac7114ff3608bd',
+    output: 'b0964ad7b7d3a0303338f7a56e6be1ef1d80fe7cf51f06e45ea0856a304c3019',
   },
   'data.ingestion.approve': {
     input: '284419a11ea425388676752a72d139705ca907bea613595468383bce808be9b4',
@@ -600,7 +600,7 @@ const expectedJsonSchemaHashes = {
   },
   'data.ingestion.reject': {
     input: 'ef64d5a6d39a6695165c43780fee6f3feedd60aa77f9f10919e5d383972e9df6',
-    output: '2ae981bc11bde3945596af53544f9a185a9ab08e9760232f49ac7114ff3608bd',
+    output: 'b0964ad7b7d3a0303338f7a56e6be1ef1d80fe7cf51f06e45ea0856a304c3019',
   },
   'data.operation.cancel': {
     input: '9c3b5eb52eee1d4a21f3f318608d18c22fd3ab3b9d86bc4faa835993e59d37ec',

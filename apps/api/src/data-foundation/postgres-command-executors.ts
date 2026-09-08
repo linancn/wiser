@@ -273,11 +273,12 @@ const INGESTION_INSERT_SQL = `
 insert into ingestion.session (
   ingestion_id, tenant_id, project_id, operation_id, owner_project_id,
   state, intended_uses, expected_version, requested_security_level,
-  security_level, policy_version, row_version, created_at, updated_at
+  security_level, policy_version, row_version, created_at, updated_at,
+  source_registration
 ) values (
   $1::uuid, $2::uuid, $3::uuid, $4::uuid, $3::uuid, 'RECEIVED',
   $5::text[], 1, $6, $6, $7::bigint, 1, $8::timestamptz,
-  $8::timestamptz
+  $8::timestamptz, $9::jsonb
 )
 `;
 
@@ -2172,6 +2173,9 @@ export function createPostgresDataCommandRuntime(
               inheritedSecurity,
               context.authorization.authzVersion,
               timestamp,
+              input.sourceRegistration === undefined
+                ? null
+                : JSON.stringify(input.sourceRegistration),
             ]),
           );
           for (const [ordinal, assetId] of input.assetIds.entries()) {

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import {
   DATA_CAPABILITY_REGISTRY,
+  SourceRegistrationSchema,
   type AgentRunSummaryDto,
   type DataCapabilityId,
   type DataItemDto,
@@ -179,7 +180,7 @@ select session.ingestion_id, session.tenant_id, session.project_id,
     filter (where input.asset_id is not null), '{}') as asset_ids,
   session.intended_uses, session.requested_security_level, session.state,
   session.operation_id, session.row_version, session.created_at,
-  session.updated_at
+  session.updated_at, session.source_registration
 from ingestion.session as session
 left join ingestion.input_asset as input
   on input.tenant_id = session.tenant_id
@@ -654,6 +655,13 @@ function ingestion(row: Record<string, unknown>): IngestionDto {
     tenantId: text(row, 'tenant_id'),
     projectId: text(row, 'project_id'),
     assetIds: strings(row, 'asset_ids'),
+    ...(row.source_registration == null
+      ? {}
+      : {
+          sourceRegistration: SourceRegistrationSchema.parse(
+            row.source_registration,
+          ),
+        }),
     intendedUses: strings(row, 'intended_uses'),
     requestedSecurityLevel: text(
       row,

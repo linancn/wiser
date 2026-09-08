@@ -15,8 +15,8 @@ checkPaths:
   - packages/data-contracts/src/capability/**
   - apps/api/src/data-foundation/**
   - skills/wiser-data-foundation/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: 2b365e92de940ca7b13bdd1720ff452540754222
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: b6dc97b67860a37f5230518743dca84d2cb25fa1
 ---
 
 ## 协议边界
@@ -126,6 +126,8 @@ If-Match: "v3"
 - `data.geo.intersect`：接受 Geometry 或 DataItem target；DataItem target 先选择最新/精确的可见已提交 Version，再收集全部 sibling extent，绝不回退旧 Version。target 缺失、不可见、无 extent 或彼此不相交时均返回不可区分的空页，并使用同样的 snapshot/query/scope cursor 继续；
 - federated search：catalog/fulltext/semantic/graph/geo/stac source allowlist。
 
+`data.query` 读取所选已提交版本的结构化证据记录。可见的来源登记版本尚无分析记录时，返回 `200`、精确的 `versionId`、请求的列和 `rows: []`；通过目录、证据检索和受控文件下载查看来源材料。空结果不代表原始文件丢失。JSON 相等与包含筛选比较完整提取的 JSON 操作数；真实 PostgreSQL 集成覆盖全部八种运算符、空记录和安全/策略过滤。
+
 当前 catalog get/version 响应要求 `tileAvailability: { vector, raster }`。它描述受控 source 是否可路由，不表示 GIS 服务健康：vector 要求可见的版本级 extent；raster 要求可见 RAW TIFF/GeoTIFF asset 具备 blob/hash/input 关联和精确内容寻址 key。
 
 SearchOrchestrator 在后端下推权限与发布过滤，固定 `RRF k=60`，按 DataItem+Version 去重，再逐条重新授权。
@@ -150,6 +152,10 @@ GeoServer、STAC API、TiTiler 与 Martin 没有宿主 published port；浏览�
 MapLibre 不把 API Bearer 放进 tile URL。登录后的浏览器只请求同源 `/api/data-foundation/geo/...`；Next Route Handler 重新验证 Supabase Session，以 server-only access token 和固定 Tenant/Project/Purpose 转发上述 Fastify 路由，同时再次限制 path/query/content/response size。该 Web 路径不是第二套 GIS 业务逻辑。
 
 ## 上传与入库
+
+`data.ingestion.create` 1.1 接受可选 `sourceRegistration`，ingestion get/reject 1.1 保留该描述；1.0 schema 仍可从不可变发现归档读取。完整严格字段以 discovery 为准，包含来源/数据包身份、类型、名称、提供方、访问状态、明确的完整性、限制说明以及 `manifestAssetId` / `manifestSha256`。清单资产必须属于本次入库引用的已完成上传资产。
+
+清单使用 `wiser.source-registration.v1`，包含一致的 `sourceId`、来源 `record` 和 `files`。每个非空文件以 `assetId` 绑定原始/准备后大小与 SHA-256、相对路径、材料类别、完整性、处理方式和关联来源 ID。空文件要求大小为零且哈希等于空内容哈希。清单最多 512 KiB、1,000 个文件条目。来源登记的发布保留原始文件和声明元数据，不证明分析可用性；不可变版本和检索限制均保留这一区分。
 
 推荐流程：
 
@@ -185,6 +191,8 @@ Evidence 事务同时对 fragment 与其 DataItemVersion 执行 `security.author
 两个 Resource 响应最大 256 KiB，均为 `application/json` 和 `private, no-store`。引用非法返回 `422`，输出过大返回 `413`，上游投影契约不合法返回 `502`，依赖不可用返回 `503`；数据库、内部 STAC bearer、上游 URL 和原始错误正文永不回显。
 
 ## 授权资产下载
+
+多文件版本可将下述路径末尾的 `source` 替换为版本返回的精确 `assetId`。API 将资产绑定到指定可见版本，并对资产和版本都复核 RLS。路径 Tenant/Project 必须在查询和签名前与已认证的 Header 上下文一致。`source` 保留为首个有序资产的兼容别名；隐藏或不属于该版本的资产返回 `404`。
 
 已发布 STAC Item 的 source asset 使用：
 
