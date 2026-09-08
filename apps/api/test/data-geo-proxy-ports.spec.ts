@@ -55,6 +55,39 @@ function proxyRequest(
 }
 
 describe('fixed-origin GIS upstream port', () => {
+  it('normalizes an authorized empty Martin tile without treating it as an upstream failure', async () => {
+    const port = new FixedOriginDataFoundationGeoProxyPort({
+      origins: {
+        GEOSERVER: 'http://geoserver:8080',
+        STAC: 'http://stac-api:8080',
+        TITILER: 'http://titiler:80',
+        MARTIN: 'http://martin:3000',
+      },
+      stacBearerToken: 'internal-stac-token-value',
+      fetch: () => Promise.resolve(new Response(null, { status: 204 })),
+    });
+    const response = await port.request(
+      proxyRequest({
+        target: 'MARTIN',
+        path: '/wiser_exploration_mvt/0/0/0',
+        query: Object.entries({
+          tenantId: TENANT_ID,
+          projectId: PROJECT_ID,
+          actorId: ACTOR_ID,
+          queryId: VERSION_ID,
+          purpose: context.authorization.purpose,
+          maxSecurityLevel: context.authorization.maxSecurityLevel,
+          policyVersion: String(context.authorization.authzVersion),
+        }),
+      }),
+    );
+    expect(response).toEqual({
+      status: 200,
+      contentType: 'application/vnd.mapbox-vector-tile',
+      body: new Uint8Array(),
+    });
+  });
+
   it('uses only configured service origins, injects internal credentials, and bounds the body', async () => {
     const requested: { readonly url: string; readonly init: RequestInit }[] =
       [];
