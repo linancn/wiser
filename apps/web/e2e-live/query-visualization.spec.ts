@@ -4,6 +4,56 @@ import { loadLiveCredentials } from './support/live-fixture';
 const credentials = loadLiveCredentials();
 const hydroAtlasId = 'e90d54eb-4740-4f21-a85e-1d497cc2cc57';
 
+test('exploration queries real resources and preserves version selection across pagination', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page, '/zh-CN/data-foundation/explore');
+  await expect(
+    page.getByRole('heading', { name: '数据探索', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByTestId('explorer-total')).toContainText('2,254');
+  const table = page.getByTestId('explorer-results');
+  expect((await table.boundingBox())!.y).toBeLessThanOrEqual(280);
+  const firstQuery = await page
+    .getByTestId('data-explorer')
+    .getAttribute('data-query-id');
+  await page.getByRole('button', { name: '下一页', exact: true }).click();
+  await expect(page.getByTestId('data-explorer')).toHaveAttribute(
+    'data-query-id',
+    firstQuery!,
+  );
+  await page.getByRole('button', { name: '上一页', exact: true }).click();
+  await page.getByLabel('查询数据').fill('HydroATLAS');
+  await page.getByRole('button', { name: '查询', exact: true }).click();
+  const item = page.getByRole('button', {
+    name: 'DS-0409 · HydroATLAS',
+    exact: true,
+  });
+  await expect(item).toBeVisible();
+  await item.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('explorer-inspector')).toContainText(
+    '710c54dd-26d5-54e8-a6aa-a0597ca147a8',
+  );
+  await expect(page.getByTestId('explorer-inspector')).toContainText('待解析');
+  await expect(
+    page
+      .getByTestId('explorer-inspector')
+      .getByRole('link', { name: '查看数据详情' }),
+  ).toHaveAttribute('href', /version=710c54dd/);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+    .toBeLessThanOrEqual(390);
+  await page.getByLabel('查询数据').fill('no-such-resource-wiser');
+  await page.getByRole('button', { name: '查询', exact: true }).click();
+  await expect(page.getByTestId('explorer-total')).toContainText('0');
+  await expect(page.getByTestId('explorer-inspector')).not.toContainText(
+    '710c54dd',
+  );
+});
+
 async function login(page: Page, next: string) {
   await page.goto(`/zh-CN/login?next=${encodeURIComponent(next)}`);
   await page.getByLabel('邮箱').fill(credentials.email);
