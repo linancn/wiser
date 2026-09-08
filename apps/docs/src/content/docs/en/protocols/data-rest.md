@@ -190,6 +190,8 @@ Both Resource responses are bounded to 256 KiB, `application/json`, and `private
 
 ## Authorized asset download
 
+For a multi-file Version, replace the final `source` segment below with an exact `assetId` returned by the Version. The API binds that asset to the requested visible Version and repeats RLS for both. Tenant/Project path values must match the authenticated header context before any lookup or signing. `source` remains the compatibility alias for the first ordered asset; a hidden or unrelated asset returns `404`.
+
 Published STAC source assets use:
 
 ```text

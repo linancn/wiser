@@ -58,6 +58,7 @@ export interface DataFoundationAssetDownloadPort {
   createDownload(input: {
     readonly context: PlatformRequestContext;
     readonly versionId: string;
+    readonly assetId?: string;
   }): Promise<{ readonly url: string; readonly expiresAt: string }>;
 }
 
@@ -609,20 +610,23 @@ export function createDataFoundationRestModule(
       }
       if (options.assetDownload !== undefined) {
         app.get(
-          '/api/data/v1/tenants/:tenantId/projects/:projectId/versions/:versionId/assets/source',
+          '/api/data/v1/tenants/:tenantId/projects/:projectId/versions/:versionId/assets/:assetId',
           async (request, reply) => {
             setNoStore(reply);
             const params = record(request.params);
             const tenantId = params?.['tenantId'];
             const projectId = params?.['projectId'];
             const versionId = params?.['versionId'];
+            const assetId = params?.['assetId'];
             if (
               typeof tenantId !== 'string' ||
               !UUID_PATTERN.test(tenantId) ||
               typeof projectId !== 'string' ||
               !UUID_PATTERN.test(projectId) ||
               typeof versionId !== 'string' ||
-              !UUID_PATTERN.test(versionId)
+              !UUID_PATTERN.test(versionId) ||
+              typeof assetId !== 'string' ||
+              (assetId !== 'source' && !UUID_PATTERN.test(assetId))
             ) {
               return sendError(request, reply, errors.validation);
             }
@@ -631,6 +635,8 @@ export function createDataFoundationRestModule(
               return sendError(request, reply, resolved.error);
             }
             if (
+              resolved.context.authorization.tenantId !== tenantId ||
+              resolved.context.authorization.projectId !== projectId ||
               !resolved.context.authorization.scopes.includes(
                 'data.catalog.read',
               )
@@ -642,6 +648,7 @@ export function createDataFoundationRestModule(
               download = await options.assetDownload!.createDownload({
                 context: resolved.context,
                 versionId,
+                ...(assetId === 'source' ? {} : { assetId }),
               });
               const url = new URL(download.url);
               if (

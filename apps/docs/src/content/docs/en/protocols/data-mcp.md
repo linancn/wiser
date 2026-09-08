@@ -17,8 +17,8 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - packages/data-contracts/src/capability/**
   - skills/wiser-data-foundation/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: 009852bdcfd26240fa31553e7d0e2254400aaf67
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: cf0c285878bbaa7811b03198ba51b733b252588a
 ---
 
 ## HTTP adapter only

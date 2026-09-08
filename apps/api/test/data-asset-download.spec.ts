@@ -41,7 +41,7 @@ afterEach(async () => {
 });
 
 describe('governed version asset download', () => {
-  async function downloadApp() {
+  function downloadApp() {
     const assetDownload = {
       createDownload: vi.fn(() =>
         Promise.resolve({
@@ -65,7 +65,7 @@ describe('governed version asset download', () => {
   }
 
   it('downloads a specified asset from a source registration containing several files', async () => {
-    const { app, assetDownload } = await downloadApp();
+    const { app, assetDownload } = downloadApp();
     const response = await app.inject({
       method: 'GET',
       url: `/api/data/v1/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/assets/${ASSET_ID}`,
@@ -86,7 +86,7 @@ describe('governed version asset download', () => {
   });
 
   it('rejects path scope mismatches before resolving or signing an asset', async () => {
-    const { app, assetDownload } = await downloadApp();
+    const { app, assetDownload } = downloadApp();
     for (const asset of ['source', ASSET_ID]) {
       const response = await app.inject({
         method: 'GET',

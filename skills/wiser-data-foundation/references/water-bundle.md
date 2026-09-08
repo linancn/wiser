@@ -14,6 +14,8 @@ The source directory is read-only. Inventory output has owner-only permissions. 
 
 An inventory proves source reconciliation, not upload or publication. Ingestion must subsequently use discovered HTTP Capabilities, preserve the inventory identities and limitations, and reconcile every resulting asset/Operation/version. Report persisted raw files separately from parsed, validated, analytically usable datasets.
 
+Register sources with ingestion 1.1 `sourceRegistration` and its strict `wiser.source-registration.v1` manifest. After publication, obtain the immutable Version's `assetIds`. Read each file through `/api/data/v1/tenants/{tenantId}/projects/{projectId}/versions/{versionId}/assets/{assetId}` and follow the returned short-lived redirect without forwarding the API bearer. Check downloaded bytes and SHA-256 against the prepared manifest; `assets/source` selects only the first asset and cannot verify an entire multi-file Version.
+
 The synthetic safety tests create temporary files in memory-defined fixtures. Real source material is not redistributed in Git. Run the real case explicitly:
 
 ```bash

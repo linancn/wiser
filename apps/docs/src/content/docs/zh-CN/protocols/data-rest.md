@@ -190,6 +190,8 @@ Evidence 事务同时对 fragment 与其 DataItemVersion 执行 `security.author
 
 ## 授权资产下载
 
+多文件版本可将下述路径末尾的 `source` 替换为版本返回的精确 `assetId`。API 将资产绑定到指定可见版本，并对资产和版本都复核 RLS。路径 Tenant/Project 必须在查询和签名前与已认证的 Header 上下文一致。`source` 保留为首个有序资产的兼容别名；隐藏或不属于该版本的资产返回 `404`。
+
 已发布 STAC Item 的 source asset 使用：
 
 ```text
