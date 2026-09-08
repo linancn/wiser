@@ -8,6 +8,15 @@ import type { GraphResultDto } from '@/lib/data-foundation';
 import { getDictionary, type Locale } from '@/lib/i18n';
 import styles from './data-foundation-graph.module.css';
 
+export interface CanvasGraphData {
+  readonly nodes: readonly { entityId: string; label: string }[];
+  readonly edges: readonly {
+    edgeId: string;
+    fromEntityId: string;
+    toEntityId: string;
+  }[];
+}
+
 type GraphState = 'loading' | 'ready' | 'unavailable';
 
 export function KnowledgeGraphCanvas({
@@ -15,8 +24,10 @@ export function KnowledgeGraphCanvas({
   selectedId,
   onSelect,
   locale,
+  hierarchical = false,
 }: {
-  readonly result: GraphResultDto;
+  readonly result: CanvasGraphData;
+  readonly hierarchical?: boolean;
   readonly selectedId: string | null;
   readonly onSelect: (id: string) => void;
   readonly locale: Locale;
@@ -56,6 +67,16 @@ export function KnowledgeGraphCanvas({
         width: container.clientWidth,
         height: container.clientHeight,
         animation: false,
+        ...(hierarchical
+          ? {
+              layout: {
+                type: 'dagre',
+                rankdir: 'LR',
+                nodesep: 40,
+                ranksep: 120,
+              },
+            }
+          : {}),
         autoFit: 'view',
         zoomRange: [0.15, 1.5],
         padding: 48,
@@ -82,7 +103,11 @@ export function KnowledgeGraphCanvas({
             lineWidth: 2,
             labelText: (node) => {
               const label = node.data?.['label'];
-              return typeof label === 'string' ? label.slice(0, 48) : '';
+              if (typeof label !== 'string') return '';
+              const limit = hierarchical ? 24 : 48;
+              return label.length > limit
+                ? `${label.slice(0, limit - 1)}…`
+                : label;
             },
             labelFill: palette.labelFill,
             labelFontSize: 12,
@@ -156,7 +181,7 @@ export function KnowledgeGraphCanvas({
       graph.current = null;
       void pending.current.finally(() => instance?.destroy()).catch(() => {});
     };
-  }, [result]);
+  }, [result, hierarchical]);
 
   useEffect(() => {
     const active = graph.current;

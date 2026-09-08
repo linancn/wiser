@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { DataExplorerGraph } from './data-explorer-graph';
 import {
   useEffect,
   useRef,
@@ -14,6 +15,7 @@ import {
   type ExplorationResult,
   type ExplorationResource,
   type ExplorationRecord,
+  type ExplorationGraphNode,
   type ExplorationAnalysisAsset,
   type QuerySpec,
 } from '@wiser/data-contracts';
@@ -46,10 +48,12 @@ export function DataExplorer({
     queryId: initialResult?.queryId ?? null,
     resource: null,
     record: null,
+    node: null,
   });
   const selected = selection.resource;
   const selectedRecord = selection.record;
-  const [view, setView] = useState<'resources' | 'records' | 'map'>(
+  const selectedNode = selection.node;
+  const [view, setView] = useState<'resources' | 'records' | 'map' | 'graph'>(
     'resources',
   );
   const [recordAssets, setRecordAssets] = useState<
@@ -68,6 +72,21 @@ export function DataExplorer({
           resource:
             result.resources.find(
               (resource) => resource.versionId === record.versionId,
+            ) ?? null,
+        });
+    },
+    [result],
+  );
+  const selectNode = useCallback(
+    (node: ExplorationGraphNode) => {
+      if (result)
+        dispatch({
+          type: 'node',
+          queryId: result.queryId,
+          node,
+          resource:
+            result.resources.find(
+              (resource) => resource.versionId === node.versionId,
             ) ?? null,
         });
     },
@@ -245,14 +264,19 @@ export function DataExplorer({
           role="tablist"
           aria-label={copy.viewLabel}
         >
-          {(['resources', 'records', 'map'] as const).map((value) => (
+          {(['resources', 'records', 'map', 'graph'] as const).map((value) => (
             <button
               key={value}
               role="tab"
               id={`explorer-tab-${value}`}
               tabIndex={view === value ? 0 : -1}
               onKeyDown={(event) => {
-                const values = ['resources', 'records', 'map'] as const;
+                const values = [
+                  'resources',
+                  'records',
+                  'map',
+                  'graph',
+                ] as const;
                 let index = values.indexOf(value);
                 if (event.key === 'ArrowRight')
                   index = (index + 1) % values.length;
@@ -274,7 +298,9 @@ export function DataExplorer({
                 ? copy.resourceView
                 : value === 'records'
                   ? copy.records
-                  : copy.mapView}
+                  : value === 'map'
+                    ? copy.mapView
+                    : copy.graphView}
             </button>
           ))}
         </div>
@@ -377,14 +403,32 @@ export function DataExplorer({
                 </button>
               </footer>
             </>
-          ) : result ? (
+          ) : result && view === 'graph' ? (
+            <DataExplorerGraph
+              key={result.queryId}
+              queryId={result.queryId}
+              locale={locale}
+              versionId={
+                selectedRecord?.versionId ??
+                selectedNode?.versionId ??
+                selected?.versionId ??
+                null
+              }
+              selectedRecord={selectedRecord}
+              selectedNode={selectedNode}
+              onSelect={selectNode}
+            />
+          ) : result && (view === 'records' || view === 'map') ? (
             <DataExplorerAnalysis
               key={result.queryId}
               locale={locale}
               queryId={result.queryId}
               view={view}
               versionId={
-                selectedRecord?.versionId ?? selected?.versionId ?? null
+                selectedRecord?.versionId ??
+                selectedNode?.versionId ??
+                selected?.versionId ??
+                null
               }
               selectedRecord={selectedRecord}
               onSelect={selectRecord}
@@ -450,6 +494,40 @@ export function DataExplorer({
               </dl>
               <Link
                 href={`/${locale}/data-foundation/catalog/${selectedRecord.dataItemId}?version=${selectedRecord.versionId}`}
+              >
+                {copy.openData}
+              </Link>
+            </>
+          ) : selectedNode !== null ? (
+            <>
+              <div className={styles.inspectorHeading}>
+                <h2>{copy.graphNodeDetails}</h2>
+                <button
+                  aria-label={copy.close}
+                  onClick={() => setSelected(null)}
+                >
+                  ×
+                </button>
+              </div>
+              <h3>{selectedNode.label}</h3>
+              <dl>
+                <dt>{copy.graphKind}</dt>
+                <dd>{copy.graphNodeKinds[selectedNode.kind]}</dd>
+                <dt>{copy.version}</dt>
+                <dd>
+                  <code>{selectedNode.versionId}</code>
+                </dd>
+                {selectedNode.sourceHash ? (
+                  <>
+                    <dt>{copy.sourceHash}</dt>
+                    <dd>
+                      <code>{selectedNode.sourceHash}</code>
+                    </dd>
+                  </>
+                ) : null}
+              </dl>
+              <Link
+                href={`/${locale}/data-foundation/catalog/${selectedNode.dataItemId}?version=${selectedNode.versionId}`}
               >
                 {copy.openData}
               </Link>

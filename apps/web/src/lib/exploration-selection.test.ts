@@ -95,7 +95,12 @@ describe('shared exploration selection', () => {
       type: 'query',
       queryId: 'two',
     });
-    expect(state).toEqual({ queryId: 'two', resource: null, record: null });
+    expect(state).toEqual({
+      queryId: 'two',
+      resource: null,
+      record: null,
+      node: null,
+    });
     expect(
       explorationSelectionReducer(state, {
         type: 'record',
@@ -106,7 +111,7 @@ describe('shared exploration selection', () => {
     ).toBe(state);
   });
   it('clears a record when selecting a different version', () => {
-    const selected = { queryId: 'one', resource, record };
+    const selected = { queryId: 'one', resource, record, node: null };
     expect(
       explorationSelectionReducer(selected, {
         type: 'resource',

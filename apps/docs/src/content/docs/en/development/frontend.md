@@ -18,8 +18,8 @@ checkPaths:
   - apps/docs/package.json
   - apps/docs/src/**
   - apps/docs/e2e/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: c4092d9f961841f89cdf9ed383360c41f809bd17
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: 1387acbdba44ac57ceb01f4a1e23730fe07be438
 ---
 
 ## Two frontend applications
