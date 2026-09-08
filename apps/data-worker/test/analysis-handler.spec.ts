@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import type { ClaimedDataJob, DataPostgresPool } from '@wiser/data-infra';
+import {
+  AnalysisContentError,
+  type ClaimedDataJob,
+  type DataPostgresPool,
+} from '@wiser/data-infra';
 import { createAnalysisHandler } from '../src/handlers/analysis.js';
 
 const tenantId = 'b1000000-0000-4000-8000-000000000001';
@@ -39,7 +43,7 @@ const bytes = new TextEncoder().encode(
   }),
 );
 
-function fixture(leaseValid = true, inputBytes = bytes) {
+function fixture(leaseValid = true, inputBytes = bytes, readError?: Error) {
   const calls: { sql: string; values: readonly unknown[] }[] = [];
   const pool: DataPostgresPool = {
     async connect() {
@@ -84,12 +88,37 @@ function fixture(leaseValid = true, inputBytes = bytes) {
     calls,
     handler: createAnalysisHandler({
       pool,
-      read: () => Promise.resolve(inputBytes),
+      read: () =>
+        readError ? Promise.reject(readError) : Promise.resolve(inputBytes),
     }),
   };
 }
 
 describe('version analysis worker', () => {
+  it('classifies parser resource limits separately from invalid source content', async () => {
+    const value = fixture(
+      true,
+      bytes,
+      new AnalysisContentError('RECORD_LIMIT'),
+    );
+    expect(await value.handler(job)).toMatchObject({
+      status: 'SUCCEEDED',
+      result: {
+        unsupportedAssetCount: 1,
+        invalidAssetCount: 0,
+        recordCount: 0,
+      },
+    });
+    const finalized = value.calls.find((call) =>
+      call.sql.includes('analysis.finish-asset'),
+    );
+    expect(finalized?.values.slice(2, 6)).toEqual([
+      'UNSUPPORTED',
+      'RECORD_LIMIT',
+      null,
+      null,
+    ]);
+  });
   it('persists source-bound records and verified geometry before settling a job', async () => {
     const value = fixture();
     expect(await value.handler(job)).toMatchObject({
