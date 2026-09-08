@@ -1,3 +1,4 @@
+import { spatialPredicate } from './exploration-spatial.js';
 import { z } from 'zod';
 import {
   ExplorationGraphSchema,
@@ -100,11 +101,12 @@ export async function queryProvenanceGraph(
   if (input.recordId !== undefined) {
     const row = (
       await client.query(
-        `select record.*,ref->>'dataItemId' data_item_id,ref->>'versionId' version_id,record.geom is not null spatial from catalog.analysis_record record join jsonb_array_elements($1::jsonb) ref on record.analysis_id=(ref->>'analysisId')::uuid where record.record_id=$2::uuid and ($3::jsonb is null or (record.asset_id=($3->>'assetId')::uuid and service.exploration_record_matches(record.record_values,$3->'filters')))`,
+        `select record.*,ref->>'dataItemId' data_item_id,ref->>'versionId' version_id,record.geom is not null spatial from catalog.analysis_record record join jsonb_array_elements($1::jsonb) ref on record.analysis_id=(ref->>'analysisId')::uuid where record.record_id=$2::uuid and ($3::jsonb is null or (record.asset_id=($3->>'assetId')::uuid and service.exploration_record_matches(record.record_values,$3->'filters'))) and ($4::float8[] is null or ${spatialPredicate('record.geom', '$4::float8[]')})`,
         [
           serialized,
           input.recordId,
           spec.recordQuery ? JSON.stringify(spec.recordQuery) : null,
+          spec.spatialBounds ?? null,
         ],
       )
     ).rows[0];

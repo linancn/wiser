@@ -60,6 +60,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
   left: 12px;
   top: 12px;
   max-width: calc(100% - 70px);
@@ -655,4 +656,47 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 0.75rem;
+}
+
+.mapLegend {
+  position: absolute;
+  bottom: 36px;
+  left: 12px;
+  max-width: min(270px, calc(100% - 24px));
+  padding: 8px 12px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  box-shadow: var(--shadow-sm);
+}
+.mapLegend summary {
+  cursor: pointer;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+}
+.mapLegend fieldset {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  border: 0;
+}
+.mapLegend label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+.mapLegend p {
+  margin: 4px 0;
+}
+.selectedSwatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--warning-bright);
+  margin-inline-end: 8px;
 }

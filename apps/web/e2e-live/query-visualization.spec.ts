@@ -13,6 +13,60 @@ test.skip(
   'Requires the admitted private water research case.',
 );
 
+test('map layer controls and geographic refinement preserve the original authorized population', async ({
+  page,
+}) => {
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  await page.getByRole('tab', { name: '地图', exact: true }).click();
+  const map = page.getByTestId('explorer-map');
+  await expect(map).toHaveAttribute('data-ready', 'true');
+  await expect(map).toHaveAttribute('data-rendered-feature-count', '1');
+  await map.getByText('图层与图例', { exact: true }).click();
+  await map.getByRole('checkbox', { name: '点与聚合' }).uncheck();
+  await expect(map).toHaveAttribute('data-rendered-feature-count', '0');
+  await map.getByRole('checkbox', { name: '点与聚合' }).check();
+  await expect(map).toHaveAttribute('data-rendered-feature-count', '1');
+  const original = await page
+    .getByTestId('data-explorer')
+    .getAttribute('data-query-id');
+  await map.getByRole('button', { name: '用当前范围筛选' }).click();
+  await expect(page.getByTestId('data-explorer')).not.toHaveAttribute(
+    'data-query-id',
+    original!,
+  );
+  await expect(page.getByRole('button', { name: '清除范围' })).toBeVisible();
+  await expect(map).toHaveAttribute('data-rendered-feature-count', '1');
+  const active = await page
+    .getByTestId('data-explorer')
+    .getAttribute('data-query-id');
+  const response = await page.request.post('/api/data-foundation/explore', {
+    data: {
+      baseQueryId: active,
+      spec: { spatialBounds: [100, 10, 101, 11] },
+      view: 'resources',
+    },
+  });
+  expect(response.status()).toBe(200);
+  const empty = ExplorationResultSchema.parse(await response.json());
+  expect(empty.totalCount).toBe(0);
+  await page.goto(
+    `/zh-CN/data-foundation/explore?query=${empty.queryId}&view=map`,
+  );
+  await page.getByRole('button', { name: '清除范围' }).click();
+  await expect(map).toHaveAttribute('data-rendered-feature-count', '1');
+  const id = await page
+    .getByTestId('data-explorer')
+    .getAttribute('data-query-id');
+  const restored = await page.request.post('/api/data-foundation/explore', {
+    data: { queryId: id, view: 'resources' },
+  });
+  const data = ExplorationResultSchema.parse(await restored.json());
+  expect(data.totalCount).toBe(1);
+  expect(data.resources[0]?.dataItemId).toBe(
+    '0aaa32a4-6d76-479b-a33a-91775d426d50',
+  );
+});
+
 test('large original Shapefile records use byte-bounded pages with contiguous cursors', async ({
   page,
 }) => {

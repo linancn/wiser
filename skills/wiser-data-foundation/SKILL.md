@@ -81,3 +81,5 @@ Map results may include `spatial.bounds` and `mercatorFeatureCount` for the comp
 - For temporal source queries, explicitly set `format` (`iso-offset`, `dmy-local`, `ymd-local`) and `utcOffsetMinutes` (fixed offset, −840…840). Use offset-bearing absolute values for time predicates; calendar aggregates accept `bucket: "hour" | "day" | "month" | "year"`. Apply returned lower/upper boundaries with `gte`/`lt`; never infer a time zone from a file name or silently normalize invalid dates.
 
 - When refining an existing exploration, send its `queryId` as `baseQueryId` alongside the new `spec`. This preserves authorized version and analysis pins. It cannot broaden beyond the base result; create an ordinary new query when broader discovery is intended. An unavailable base must be refreshed explicitly.
+
+- Use `spec.spatialBounds: [west, south, east, north]` for one verified-geometry condition across records, aggregates, graph record lookups and tiles. Keep it distinct from map-only `bbox`. Refine with `baseQueryId` to change or clear the area while retaining analysis pins. Unlocated and unverified coordinates do not match an area.

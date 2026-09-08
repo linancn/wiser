@@ -71,6 +71,12 @@ export async function verifyExplorationTiles(
       'utf8',
     ),
   );
+  await client.query(
+    await readFile(
+      'infrastructure/data-foundation/postgres/migrations/0019_exploration_spatial_filters.sql',
+      'utf8',
+    ),
+  );
   const tileRole = `wiser_tile_test_${randomUUID().replaceAll('-', '')}`;
   await client.query(`create role ${tileRole} nologin nosuperuser nobypassrls`);
   await client.query(`grant usage on schema service to ${tileRole}`);
@@ -249,6 +255,19 @@ export async function verifyExplorationTiles(
       Number(temporalTile.feature(index).properties['count']),
     ).reduce((a, b) => a + b, 0),
   ).toBe(50000);
+  const spatialQuery = randomUUID();
+  await client.query(
+    `insert into service.exploration_snapshot select $1,tenant_id,project_id,actor_id,purpose,security_level,policy_version,jsonb_set(spec,'{spatialBounds}','[-180,-90,-0.1,90]'::jsonb),version_refs,created_at,expires_at from service.exploration_snapshot where query_id=$2`,
+    [spatialQuery, temporalQuery],
+  );
+  const spatialTile = new VectorTile(
+    new PbfReader(await tile({ ...params, queryId: spatialQuery })),
+  ).layers['exploration']!;
+  expect(
+    Array.from({ length: spatialTile.length }, (_, index) =>
+      Number(spatialTile.feature(index).properties['count']),
+    ).reduce((a, b) => a + b, 0),
+  ).toBe(25000);
   console.info(
     'Authorized MVT stress',
     JSON.stringify({

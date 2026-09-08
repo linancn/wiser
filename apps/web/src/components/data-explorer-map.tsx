@@ -15,6 +15,8 @@ import Map, {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ExplorationResultSchema,
+  ExplorationBoundsSchema,
+  type ExplorationBounds,
   type ExplorationRecord,
   type ExplorationResult,
 } from '@wiser/data-contracts';
@@ -29,17 +31,24 @@ export default function DataExplorerMap({
   onSelect,
   onInvalidated,
   locale,
+  onBounds,
 }: {
   readonly result: ExplorationResult;
   readonly selectedId: string | null;
   readonly onSelect: (record: ExplorationRecord) => void;
   readonly locale: Locale;
+  readonly onBounds?: (bounds: ExplorationBounds | undefined) => void;
   readonly onInvalidated: InvalidateExploration;
 }) {
   const map = useRef<MapRef>(null);
   const [ready, setReady] = useState(false);
   const [renderedCount, setRenderedCount] = useState(0);
   const [failed, setFailed] = useState(false);
+  const [layers, setLayers] = useState({
+    points: true,
+    lines: true,
+    polygons: true,
+  });
   const [theme, setTheme] = useState(0);
   const copy = getDictionary(locale).dataFoundation.explorer;
   const controls = getDictionary(locale).dataFoundation.mapPage.controls;
@@ -69,7 +78,7 @@ export default function DataExplorerMap({
   useEffect(() => setSelected(selectedId), [selectedId]);
   useEffect(() => () => pending.current?.abort(), []);
   function fit() {
-    const extent = result.spatial?.bounds;
+    const extent = result.spec.spatialBounds ?? result.spatial?.bounds;
     if (extent)
       map.current?.fitBounds(
         [
@@ -78,6 +87,17 @@ export default function DataExplorerMap({
         ],
         { padding: 60, maxZoom: 5.5, duration: 0 },
       );
+  }
+  function filterArea() {
+    const bounds = map.current?.getBounds();
+    if (!bounds) return;
+    const parsed = ExplorationBoundsSchema.safeParse([
+      Math.max(-180, bounds.getWest()),
+      Math.max(-90, bounds.getSouth()),
+      Math.min(180, bounds.getEast()),
+      Math.min(90, bounds.getNorth()),
+    ]);
+    if (parsed.success) onBounds?.(parsed.data);
   }
   async function select(properties: Record<string, unknown>) {
     if (properties['cluster'] === true) return;
@@ -256,6 +276,7 @@ export default function DataExplorerMap({
             <Layer
               source-layer="exploration"
               id="records-polygons"
+              layout={{ visibility: layers.polygons ? 'visible' : 'none' }}
               type="fill"
               filter={['==', ['geometry-type'], 'Polygon']}
               paint={{ 'fill-color': palette.accent, 'fill-opacity': 0.3 }}
@@ -263,11 +284,21 @@ export default function DataExplorerMap({
             <Layer
               source-layer="exploration"
               id="records-lines"
+              layout={{
+                visibility:
+                  layers.lines || layers.polygons ? 'visible' : 'none',
+              }}
               type="line"
               filter={[
                 'in',
                 ['geometry-type'],
-                ['literal', ['LineString', 'Polygon']],
+                [
+                  'literal',
+                  [
+                    ...(layers.lines ? ['LineString'] : []),
+                    ...(layers.polygons ? ['Polygon'] : []),
+                  ],
+                ],
               ]}
               paint={{
                 'line-color': [
@@ -282,6 +313,7 @@ export default function DataExplorerMap({
             <Layer
               source-layer="exploration"
               id="records-points"
+              layout={{ visibility: layers.points ? 'visible' : 'none' }}
               type="circle"
               filter={['==', ['geometry-type'], 'Point']}
               paint={{
@@ -295,17 +327,52 @@ export default function DataExplorerMap({
                   'case',
                   ['==', ['get', 'recordId'], selected ?? ''],
                   10,
-                  ['case', ['==', ['get', 'cluster'], true], 16, 6],
+                  [
+                    'case',
+                    ['==', ['get', 'cluster'], true],
+                    [
+                      'step',
+                      ['get', 'count'],
+                      16,
+                      100,
+                      20,
+                      1000,
+                      24,
+                      10000,
+                      30,
+                    ],
+                    6,
+                  ],
                 ],
                 'circle-stroke-color': palette.ink,
                 'circle-stroke-width': 2,
               }}
+            />
+            <Layer
+              source-layer="exploration"
+              id="records-cluster-labels"
+              type="symbol"
+              filter={['==', ['get', 'cluster'], true]}
+              layout={{
+                visibility: layers.points ? 'visible' : 'none',
+                'text-field': ['to-string', ['get', 'count']],
+                'text-font': ['Arial', 'sans-serif'],
+                'text-size': 12,
+                'text-allow-overlap': true,
+                'text-ignore-placement': true,
+              }}
+              paint={{ 'text-color': palette.background }}
             />
           </Source>
         </Map>
       )}
       <div className={styles.mapSummary}>
         <button onClick={fit}>{copy.fitMap}</button>
+        {onBounds ? (
+          <button disabled={!ready || failed} onClick={filterArea}>
+            {copy.mapLayers.filter}
+          </button>
+        ) : null}
         <span>
           {copy.shownFeatures} {renderedCount.toLocaleString(locale)} ·{' '}
           {copy.spatialRecords}{' '}
@@ -314,6 +381,34 @@ export default function DataExplorerMap({
           ).toLocaleString(locale)}
         </span>
       </div>
+      {!failed ? (
+        <details className={styles.mapLegend}>
+          <summary>{copy.mapLayers.title}</summary>
+          <fieldset>
+            {(['points', 'lines', 'polygons'] as const).map((key) => (
+              <label key={key}>
+                <input
+                  type="checkbox"
+                  checked={layers[key]}
+                  onChange={(event) =>
+                    setLayers((value) => ({
+                      ...value,
+                      [key]: event.target.checked,
+                    }))
+                  }
+                />
+                {copy.mapLayers[key]}
+              </label>
+            ))}
+            <p>
+              <span className={styles.selectedSwatch} aria-hidden="true" />
+              {copy.mapLayers.selected}
+            </p>
+            <p>{copy.mapLayers.clusters}</p>
+            <p>{copy.mapLayers.hint}</p>
+          </fieldset>
+        </details>
+      ) : null}
       {failed ? (
         <div className={styles.mapNotice} role="status">
           {copy.mapUnavailable}

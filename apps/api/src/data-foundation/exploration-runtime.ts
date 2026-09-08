@@ -1,3 +1,4 @@
+import { spatialMembers } from './exploration-spatial.js';
 import { AUTHORIZED } from './exploration-authorization.js';
 import { queryAggregate } from './exploration-aggregate.js';
 import {
@@ -138,13 +139,24 @@ export class PostgresExplorationExecutor {
       if (selected.rows[0] === undefined)
         throw new DataCapabilityHandlerError('NOT_FOUND');
       const snapshot = StoredSnapshot.parse(selected.rows[0]);
-      const refs = JSON.stringify(snapshot.version_refs);
+      const pinned = JSON.stringify(snapshot.version_refs);
       const count = await client.query(
         `${AUTHORIZED} select count(*)::int as total from authorized`,
-        [refs],
+        [pinned],
       );
       if (count.rows[0]?.['total'] !== snapshot.version_refs.length)
         throw new DataCapabilityHandlerError('CONFLICT');
+      if (
+        input.versionId &&
+        !snapshot.version_refs.some((ref) => ref.versionId === input.versionId)
+      )
+        throw new DataCapabilityHandlerError('NOT_FOUND');
+      const visibleRefs = await spatialMembers(
+        client,
+        snapshot.version_refs,
+        snapshot.spec,
+      );
+      const refs = JSON.stringify(visibleRefs);
       if (input.view !== 'resources') {
         const result = ExplorationResultSchema.parse({
           queryId,
@@ -159,13 +171,25 @@ export class PostgresExplorationExecutor {
                 snapshot.spec,
               )
             : input.view === 'graph'
-              ? queryProvenanceGraph(
-                  client,
-                  snapshot.version_refs,
-                  queryId,
-                  input,
-                  snapshot.spec,
-                )
+              ? (visibleRefs.length === 0 ||
+                  (input.versionId &&
+                    !visibleRefs.some(
+                      (ref) => ref.versionId === input.versionId,
+                    ))) &&
+                !input.recordId
+                ? {
+                    view: 'graph',
+                    resources: [],
+                    totalCount: 0,
+                    graph: { nodes: [], edges: [], truncated: false },
+                  }
+                : queryProvenanceGraph(
+                    client,
+                    visibleRefs,
+                    queryId,
+                    input,
+                    snapshot.spec,
+                  )
               : queryAnalysisView(
                   client,
                   snapshot.version_refs,
@@ -180,17 +204,14 @@ export class PostgresExplorationExecutor {
         return result;
       }
       const start = offset(input.after, queryId);
-      if (start > snapshot.version_refs.length)
+      if (start > visibleRefs.length)
         throw new DataCapabilityHandlerError('VALIDATION_FAILED');
       const page = await client.query(RESOURCES, [
         refs,
         start,
         input.first + 1,
       ]);
-      const readiness = await loadExplorationReadiness(
-        client,
-        snapshot.version_refs,
-      );
+      const readiness = await loadExplorationReadiness(client, visibleRefs);
       const resources = page.rows.slice(0, input.first).map((row) => {
         const manifest = z
           .record(z.string(), z.unknown())
@@ -237,8 +258,8 @@ export class PostgresExplorationExecutor {
         createdAt: snapshot.created_at.toISOString(),
         expiresAt: snapshot.expires_at.toISOString(),
         view: 'resources',
-        summary: explorationReadinessSummary(snapshot.version_refs, readiness),
-        totalCount: snapshot.version_refs.length,
+        summary: explorationReadinessSummary(visibleRefs, readiness),
+        totalCount: visibleRefs.length,
         resources,
         ...(page.rows.length > input.first
           ? {

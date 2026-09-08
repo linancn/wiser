@@ -1,3 +1,4 @@
+import { spatialPredicate } from './exploration-spatial.js';
 import { recordProjection } from './exploration-record-sql.js';
 import {
   recordBytes,
@@ -19,6 +20,7 @@ export async function queryFilteredRecords(
     readonly offset: number;
     readonly query: RecordQuery;
     readonly maximumBytes?: number;
+    readonly spatialBounds?: readonly number[];
   },
 ) {
   const parameters: unknown[] = [
@@ -50,10 +52,13 @@ export async function queryFilteredRecords(
     input.maximumBytes ?? RECORD_PAGE_BYTES - 4096,
     'integer',
   );
+  const spatial = input.spatialBounds
+    ? spatialPredicate('r.geom', bind(input.spatialBounds, 'float8[]'))
+    : 'true';
   const result = await client.query(
     `with valued as materialized (
     select r.record_id,r.record_index${expressions.length ? `,${expressions.join(',')}` : ''} from catalog.analysis_record r
-    where r.analysis_id=$1::uuid and r.asset_id=$2::uuid and ($3::uuid is null or r.record_id=$3::uuid)
+    where r.analysis_id=$1::uuid and r.asset_id=$2::uuid and ($3::uuid is null or r.record_id=$3::uuid) and ${spatial}
   ), matched as materialized (select * from valued where ${predicates.length ? predicates.join(' and ') : 'true'}),
   page as (select * from matched order by ${order()} limit ${limit} offset ${offset}),
   measured as (select page.*,sum(${recordBytes(values)}) over(order by ${order('page.')} rows unbounded preceding) bytes from page join catalog.analysis_record r on r.analysis_id=$1::uuid and r.record_id=page.record_id),

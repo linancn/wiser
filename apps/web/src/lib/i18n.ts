@@ -89,6 +89,18 @@ const zhCN = {
   },
   dataFoundation: {
     explorer: {
+      mapLayers: {
+        title: '图层与图例',
+        points: '点与聚合',
+        lines: '线',
+        polygons: '面',
+        selected: '选中数据',
+        clusters: '圆内数字表示聚合记录数',
+        filter: '用当前范围筛选',
+        active: '已按地图范围筛选（仅含已验证坐标）',
+        clear: '清除范围',
+        hint: '移动或缩放地图后筛选，也可按住 Shift 拖动框选范围。',
+      },
       time: {
         label: '时间',
         format: '源时间格式',
@@ -1258,6 +1270,18 @@ const en: typeof zhCN = {
   },
   dataFoundation: {
     explorer: {
+      mapLayers: {
+        title: 'Layers and legend',
+        points: 'Points and clusters',
+        lines: 'Lines',
+        polygons: 'Polygons',
+        selected: 'Selected data',
+        clusters: 'Numbers in circles count grouped records',
+        filter: 'Filter to this area',
+        active: 'Filtered by map area (verified coordinates only)',
+        clear: 'Clear area',
+        hint: 'Pan or zoom before filtering, or hold Shift and drag to frame an area.',
+      },
       time: {
         label: 'Time',
         format: 'Source time format',

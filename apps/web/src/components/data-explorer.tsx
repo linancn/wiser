@@ -28,6 +28,7 @@ import {
   type ExplorationGraphNode,
   type ExplorationAnalysisAsset,
   type QuerySpec,
+  type ExplorationBounds,
   type RecordQuery,
 } from '@wiser/data-contracts';
 import { getDictionary, type Locale } from '@/lib/i18n';
@@ -379,6 +380,22 @@ export function DataExplorer({
       'pushState',
     );
   }
+  function configureBounds(bounds: ExplorationBounds | undefined) {
+    if (!result) return;
+    const { spatialBounds: _bounds, ...spec } = result.spec;
+    void query(
+      {
+        baseQueryId: result.queryId,
+        spec: { ...spec, ...(bounds ? { spatialBounds: bounds } : {}) },
+        view: 'resources',
+        first: 25,
+      },
+      0,
+      true,
+      'map',
+      'pushState',
+    );
+  }
   function nextPage() {
     if (!result?.nextCursor) return;
     setCursors((current) => {
@@ -523,6 +540,14 @@ export function DataExplorer({
           {result === null ? '—' : number.format(result.totalCount)}{' '}
           {copy.resources}
         </strong>
+        {result?.spec.spatialBounds ? (
+          <span>
+            {copy.mapLayers.active}{' '}
+            <button disabled={busy} onClick={() => configureBounds(undefined)}>
+              {copy.mapLayers.clear}
+            </button>
+          </span>
+        ) : null}
         {result?.summary && (
           <details
             className={styles.coverage}
@@ -772,6 +797,7 @@ export function DataExplorer({
               onSelect={selectRecord}
               onData={onAnalysisData}
               onConfigure={configureRecords}
+              onBounds={configureBounds}
               configuring={busy}
               onInvalidated={invalidate}
             />

@@ -9,6 +9,7 @@ import {
   ExplorationResultSchema,
   type ExplorationRecord,
   type ExplorationResult,
+  type ExplorationBounds,
   type RecordQuery,
 } from '@wiser/data-contracts';
 import { DataExplorerRecordControls } from './data-explorer-record-controls';
@@ -26,6 +27,7 @@ export function DataExplorerAnalysis({
   onInvalidated,
   onData,
   onConfigure,
+  onBounds,
   configuring = false,
 }: {
   readonly locale: Locale;
@@ -38,6 +40,7 @@ export function DataExplorerAnalysis({
   readonly onData: (result: ExplorationResult) => void;
   readonly onConfigure?: (configuration: RecordQuery | undefined) => void;
   readonly configuring?: boolean;
+  readonly onBounds?: (bounds: ExplorationBounds | undefined) => void;
 }) {
   const copy = getDictionary(locale).dataFoundation.explorer;
   const [result, setResult] = useState<ExplorationResult | null>(null);
@@ -123,6 +126,7 @@ export function DataExplorerAnalysis({
         selectedId={selectedRecord?.recordId ?? null}
         onSelect={onSelect}
         onInvalidated={onInvalidated}
+        onBounds={onBounds}
       />
     );
   const selectedAsset = result.assets?.find(
