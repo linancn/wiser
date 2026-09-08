@@ -10,6 +10,33 @@ const version = '10000000-0000-4000-8000-000000000002';
 const query = '10000000-0000-4000-8000-000000000003';
 
 describe('unified exploration contracts', () => {
+  it('retrieves one record by identity inside its fixed query version', () => {
+    expect(
+      ExplorationQueryInputSchema.safeParse({
+        queryId: query,
+        view: 'records',
+        versionId: version,
+        recordId: item,
+      }).success,
+    ).toBe(true);
+    expect(
+      ExplorationQueryInputSchema.safeParse({
+        queryId: query,
+        view: 'records',
+        versionId: version,
+        recordId: item,
+        after: 'cursor',
+      }).success,
+    ).toBe(false);
+    expect(
+      ExplorationQueryInputSchema.safeParse({
+        queryId: query,
+        view: 'map',
+        versionId: version,
+        recordId: item,
+      }).success,
+    ).toBe(false);
+  });
   it('accepts explicit provider, registration kind and analytical readiness filters', () => {
     expect(
       QuerySpecSchema.safeParse({

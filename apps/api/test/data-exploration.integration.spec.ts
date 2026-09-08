@@ -378,6 +378,32 @@ describe('authorized exploration result sets in PostgreSQL', () => {
           { key: 'c1', label: 'Station' },
           { key: 'c2', label: 'Value' },
         ]);
+        const recordLookup = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              queryId: analyzed.queryId,
+              view: 'records',
+              versionId: version,
+              recordId: secondRecord,
+            },
+            context,
+          ),
+        );
+        expect(recordLookup.totalCount).toBe(1);
+        expect(recordLookup.records).toHaveLength(1);
+        expect(recordLookup.records?.[0]?.recordId).toBe(secondRecord);
+        expect(recordLookup.nextCursor).toBeUndefined();
+        await expect(
+          executor.execute(
+            {
+              queryId: analyzed.queryId,
+              view: 'records',
+              versionId: version,
+              recordId: randomUUID(),
+            },
+            context,
+          ),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' });
         const second = ExplorationResultSchema.parse(
           await executor.execute(
             {
