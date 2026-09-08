@@ -16,8 +16,8 @@ checkPaths:
   - compose.yaml
   - .env.example
   - scripts/data-foundation/**
-lastReviewedAt: 2026-08-26
-lastReviewedCommit: e048ff2ee4cc0f3c5065ca36947094463e3b1841
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: ddbf896f25ce8723bfd5616e285fae77aa08897b
 ---
 
 This page covers the first complete run only. See the [local development environment](/en/development/local-environment/) for standalone frontend/backend commands, every port, environment variables, and troubleshooting.
