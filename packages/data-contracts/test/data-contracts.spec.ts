@@ -1040,6 +1040,16 @@ describe('Data Foundation capability registry', () => {
         DATA_CAPABILITY_ARCHIVE['data.explore.query']![2]!.outputSchema,
       ),
     ).toBe('bdf7c731359d5fc7d6c6aee9dd8babcc51e02796730513bc34d9d4db58e509d5');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![3]!.inputSchema,
+      ),
+    ).toBe('a0d0cc79e8ee7b6ea0a1722821e5083efe96effa6c8f9e4a86e5206e31d81c85');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![3]!.outputSchema,
+      ),
+    ).toBe('528740b10bf048d8284e604b5335d6c5b80cd142413e0e8b7d05f729af38da43');
     const historical = DATA_CAPABILITY_ARCHIVE['data.geo.query'];
     expect(historical).toHaveLength(1);
     const definition = historical?.[0];

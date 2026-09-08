@@ -63,9 +63,22 @@ export async function queryAnalysisView(
               .map((path) => path.path),
           }),
         );
+  let recordAssetId: string | undefined;
+  if (input.view === 'records' && input.recordId !== undefined) {
+    const located = await client.query(
+      'select asset_id from catalog.analysis_record where analysis_id=$1::uuid and record_id=$2::uuid',
+      [ref?.analysisId ?? null, input.recordId],
+    );
+    if (located.rows[0] === undefined)
+      throw new DataCapabilityHandlerError('NOT_FOUND');
+    recordAssetId = z.uuid().parse(located.rows[0]['asset_id']);
+    if (input.assetId !== undefined && input.assetId !== recordAssetId)
+      throw new DataCapabilityHandlerError('NOT_FOUND');
+  }
   const selectedAssetId =
     input.view === 'records'
       ? (input.assetId ??
+        recordAssetId ??
         assets.find((asset) => (asset.recordCount ?? 0) > 0)?.assetId ??
         assets.find((asset) =>
           ['READY', 'EMPTY', 'PARTIAL'].includes(asset.status),
@@ -84,6 +97,7 @@ export async function queryAnalysisView(
     versionId: input.versionId ?? null,
     assetId: selectedAssetId ?? null,
     bbox: input.bbox ?? null,
+    ...(input.recordId === undefined ? {} : { recordId: input.recordId }),
   });
   let offset = 0;
   if (input.after !== undefined) {
@@ -111,8 +125,12 @@ export async function queryAnalysisView(
   const totalCount = COUNT.parse(
     (input.view === 'records'
       ? await client.query(
-          'select count(*)::text total from catalog.analysis_record where analysis_id=$1::uuid and asset_id=$2::uuid',
-          [ref?.analysisId ?? null, selectedAssetId ?? null],
+          'select count(*)::text total from catalog.analysis_record where analysis_id=$1::uuid and asset_id=$2::uuid and ($3::uuid is null or record_id=$3::uuid)',
+          [
+            ref?.analysisId ?? null,
+            selectedAssetId ?? null,
+            input.recordId ?? null,
+          ],
         )
       : await client.query(`select count(*)::text total ${RECORDS}`, params)
     ).rows[0]?.['total'],
@@ -124,12 +142,14 @@ export async function queryAnalysisView(
       ? await client.query(
           `select record.*,$1::text data_item_id,$2::text version_id,st_asgeojson(record.geom)::jsonb geometry
        from catalog.analysis_record record where record.analysis_id=$3::uuid and record.asset_id=$4::uuid
-       order by record.record_index limit $5::integer offset $6::integer`,
+       and ($5::uuid is null or record.record_id=$5::uuid)
+       order by record.record_index limit $6::integer offset $7::integer`,
           [
             ref?.dataItemId ?? null,
             ref?.versionId ?? null,
             ref?.analysisId ?? null,
             selectedAssetId ?? null,
+            input.recordId ?? null,
             input.first + 1,
             offset,
           ],
