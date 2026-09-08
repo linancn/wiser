@@ -51,7 +51,7 @@ test('Compose can ingest the largest real-case file and respects an explicit Wor
 
 test('the Skill reconciles source registries and safely inventories every bundled file', () => {
   const directory = fileURLToPath(
-    new URL('../../skills/wiser-data-foundation/scripts/', import.meta.url),
+    new URL('../../.agents/skills/wiser-data-foundation/scripts/', import.meta.url),
   );
   const result = execFileSync(
     'python3',
