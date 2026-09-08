@@ -6,6 +6,7 @@ import {
 
 export interface DataWorkerRuntimeConfig {
   readonly databaseUrl: string;
+  readonly analysisParserUrl?: string;
   readonly scope: DataJobScope;
   readonly workerId: string;
   readonly claimLimit: number;
@@ -503,6 +504,14 @@ export function loadDataWorkerConfig(
   };
 
   return {
+    ...(value('DATA_ANALYSIS_PARSER_URL').value === undefined
+      ? {}
+      : {
+          analysisParserUrl: rootUrl(
+            value('DATA_ANALYSIS_PARSER_URL'),
+            'DATA_ANALYSIS_PARSER_URL',
+          ),
+        }),
     databaseUrl,
     scope: { tenantId, projectId, maxSecurityLevel, policyVersion },
     workerId,

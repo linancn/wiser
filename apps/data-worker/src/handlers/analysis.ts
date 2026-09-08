@@ -13,6 +13,7 @@ import {
   type DataPostgresPool,
   type VersionObjectReadInput,
 } from '@wiser/data-infra';
+import type { ExternalAnalysisInput } from '../adapters/analysis-parser.js';
 import { DataJobHandlerError, type DataJobHandler } from './registry.js';
 
 const MAX_BYTES = 64 * 1024 * 1024;
@@ -68,6 +69,9 @@ function failure(category: string, retryable = false): DataJobHandlerError {
 export function createAnalysisHandler(options: {
   readonly pool: DataPostgresPool;
   readonly read: (input: VersionObjectReadInput) => Promise<Uint8Array>;
+  readonly parseExternal?: (
+    input: ExternalAnalysisInput,
+  ) => AsyncIterable<AnalysisContentEvent>;
 }): DataJobHandler {
   return async (job) => {
     const { analysisId } = AnalysisJobPayloadSchema.parse(job.payload);
@@ -93,6 +97,7 @@ export function createAnalysisHandler(options: {
       assetCount: 0,
       invalidAssetCount: 0,
       unsupportedAssetCount: 0,
+      partialAssetCount: 0,
     };
     try {
       await client.query('begin');
@@ -135,7 +140,7 @@ export function createAnalysisHandler(options: {
       if (run.status !== 'PENDING') {
         const totals = (
           await client.query(
-            `select count(*)::integer asset_count,coalesce(sum(record_count),0)::text record_count,coalesce(sum(feature_count),0)::text feature_count,count(*) filter(where status='INVALID')::integer invalid_count,count(*) filter(where status in ('UNSUPPORTED','RESTRICTED'))::integer unsupported_count from service.analysis_asset where analysis_id=$1::uuid`,
+            `select count(*)::integer asset_count,coalesce(sum(record_count),0)::text record_count,coalesce(sum(feature_count),0)::text feature_count,count(*) filter(where status='PARTIAL')::integer partial_count,count(*) filter(where status='INVALID')::integer invalid_count,count(*) filter(where status in ('UNSUPPORTED','RESTRICTED'))::integer unsupported_count from service.analysis_asset where analysis_id=$1::uuid`,
             [analysisId],
           )
         ).rows[0];
@@ -143,6 +148,7 @@ export function createAnalysisHandler(options: {
         result.assetCount = Number(totals['asset_count']);
         result.recordCount = Number(totals['record_count']);
         result.featureCount = Number(totals['feature_count']);
+        result.partialAssetCount = Number(totals['partial_count'] ?? 0);
         result.invalidAssetCount = Number(totals['invalid_count']);
         result.unsupportedAssetCount = Number(totals['unsupported_count']);
         await leaseFence();
@@ -220,7 +226,21 @@ export function createAnalysisHandler(options: {
                 suffixes.includes('json') ||
                 suffixes.includes('geojson')
               ? 'json'
-              : null;
+              : ((
+                  ['xlsx', 'xls', 'html', 'md', 'pdf', 'txt', 'zip'] as const
+                ).find(
+                  (kind) =>
+                    suffixes.includes(kind) ||
+                    {
+                      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                      xls: 'application/vnd.ms-excel',
+                      html: 'text/html',
+                      md: 'text/markdown',
+                      pdf: 'application/pdf',
+                      txt: 'text/plain',
+                      zip: 'application/zip',
+                    }[kind] === asset.media_type,
+                ) ?? null);
         let status = isManifest ? 'MANIFEST' : 'UNSUPPORTED';
         let reason: string | null = isManifest
           ? 'REGISTRATION_MANIFEST'
@@ -247,7 +267,12 @@ export function createAnalysisHandler(options: {
             job.policyVersion,
           ],
         );
-        if (!isManifest && format !== null && asset.byte_size <= MAX_BYTES) {
+        if (
+          !isManifest &&
+          format !== null &&
+          asset.byte_size <= MAX_BYTES &&
+          (format === 'csv' || format === 'json' || options.parseExternal)
+        ) {
           await client.query('savepoint analysis_asset_records');
           try {
             const batch: ParsedRecord[] = [];
@@ -273,14 +298,22 @@ export function createAnalysisHandler(options: {
               );
               batch.length = 0;
             };
-            for await (const event of parseAnalysisContent({
+            const input = {
               bytes: await read(asset),
               format,
               dataItemId: run.data_item_id,
               versionId: run.version_id,
               assetId: asset.asset_id,
               sourceHash: asset.source_hash,
-            })) {
+            };
+            const events =
+              format === 'csv' || format === 'json'
+                ? parseAnalysisContent({ ...input, format })
+                : options.parseExternal!({
+                    ...input,
+                    path: paths[0]?.path ?? `${asset.asset_id}.${format}`,
+                  });
+            for await (const event of events) {
               if (event.type === 'schema') columns = event.columns;
               if (event.type === 'record') {
                 batch.push(event);
@@ -290,7 +323,7 @@ export function createAnalysisHandler(options: {
                 status = event.status;
                 records = event.recordCount;
                 features = event.featureCount;
-                reason = null;
+                reason = event.reason ?? null;
               }
             }
             await flush();
@@ -299,11 +332,19 @@ export function createAnalysisHandler(options: {
             await client.query('rollback to savepoint analysis_asset_records');
             await client.query('release savepoint analysis_asset_records');
             if (!(error instanceof AnalysisContentError)) throw error;
-            status = ['RECORD_LIMIT', 'SIZE_LIMIT', 'UNKNOWN_CRS'].includes(
-              error.code,
-            )
+            status = [
+              'RECORD_LIMIT',
+              'SIZE_LIMIT',
+              'UNKNOWN_CRS',
+              'COLUMN_LIMIT',
+              'ARCHIVE_LIMIT',
+              'CAPACITY_LIMIT',
+              'PARSING_FAILED',
+            ].includes(error.code)
               ? 'UNSUPPORTED'
-              : 'INVALID';
+              : error.code === 'ENCRYPTED_CONTENT'
+                ? 'RESTRICTED'
+                : 'INVALID';
             reason = error.code;
             records = null;
             features = null;
@@ -311,6 +352,9 @@ export function createAnalysisHandler(options: {
           }
         } else if (!isManifest && asset.byte_size > MAX_BYTES)
           reason = 'SIZE_LIMIT';
+        else if (!isManifest && format && !options.parseExternal)
+          reason = 'PARSER_NOT_CONFIGURED';
+        if (status === 'PARTIAL') result.partialAssetCount += 1;
         if (status === 'INVALID') result.invalidAssetCount += 1;
         if (status === 'UNSUPPORTED' || status === 'RESTRICTED')
           result.unsupportedAssetCount += 1;
@@ -338,7 +382,10 @@ export function createAnalysisHandler(options: {
         `/* analysis.finish-run */ update service.analysis_run set status=$2,completed_at=clock_timestamp() where analysis_id=$1::uuid and status='PENDING'`,
         [
           analysisId,
-          result.invalidAssetCount + result.unsupportedAssetCount > 0
+          result.invalidAssetCount +
+            result.unsupportedAssetCount +
+            result.partialAssetCount >
+          0
             ? 'PARTIAL'
             : 'READY',
         ],

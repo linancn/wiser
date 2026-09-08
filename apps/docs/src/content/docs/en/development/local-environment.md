@@ -128,3 +128,5 @@ Narrow `docker compose logs` to only the failed services; use `docker compose ps
 There is no “delete every local state” command. `.wiser/local/runtime-secrets.json` retains historical HMAC keys required to replay the EXCON journal. Never remove it or generate only a new key while that journal exists. Handle the file through the team's key-rotation process only after every service is stopped, the Supabase/EXCON journal is intentionally reset, and old records no longer need recovery. Data reset alone does not require its removal.
 
 When the complete stack fails, check Docker resources, port conflicts, and failed-service logs before rerunning the convergent `pnpm stack:full:up`.
+
+The Data profile builds `source-parser` and connects it only to the worker on the internal `data-parser` network. It has no host port, database credentials or outbound network access; the filesystem is read-only and temporary files live in bounded memory storage. `DATA_ANALYSIS_PARSER_URL` is optional for a host-only worker; without it, external formats remain explicitly unavailable. The profile configures it automatically. CI runs parser tests in the pinned GDAL image.

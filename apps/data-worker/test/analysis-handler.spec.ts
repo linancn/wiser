@@ -118,6 +118,7 @@ describe('version analysis worker', () => {
     const value = fixture(true, bytes, undefined, {
       mediaType: 'text/markdown',
       async *parse(input) {
+        await Promise.resolve();
         expect(input.format).toBe('md');
         expect(input.path).toBe(`${assetId}.md`);
         yield { type: 'schema', columns: [{ key: 'c1', label: 'Text' }] };
@@ -155,6 +156,7 @@ describe('version analysis worker', () => {
     const value = fixture(true, bytes, undefined, {
       mediaType: 'application/pdf',
       async *parse(input) {
+        await Promise.resolve();
         yield { type: 'schema', columns: [{ key: 'c1', label: 'Text' }] };
         for (let index = 1; index <= 500; index += 1)
           yield bindAnalysisRecord(input, {

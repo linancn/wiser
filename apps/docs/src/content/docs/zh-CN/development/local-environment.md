@@ -128,3 +128,5 @@ pnpm stack:down
 仓库没有“一键删除所有本机状态”的命令。`.wiser/local/runtime-secrets.json` 保存 EXCON journal 重放所需的历史 HMAC key，现有 journal 仍在时不得删除或只生成新 key。只有在所有服务停止、Supabase/EXCON journal 已明确重置且不需要恢复旧记录时，才可以按团队密钥轮换流程处理该文件；Data reset 本身不需要删除它。
 
 若完整栈失败，先检查 Docker 资源、端口占用和失败服务日志，再重新运行可幂等收敛的 `pnpm stack:full:up`。
+
+Data profile 构建 `source-parser`，它仅通过内部 `data-parser` 网络连接 Worker，不开放主机端口，不持有数据库凭据，也不能访问外网。文件系统只读，临时文件保存在有界内存中。本机单独运行 Worker 时可选配置 `DATA_ANALYSIS_PARSER_URL`；未配置时外部格式明确保持不可解析，完整 profile 自动配置。CI 在固定的 GDAL 镜像中运行解析测试。

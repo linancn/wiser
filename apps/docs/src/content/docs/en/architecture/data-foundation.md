@@ -222,3 +222,5 @@ The source-parser component in `infrastructure/data-foundation/parser` uses pinn
 The parser image pins GDAL 3.13.3 and a hash-locked Python environment. Its private `/parse` protocol accepts only named bytes and SHA-256 values, validates the primary and companion files before writing a temporary directory, and streams bounded NDJSON. Each request runs in a disposable process with CPU, memory, duration and output limits; it has no database or identity authority. Client disconnects terminate parsing.
 
 The worker parser adapter verifies admitted source bytes before transport, validates UTF-8 NDJSON schemas, row order and exact completion totals, and binds stable identifiers locally to the source version. Incomplete streams roll back; partial results retain an explicit reason.
+
+Analysis jobs route XLSX/XLS, HTML/Markdown/text, PDF and ZIP assets through the isolated parser. The worker persists rows in bounded batches under its existing asset savepoint and lease fence. Capacity failures discard tentative rows and keep unknown counts; encrypted content is restricted. Partial summaries retain their reason at asset level and make the completed run partial.

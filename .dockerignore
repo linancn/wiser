@@ -14,3 +14,4 @@ supabase/.temp
 **/*.log
 .env*
 **/.env*
+**/__pycache__

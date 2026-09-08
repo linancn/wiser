@@ -20,6 +20,7 @@ import {
 import { PostgresIngestionAuthority } from '../adapters/ingestion-runtime.js';
 import type { DataWorkerRuntimeConfig } from '../config.js';
 import { createIngestionPipelineHandler } from '../handlers/ingestion-pipeline.js';
+import { createExternalAnalysisParser } from '../adapters/analysis-parser.js';
 import { createAnalysisHandler } from '../handlers/analysis.js';
 import { DataWorkerScheduler, type DataWorkerLogger } from '../scheduler.js';
 import {
@@ -95,6 +96,13 @@ export function createDefaultDataWorkerRuntime(
   const handlers = createDefaultHandlerRegistry(
     ingestionHandler,
     createAnalysisHandler({
+      ...(config.analysisParserUrl
+        ? {
+            parseExternal: createExternalAnalysisParser({
+              endpoint: config.analysisParserUrl,
+            }),
+          }
+        : {}),
       pool: ingestionPool,
       read: createS3VersionObjectReader({
         bucket: config.objectStore.bucket,
