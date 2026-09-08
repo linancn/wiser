@@ -154,6 +154,7 @@ for (const serverOwnedField of [
 }
 
 const validCapabilityInputs = {
+  'data.analysis.create': { dataItemId: DATA_ITEM_ID, versionId: VERSION_ID },
   'data.explore.query': { spec: {}, view: 'resources', first: 20 },
   'data.catalog.search': { query: 'monitoring station', first: 20 },
   'data.catalog.get': { dataItemId: DATA_ITEM_ID },
@@ -247,6 +248,16 @@ const validCapabilityInputs = {
 } satisfies Record<DataCapabilityId, Readonly<Record<string, unknown>>>;
 
 const expectedCapabilityMappings = {
+  'data.analysis.create': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/analyses',
+      successStatus: 202,
+    },
+    graphqlMapping: { operationType: 'mutation', field: 'createDataAnalysis' },
+    mcpMapping: { toolName: 'data_analysis_create' },
+    skillMapping: { operation: 'data.analysis.create' },
+  },
   'data.explore.query': {
     restMapping: {
       method: 'POST',
@@ -502,6 +513,7 @@ const expectedCapabilityMappings = {
 } satisfies Record<DataCapabilityId, unknown>;
 
 const expectedCapabilityScopes = {
+  'data.analysis.create': ['data.ingestion.write', 'data.catalog.read'],
   'data.explore.query': ['data.query.execute', 'data.catalog.read'],
   'data.catalog.search': ['data.catalog.read'],
   'data.catalog.get': ['data.catalog.read'],
@@ -528,12 +540,17 @@ const expectedCapabilityScopes = {
 } satisfies Record<DataCapabilityId, readonly string[]>;
 
 const asynchronousCapabilityIds = new Set<DataCapabilityId>([
+  'data.analysis.create',
   'data.ingestion.create',
   'data.ingestion.submit',
   'data.ingestion.approve',
 ]);
 
 const expectedJsonSchemaHashes = {
+  'data.analysis.create': {
+    input: 'e506474b6ef13975dec248cd0e32b68a09754d04f420a710355c0d15b105aa6a',
+    output: '157a58322075047c67537707e26c0307eb80090d55e7bf3443b704345d9e3d16',
+  },
   'data.explore.query': {
     input: '89b9b8cf3785125f4639df7306663edb8d2a17becfeb72aaa2c1c623bc3a0622',
     output: 'da354e008d49bba639f7fd9b518d9c6dc3c38c9d67975bf6bf8f66bcca149f09',
@@ -962,6 +979,7 @@ describe('Data Foundation capability registry', () => {
       'data.operation.cancel',
       'data.operation.events',
       'data.explore.query',
+      'data.analysis.create',
     ]);
     expect(Object.keys(DATA_CAPABILITY_REGISTRY)).toEqual(DATA_CAPABILITY_IDS);
 

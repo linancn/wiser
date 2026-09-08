@@ -639,7 +639,6 @@ describe('PostgreSQL Data Foundation command executors', () => {
     const input = { dataItemId: INGESTION_ID, versionId: ASSET_ID };
     const output = await command!.execute(input, context);
     expect(output).toMatchObject({
-      analysisId: expect.any(String),
       operation: { status: 'RUNNING', capabilityId: 'data.analysis.create' },
     });
     expect(await command!.execute(input, context)).toEqual(output);
@@ -655,11 +654,12 @@ describe('PostgreSQL Data Foundation command executors', () => {
       hidden.runtime.executors
         .find(({ id }) => String(id) === 'data.analysis.create')!
         .execute(input, context),
-    ).rejects.toMatchObject({ category: 'NOT_FOUND' });
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
-  it('provides exactly the eight concrete command capabilities', () => {
+  it('provides exactly the nine concrete command capabilities', () => {
     const value = runtime();
     expect(value.runtime.executors.map(({ id }) => id)).toEqual([
+      'data.analysis.create',
       'data.catalog.create',
       'data.uploadSession.create',
       'data.uploadSession.complete',

@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import {
+  CreateAnalysisInputSchema,
+  CreateAnalysisOutputSchema,
+} from '../analysis/index.ts';
+import {
   ExplorationQueryInputSchema,
   ExplorationResultSchema,
 } from '../exploration/index.ts';
@@ -77,6 +81,7 @@ export const DATA_CAPABILITY_IDS = [
   'data.operation.cancel',
   'data.operation.events',
   'data.explore.query',
+  'data.analysis.create',
 ] as const;
 
 export const DataCapabilityIdSchema = z.enum(DATA_CAPABILITY_IDS);
@@ -894,6 +899,27 @@ const capabilityRegistry = {
     graphqlMapping: { operationType: 'query', field: 'dataExplore' },
     mcpMapping: { toolName: 'data_explore_query' },
     skillMapping: { operation: 'data.explore.query' },
+  }),
+  'data.analysis.create': defineCapability({
+    id: 'data.analysis.create',
+    version: '1.0.0',
+    kind: 'command',
+    inputSchema: CreateAnalysisInputSchema,
+    outputSchema: CreateAnalysisOutputSchema,
+    requiredScopes: ['data.ingestion.write', 'data.catalog.read'],
+    maxSecurityLevel: 'L3_CONFIDENTIAL',
+    executionMode: 'ASYNCHRONOUS',
+    timeout: 30_000,
+    idempotent: true,
+    auditLevel: 'FULL',
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/analyses',
+      successStatus: 202,
+    },
+    graphqlMapping: { operationType: 'mutation', field: 'createDataAnalysis' },
+    mcpMapping: { toolName: 'data_analysis_create' },
+    skillMapping: { operation: 'data.analysis.create' },
   }),
 } satisfies Record<DataCapabilityId, Readonly<CapabilityDefinition>>;
 

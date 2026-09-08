@@ -32,7 +32,7 @@ The default Data runtime composes:
 ```text
 Supabase principal + Tenant/Project/Purpose
   → Fastify REST / schema-first GraphQL
-  → one DataCapabilityHandler (23 static executors)
+  → one DataCapabilityHandler (24 static executors)
   → data-postgres RLS transaction / SeaweedFS S3
   → PostgreSQL durable job + Transactional Outbox
   → Data Worker
@@ -47,7 +47,7 @@ GeoServer, TiTiler, and Martin run as Compose-internal GIS services in the same 
 
 | Module                                      | Responsibility                                                                      |
 | ------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `@wiser/data-contracts`                     | Strict Zod DTOs, 23 Capabilities, four transport mappings                           |
+| `@wiser/data-contracts`                     | Strict Zod DTOs, 24 Capabilities, four transport mappings                           |
 | `@wiser/data-core`                          | Pure ingestion/Operation state, quality, security inheritance, publication gates    |
 | `@wiser/data-infra`                         | Checksum migration, PostgreSQL/S3, jobs/Outbox, projections, search, fake embedding |
 | `@wiser/data-worker`                        | Concrete ingestion Handler, Scheduler, projection consumer, health and metrics      |
@@ -177,9 +177,9 @@ The graph workspace lazily loads G6 5.1.1 on the client and renders only the bou
 
 The Data overview reads the scoped catalog total with `includeTotal=true`; its metric is independent of the preview page size. Catalog count and page use one short repeatable-read authority transaction. Counts describe registered objects, not analytically validated records.
 
-- REST: `/api/data/v1` discovery, 23 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 23 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
-- GraphQL: `POST /graphql`, 23 schema-first fields sharing the same Handler; see [Data GraphQL](/en/protocols/data-graphql/).
-- MCP: stdio/stateless Streamable HTTP, 23 Tools and governed Resources that call HTTP only; see [Data MCP](/en/protocols/data-mcp/).
+- REST: `/api/data/v1` discovery, 24 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 24 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
+- GraphQL: `POST /graphql`, 24 schema-first fields sharing the same Handler; see [Data GraphQL](/en/protocols/data-graphql/).
+- MCP: stdio/stateless Streamable HTTP, 24 Tools and governed Resources that call HTTP only; see [Data MCP](/en/protocols/data-mcp/).
 - Skill: `skills/wiser-data-foundation` documents discovery, query, upload, ingestion, Operation, and security workflows.
 - Web: 14 Data routes in the existing Next.js app with server-only DAL, real Supabase session, both locales/themes, immutable-version selection, and four MapLibre layers: PostGIS authority GeoJSON, STAC extents, governed vector MVT, and raster.
 
@@ -206,3 +206,5 @@ The Web exploration workspace at `/en/data-foundation/explore` shares these cont
 The analytical parser in `@wiser/data-infra` verifies source SHA-256 and streams strict CSV records with stable, version-scoped identifiers. It preserves source strings, leading zeros, Unicode headers and nulls; column keys are independent of their display labels. JSON/GeoJSON parsing retains properties and validates declared WGS84 geometry; arbitrary longitude/latitude properties do not establish CRS or geometry. Malformed content, unsupported CRS and explicit size/record limits produce typed failures. Parsing does not change quality, acceptance, publication, source completeness or units. The opt-in `WISER_DATA_REAL_CASE=1` parser test verifies the admitted NLDI sample hash and coordinates without committing source content.
 
 Analysis contracts bind requests to an existing data item and version. They distinguish successfully parsed empty sources (known zero counts) from unsupported, invalid or restricted sources (unknown counts and a reason code); partial parsing must disclose its reason.
+
+`data.analysis.create` accepts an existing published `dataItemId` / `versionId` and an idempotency key. It creates an audited operation and a durable analysis job atomically; source registration and its quality declaration remain unchanged. REST: `POST /api/data/v1/analyses`; GraphQL: `createDataAnalysis(input: JSON!)`; MCP: `data_analysis_create`. Required scopes are `data.ingestion.write` and `data.catalog.read`. Poll the returned operation for completion.

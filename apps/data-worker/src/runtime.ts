@@ -88,9 +88,13 @@ export class PublishingProjectionRepository implements ProjectionOutboxRepositor
 
 export function createDefaultHandlerRegistry(
   ingestionHandler: DataJobHandler,
+  analysisHandler?: DataJobHandler,
 ): StaticJobHandlerRegistry {
   return new HandlerRegistry([
     { jobType: DATA_INGESTION_PROCESS_JOB_TYPE, handler: ingestionHandler },
+    ...(analysisHandler === undefined
+      ? []
+      : [{ jobType: 'data.analysis.process', handler: analysisHandler }]),
   ]);
 }
 

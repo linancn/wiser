@@ -4,6 +4,9 @@ import { ExplorationVersionRefSchema } from '../exploration/index.ts';
 import { OperationSchema } from '../operation/index.ts';
 
 export const CreateAnalysisInputSchema = ExplorationVersionRefSchema;
+export const AnalysisJobPayloadSchema = z.strictObject({
+  analysisId: PlatformUuidSchema,
+});
 export const CreateAnalysisOutputSchema = z.strictObject({
   analysisId: PlatformUuidSchema,
   operation: OperationSchema,

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import {
+  ANALYSIS_PARSER_VERSION,
   DATA_INGESTION_PROCESS_JOB_TYPE,
   type DataIngestionProcessJobPayload,
 } from '@wiser/data-infra';
@@ -9,6 +10,7 @@ import {
   CancelOperationInputSchema,
   CompleteUploadSessionInputSchema,
   CreateDataItemInputSchema,
+  CreateAnalysisInputSchema,
   CreateIngestionInputSchema,
   CreateUploadSessionInputSchema,
   DATA_CAPABILITY_REGISTRY,
@@ -1519,6 +1521,112 @@ export function createPostgresDataCommandRuntime(
   const transactions = new CommandTransactions(pool, idFactory, clock);
 
   const executors = Object.freeze([
+    define('data.analysis.create', async (raw, context) => {
+      const input = CreateAnalysisInputSchema.parse(raw);
+      return transactions.run(
+        'data.analysis.create',
+        input,
+        context,
+        async (client, timestamp, key) => {
+          const selected = singleRow(
+            await transactions.query(
+              client,
+              context,
+              `
+          /* data.analysis.version.lock */
+          select case when security.security_rank(item.security_level)>security.security_rank(version.security_level)
+            then item.security_level else version.security_level end security_level
+          from catalog.data_item_version version
+          join catalog.data_item item using (tenant_id, project_id, data_item_id)
+          where version.data_item_id=$1::uuid and version.version_id=$2::uuid
+            and version.publication_status='PUBLISHED' and item.publication_status='PUBLISHED'
+            and version.acceptance_status in ('PASSED','CONDITIONALLY_PASSED')
+            and item.acceptance_status in ('PASSED','CONDITIONALLY_PASSED')
+          for share of version, item
+        `,
+              [input.dataItemId, input.versionId],
+            ),
+          );
+          if (selected === undefined) throw commandError('NOT_FOUND');
+          const securityLevel = text(
+            selected,
+            'security_level',
+          ) as SecurityLevel;
+          assertSecurity(securityLevel, context);
+          const analysisId = nextId(idFactory);
+          const operationId = nextId(idFactory);
+          const createdOperation = operation(
+            operationId,
+            'data.analysis.create',
+            'RUNNING',
+            timestamp,
+            context,
+          );
+          await transactions.insertOperation(
+            client,
+            createdOperation,
+            context,
+            key,
+            input,
+            null,
+            securityLevel,
+            timestamp,
+          );
+          exactlyOne(
+            await transactions.query(
+              client,
+              context,
+              `
+          /* data.analysis.run.insert */
+          insert into service.analysis_run (analysis_id,tenant_id,project_id,version_id,operation_id,parser_version,security_level,policy_version,created_at)
+          values ($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6,$7,$8::bigint,$9::timestamptz)
+        `,
+              [
+                analysisId,
+                context.authorization.tenantId,
+                context.authorization.projectId,
+                input.versionId,
+                operationId,
+                ANALYSIS_PARSER_VERSION,
+                securityLevel,
+                context.authorization.authzVersion,
+                timestamp,
+              ],
+            ),
+          );
+          exactlyOne(
+            await transactions.query(
+              client,
+              context,
+              `
+          /* data.analysis.job.insert */
+          insert into ingestion.job (job_id,tenant_id,project_id,operation_id,job_type,status,idempotency_key,priority,payload,max_attempts,backoff_base_seconds,next_attempt_at,timeout_at,security_level,policy_version)
+          values ($1::uuid,$2::uuid,$3::uuid,$4::uuid,'data.analysis.process','PENDING',$5,90,$6::jsonb,3,5,$7::timestamptz,$7::timestamptz+interval '2 hours',$8,$9::bigint)
+        `,
+              [
+                nextId(idFactory),
+                context.authorization.tenantId,
+                context.authorization.projectId,
+                operationId,
+                `data.analysis.process:${analysisId}`,
+                JSON.stringify({ analysisId }),
+                timestamp,
+                securityLevel,
+                context.authorization.authzVersion,
+              ],
+            ),
+          );
+          const output = { analysisId, operation: createdOperation };
+          return {
+            output,
+            replayResult: output,
+            aggregateId: analysisId,
+            eventType: 'data.analysis.created',
+            securityLevel,
+          };
+        },
+      );
+    }),
     define('data.catalog.create', async (raw, context) => {
       const input = CreateDataItemInputSchema.parse(raw);
       assertOwner(input.ownerProjectId, context);

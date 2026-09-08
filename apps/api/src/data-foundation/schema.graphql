@@ -121,6 +121,7 @@ type Query {
 }
 
 type Mutation {
+  createDataAnalysis(input: JSON!): JSON!
   createDataIngestion(input: CreateIngestionInput!): Operation!
   createDataItem(input: JSON!): DataItem!
   createDataUploadSession(input: JSON!): JSON!

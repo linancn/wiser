@@ -41,8 +41,11 @@ it.skipIf(process.env['WISER_DATA_PG_INTEGRATION'] !== '1')(
     try {
       await client.query('begin');
       if (
-        (await client.query("select to_regclass('service.analysis_run') name"))
-          .rows[0]?.name === null
+        (
+          await client.query<{ name: string | null }>(
+            "select to_regclass('service.analysis_run') name",
+          )
+        ).rows[0]?.name === null
       ) {
         await client.query(
           await readFile(
@@ -130,7 +133,7 @@ it.skipIf(process.env['WISER_DATA_PG_INTEGRATION'] !== '1')(
       };
       const handler = createAnalysisHandler({
         pool: scoped,
-        read: async () => bytes,
+        read: () => Promise.resolve(bytes),
       });
       const claimed = {
         jobId,
@@ -167,7 +170,7 @@ it.skipIf(process.env['WISER_DATA_PG_INTEGRATION'] !== '1')(
       });
       expect(
         (
-          await client.query(
+          await client.query<{ count: number }>(
             'select count(*)::integer count from catalog.analysis_record',
           )
         ).rows[0]?.count,

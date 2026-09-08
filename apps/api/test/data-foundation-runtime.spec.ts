@@ -179,7 +179,7 @@ describe('Data Foundation production runtime composition', () => {
     ]);
   });
 
-  it('merges exactly 7 read + 8 command + 7 special executors in static module order', async () => {
+  it('merges exactly 7 read + 9 command + 8 special executors in static module order', async () => {
     const injected = factories();
     const runtime = createDataFoundationRuntimeFromEnvironment(
       enabledEnvironment,
@@ -224,7 +224,7 @@ describe('Data Foundation production runtime composition', () => {
         authRuntime,
         incomplete.value,
       ),
-    ).toThrow('23');
+    ).toThrow('24');
   });
 
   it('reports degraded readiness without leaking probe failures', async () => {

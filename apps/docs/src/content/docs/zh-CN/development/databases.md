@@ -162,3 +162,5 @@ WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
 `0011_exploration_queries.sql` 增加私有 `service.exploration_snapshot` 缓存，具有强制所属用户 RLS、不可变清单、最长 30 分钟有效期、有界版本引用，以及用户和过期索引。查询事务额外设置 `wiser.actor_id`、`wiser.purpose`；授权版本与安全上限必须精确匹配。Runtime provisioning 仅为此缓存授予删除并撤销更新权限，不放宽历史表的只追加约束。建立新查询会清理同一可见用户与上下文的过期或超额清单。不活跃上下文留下的过期清单可由特权运维通过过期索引清理；过期不代表已经物理删除。
 
 设置 `WISER_DATA_PG_INTEGRATION=1` 和指向已迁移数据库的 `DATA_TEST_DATABASE_URL`，运行 `apps/api/test/data-exploration.integration.spec.ts`。合成数据和临时不可绕过 RLS 的角色均处于最终回滚的事务内，验证稳定分页、新旧固定版本、历史版本查询、空结果、用户/项目/租户/Purpose/授权版本/安全上限隔离及过期处理。
+
+迁移 `0012_analysis.sql` 在独立数据底座数据库中增加按作用域与版本绑定的分析批次、逐资产结果及 PostGIS 记录。使用校验和迁移工具升级，不重置已登记的源数据。

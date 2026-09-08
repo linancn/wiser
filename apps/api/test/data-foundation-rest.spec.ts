@@ -69,6 +69,7 @@ const point = {
 };
 
 const validInputs = {
+  'data.analysis.create': { dataItemId: DATA_ITEM_ID, versionId: VERSION_ID },
   'data.explore.query': { spec: {}, view: 'resources', first: 20 },
   'data.catalog.search': {
     query: 'station',

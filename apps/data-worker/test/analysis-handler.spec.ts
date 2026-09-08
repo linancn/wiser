@@ -43,8 +43,10 @@ function fixture(leaseValid = true, inputBytes = bytes) {
   const calls: { sql: string; values: readonly unknown[] }[] = [];
   const pool: DataPostgresPool = {
     async connect() {
+      await Promise.resolve();
       return {
         async query(sql, values = []) {
+          await Promise.resolve();
           calls.push({ sql, values });
           if (sql.includes('analysis.load-run'))
             return {
@@ -80,7 +82,10 @@ function fixture(leaseValid = true, inputBytes = bytes) {
   };
   return {
     calls,
-    handler: createAnalysisHandler({ pool, read: async () => inputBytes }),
+    handler: createAnalysisHandler({
+      pool,
+      read: () => Promise.resolve(inputBytes),
+    }),
   };
 }
 

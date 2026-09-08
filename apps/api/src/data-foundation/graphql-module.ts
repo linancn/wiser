@@ -152,6 +152,7 @@ type Query {
 }
 
 type Mutation {
+  createDataAnalysis(input: JSON!): JSON!
   createDataIngestion(input: CreateIngestionInput!): Operation!
   createDataItem(input: JSON!): DataItem!
   createDataUploadSession(input: JSON!): JSON!
@@ -180,6 +181,7 @@ export const GRAPHQL_CAPABILITY_BY_FIELD: Readonly<
   dataItemVersion: 'data.catalog.versions.get',
   dataIngestion: 'data.ingestion.get',
   dataOperationEvents: 'data.operation.events',
+  createDataAnalysis: 'data.analysis.create',
   createDataIngestion: 'data.ingestion.create',
   createDataItem: 'data.catalog.create',
   createDataUploadSession: 'data.uploadSession.create',
@@ -620,6 +622,11 @@ const resolvers = {
       ),
   },
   Mutation: {
+    createDataAnalysis: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeCommand(context, 'data.analysis.create', args.input),
     createDataIngestion: async (
       _: unknown,
       args: { input: unknown },
