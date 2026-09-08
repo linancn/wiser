@@ -511,6 +511,10 @@ describe('authorized exploration result sets in PostgreSQL', () => {
             context,
           ),
         ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+        expect(map.spatial).toMatchObject({
+          bounds: [-77.12763889, 38.94977778, -77.12763889, 38.94977778],
+          mercatorFeatureCount: 1,
+        });
         expect(map.totalCount).toBe(1);
         expect(map.features?.[0]).toMatchObject({
           id: record,

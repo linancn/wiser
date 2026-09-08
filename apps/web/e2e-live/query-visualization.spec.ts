@@ -153,6 +153,14 @@ test('real large table returns an authorized bounded page within the interactive
 test('real NLDI records select the same station on the exploration map', async ({
   page,
 }) => {
+  const tileResponses: string[] = [];
+  page.on('response', (response) => {
+    if (
+      response.status() === 200 &&
+      response.url().includes('/geo/tiles/vector/queries/')
+    )
+      tileResponses.push(response.url());
+  });
   await page.setViewportSize({ width: 1440, height: 900 });
   await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
   await page
@@ -199,11 +207,20 @@ test('real NLDI records select the same station on the exploration map', async (
     'data-rendered-feature-count',
     '1',
   );
+  await expect.poll(() => tileResponses.length).toBeGreaterThan(0);
   const canvas = page.getByTestId('explorer-map').locator('canvas');
   const bounds = (await canvas.boundingBox())!;
+  const lookup = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/data-foundation/explore') &&
+      response.request().postDataJSON()?.recordId ===
+        '89baed67-b350-8e92-a713-27d8c2c6c894' &&
+      response.status() === 200,
+  );
   await canvas.click({
     position: { x: bounds.width / 2, y: bounds.height / 2 },
   });
+  await lookup;
   await expect(page.getByTestId('explorer-inspector')).toContainText(
     'USGS-01646500',
   );

@@ -10,6 +10,31 @@ const version = '10000000-0000-4000-8000-000000000002';
 const query = '10000000-0000-4000-8000-000000000003';
 
 describe('unified exploration contracts', () => {
+  it('describes the full spatial result independently of its first feature page', () => {
+    const base = {
+      queryId: query,
+      spec: {},
+      createdAt: '2026-09-08T10:00:00.000Z',
+      expiresAt: '2026-09-08T10:30:00.000Z',
+      view: 'map',
+      totalCount: 100000,
+      resources: [],
+      features: [],
+    };
+    expect(
+      ExplorationResultSchema.safeParse({
+        ...base,
+        spatial: { bounds: [-170, -70, 170, 70], mercatorFeatureCount: 100000 },
+      }).success,
+    ).toBe(true);
+    expect(
+      ExplorationResultSchema.safeParse({
+        ...base,
+        spatial: { bounds: [170, -70, -170, 70], mercatorFeatureCount: 100000 },
+      }).success,
+    ).toBe(false);
+  });
+
   it('retrieves one record by identity inside its fixed query version', () => {
     expect(
       ExplorationQueryInputSchema.safeParse({

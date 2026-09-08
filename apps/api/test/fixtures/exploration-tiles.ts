@@ -38,6 +38,14 @@ export async function verifyExplorationTiles(
     throw error;
   });
   if (migration) await client.query(migration);
+  const boundaryMigration = await readFile(
+    new URL(
+      '../../../../infrastructure/data-foundation/postgres/migrations/0015_exploration_tile_boundaries.sql',
+      import.meta.url,
+    ),
+    'utf8',
+  ).catch(() => '');
+  if (boundaryMigration) await client.query(boundaryMigration);
   const tileRole = `wiser_tile_test_${randomUUID().replaceAll('-', '')}`;
   await client.query(`create role ${tileRole} nologin nosuperuser nobypassrls`);
   await client.query(`grant usage on schema service to ${tileRole}`);
@@ -78,6 +86,16 @@ export async function verifyExplorationTiles(
       }),
     ]),
   );
+  let adjacentCount = 0;
+  for (const x of [0, 1])
+    for (const y of [0, 1]) {
+      const part = new VectorTile(new PbfReader(await tile(params, 1, x, y)))
+        .layers['exploration'];
+      if (part)
+        for (let i = 0; i < part.length; i++)
+          adjacentCount += Number(part.feature(i).properties['count']);
+    }
+  expect(adjacentCount).toBe(2);
   for (const bad of [
     { ...params, actorId: randomUUID() },
     { ...params, projectId: randomUUID() },

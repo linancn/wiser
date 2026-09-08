@@ -400,63 +400,70 @@ describe('Data Foundation server-only HTTP DAL', () => {
     expect(fetch.mock.calls.length).toBeLessThanOrEqual(101);
   });
 
-  it('keeps browser tile requests same-origin while forwarding Supabase credentials only server-side', async () => {
-    const fetch = vi.fn((url: string | URL | Request, init?: RequestInit) => {
-      const requestedUrl =
-        typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
-      expect(requestedUrl).toBe(
-        'http://api:3001/api/data/v1/geo/tiles/vector/versions/' +
-          '55555555-5555-4555-8555-555555555555/3/4/2.pbf',
-      );
-      expect(new Headers(init?.headers).get('authorization')).toBe(
-        `Bearer ${accessToken()}`,
-      );
-      return Promise.resolve(
-        new Response(Uint8Array.from([26, 0]), {
-          headers: {
-            'content-type': 'application/vnd.mapbox-vector-tile',
-            'set-cookie': 'upstream-secret=must-not-cross',
-          },
-        }),
-      );
-    });
-    const response = await proxyDataFoundationGeoRequest({
-      request: new Request(
-        'http://web.local/api/data-foundation/geo/tiles/vector/versions/' +
-          '55555555-5555-4555-8555-555555555555/3/4/2.pbf',
-      ),
-      path: [
-        'tiles',
-        'vector',
-        'versions',
-        '55555555-5555-4555-8555-555555555555',
-        '3',
-        '4',
-        '2.pbf',
-      ],
-      config: {
-        apiOrigin: 'http://api:3001',
-        tenantId: TENANT_ID,
-        projectId: PROJECT_ID,
-        purpose: 'data-steward-console',
-        requestTimeoutMs: 5_000,
-        responseLimitBytes: 32_768,
-      },
-      createAuthClient: () => Promise.resolve(authClient([])),
-      fetch,
-      now: () => new Date('2026-08-22T00:00:00.000Z'),
-    });
+  it.each(['versions', 'queries'])(
+    'keeps %s browser tiles same-origin with server-only credentials',
+    async (kind) => {
+      const fetch = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+        const requestedUrl =
+          typeof url === 'string'
+            ? url
+            : url instanceof URL
+              ? url.href
+              : url.url;
+        expect(requestedUrl).toBe(
+          `http://api:3001/api/data/v1/geo/tiles/vector/${kind}/` +
+            '55555555-5555-4555-8555-555555555555/3/4/2.pbf',
+        );
+        expect(new Headers(init?.headers).get('authorization')).toBe(
+          `Bearer ${accessToken()}`,
+        );
+        return Promise.resolve(
+          new Response(Uint8Array.from([26, 0]), {
+            headers: {
+              'content-type': 'application/vnd.mapbox-vector-tile',
+              'set-cookie': 'upstream-secret=must-not-cross',
+            },
+          }),
+        );
+      });
+      const response = await proxyDataFoundationGeoRequest({
+        request: new Request(
+          `http://web.local/api/data-foundation/geo/tiles/vector/${kind}/` +
+            '55555555-5555-4555-8555-555555555555/3/4/2.pbf',
+        ),
+        path: [
+          'tiles',
+          'vector',
+          kind,
+          '55555555-5555-4555-8555-555555555555',
+          '3',
+          '4',
+          '2.pbf',
+        ],
+        config: {
+          apiOrigin: 'http://api:3001',
+          tenantId: TENANT_ID,
+          projectId: PROJECT_ID,
+          purpose: 'data-steward-console',
+          requestTimeoutMs: 5_000,
+          responseLimitBytes: 32_768,
+        },
+        createAuthClient: () => Promise.resolve(authClient([])),
+        fetch,
+        now: () => new Date('2026-08-22T00:00:00.000Z'),
+      });
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get('content-type')).toBe(
-      'application/vnd.mapbox-vector-tile',
-    );
-    expect(response.headers.get('set-cookie')).toBeNull();
-    expect(response.headers.get('cache-control')).toContain('no-store');
-    expect(await response.arrayBuffer()).toEqual(
-      Uint8Array.from([26, 0]).buffer,
-    );
-  });
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toBe(
+        'application/vnd.mapbox-vector-tile',
+      );
+      expect(response.headers.get('set-cookie')).toBeNull();
+      expect(response.headers.get('cache-control')).toContain('no-store');
+      expect(await response.arrayBuffer()).toEqual(
+        Uint8Array.from([26, 0]).buffer,
+      );
+    },
+  );
 
   it('rejects arbitrary origins, traversal, and client-supplied raster sources before fetch', async () => {
     const fetch = vi.fn();
