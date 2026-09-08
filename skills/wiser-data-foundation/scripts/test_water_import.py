@@ -14,6 +14,16 @@ import water_import
 
 
 class ImportPlanTests(unittest.TestCase):
+    def test_shared_content_uploads_once_but_preserves_every_source_path(self):
+        files = [
+            {"path": "official.html", "preparedSha256": "a" * 64, "preparedSizeBytes": 6},
+            {"path": "sample.html", "preparedSha256": "a" * 64, "preparedSizeBytes": 6},
+            {"path": "empty.bin", "preparedSha256": digest(b""), "preparedSizeBytes": 0},
+        ]
+        unique_files, positions = water_import.unique_file_uploads(files)
+        self.assertEqual(unique_files, [files[0]])
+        self.assertEqual(positions, {"official.html": 0, "sample.html": 0})
+
     def test_accounts_for_sources_empty_files_and_sanitized_derivatives_exactly_once(self):
         fixture = test_water_bundle.InventoryTests()
         fixture.setUp()

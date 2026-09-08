@@ -63,6 +63,25 @@ function setup(value: unknown = manifest) {
 }
 
 describe('deterministic source registration validation', () => {
+  it('preserves distinct source paths that reference the same exact content asset', () => {
+    const alias = { ...file, path: 'downloads/DS-0409_identical_copy.bin' };
+    const result = parseSourceRegistration(
+      setup({ ...manifest, files: [file, alias] }),
+    );
+    expect(result.parsedAssets).toHaveLength(2);
+    const excerpt = result.parsedAssets[1]?.metadata['wiser:excerpt'];
+    expect(excerpt).toContain(file.path);
+    expect(excerpt).toContain(alias.path);
+    expect(() =>
+      parseSourceRegistration(
+        setup({
+          ...manifest,
+          files: [file, { ...alias, preparedSizeBytes: 14 }],
+        }),
+      ),
+    ).toThrow('SOURCE_REGISTRATION');
+  });
+
   it('validates exact file bytes and preserves partial-download limitations without an AI verdict', () => {
     const result = parseSourceRegistration(setup());
     expect(result.validationScope).toBe('SOURCE_REGISTRATION');
