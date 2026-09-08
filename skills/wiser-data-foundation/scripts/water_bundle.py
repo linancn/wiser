@@ -104,10 +104,15 @@ class Sanitizer:
         return value
 
     @staticmethod
+    def credential_field(key):
+        key = key.strip()
+        return re.fullmatch(r"[A-Za-z_][A-Za-z0-9_-]*", key) and SECRET_KEY.search(key)
+
+    @staticmethod
     def cell(key, value):
         if key.strip().lower() == "requires_login_or_credential" and value.lower() in {"yes", "no", "true", "false", "0", "1"}:
             return value
-        return "[REDACTED]" if value and SECRET_KEY.search(key.strip()) else value
+        return "[REDACTED]" if value and Sanitizer.credential_field(key) else value
 
     def row(self, row):
         return {key: self.text(self.cell(key, value)) for key, value in row.items()}
@@ -115,7 +120,7 @@ class Sanitizer:
     def csv(self, value):
         reader = csv.DictReader(io.StringIO(value, newline=""))
         fields = reader.fieldnames or []
-        if not any(SECRET_KEY.search(key.strip()) for key in fields):
+        if not any(self.credential_field(key) for key in fields):
             return value
         rows = list(reader)
         if len(fields) != len(set(fields)) or any(None in row or any(cell is None for cell in row.values()) for row in rows):
