@@ -1,4 +1,7 @@
-import { ExplorationQueryInputSchema } from '@wiser/data-contracts';
+import {
+  ExplorationQueryInputSchema,
+  ExplorationResultSchema,
+} from '@wiser/data-contracts';
 import { expect, test, type Page } from '@playwright/test';
 import { loadLiveCredentials } from './support/live-fixture';
 
@@ -9,6 +12,93 @@ test.skip(
   process.env['WISER_DATA_REAL_CASE'] !== '1',
   'Requires the admitted private water research case.',
 );
+
+test('expired result envelopes clear browser data at their advertised deadline', async ({
+  page,
+}) => {
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  await page.route('**/api/data-foundation/explore', async (route) => {
+    const response = await route.fetch();
+    const result = ExplorationResultSchema.parse(await response.json());
+    await route.fulfill({
+      response,
+      json: { ...result, expiresAt: new Date(Date.now() + 1000).toISOString() },
+    });
+  });
+  await page.getByRole('button', { name: '查询', exact: true }).click();
+  await expect(page.getByTestId('data-explorer')).toHaveAttribute(
+    'data-query-id',
+    /^[0-9a-f-]{36}$/,
+  );
+  await expect(page.getByTestId('data-explorer')).toHaveAttribute(
+    'data-query-id',
+    '',
+    { timeout: 5000 },
+  );
+  await expect(
+    page.getByRole('button', { name: 'DS-0558 · NLDI API', exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByRole('alert')).toContainText('本次结果集已失效');
+});
+
+test('denied query and tile responses clear previous data and allow a fresh authorized query', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  await page
+    .getByRole('button', { name: 'DS-0558 · NLDI API', exact: true })
+    .click();
+  await page.getByRole('tab', { name: '记录', exact: true }).click();
+  await page.getByRole('button', { name: '选择记录 1', exact: true }).click();
+  await expect(page.getByTestId('explorer-inspector')).toContainText(
+    'USGS-01646500',
+  );
+  await page.route('**/api/data-foundation/explore', (route) =>
+    route.fulfill({
+      status: 403,
+      contentType: 'application/json',
+      body: '{"error":"unavailable"}',
+    }),
+  );
+  await page.getByRole('button', { name: '查询', exact: true }).click();
+  await expect(page.getByTestId('data-explorer')).toHaveAttribute(
+    'data-query-id',
+    '',
+  );
+  await expect(page.getByTestId('explorer-inspector')).not.toContainText(
+    'USGS-01646500',
+  );
+  await expect(page.getByTestId('explorer-records')).toHaveCount(0);
+  await page.unroute('**/api/data-foundation/explore');
+  await page.getByRole('button', { name: '查询', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'DS-0558 · NLDI API', exact: true })
+    .click();
+  await page.getByRole('tab', { name: '地图', exact: true }).click();
+  await expect(page.getByTestId('explorer-map')).toHaveAttribute(
+    'data-rendered-feature-count',
+    '1',
+  );
+  await page.route(
+    '**/api/data-foundation/geo/tiles/vector/queries/**',
+    (route) =>
+      route.fulfill({
+        status: 403,
+        contentType: 'application/json',
+        body: '{"error":"unavailable"}',
+      }),
+  );
+  await page.getByRole('button', { name: '放大', exact: true }).click();
+  await expect(page.getByTestId('data-explorer')).toHaveAttribute(
+    'data-query-id',
+    '',
+  );
+  await expect(page.getByTestId('explorer-map')).toHaveCount(0);
+  await expect(page.getByTestId('explorer-inspector')).not.toContainText(
+    '3c9220e3',
+  );
+});
 
 test('statistics renders authorized whole-query counts and links a category back to resources', async ({
   page,
