@@ -30,6 +30,39 @@ afterEach(async () => {
 });
 
 describe('WISER platform auth runtime', () => {
+  it('requires an explicit paired public resource and issuer for Agent OAuth mode', () => {
+    const environment = {
+      WISER_AUTH_MODE: 'supabase',
+      SUPABASE_URL: 'http://127.0.0.1:56321',
+      SUPABASE_PUBLISHABLE_KEY: 'publishable-test-key-long-enough',
+      DATABASE_URL: 'postgresql://test:test@127.0.0.1:56322/postgres',
+      WISER_DELEGATED_CREDENTIAL_HMAC_KEYS: JSON.stringify({
+        activeKeyId: 'test',
+        keys: { test: Buffer.alloc(32, 7).toString('base64url') },
+      }),
+      WISER_AGENT_MCP_RESOURCE: 'https://mcp.example.test/mcp',
+    };
+    expect(() => loadPlatformAuthRuntimeConfig(environment)).toThrow(
+      'WISER_AGENT_AUTH_ISSUER',
+    );
+    const configured = loadPlatformAuthRuntimeConfig({
+      ...environment,
+      WISER_AGENT_AUTH_ISSUER: 'https://auth.example.test/auth/v1',
+    });
+    expect(configured).toMatchObject({
+      agent: {
+        resource: environment.WISER_AGENT_MCP_RESOURCE,
+        issuer: 'https://auth.example.test/auth/v1',
+      },
+    });
+    expect(() =>
+      loadPlatformAuthRuntimeConfig({
+        ...environment,
+        WISER_AGENT_AUTH_ISSUER: 'http://auth.example.test/auth/v1',
+      }),
+    ).toThrow('Agent');
+  });
+
   it('requires the Supabase and database configuration in production', () => {
     expect(() =>
       loadPlatformAuthRuntimeConfig({ NODE_ENV: 'production' }),
