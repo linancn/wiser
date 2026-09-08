@@ -125,6 +125,8 @@ Preserve these boundaries:
 - Tool and Resource schemas come from public system contracts, and outputs are size- and shape-validated.
 - MCP does not import API application services or query databases, journals, or projections.
 - The HTTP transport's `/mcp` requires its own bearer token; downstream API requests still use each system's authorized credential.
+- `WISER_MCP_AUTH_MODE=oauth` exchanges each caller's OAuth token through the Platform API and registers only the project-bound Data module plus `wiser_connection` / `wiser://connection`. It requires `DATA_API_URL`, `WISER_AGENT_MCP_RESOURCE` and `WISER_AGENT_AUTH_ISSUER`, and does not initialize EXCON or fixed API credentials. The default `static` mode preserves existing fixed-credential composition.
+- OAuth mode publishes protected-resource metadata at `/.well-known/oauth-protected-resource/mcp` and its root alias, advertises discovery in `401`, and rejects unrelated browser Origins. API exchange has a 10-second timeout, 64 KiB response limit, schema validation and no redirects. Only the exchanged credential reaches the Data API.
 - The HTTP host also accepts a per-request authorizer that returns a handler bound to the current caller. It cannot be combined with the shared-bearer handler. Authorization is rechecked on every call, successful responses are non-cacheable, and unavailable authorization dependencies fail closed without exposing upstream details.
 - A new module has a unique dotted ID and composes through `registerWiserMcpModules`.
 

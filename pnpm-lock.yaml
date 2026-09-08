@@ -208,6 +208,9 @@ importers:
       '@wiser/data-contracts':
         specifier: workspace:*
         version: link:../../packages/data-contracts
+      '@wiser/platform-contracts':
+        specifier: workspace:*
+        version: link:../../packages/platform-contracts
       zod:
         specifier: 'catalog:'
         version: 4.4.3

@@ -125,6 +125,8 @@ Telemetry Ingress ────────► internal OTel Collector
 - Tool 和 Resource schema 来自公开系统 contracts，输出有大小和结构校验；
 - MCP 不导入 API application service，也不查询数据库、journal 或投影；
 - HTTP transport 的 `/mcp` 自身需要 bearer token，下游 API 仍使用各系统的授权 credential；
+- `WISER_MCP_AUTH_MODE=oauth` 通过 Platform API 逐请求交换调用者的 OAuth Token，仅注册项目绑定的 Data 模块和 `wiser_connection` / `wiser://connection`。该模式要求 `DATA_API_URL`、`WISER_AGENT_MCP_RESOURCE` 与 `WISER_AGENT_AUTH_ISSUER`，不初始化 EXCON 或固定 API 凭据；默认 `static` 模式保留已有的固定凭据组合；
+- OAuth 模式在 `/.well-known/oauth-protected-resource/mcp` 及根目录别名发布 resource metadata，通过 `401` 提示认证发现，并拒绝无关浏览器 Origin。API 交换使用 10 秒超时、64 KiB 响应限制、schema 校验且禁止重定向；只有交换后的 credential 会发往 Data API；
 - HTTP host 也支持逐请求 authorizer，返回仅绑定当前调用者的 handler；它与共享 bearer handler 互斥。每次调用重新授权，成功响应禁止缓存，授权依赖不可用时失败关闭且不暴露上游细节；
 - 新模块必须有唯一点分 ID，并通过 `registerWiserMcpModules` 组合。
 

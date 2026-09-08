@@ -11,8 +11,10 @@ import { createDataFoundationMcpRuntimeFromEnvironment } from './data-foundation
 import {
   closeWiserMcpHttpServer,
   createWiserMcpHttpServer,
+  type McpHttpRequestHandler,
 } from './http-server.js';
 import { createAgentExconMcpServer } from './server.js';
+import { createAgentMcpRuntimeFromEnvironment } from './platform/agent-http-runtime.js';
 
 function port(value: string | undefined): number {
   const parsed = Number(value ?? '3004');
@@ -22,7 +24,10 @@ function port(value: string | undefined): number {
   return parsed;
 }
 
-function main(): void {
+function staticRuntime(): {
+  bearerToken: string;
+  handler: McpHttpRequestHandler;
+} {
   const bearerToken = process.env['DATA_MCP_BEARER_TOKEN'];
   if (bearerToken === undefined) {
     throw new Error('DATA_MCP_BEARER_TOKEN is required.');
@@ -30,35 +35,60 @@ function main(): void {
   const protocolVersion = resolveAgentExconProtocolVersion();
   const api = createHttpClientFromEnvironment();
   const dataRuntime = createDataFoundationMcpRuntimeFromEnvironment();
+  return {
+    bearerToken,
+    async handler(request, response) {
+      const mcp = createAgentExconMcpServer(api, {
+        protocolVersion,
+        modules: dataRuntime === null ? [] : [dataRuntime.module],
+      });
+      const transport = new StreamableHTTPServerTransport({
+        enableJsonResponse: true,
+      });
+      // SDK 1.x is runtime-compatible, but its optional callback types
+      // predate this repository's exactOptionalPropertyTypes enforcement.
+      try {
+        await mcp.connect(transport as unknown as Transport);
+        await transport.handleRequest(request, response);
+      } finally {
+        await mcp.close();
+      }
+    },
+  };
+}
+
+function main(): void {
+  const agentRuntime = createAgentMcpRuntimeFromEnvironment(process.env);
   const activeRequests = new Set<Promise<void>>();
   let ready = true;
-  const http = createWiserMcpHttpServer({
-    bearerToken,
-    ready: () => ready,
-    handler(request, response) {
-      const work = (async () => {
-        const mcp = createAgentExconMcpServer(api, {
-          protocolVersion,
-          modules: dataRuntime === null ? [] : [dataRuntime.module],
-        });
-        const transport = new StreamableHTTPServerTransport({
-          enableJsonResponse: true,
-        });
-        // SDK 1.x is runtime-compatible, but its optional callback types
-        // predate this repository's exactOptionalPropertyTypes enforcement.
-        await mcp.connect(transport as unknown as Transport);
-        try {
-          await transport.handleRequest(request, response);
-        } finally {
-          await mcp.close();
-        }
-      })().finally(() => {
-        activeRequests.delete(work);
-      });
+  const track =
+    (handler: McpHttpRequestHandler): McpHttpRequestHandler =>
+    (request, response) => {
+      const work = handler(request, response).finally(() =>
+        activeRequests.delete(work),
+      );
       activeRequests.add(work);
       return work;
-    },
-  });
+    };
+  const options =
+    agentRuntime === null
+      ? (() => {
+          const runtime = staticRuntime();
+          return {
+            bearerToken: runtime.bearerToken,
+            handler: track(runtime.handler),
+          };
+        })()
+      : {
+          resourceMetadata: agentRuntime.resourceMetadata,
+          async authorize(
+            request: Parameters<typeof agentRuntime.authorize>[0],
+          ) {
+            const handler = await agentRuntime.authorize(request);
+            return handler === null ? null : track(handler);
+          },
+        };
+  const http = createWiserMcpHttpServer({ ...options, ready: () => ready });
   http.listen(
     port(process.env['DATA_MCP_PORT']),
     process.env['DATA_MCP_HOST'] ?? '0.0.0.0',

@@ -5,6 +5,7 @@ import {
   type Server,
   type ServerResponse,
 } from 'node:http';
+import { PlatformAgentResourceSchema } from '@wiser/platform-contracts';
 
 export type McpHttpRequestHandler = (
   request: IncomingMessage,
@@ -17,6 +18,10 @@ export type McpHttpRequestAuthorizer = (
 
 export type WiserMcpHttpServerOptions = {
   readonly ready: () => boolean;
+  readonly resourceMetadata?: {
+    readonly resource: string;
+    readonly authorizationServer: string;
+  };
 } & (
   | {
       readonly bearerToken: string;
@@ -75,12 +80,13 @@ function sendError(
   response: ServerResponse,
   status: number,
   error: string,
+  challenge = 'Bearer',
 ): void {
   if (!response.headersSent) {
     response.writeHead(status, {
       ...noStoreHeaders(),
       'Content-Type': 'application/json; charset=utf-8',
-      ...(status === 401 ? { 'WWW-Authenticate': 'Bearer' } : {}),
+      ...(status === 401 ? { 'WWW-Authenticate': challenge } : {}),
     });
   }
   if (!response.writableEnded) response.end(JSON.stringify({ error }));
@@ -90,9 +96,47 @@ export function createWiserMcpHttpServer(
   options: WiserMcpHttpServerOptions,
 ): Server {
   const authorize = requestAuthorizer(options);
+  const metadata = options.resourceMetadata;
+  if (
+    metadata !== undefined &&
+    (!PlatformAgentResourceSchema.safeParse(metadata.resource).success ||
+      !metadata.authorizationServer.endsWith('/auth/v1') ||
+      !PlatformAgentResourceSchema.safeParse(
+        metadata.authorizationServer.replace(/\/auth\/v1$/, '/mcp'),
+      ).success)
+  )
+    throw new Error('Invalid MCP OAuth resource metadata.');
+  const resourceOrigin =
+    metadata === undefined ? null : new URL(metadata.resource).origin;
+  const challenge =
+    resourceOrigin === null
+      ? 'Bearer'
+      : `Bearer resource_metadata="${resourceOrigin}/.well-known/oauth-protected-resource/mcp"`;
 
   return createServer((request, response) => {
     const path = new URL(request.url ?? '/', 'http://mcp.invalid').pathname;
+    if (
+      metadata !== undefined &&
+      request.method === 'GET' &&
+      (path === '/.well-known/oauth-protected-resource/mcp' ||
+        path === '/.well-known/oauth-protected-resource')
+    ) {
+      response
+        .writeHead(200, {
+          ...noStoreHeaders(),
+          'Content-Type': 'application/json',
+        })
+        .end(
+          JSON.stringify({
+            resource: metadata.resource,
+            authorization_servers: [metadata.authorizationServer],
+            bearer_methods_supported: ['header'],
+            scopes_supported: ['openid'],
+            resource_name: 'WISER',
+          }),
+        );
+      return;
+    }
     if (request.method === 'GET' && path.startsWith('/health/')) {
       const ready = options.ready();
       const live = true;
@@ -113,6 +157,14 @@ export function createWiserMcpHttpServer(
       response.writeHead(404, noStoreHeaders()).end();
       return;
     }
+    if (
+      resourceOrigin !== null &&
+      request.headers.origin !== undefined &&
+      request.headers.origin !== resourceOrigin
+    ) {
+      sendError(response, 403, 'MCP_ORIGIN_NOT_ALLOWED');
+      return;
+    }
     for (const [name, value] of Object.entries(noStoreHeaders())) {
       response.setHeader(name, value);
     }
@@ -125,7 +177,7 @@ export function createWiserMcpHttpServer(
         return;
       }
       if (handler === null) {
-        sendError(response, 401, 'NOT_AUTHENTICATED');
+        sendError(response, 401, 'NOT_AUTHENTICATED', challenge);
         return;
       }
       if (response.destroyed || response.writableEnded) return;

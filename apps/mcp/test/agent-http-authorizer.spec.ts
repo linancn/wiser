@@ -4,8 +4,10 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 
 import { createAgentHttpAuthorizer } from '../src/platform/agent-http-authorizer.js';
+import { createAgentMcpRuntimeFromEnvironment } from '../src/platform/agent-http-runtime.js';
 import {
   createWiserMcpHttpServer,
   closeWiserMcpHttpServer,
@@ -17,6 +19,34 @@ afterEach(async () => {
 });
 
 describe('Agent MCP with per-request API authorization', () => {
+  it('starts the OAuth runtime without shared API, EXCON or transport credentials', () => {
+    const environment = {
+      WISER_MCP_AUTH_MODE: 'oauth',
+      DATA_API_URL: 'http://127.0.0.1:3101/api/data/v1/',
+      WISER_AGENT_MCP_RESOURCE: 'https://mcp.example.test/mcp',
+      WISER_AGENT_AUTH_ISSUER: 'https://auth.example.test/auth/v1',
+    };
+    expect(createAgentMcpRuntimeFromEnvironment(environment)).toMatchObject({
+      authorize: expect.any(Function) as unknown,
+      resourceMetadata: {
+        resource: environment.WISER_AGENT_MCP_RESOURCE,
+        authorizationServer: environment.WISER_AGENT_AUTH_ISSUER,
+      },
+    });
+    expect(
+      createAgentMcpRuntimeFromEnvironment({ WISER_MCP_AUTH_MODE: 'static' }),
+    ).toBeNull();
+    expect(() =>
+      createAgentMcpRuntimeFromEnvironment({
+        ...environment,
+        WISER_AGENT_AUTH_ISSUER: '',
+      }),
+    ).toThrow('Agent');
+    expect(() =>
+      createAgentMcpRuntimeFromEnvironment({ WISER_MCP_AUTH_MODE: 'unknown' }),
+    ).toThrow('WISER_MCP_AUTH_MODE');
+  });
+
   it('isolates users, exposes safe connection context and uses only exchanged API credentials', async () => {
     const actors = new Map(
       ['alice', 'bob'].map((name, index) => [
@@ -79,7 +109,7 @@ describe('Agent MCP with per-request API authorization', () => {
         await client.connect(
           new StreamableHTTPClientTransport(new URL(`${origin}/mcp`), {
             requestInit: { headers: { authorization: `Bearer ${name}` } },
-          }),
+          }) as unknown as Transport,
         );
         return client;
       }),
