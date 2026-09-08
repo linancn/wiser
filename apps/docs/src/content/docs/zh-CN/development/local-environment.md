@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-09-08
-lastReviewedCommit: 415faa6808fbf3c32770a2620e98913f56e8d45a
+lastReviewedCommit: 7ab2bd8be45955cbf1c7e7c58dde27bccc145c50
 ---
 
 ## 运行模式
@@ -38,6 +38,7 @@ lastReviewedCommit: 415faa6808fbf3c32770a2620e98913f56e8d45a
 - 部分镜像在 Apple Silicon 上使用显式 `linux/amd64` 模拟，首次拉取、初始化和健康检查会更久。
 - 安装和首次构建需要访问 npm registry 与容器 registry。
 - OpenSearch one-shot init 会下载并校验与 3.8.0 精确匹配的官方 `analysis-icu` 与 `analysis-smartcn` 插件；readiness 要求两者同时出现。插件使用独立命名卷，版本或 checksum 变化时应在可丢弃环境执行确认式 Data reset，再从权威数据重建版本化检索投影。
+- 启用 Data profile 时，API 会等待该初始化任务导出 OpenSearch CA 后才启动。Node 在进程启动时加载 `NODE_EXTRA_CA_CERTS`，之后补齐文件无法修复已启动 API 的信任配置。未启用 Data profile 时该依赖为可选，基础栈仍可独立启动。
 - 确认下表端口没有被其他进程或旧 Compose project 占用；端口冲突时先定位占用者，不要随意改一端而遗漏相关回调、CORS 或 smoke 配置。
 
 ## 主要端口

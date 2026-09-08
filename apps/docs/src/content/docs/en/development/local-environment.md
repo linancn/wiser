@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-09-08
-lastReviewedCommit: 415faa6808fbf3c32770a2620e98913f56e8d45a
+lastReviewedCommit: 7ab2bd8be45955cbf1c7e7c58dde27bccc145c50
 ---
 
 ## Runtime modes
@@ -38,6 +38,7 @@ lastReviewedCommit: 415faa6808fbf3c32770a2620e98913f56e8d45a
 - Some images use explicit `linux/amd64` emulation on Apple Silicon, so the first pull, initialization, and health checks take longer.
 - Installation and the first build need access to npm and container registries.
 - The OpenSearch one-shot init downloads and verifies the official `analysis-icu` and `analysis-smartcn` plugins at the exact 3.8.0 version; readiness requires both. Each plugin uses a named volume. A plugin version or checksum change is applied through a confirmation-gated Data reset in disposable state, followed by rebuilding the versioned search projections from authority.
+- With the Data profile enabled, API startup waits for that initializer to export the OpenSearch CA. Node loads `NODE_EXTRA_CA_CERTS` when its process starts, so creating the file afterward cannot repair an already-running API. This dependency is optional when the Data profile is disabled, keeping the base stack independent.
 - Confirm the ports below are free from another process or old Compose project. When a port conflicts, identify the owner rather than changing one side and leaving callback, CORS, or smoke configuration inconsistent.
 
 ## Primary ports
