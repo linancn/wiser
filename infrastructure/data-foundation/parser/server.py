@@ -122,6 +122,7 @@ def child_parse(path, kind, connection):
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "WiserSourceParser/1.0"
+    protocol_version = "HTTP/1.1"
 
     def setup(self):
         super().setup()
@@ -188,6 +189,9 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             SLOTS.release()
 
+    def write_chunk(self, content):
+        self.wfile.write(f"{len(content):X}\r\n".encode() + content + b"\r\n")
+
     def stream_parse(self, path, kind, digest):
         context = multiprocessing.get_context("spawn")
         receiver, sender = context.Pipe(duplex=False)
@@ -198,9 +202,10 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/x-ndjson")
             self.send_header("Cache-Control", "no-store")
+            self.send_header("Transfer-Encoding", "chunked")
             self.send_header("Connection", "close")
             self.end_headers()
-            self.wfile.write(
+            self.write_chunk(
                 encode_event(
                     {"type": "source", "sha256": digest, "parserVersion": "1.0.0"}
                 )
@@ -218,16 +223,17 @@ class Handler(BaseHTTPRequestHandler):
                     if size > MAX_RESPONSE:
                         break
                     event = json.loads(line)
-                    self.wfile.write(line)
+                    self.write_chunk(line)
                     if event["type"] in ("summary", "error"):
                         finished = True
                         break
                 elif not process.is_alive():
                     break
             if not finished:
-                self.wfile.write(
+                self.write_chunk(
                     encode_event({"type": "error", "code": "CAPACITY_LIMIT"})
                 )
+            self.wfile.write(b"0\r\n\r\n")
         finally:
             receiver.close()
             if process.is_alive():

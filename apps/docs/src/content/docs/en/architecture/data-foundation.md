@@ -224,3 +224,5 @@ The parser image pins GDAL 3.13.3 and a hash-locked Python environment. Its priv
 The worker parser adapter verifies admitted source bytes before transport, validates UTF-8 NDJSON schemas, row order and exact completion totals, and binds stable identifiers locally to the source version. Incomplete streams roll back; partial results retain an explicit reason.
 
 Analysis jobs route XLSX/XLS, HTML/Markdown/text, PDF and ZIP assets through the isolated parser. The worker persists rows in bounded batches under its existing asset savepoint and lease fence. Capacity failures discard tentative rows and keep unknown counts; encrypted content is restricted. Partial summaries retain their reason at asset level and make the completed run partial.
+
+Parser NDJSON uses HTTP/1.1 chunk framing with an explicit terminal chunk. This avoids relying on connection closure to signal completion to the Node worker; the application summary and counts remain independently mandatory.
