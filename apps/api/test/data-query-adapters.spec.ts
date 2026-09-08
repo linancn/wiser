@@ -336,6 +336,90 @@ describe('Neo4j graph query port', () => {
     ).toBe(true);
   });
 
+  it('returns an empty graph for a valid zero-row backend result', async () => {
+    const http = new FakeHttp();
+    http.responses.push({
+      status: 200,
+      body: { queryType: 'r', data: { fields: ['graph'], values: [] } },
+    });
+    const port = new Neo4jGraphQueryPort({
+      baseUrl: 'http://neo4j:7474',
+      database: 'neo4j',
+      authorization: 'Basic safe-credential',
+      http,
+    });
+    await expect(
+      port.expand(request({ entityId: 'missing', maxDepth: 2 })),
+    ).resolves.toEqual({ nodes: [], edges: [] });
+  });
+
+  it('includes an isolated visible seed and keeps publication gates in the traversal', async () => {
+    const http = new FakeHttp();
+    http.responses.push({
+      status: 200,
+      body: {
+        queryType: 'r',
+        data: { fields: ['graph'], values: [[{ nodes: [], edges: [] }]] },
+      },
+    });
+    const port = new Neo4jGraphQueryPort({
+      baseUrl: 'http://neo4j:7474',
+      database: 'neo4j',
+      authorization: 'Basic safe-credential',
+      http,
+    });
+    await port.expand(request({ entityId: DATA_ITEM_ID, maxDepth: 2 }));
+    const statement = (http.requests[0]!.body as { statement: string })
+      .statement;
+    expect(statement).toContain('[*0..2]');
+    expect(statement).toContain("node.publicationStatus = 'PUBLISHED'");
+    expect(statement).toContain("edge.publicationStatus = 'PUBLISHED'");
+  });
+
+  it('merges every returned path instead of discarding all but the first', async () => {
+    const http = new FakeHttp();
+    const node = (id: string) => ({
+      entityId: id,
+      label: id,
+      dataItemId: DATA_ITEM_ID,
+      versionId: VERSION_ID,
+      evidenceId: EVIDENCE_ID,
+      securityLevel: 'L2_RESTRICTED',
+      qualityGrade: 'A',
+      confidence: 0.9,
+    });
+    const edge = {
+      edgeId: 'ab',
+      fromEntityId: 'a',
+      toEntityId: 'b',
+      relationType: 'RELATED',
+      evidenceId: EVIDENCE_ID,
+      confidence: 0.9,
+    };
+    http.responses.push({
+      status: 200,
+      body: {
+        queryType: 'r',
+        data: {
+          fields: ['graph'],
+          values: [
+            [{ nodes: [node('a')], edges: [] }],
+            [{ nodes: [node('a'), node('b')], edges: [edge] }],
+          ],
+        },
+      },
+    });
+    const port = new Neo4jGraphQueryPort({
+      baseUrl: 'http://neo4j:7474',
+      database: 'neo4j',
+      authorization: 'Basic safe-credential',
+      http,
+    });
+    await expect(
+      port.expand(request({ entityId: 'a', maxDepth: 2 })),
+    ).resolves.toEqual({ nodes: [node('a'), node('b')], edges: [edge] });
+  });
+
   it('rejects unsafe depth and redacts Neo4j response bodies', async () => {
     const http = new FakeHttp();
     const port = new Neo4jGraphQueryPort({
