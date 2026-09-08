@@ -5,7 +5,9 @@ import {
 } from '../analysis/index.ts';
 import {
   ExplorationQueryInputSchema,
+  ExplorationQueryInputV1Schema,
   ExplorationResultSchema,
+  ExplorationResultV1Schema,
 } from '../exploration/index.ts';
 
 import {
@@ -881,7 +883,7 @@ const capabilityRegistry = {
   }),
   'data.explore.query': defineCapability({
     id: 'data.explore.query',
-    version: '1.0.0',
+    version: '1.1.0',
     kind: 'query',
     inputSchema: ExplorationQueryInputSchema,
     outputSchema: ExplorationResultSchema,
@@ -928,6 +930,14 @@ export const DATA_CAPABILITY_REGISTRY: Readonly<
 > = Object.freeze(capabilityRegistry);
 
 const capabilityArchive = {
+  'data.explore.query': Object.freeze([
+    defineCapability({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.0.0',
+      inputSchema: ExplorationQueryInputV1Schema,
+      outputSchema: ExplorationResultV1Schema,
+    }),
+  ]),
   'data.catalog.search': Object.freeze([
     defineCapability({
       ...capabilityRegistry['data.catalog.search'],

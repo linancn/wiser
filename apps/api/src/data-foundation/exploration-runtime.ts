@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { queryAnalysisView } from './exploration-views.js';
 import { z } from 'zod';
 import {
   ExplorationQueryInputSchema,
@@ -19,7 +20,8 @@ import type {
 
 const SET_SCOPE = `select set_config('wiser.tenant_id',$1,true),set_config('wiser.project_id',$2,true),set_config('wiser.actor_id',$3,true),set_config('wiser.max_security_level',$4,true),set_config('wiser.policy_version',$5,true),set_config('wiser.purpose',$6,true),set_config('statement_timeout',$7,true)`;
 const MATCH = `
-select item.data_item_id, version.version_id
+select item.data_item_id, version.version_id,
+  (select analysis.analysis_id from service.analysis_run analysis where analysis.version_id=version.version_id and analysis.completed_at is not null order by analysis.completed_at desc,analysis.analysis_id desc limit 1) analysis_id
 from catalog.data_item item
 join lateral (
   select v.version_id, v.quality_grade from catalog.data_item_version v
@@ -38,26 +40,33 @@ order by item.name collate "C", item.data_item_id, version.version_id
 limit 10001`;
 const AUTHORIZED = `with authorized as (
   select item.data_item_id, version.version_id, item.name, item.source_organization,
-    version.asset_manifest, ref.ordinality
+    version.asset_manifest, ref.ordinality, analysis.analysis_id, analysis.status analysis_status
   from jsonb_array_elements($1::jsonb) with ordinality ref(value,ordinality)
   join catalog.data_item_version version on version.version_id=(ref.value->>'versionId')::uuid
     and version.data_item_id=(ref.value->>'dataItemId')::uuid
   join catalog.data_item item on item.tenant_id=version.tenant_id and item.project_id=version.project_id and item.data_item_id=version.data_item_id
+  left join service.analysis_run analysis on analysis.analysis_id=(ref.value->>'analysisId')::uuid and analysis.version_id=version.version_id and analysis.completed_at is not null
   where version.publication_status='PUBLISHED' and version.acceptance_status in ('PASSED','CONDITIONALLY_PASSED')
     and item.publication_status='PUBLISHED' and item.acceptance_status in ('PASSED','CONDITIONALLY_PASSED')
+    and (ref.value->>'analysisId' is null or analysis.analysis_id is not null)
 )`;
 const RESOURCES = `${AUTHORIZED}
 select authorized.*,
+  (select sum(record_count)::float8 from service.analysis_asset where analysis_id=authorized.analysis_id) analysis_record_count,
+  (select sum(feature_count)::float8 from service.analysis_asset where analysis_id=authorized.analysis_id) analysis_feature_count,
   (select count(*)::int from catalog.asset asset where asset.version_id=authorized.version_id) as asset_count,
   (select count(*)::int from knowledge.evidence_fragment fragment where fragment.version_id=authorized.version_id and jsonb_typeof(fragment.locator->'record')='object') as record_count,
   (select count(*)::int from catalog.spatial_extent extent where extent.version_id=authorized.version_id) as feature_count,
   exists(select 1 from service.projection_status projection where projection.version_id=authorized.version_id and projection.projection_kind='NEO4J' and projection.status='SUCCEEDED') as graph_ready
 from authorized where ordinality > $2::int order by ordinality limit $3::int`;
 
+const StoredRef = ExplorationVersionRefSchema.extend({
+  analysisId: z.uuid().nullable().optional(),
+});
 const StoredSnapshot = z.object({
   query_id: z.string().uuid(),
   spec: QuerySpecSchema,
-  version_refs: z.array(ExplorationVersionRefSchema).max(10000),
+  version_refs: z.array(StoredRef).max(10000),
   created_at: z.coerce.date(),
   expires_at: z.coerce.date(),
 });
@@ -120,6 +129,24 @@ export class PostgresExplorationExecutor {
       );
       if (count.rows[0]?.['total'] !== snapshot.version_refs.length)
         throw new DataCapabilityHandlerError('CONFLICT');
+      if (input.view !== 'resources') {
+        const result = ExplorationResultSchema.parse({
+          queryId,
+          spec: snapshot.spec,
+          createdAt: snapshot.created_at.toISOString(),
+          expiresAt: snapshot.expires_at.toISOString(),
+          ...(await queryAnalysisView(
+            client,
+            snapshot.version_refs,
+            queryId,
+            input,
+          )),
+        });
+        if (context.signal.aborted)
+          throw new DataCapabilityHandlerError('CAPABILITY_TIMEOUT');
+        await client.query('commit');
+        return result;
+      }
       const start = offset(input.after, queryId);
       if (start > snapshot.version_refs.length)
         throw new DataCapabilityHandlerError('VALIDATION_FAILED');
@@ -149,6 +176,20 @@ export class PostgresExplorationExecutor {
           .int()
           .nonnegative()
           .parse(row['feature_count']);
+        const analyzed = typeof row['analysis_id'] === 'string';
+        const parsedRecords =
+          analyzed && row['analysis_record_count'] !== null
+            ? z.number().int().nonnegative().parse(row['analysis_record_count'])
+            : null;
+        const parsedFeatures =
+          analyzed && row['analysis_feature_count'] !== null
+            ? z
+                .number()
+                .int()
+                .nonnegative()
+                .parse(row['analysis_feature_count'])
+            : null;
+        const partial = row['analysis_status'] === 'PARTIAL';
         return ExplorationResourceSchema.parse({
           dataItemId: row['data_item_id'],
           versionId: row['version_id'],
@@ -156,11 +197,39 @@ export class PostgresExplorationExecutor {
           provider: source.providerName ?? row['source_organization'],
           kind: source.kind ?? 'DATASET',
           assetCount: row['asset_count'],
-          recordCount: records > 0 ? records : null,
-          featureCount: features > 0 ? features : null,
+          recordCount: analyzed ? parsedRecords : records > 0 ? records : null,
+          featureCount: analyzed
+            ? parsedFeatures
+            : features > 0
+              ? features
+              : null,
+          ...(analyzed
+            ? {
+                analysis: {
+                  analysisId: row['analysis_id'],
+                  status: row['analysis_status'],
+                },
+              }
+            : {}),
           readiness: {
-            records: records > 0 ? 'READY' : 'NOT_PARSED',
-            spatial: features > 0 ? 'READY' : 'NOT_PARSED',
+            records: analyzed
+              ? parsedRecords === null
+                ? 'UNSUPPORTED'
+                : partial
+                  ? 'PARTIAL'
+                  : 'READY'
+              : records > 0
+                ? 'READY'
+                : 'NOT_PARSED',
+            spatial: analyzed
+              ? !parsedFeatures
+                ? 'UNSUPPORTED'
+                : partial
+                  ? 'PARTIAL'
+                  : 'READY'
+              : features > 0
+                ? 'READY'
+                : 'NOT_PARSED',
             graph: row['graph_ready'] === true ? 'READY' : 'NOT_PARSED',
           },
           limitations: source.limitations ?? [],
@@ -221,9 +290,10 @@ export class PostgresExplorationExecutor {
     if (matched.rows.length > 10000)
       throw new DataCapabilityHandlerError('VALIDATION_FAILED');
     const refs = matched.rows.map((row) =>
-      ExplorationVersionRefSchema.parse({
+      StoredRef.parse({
         dataItemId: row['data_item_id'],
         versionId: row['version_id'],
+        analysisId: row['analysis_id'] ?? null,
       }),
     );
     const id = randomUUID();

@@ -262,3 +262,5 @@ Data REST 错误是扁平安全 envelope：
 清单有效期为 30 分钟。其他用户、Purpose/安全上限/授权版本变化以及过期 ID 返回 `404`；权威成员可见性变化返回 `409`；无效条件/游标或匹配超过 10,000 个版本返回 `422`。同一匹配的用户与上下文最多保留 32 个近期清单，新查询可能淘汰更早的结果集；失效后重新执行原查询条件。投影就绪状态可独立推进。接口不接受 SQL、Cypher 或租户、Actor 覆盖字段。
 
 `data.analysis.create` 接收已发布的 `dataItemId` / `versionId` 和幂等键，原子创建带审计的操作与持久化分析任务，不改变来源登记与质量声明。REST：`POST /api/data/v1/analyses`；GraphQL：`createDataAnalysis(input: JSON!)`；MCP：`data_analysis_create`。需要 `data.ingestion.write` 与 `data.catalog.read` 权限；通过返回的操作 ID 查询进度。
+
+探索契约 1.1 将已完成的分析批次与已发布版本共同固定。`view: "records"` 必须提供 `queryId` 和 `versionId`，返回逐资产字段定义、稳定的记录/要素 ID 及有界分页。`view: "map"` 复用同一结果集，支持可选的 WGS84 `[west,south,east,north]` 范围。游标绑定视图与过滤条件。要纳入原查询之后完成的分析，需要重新运行查询条件。数量表示已索引记录，资源就绪状态与覆盖信息同时披露未解析来源。
