@@ -96,6 +96,20 @@ class GeospatialTests(unittest.TestCase):
         with self.assertRaisesRegex(ParseError, "INVALID_CONTENT"):
             list(parse_asset(path, "tif"))
 
+    def test_netcdf_string_coordinates_preserve_leading_zeroes(self):
+        path = self.root / "experiment.nc"
+        source = gdal.GetDriverByName("netCDF").CreateMultiDimensional(str(path))
+        group = source.GetRootGroup()
+        dimension = group.CreateDimension("time", "TEMPORAL", "", 2)
+        array = group.CreateMDArray(
+            "experiment", [dimension], gdal.ExtendedDataType.CreateString()
+        )
+        array.Write(["0001", "0002"])
+        source = None
+        result = list(parse_asset(path, "nc"))
+        row = next(event for event in result if event["type"] == "record")
+        self.assertEqual(row["values"]["c3"], ["0001", "0002"])
+
     def test_netcdf_preserves_dimensions_units_and_missing_values(self):
         path = self.root / "temperature.nc"
         raster = gdal.Open(str(self.raster()))
