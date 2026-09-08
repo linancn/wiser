@@ -107,3 +107,18 @@ class AnalysisTests(unittest.TestCase):
                 with self.assertRaisesRegex(ImportFailure, "HTTP_403"):
                     runner.process_with_retry(REG, pause=waits.append)
                 self.assertEqual(process.call_count, 1)
+
+    def test_final_audit_reads_the_current_analysis_without_creating_or_polling_jobs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            client = FakeClient()
+            responses = [{"queryId": "query", "resources": [{"versionId": REG["versionId"],
+                "analysis": {"analysisId": "new-analysis", "status": "READY"}}]},
+                {"assets": ASSETS, "coverage": {"indexedRecordCount": 3, "indexedFeatureCount": 0}}]
+            runner = AnalysisRunner(client, Path(directory), {"actor": "one"}, "audit", audit_only=True)
+            with patch.object(client, "api", side_effect=responses, create=True), patch.object(client, "get", side_effect=AssertionError("Audit must not poll")), patch.object(runner, "manifest", return_value={"sourceId": REG["sourceId"], "files": FILES}):
+                result = runner.process(REG)
+            self.assertEqual(client.keys, [])
+            self.assertEqual(result["status"], "VERIFIED")
+            self.assertEqual(result["analysisId"], "new-analysis")
+            self.assertNotIn("operationId", result)
+            self.assertEqual(len(result["paths"]), 3)
