@@ -358,6 +358,79 @@ describe('authorized exploration result sets in PostgreSQL', () => {
           indexedRecordCount: 2,
           indexedFeatureCount: 2,
         });
+        const filtered = ExplorationResultSchema.parse(
+          await executor.execute(
+            {
+              spec: {
+                versions: [{ dataItemId: item, versionId: version }],
+                recordQuery: {
+                  assetId: asset,
+                  filters: [
+                    { field: 'c2', type: 'number', operator: 'gte', value: 1 },
+                  ],
+                  sort: { field: 'c2', type: 'number', direction: 'desc' },
+                  columns: ['c1'],
+                },
+              },
+              view: 'resources',
+            },
+            context,
+          ),
+        );
+        const filteredRecords = ExplorationResultSchema.parse(
+          await executor.execute(
+            { queryId: filtered.queryId, view: 'records', versionId: version },
+            context,
+          ),
+        );
+        expect(filteredRecords.totalCount).toBe(1);
+        expect(filteredRecords.records?.map((row) => row.recordId)).toEqual([
+          secondRecord,
+        ]);
+        expect(filteredRecords.records?.[0]?.values).toEqual({
+          c1: '00000001',
+        });
+        const filteredMap = ExplorationResultSchema.parse(
+          await executor.execute(
+            { queryId: filtered.queryId, view: 'map' },
+            context,
+          ),
+        );
+        expect(filteredMap.totalCount).toBe(1);
+        expect(filteredMap.features?.[0]?.id).toBe(secondRecord);
+        await expect(
+          executor.execute(
+            {
+              queryId: filtered.queryId,
+              view: 'records',
+              versionId: version,
+              recordId: record,
+            },
+            context,
+          ),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+        await expect(
+          executor.execute(
+            {
+              spec: {
+                versions: [{ dataItemId: item, versionId: version }],
+                recordQuery: {
+                  assetId: asset,
+                  filters: [
+                    {
+                      field: 'not-a-source-field',
+                      type: 'text',
+                      operator: 'eq',
+                      value: 'x',
+                    },
+                  ],
+                },
+              },
+              view: 'resources',
+            },
+            context,
+          ),
+        ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
         await verifyExplorationTiles(client, {
           tenant,
           project,
