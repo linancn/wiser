@@ -1,6 +1,12 @@
 'use client';
 
 import { invalidatesExploration } from '@/lib/exploration-request';
+import {
+  explorationHref,
+  explorationView,
+  explorationViews,
+  type ExplorationView,
+} from '@/lib/exploration-navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { DataExplorerGraph } from './data-explorer-graph';
@@ -44,11 +50,13 @@ export function DataExplorer({
   initialResult,
   initialFailure,
   initialText,
+  initialView = 'resources',
 }: {
   readonly locale: Locale;
   readonly initialResult: ExplorationResult | null;
   readonly initialFailure: 'expired' | 'unavailable' | null;
   readonly initialText: string;
+  readonly initialView?: ExplorationView;
 }) {
   const copy = getDictionary(locale).dataFoundation.explorer;
   const [result, setResult] = useState(initialResult);
@@ -75,9 +83,7 @@ export function DataExplorer({
   const selected = selection.resource;
   const selectedRecord = selection.record;
   const selectedNode = selection.node;
-  const [view, setView] = useState<
-    'resources' | 'records' | 'map' | 'graph' | 'statistics'
-  >('resources');
+  const [view, setView] = useState<ExplorationView>(initialView);
   const [recordAssets, setRecordAssets] = useState<
     readonly ExplorationAnalysisAsset[]
   >([]);
@@ -196,7 +202,12 @@ export function DataExplorer({
   }, [result, selectedRecord, recordAssets, invalidate]);
   const number = new Intl.NumberFormat(locale);
 
-  async function query(input: unknown, targetPage: number, reset: boolean) {
+  async function query(
+    input: unknown,
+    targetPage: number,
+    reset: boolean,
+    restoreView?: ExplorationView,
+  ) {
     pending.current?.abort();
     const controller = new AbortController();
     pending.current = controller;
@@ -224,29 +235,85 @@ export function DataExplorer({
       setResult(next);
       setPage(targetPage);
       if (reset) {
+        setView(restoreView ?? 'resources');
         dispatch({ type: 'query', queryId: next.queryId });
         setRecordAssets([]);
         setCursors([undefined]);
+        setText(next.spec.text ?? '');
+        setQuality(next.spec.qualityGrades?.[0] ?? '');
+        setProvider(next.spec.providers?.[0] ?? '');
+        setKind(next.spec.kinds?.[0] ?? '');
+        setRecordReadiness(next.spec.readiness?.records?.[0] ?? '');
+        setSpatialReadiness(next.spec.readiness?.spatial?.[0] ?? '');
       } else
         setCursors((current) => {
           const updated = [...current];
           updated[targetPage + 1] = next.nextCursor;
           return updated;
         });
-      const parameters = new URLSearchParams({ query: next.queryId });
-      if (next.spec.text) parameters.set('q', next.spec.text);
-      if (next.spec.qualityGrades?.[0])
-        parameters.set('quality', next.spec.qualityGrades[0]);
-      window.history.replaceState(
-        null,
+      if (restoreView) setView(restoreView);
+      const method =
+        reset && restoreView === undefined ? 'pushState' : 'replaceState';
+      window.history[method](
+        window.history.state,
         '',
-        `/${locale}/data-foundation/explore?${parameters}`,
+        explorationHref(
+          locale,
+          next.queryId,
+          restoreView ?? (reset ? 'resources' : view),
+        ),
       );
     } catch {
       if (!controller.signal.aborted) setFailure('unavailable');
     } finally {
       if (!controller.signal.aborted) setBusy(false);
     }
+  }
+  const restore = useRef<
+    (queryId: string | null, nextView: ExplorationView) => void
+  >(() => {});
+  restore.current = (queryId, nextView) => {
+    pending.current?.abort();
+    setResult(null);
+    dispatch({ type: 'query', queryId: null });
+    setRecordAssets([]);
+    setCursors([undefined]);
+    setPage(0);
+    setView(nextView);
+    if (queryId)
+      void query({ queryId, view: 'resources', first: 25 }, 0, true, nextView);
+    else {
+      setBusy(false);
+      setFailure('expired');
+    }
+  };
+  useEffect(() => {
+    if (initialResult)
+      window.history.replaceState(
+        window.history.state,
+        '',
+        explorationHref(locale, initialResult.queryId, initialView),
+      );
+    const back = () => {
+      if (window.location.pathname !== `/${locale}/data-foundation/explore`)
+        return;
+      const parameters = new URLSearchParams(window.location.search);
+      restore.current(
+        parameters.get('query'),
+        explorationView(parameters.get('view')),
+      );
+    };
+    window.addEventListener('popstate', back);
+    return () => window.removeEventListener('popstate', back);
+  }, [locale, initialResult, initialView]);
+  function changeView(nextView: ExplorationView) {
+    setView(nextView);
+    if (result)
+      window.history.replaceState(
+        window.history.state,
+        '',
+        explorationHref(locale, result.queryId, nextView),
+      );
   }
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -451,22 +518,14 @@ export function DataExplorer({
           role="tablist"
           aria-label={copy.viewLabel}
         >
-          {(
-            ['resources', 'records', 'map', 'graph', 'statistics'] as const
-          ).map((value) => (
+          {explorationViews.map((value) => (
             <button
               key={value}
               role="tab"
               id={`explorer-tab-${value}`}
               tabIndex={view === value ? 0 : -1}
               onKeyDown={(event) => {
-                const values = [
-                  'resources',
-                  'records',
-                  'map',
-                  'graph',
-                  'statistics',
-                ] as const;
+                const values = explorationViews;
                 let index = values.indexOf(value);
                 if (event.key === 'ArrowRight')
                   index = (index + 1) % values.length;
@@ -477,12 +536,12 @@ export function DataExplorer({
                 else return;
                 event.preventDefault();
                 const next = values[index];
-                setView(next);
+                changeView(next);
                 document.getElementById(`explorer-tab-${next}`)?.focus();
               }}
               aria-selected={view === value}
               aria-controls="explorer-view"
-              onClick={() => setView(value)}
+              onClick={() => changeView(value)}
             >
               {value === 'resources'
                 ? copy.resourceView

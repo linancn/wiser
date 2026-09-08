@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   cleanup,
+  act,
   render,
   screen,
   waitFor,
@@ -13,6 +14,11 @@ import {
   type ExplorationResult,
 } from '@wiser/data-contracts';
 import { DataExplorer } from './data-explorer';
+
+function inputBody(init?: RequestInit): unknown {
+  if (typeof init?.body !== 'string') throw new Error('Expected a JSON body');
+  return JSON.parse(init.body);
+}
 
 const firstId = '10000000-0000-4000-8000-000000000001';
 const secondId = '10000000-0000-4000-8000-000000000002';
@@ -54,6 +60,170 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe('exploration query navigation', () => {
+  it('submits all visible filters as one query and pages without changing its identity', async () => {
+    const initial = result(firstId, 'First source', 'first');
+    const filtered = {
+      ...result(secondId, 'Filtered source', 'second'),
+      nextCursor: 'next-page',
+    };
+    const last = {
+      ...filtered,
+      resources: [{ ...filtered.resources[0], name: 'Last source' }],
+      nextCursor: undefined,
+    };
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(filtered))
+      .mockResolvedValueOnce(Response.json(last))
+      .mockResolvedValueOnce(Response.json(filtered));
+    vi.stubGlobal('fetch', fetch);
+    const user = userEvent.setup();
+    render(
+      <DataExplorer
+        locale="zh-CN"
+        initialResult={initial}
+        initialFailure={null}
+        initialText=""
+      />,
+    );
+    await user.clear(screen.getByLabelText('查询数据'));
+    await user.type(screen.getByLabelText('查询数据'), ' second ');
+    await user.selectOptions(screen.getByLabelText('质量等级'), 'B');
+    await user.click(screen.getByText('更多筛选'));
+    await user.type(screen.getByLabelText('提供机构（完整名称）'), ' Example ');
+    await user.selectOptions(
+      screen.getByLabelText('登记类型'),
+      'FILE_COLLECTION',
+    );
+    await user.selectOptions(screen.getByLabelText('内容就绪状态'), 'READY');
+    await user.selectOptions(
+      screen.getByLabelText('空间就绪状态'),
+      'CRS_UNVERIFIED',
+    );
+    await user.click(screen.getByRole('button', { name: '查询' }));
+    await screen.findByRole('button', { name: 'Filtered source' });
+    expect(inputBody(fetch.mock.calls[0][1] as RequestInit)).toEqual({
+      spec: {
+        text: 'second',
+        providers: ['Example'],
+        kinds: ['FILE_COLLECTION'],
+        qualityGrades: ['B'],
+        readiness: { records: ['READY'], spatial: ['CRS_UNVERIFIED'] },
+      },
+      view: 'resources',
+      first: 25,
+    });
+    await user.click(screen.getByRole('button', { name: '下一页' }));
+    await screen.findByRole('button', { name: 'Last source' });
+    expect(inputBody(fetch.mock.calls[1][1] as RequestInit)).toEqual({
+      queryId: secondId,
+      view: 'resources',
+      first: 25,
+      after: 'next-page',
+    });
+    await user.click(screen.getByRole('button', { name: '上一页' }));
+    await screen.findByRole('button', { name: 'Filtered source' });
+    expect(inputBody(fetch.mock.calls[2][1] as RequestInit)).toEqual({
+      queryId: secondId,
+      view: 'resources',
+      first: 25,
+    });
+  });
+
+  it.each([401, 403, 404, 409, 410, 422])(
+    'clears selected data on an authority failure (%s)',
+    async (status) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response('', { status })),
+      );
+      const user = userEvent.setup();
+      render(
+        <DataExplorer
+          locale="zh-CN"
+          initialResult={result(firstId, 'First source', 'first')}
+          initialFailure={null}
+          initialText=""
+        />,
+      );
+      await user.click(screen.getByRole('button', { name: 'First source' }));
+      await user.click(screen.getByRole('button', { name: '查询' }));
+      await screen.findByRole('alert');
+      expect(
+        screen.getByTestId('data-explorer').getAttribute('data-query-id'),
+      ).toBe('');
+      expect(screen.queryByRole('button', { name: 'First source' })).toBeNull();
+      expect(
+        screen.getByTestId('explorer-inspector').textContent,
+      ).not.toContain('Fixture provider');
+    },
+  );
+
+  it('ignores a late aborted result and keeps the newest query', async () => {
+    let finish: ((value: Response) => void) | undefined;
+    const fetch = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(
+        Response.json(result(secondId, 'Newest source', 'newest')),
+      );
+    vi.stubGlobal('fetch', fetch);
+    const user = userEvent.setup();
+    render(
+      <DataExplorer
+        locale="zh-CN"
+        initialResult={result(firstId, 'First source', 'first')}
+        initialFailure={null}
+        initialText=""
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: '查询' }));
+    await user.click(screen.getByRole('button', { name: '查询中…' }));
+    await screen.findByRole('button', { name: 'Newest source' });
+    await act(async () => {
+      finish?.(Response.json(result(firstId, 'Stale source', 'stale')));
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('button', { name: 'Stale source' })).toBeNull();
+    expect((fetch.mock.calls[0][1] as RequestInit).signal?.aborted).toBe(true);
+  });
+
+  it('keeps recoverable failures local and supports keyboard view navigation and clearing selection', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')));
+    const user = userEvent.setup();
+    render(
+      <DataExplorer
+        locale="zh-CN"
+        initialResult={result(firstId, 'First source', 'first')}
+        initialFailure={null}
+        initialText=""
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'First source' }));
+    await user.click(
+      within(screen.getByTestId('explorer-inspector')).getByRole('button'),
+    );
+    expect(screen.getByText('选择数据查看详情')).toBeTruthy();
+    await user.click(screen.getByRole('tab', { name: '资源' }));
+    await user.keyboard('{ArrowRight}');
+    expect(
+      screen.getByRole('tab', { name: '记录' }).getAttribute('aria-selected'),
+    ).toBe('true');
+    expect(new URL(window.location.href).searchParams.get('view')).toBe(
+      'records',
+    );
+    expect(screen.getByText('先选择一个资源，再查看其中的记录。')).toBeTruthy();
+    await user.keyboard('{Home}');
+    await user.click(screen.getByRole('button', { name: '查询' }));
+    await screen.findByRole('alert');
+    expect(screen.getByRole('button', { name: 'First source' })).toBeTruthy();
+  });
+
   it('restores authorized query conditions from browser history without embedding filters in the URL', async () => {
     window.history.replaceState(
       { framework: 'preserved' },
@@ -63,7 +233,7 @@ describe('exploration query navigation', () => {
     const first = result(firstId, 'First source', 'first');
     const second = result(secondId, 'Second source', 'second');
     const fetch = vi.fn((_url: unknown, init?: RequestInit) => {
-      const input = JSON.parse(String(init?.body)) as { queryId?: string };
+      const input = inputBody(init) as { queryId?: string };
       return Promise.resolve(
         Response.json(input.queryId === firstId ? first : second),
       );
@@ -95,9 +265,9 @@ describe('exploration query navigation', () => {
     window.history.back();
     await screen.findByRole('button', { name: 'First source' });
     await waitFor(() =>
-      expect(
-        (screen.getByLabelText('查询数据') as HTMLInputElement).value,
-      ).toBe('first'),
+      expect(screen.getByLabelText<HTMLInputElement>('查询数据').value).toBe(
+        'first',
+      ),
     );
     expect(screen.getByTestId('explorer-inspector').textContent).not.toContain(
       'Fixture provider',

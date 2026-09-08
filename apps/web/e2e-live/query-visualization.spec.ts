@@ -13,6 +13,51 @@ test.skip(
   'Requires the admitted private water research case.',
 );
 
+test('query history reauthorizes conditions and restores the active view after reload', async ({
+  page,
+}) => {
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  const explorer = page.getByTestId('data-explorer');
+  const original = await explorer.getAttribute('data-query-id');
+  await page.getByRole('tab', { name: '地图', exact: true }).click();
+  await expect(page.getByTestId('explorer-map')).toHaveAttribute(
+    'data-rendered-feature-count',
+    '1',
+  );
+  await page.reload();
+  await expect(
+    page.getByRole('tab', { name: '地图', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('explorer-map')).toHaveAttribute(
+    'data-rendered-feature-count',
+    '1',
+  );
+  await expect(explorer).toHaveAttribute('data-query-id', original!);
+  await page.getByLabel('查询数据').fill('DS-0409');
+  await page.getByRole('button', { name: '查询', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'DS-0409 · HydroATLAS', exact: true }),
+  ).toBeVisible();
+  const second = await explorer.getAttribute('data-query-id');
+  expect(new URL(page.url()).searchParams.get('q')).toBeNull();
+  await page.goBack();
+  await expect(explorer).toHaveAttribute('data-query-id', original!);
+  await expect(page.getByLabel('查询数据')).toHaveValue('DS-0558');
+  await expect(
+    page.getByRole('tab', { name: '地图', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('explorer-map')).toHaveAttribute(
+    'data-rendered-feature-count',
+    '1',
+  );
+  await page.goForward();
+  await expect(explorer).toHaveAttribute('data-query-id', second!);
+  await expect(page.getByLabel('查询数据')).toHaveValue('DS-0409');
+  await expect(
+    page.getByRole('button', { name: 'DS-0409 · HydroATLAS', exact: true }),
+  ).toBeVisible();
+});
+
 test('expired result envelopes clear browser data at their advertised deadline', async ({
   page,
 }) => {

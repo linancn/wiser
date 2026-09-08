@@ -13,6 +13,7 @@ import {
   dataFoundationMetadata,
 } from '@/lib/data-foundation-page.server';
 import { getDictionary, isLocale } from '@/lib/i18n';
+import { explorationView } from '@/lib/exploration-navigation';
 
 interface Props {
   params: Promise<{ locale: string }>;
@@ -20,6 +21,7 @@ interface Props {
     q?: string | string[];
     query?: string | string[];
     quality?: string | string[];
+    view?: string | string[];
   }>;
 }
 export async function generateMetadata({ params }: Props) {
@@ -72,6 +74,7 @@ export default async function ExplorePage({ params, searchParams }: Props) {
       initialResult={result}
       initialFailure={failure}
       initialText={text}
+      initialView={explorationView(search.view)}
     />
   );
 }
