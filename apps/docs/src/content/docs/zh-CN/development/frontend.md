@@ -19,7 +19,7 @@ checkPaths:
   - apps/docs/src/**
   - apps/docs/e2e/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: 0db4a9e49457d010aa5105f22f44008e09a253ca
+lastReviewedCommit: 3f8d2aa30e22c0393df5a098919215961b4f87da
 ---
 
 ## 两个前端应用
@@ -178,3 +178,5 @@ Portal 根据已验证会话选择主操作：已登录用户进入数据工作�
 原文件字节通过 `GET/HEAD /api/data/v1/tenants/{tenantId}/projects/{projectId}/versions/{versionId}/assets/{assetId}/content` 提供。API 重复既有资产／版本授权和审计，仅为内部存储入口签名，并以两分钟截止和单范围请求支持流式传输，不暴露签名地址。验证当前会话的 Web 入口 `/api/data-foundation/assets/{versionId}/{assetId}` 提供带文件名的附件或白名单内的惰性预览，剥离上游 Cookie，使用 no-store、nosniff 和沙箱内容策略。原文件下载与有界查询页导出相互独立。资源页先显示解析内容，再展示治理信息，保持精确版本与文件身份，提供分页表格、来源文档、结构化内容及地图／图谱联动。嵌套结构按有界分组懒加载，展示标签之外保留原始标签。
 
 二维栅格波段与 NetCDF 变量在已保存像元不超过 65,536 个时直接绘制真实数值，提供透明无效值、各波段色标与可用键盘操作的行列像元检查。零值和负值保持原样。缺少像元、非数值或更高维数组保留结构化内容与原文件下载，不生成虚构影像。
+
+原生 PDF 预览仅在响应类型精确为 `application/pdf` 时使用浏览器 PDF 阅读器，保留 nosniff 和受限 CSP；不添加会阻止原生阅读器的 iframe sandbox。HTML 等其他文档仍保留服务端 sandbox 策略，客户端文件扩展名不能放宽 HTML 的响应策略。

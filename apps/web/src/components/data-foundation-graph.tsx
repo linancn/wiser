@@ -78,6 +78,7 @@ export function KnowledgeGraphCanvas({
     let instance: Graph | null = null;
     let resize: ResizeObserver | null = null;
     let theme: MutationObserver | null = null;
+    let labelFrame = 0;
     const colors = () => {
       const tokens = getComputedStyle(document.documentElement);
       return {
@@ -90,12 +91,16 @@ export function KnowledgeGraphCanvas({
           tokens.getPropertyValue('--success-strong').trim() ||
           tokens.getPropertyValue('--accent').trim(),
         evidence:
-          tokens.getPropertyValue('--warning-strong').trim() ||
+          tokens.getPropertyValue('--warning').trim() ||
           tokens.getPropertyValue('--accent').trim(),
       };
     };
     const initialize = async () => {
-      const { Graph: GraphConstructor, NodeEvent } = await import('@antv/g6');
+      const {
+        Graph: GraphConstructor,
+        NodeEvent,
+        GraphEvent,
+      } = await import('@antv/g6');
       if (disposed) return;
       const positions = new Map(
         (
@@ -128,7 +133,7 @@ export function KnowledgeGraphCanvas({
         data: {
           nodes: result.nodes.map((node, index) => ({
             id: node.entityId,
-            data: { label: node.label },
+            data: { label: node.label, kind: node.kind },
             style: {
               fill:
                 node.kind === 'RESOURCE'
@@ -151,8 +156,14 @@ export function KnowledgeGraphCanvas({
         },
         node: {
           style: {
-            size: 24,
-            fill: palette.fill,
+            size: (node) =>
+              typeof node.style?.size === 'number' ? node.style.size : 24,
+            fill: (node) =>
+              node.data?.['kind'] === 'RESOURCE'
+                ? palette.source
+                : node.data?.['kind'] === 'EVIDENCE'
+                  ? palette.evidence
+                  : palette.fill,
             stroke: palette.stroke,
             lineWidth: 2,
             labelText: (node) => {
@@ -164,8 +175,14 @@ export function KnowledgeGraphCanvas({
                 : label;
             },
             labelFill: palette.labelFill,
-            labelFontSize: 12,
-            labelMaxWidth: 170,
+            labelFontSize: (node) =>
+              typeof node.style?.labelFontSize === 'number'
+                ? node.style.labelFontSize
+                : 12,
+            labelMaxWidth: (node) =>
+              typeof node.style?.labelMaxWidth === 'number'
+                ? node.style.labelMaxWidth
+                : 170,
             labelWordWrap: true,
           },
           state: {
@@ -184,7 +201,10 @@ export function KnowledgeGraphCanvas({
                 ? edge.data['label']
                 : '',
             labelFill: palette.labelFill,
-            labelFontSize: 11,
+            labelFontSize: (edge) =>
+              typeof edge.style?.labelFontSize === 'number'
+                ? edge.style.labelFontSize
+                : 11,
             labelBackground: true,
             labelBackgroundFill: getComputedStyle(document.documentElement)
               .getPropertyValue('--surface')
@@ -204,6 +224,44 @@ export function KnowledgeGraphCanvas({
         canvas.setAttribute('aria-hidden', 'true');
       }
       graph.current = active;
+      const readableLabels = () => {
+        cancelAnimationFrame(labelFrame);
+        labelFrame = requestAnimationFrame(() => {
+          if (disposed) return;
+          const zoom = Math.max(0.02, active.getZoom());
+          const detailed = zoom >= 0.65 || result.nodes.length <= 14;
+          active.updateNodeData(
+            result.nodes.map((node) => ({
+              id: node.entityId,
+              style: {
+                size: Math.min(64, 14 / zoom),
+                labelFontSize: 12 / zoom,
+                labelMaxWidth: 140 / zoom,
+                labelVisibility:
+                  detailed ||
+                  node.kind === 'RESOURCE' ||
+                  node.entityId === selectedId
+                    ? 'visible'
+                    : 'hidden',
+              },
+            })),
+          );
+          active.updateEdgeData(
+            result.edges.map((edge) => ({
+              id: edge.edgeId,
+              style: {
+                labelVisibility: detailed ? 'visible' : 'hidden',
+                labelFontSize: 10 / zoom,
+              },
+            })),
+          );
+          void active.draw().catch(() => {
+            if (!disposed) setState('unavailable');
+          });
+        });
+      };
+      active.on(GraphEvent.AFTER_TRANSFORM, readableLabels);
+      readableLabels();
       resize = new ResizeObserver(() => {
         if (
           disposed ||
@@ -271,6 +329,7 @@ export function KnowledgeGraphCanvas({
       disposed = true;
       layoutController.abort();
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(labelFrame);
       resize?.disconnect();
       theme?.disconnect();
       graph.current = null;

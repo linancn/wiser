@@ -26,8 +26,8 @@ describe('calibrated raster display', () => {
             Math.PI,
         ];
         const exact = worldPixel(fromAmap(position), z);
-        expect(Math.abs(mapping[index]! - exact[0])).toBeLessThan(0.35);
-        expect(Math.abs(mapping[index + 1]! - exact[1])).toBeLessThan(0.35);
+        expect(Math.abs(mapping[index] - exact[0])).toBeLessThan(0.35);
+        expect(Math.abs(mapping[index + 1] - exact[1])).toBeLessThan(0.35);
       }
     }
   });

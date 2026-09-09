@@ -1,3 +1,4 @@
+import { dataResourceName } from '@/lib/data-foundation-presentation';
 import type { ExplorationResult } from '@wiser/data-contracts';
 import { DataResourceContent } from '@/components/data-resource-content';
 import Link from 'next/link';
@@ -129,7 +130,7 @@ export default async function DataItemPage({
     <DataPageMain>
       <DataPageHeader
         eyebrow={copy.itemPage.eyebrow}
-        title={item?.name ?? copy.itemPage.titleFallback}
+        title={item ? dataResourceName(item.name) : copy.itemPage.titleFallback}
         lede={copy.content.scope}
         aside={<AuthorityFlag locale={locale} />}
       />

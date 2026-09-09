@@ -19,7 +19,7 @@ checkPaths:
   - apps/docs/src/**
   - apps/docs/e2e/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: 0db4a9e49457d010aa5105f22f44008e09a253ca
+lastReviewedCommit: 3f8d2aa30e22c0393df5a098919215961b4f87da
 ---
 
 ## Two frontend applications
@@ -178,3 +178,5 @@ Search and knowledge pages send 10-row cursor requests and retain the keyword on
 Exact source bytes are available through `GET/HEAD /api/data/v1/tenants/{tenantId}/projects/{projectId}/versions/{versionId}/assets/{assetId}/content`. The API repeats the existing asset/version authorization and audit, signs only the internal storage endpoint, and streams with a two-minute deadline and single-range support. It does not expose a signed URL. The session-verified Web endpoint `/api/data-foundation/assets/{versionId}/{assetId}` provides an explicitly named attachment or an allowlisted inert preview; it strips upstream cookies and uses no-store, nosniff and a sandbox content policy. File downloads are independent of bounded query-page exports. Resource pages open parsed content before governance metadata, preserve exact version/file identities, and offer paged tables, source documents, structured values and linked map/graph views. Nested structures mount lazily in bounded groups and source labels remain available alongside display labels.
 
 Two-dimensional indexed raster bands and NetCDF variables (at most 65,536 pixels) render from exact numeric values with transparent masks, a per-band legend and keyboard-accessible row/column inspection. Zero and negative values are preserved. Missing, nonnumeric or higher-dimensional arrays retain a structured view and an original-file download; they are not rendered as invented imagery.
+
+Native PDF previews use the exact `application/pdf` response type with nosniff and restrictive CSP, without an iframe sandbox that would disable the browser PDF renderer. HTML and other document responses retain the server sandbox policy. Client file extensions cannot relax the response policy for HTML.

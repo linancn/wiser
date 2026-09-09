@@ -181,7 +181,7 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 - GraphQL：`POST /graphql`，29 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
 - MCP：stdio/无状态 Streamable HTTP，29 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
 - Skill：`skills/wiser-data-foundation` 定义发现、查询、上传、入库、Operation 与安全解释流程。
-- Web：现有 Next.js 应用中的 14 个 Data route，server-only DAL、真实 Supabase Session、双语/主题、不可变版本选择，以及 MapLibre 的 PostGIS authority GeoJSON、STAC extent、受控 vector MVT 与 raster 四图层。
+- Web：现有 Next.js 应用中的 14 个 Data route，server-only DAL、真实 Supabase Session、双语/主题、不可变版本选择，以及高德 JS API 2.0 官方底图与同步的透明 MapLibre 业务图层：PostGIS authority GeoJSON、STAC extent、受控 vector MVT 与 raster 四图层。
 
 DataItem detail 的 `?version=<uuid>` 会把指定版本送入 API 并核对 `selectedVersion`，版本列表以 `aria-current` 切换并可打开受控地图。地图查询为 `?bbox=minx,miny,maxx,maxy&dataItem=<uuid>&version=<uuid>&crs=EPSG:4326|EPSG:4490`，可分别切换四图层，显示固定 Version 与 `source CRS → EPSG:3857`。对 `data.geo.query`，省略单数 `versionId` 时，从每个 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent；每次响应受 `first` 限制，并用绑定 snapshot/query/scope 的不透明 `nextCursor` 继续。若同时给出 `dataItemIds`，它与上述版本选择取交集；版本不可见或不存在时返回空结果集。`data.geo.intersect` 使用同样的 snapshot cursor，先选择 DataItem target 的版本，再合并该版本全部 sibling extent；任一 target 不存在、不可见或无 extent 时返回空结果，绝不回退历史版本。Map server 必须在权威 PostGIS 版本排名之前把选定的 `versionId` 传入查询，受控取完不超过 10,000 个 feature 的分页，并在 cursor 重复或越界时 fail closed，不能先取最新版本再做事后过滤。浏览器只请求同源 `/api/data-foundation/geo/...`；Next server 使用刚验证的 Supabase 短期 Session 追加 Tenant/Project/Purpose 后转发 Fastify，Bearer 和内部 GIS origin 永不进入客户端。
 
@@ -288,3 +288,7 @@ API 与 Worker 共用 `DATA_EMBEDDING_PROVIDER` 和明确的嵌入配置。本�
 知识图谱画布默认使用使用确定性初始位置、最多 160 次迭代的 ForceAtlas2 关系网络，由现有可取消 Worker 计算。键盘可操作的布局切换提供 Dagre 来源层级；只有层级布局在窄屏改变方向。两种布局均保留有界身份、选择、路径高亮和文字替代视图，独立资源的关联组在二维平面分区排布。初始概览每页显示八项资源，聚焦后的邻居页保留独立条数上限。关系文字与语义节点颜色辅助表达节点类型。
 
 原文件字节通过 `GET/HEAD /api/data/v1/tenants/{tenantId}/projects/{projectId}/versions/{versionId}/assets/{assetId}/content` 提供。API 重复既有资产／版本授权和审计，仅为内部存储入口签名，并以两分钟截止和单范围请求支持流式传输，不暴露签名地址。验证当前会话的 Web 入口 `/api/data-foundation/assets/{versionId}/{assetId}` 提供带文件名的附件或白名单内的惰性预览，剥离上游 Cookie，使用 no-store、nosniff 和沙箱内容策略。原文件下载与有界查询页导出相互独立。资源页先显示解析内容，再展示治理信息，保持精确版本与文件身份，提供分页表格、来源文档、结构化内容及地图／图谱联动。嵌套结构按有界分组懒加载，展示标签之外保留原始标签。
+
+地图仅在显示边界使用 GCJ-02。原始 WGS84/CGCS2000 坐标、空间查询和已保存视角保留权威坐标系。高德缩放级别等于 MapLibre 加一，方位角与俯仰角固定为零。GeoJSON 和授权矢量瓦片使用校准后的显示坐标。高德原生标识和版权信息始终可见、可点击。JS Key 属于公开客户端标识，安全密钥仅由经过认证的服务端代理使用。
+
+栅格叠加在独立浏览器 Worker 中，将 GCJ-02 像素中心反向映射至授权 WGS84 TiTiler 瓦片，采用最近邻采样保留类别和无数据区域。中国境内且缩放级别不低于 8 时使用八像素间隔的显示插值；低缩放级别及坐标转换边界采用精确映射。相邻瓦片请求有数量上限，地图销毁时取消请求并终止 Worker。原始栅格数值和文件保持不变。

@@ -111,7 +111,6 @@ async function initialize(): Promise<AmapSdk> {
     url.search = new URLSearchParams({
       v: '2.0',
       key,
-      plugin: 'AMap.MapboxVectorTileLayer',
     }).toString();
     script.src = url.href;
     script.async = true;

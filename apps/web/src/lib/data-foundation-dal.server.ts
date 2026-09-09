@@ -900,7 +900,9 @@ export async function proxyDataFoundationAssetRequest(
     'content-type': type,
     'x-content-type-options': 'nosniff',
     'content-security-policy':
-      "default-src 'none'; sandbox; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'",
+      mediaType === 'application/pdf'
+        ? "default-src 'none'; frame-ancestors 'self'"
+        : "default-src 'none'; sandbox; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'",
     'content-disposition': `${preview ? 'inline' : 'attachment'}; filename="source"; filename*=UTF-8''${encodeURIComponent(filename).replace(/['()*]/g, (character) => '%' + character.charCodeAt(0).toString(16).toUpperCase())}`,
   });
   for (const key of ['content-length', 'content-range', 'accept-ranges']) {

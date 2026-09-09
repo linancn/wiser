@@ -211,6 +211,8 @@ export function DataResourceContent({
   const visibleColumns = asset?.columns.filter((c) => c.key !== '__kind') ?? [];
   const records = data?.records ?? [];
   const previewable =
+    asset?.status !== 'INVALID' &&
+    asset?.status !== 'EMPTY' &&
     /\.(?:pdf|html?|txt|md|csv|json|geojson|png|jpe?g|gif|webp)$/i.test(name);
   return (
     <section
@@ -416,7 +418,7 @@ export function DataResourceContent({
                 <iframe
                   title={copy.preview}
                   className={styles.preview}
-                  sandbox=""
+                  sandbox={/\.pdf$/i.test(name) ? undefined : ''}
                   referrerPolicy="no-referrer"
                   src={assetContentHref(
                     versionId,
@@ -427,7 +429,11 @@ export function DataResourceContent({
                   )}
                 />
               ) : (
-                <p>{copy.noPreview}</p>
+                <p>
+                  {asset?.status === 'INVALID' || asset?.status === 'EMPTY'
+                    ? copy.invalidOriginal
+                    : copy.noPreview}
+                </p>
               )
             ) : null}
             {view === 'map' ? (

@@ -69,6 +69,7 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
   let result: GeoQueryDto | undefined;
   let stac: StacFeatureCollectionDto = { extents: [] };
   let authoritativeVersion: DataItemVersionDto | undefined;
+  let selectedName: string | undefined;
   let capabilityAvailable = false;
   let failure: ReturnType<typeof handleDataPageError> | undefined;
   try {
@@ -98,6 +99,7 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
       result = geoResult;
       stac = stacResult;
       authoritativeVersion = detail?.selectedVersion;
+      selectedName = detail?.item.name;
       if (
         selection !== undefined &&
         (authoritativeVersion?.dataItemId !== selection.dataItemId ||
@@ -173,6 +175,7 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
             />
           ) : (
             <DataFoundationMap
+              locale={locale}
               ariaLabel={copy.mapPage.mapAria}
               displayCrs={crs ?? 'EPSG:4326'}
               features={toMapFeatureCollection({ features: displayable })}
@@ -189,6 +192,11 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
               }}
               stacExtents={stacExtents}
               selectedVersion={selectedVersionId}
+              selectedName={
+                authoritativeVersion
+                  ? `${selectedName ?? ''} · v${authoritativeVersion.version}`
+                  : undefined
+              }
               vectorTileUrl={tileUrls.vectorTileUrl}
               rasterTileUrl={tileUrls.rasterTileUrl}
             />

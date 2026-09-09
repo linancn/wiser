@@ -1,3 +1,4 @@
+import { dataResourceName } from '@/lib/data-foundation-presentation';
 import Link from 'next/link';
 import type { DataCatalogItemDto } from '@/lib/data-foundation';
 import { getDictionary, type Locale } from '@/lib/i18n';
@@ -47,7 +48,7 @@ export function DataCatalogTable({
                   <Link
                     href={`/${locale}/data-foundation/catalog/${item.dataItemId}`}
                   >
-                    {item.name}
+                    {dataResourceName(item.name)}
                   </Link>
                 </th>
                 <td>{item.sourceOrganization}</td>

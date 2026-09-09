@@ -17,6 +17,7 @@ import {
 import { getDictionary, type Locale } from '@/lib/i18n';
 import { KnowledgeGraphCanvas } from './data-foundation-graph';
 import styles from './data-explorer.module.css';
+import { graphNodeLabel } from '@/lib/data-graph-label';
 import { useExplorationViewState } from './exploration-view-context';
 
 export function DataExplorerGraph({
@@ -160,7 +161,7 @@ export function DataExplorerGraph({
       nodes: (nodes ?? []).map((node) => ({
         entityId: node.id,
         kind: node.kind,
-        label: `${copy.graphNodeKinds[node.kind]} · ${node.kind === 'ASSET' ? node.label.split('/').at(-1) : node.kind === 'EVIDENCE' ? node.label.slice(0, 8) : node.label}`,
+        label: graphNodeLabel(node, locale),
       })),
       edges: (edges ?? []).map((edge) => ({
         edgeId: edge.id,
@@ -171,7 +172,7 @@ export function DataExplorerGraph({
           : '',
       })),
     }),
-    [nodes, edges, copy],
+    [nodes, edges, copy, locale],
   );
   const selectedId =
     selectedNode?.id ??
@@ -321,7 +322,7 @@ export function DataExplorerGraph({
               <option value="">{copy.graphChooseNode}</option>
               {nodes?.map((node) => (
                 <option key={node.id} value={node.id}>
-                  {copy.graphNodeKinds[node.kind]} · {node.label}
+                  {graphNodeLabel(node, locale)}
                 </option>
               ))}
             </select>
@@ -336,7 +337,7 @@ export function DataExplorerGraph({
               <option value="">{copy.graphChooseNode}</option>
               {nodes?.map((node) => (
                 <option key={node.id} value={node.id}>
-                  {copy.graphNodeKinds[node.kind]} · {node.label}
+                  {graphNodeLabel(node, locale)}
                 </option>
               ))}
             </select>
@@ -364,7 +365,7 @@ export function DataExplorerGraph({
               aria-pressed={node.id === selectedId}
               onClick={() => onSelect(node)}
             >
-              {copy.graphNodeKinds[node.kind]} · {node.label}
+              {graphNodeLabel(node, locale)}
             </button>
           </li>
         ))}

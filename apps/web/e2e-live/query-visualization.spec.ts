@@ -642,7 +642,7 @@ test('denied query and tile responses clear previous data and allow a fresh auth
     '1',
   );
   await page.route(
-    '**/api/data-foundation/geo/tiles/vector/queries/**',
+    '**/api/data-foundation/geo/tiles/vector/amap/queries/**',
     (route) =>
       route.fulfill({
         status: 403,
@@ -809,7 +809,7 @@ test('real NLDI records select the same station on the exploration map', async (
   page.on('response', (response) => {
     if (
       response.status() === 200 &&
-      response.url().includes('/geo/tiles/vector/queries/')
+      response.url().includes('/geo/tiles/vector/amap/queries/')
     )
       tileResponses.push(response.url());
   });
@@ -860,7 +860,9 @@ test('real NLDI records select the same station on the exploration map', async (
     '1',
   );
   await expect.poll(() => tileResponses.length).toBeGreaterThan(0);
-  const canvas = page.getByTestId('explorer-map').locator('canvas');
+  const canvas = page
+    .getByTestId('explorer-map')
+    .getByRole('region', { name: '数据基座地图' });
   const bounds = (await canvas.boundingBox())!;
   const lookup = page.waitForResponse(
     (response) =>

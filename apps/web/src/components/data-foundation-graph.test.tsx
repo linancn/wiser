@@ -28,12 +28,13 @@ const engine = vi.hoisted(() => ({
 }));
 vi.mock('@antv/g6', () => ({
   NodeEvent: { CLICK: 'node:click' },
+  GraphEvent: { AFTER_TRANSFORM: 'aftertransform' },
   Graph: class {
     constructor(options: GraphOptions) {
       engine.options = options;
     }
     on(_event: string, callback: typeof engine.click) {
-      engine.click = callback;
+      if (_event === 'node:click') engine.click = callback;
     }
     render = engine.render;
     destroy = engine.destroy;

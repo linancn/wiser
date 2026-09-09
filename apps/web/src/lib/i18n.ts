@@ -89,6 +89,16 @@ const zhCN = {
     identityPoints: ['统一登录', '项目级权限', '中英文与深浅色一致'],
   },
   dataFoundation: {
+    amap: {
+      provider: '高德地图底图',
+      language: 'zh_cn',
+      loading: '正在加载高德底图…',
+      failed: '暂时无法加载底图。数据内容仍可查看。',
+      retry: '重试底图',
+      aligned: '已按高德底图对齐',
+      coordinateLabel: '地图位置',
+      sourceDetails: '坐标与版本信息',
+    },
     content: {
       raster: {
         band: '波段 / 变量',
@@ -110,6 +120,8 @@ const zhCN = {
       file: '文件 {number}',
       download: '下载原文件',
       preview: '原文件预览',
+      invalidOriginal:
+        '此文件为空或内容不完整，暂时无法预览。你仍可下载原文件，核对来源或重新提供完整文件。',
       analyze: '查询与分析此数据',
       reload: '重新加载',
       loading: '正在加载内容…',
@@ -1598,6 +1610,17 @@ const en: typeof zhCN = {
     ],
   },
   dataFoundation: {
+    amap: {
+      provider: 'AMap basemap',
+      language: 'en',
+      loading: 'Loading AMap…',
+      failed:
+        'The basemap is temporarily unavailable. You can still inspect the data.',
+      retry: 'Retry basemap',
+      aligned: 'Aligned with the AMap basemap',
+      coordinateLabel: 'Map alignment',
+      sourceDetails: 'Coordinates and version',
+    },
     content: {
       raster: {
         band: 'Band / variable',
@@ -1619,6 +1642,8 @@ const en: typeof zhCN = {
       file: 'File {number}',
       download: 'Download original file',
       preview: 'Original file preview',
+      invalidOriginal:
+        'This file is empty or incomplete and cannot be previewed. Download the original to check its source or provide a complete replacement.',
       analyze: 'Query and analyze this data',
       reload: 'Reload',
       loading: 'Loading content…',

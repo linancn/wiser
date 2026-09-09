@@ -92,6 +92,7 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
       }
     });
     await login(page, 'zh-CN', detailPath('zh-CN'));
+    await page.getByText('来源与授权', { exact: true }).first().click();
     await page.getByText('技术详情', { exact: true }).first().click();
 
     await expect(
@@ -148,6 +149,10 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
     ).toBeVisible();
 
     await page.goto(detailPath('en'));
+    await page
+      .getByText('Provenance and authorization', { exact: true })
+      .first()
+      .click();
     const mapLink = page.getByRole('link', {
       name: 'View this version on the map',
     });
@@ -165,7 +170,7 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
       page.getByRole('heading', { name: 'Map preview' }),
     ).toBeVisible();
     await expect(
-      page.getByRole('img', { name: 'Data Foundation spatial data map' }),
+      page.getByRole('region', { name: 'Data Foundation spatial data map' }),
     ).toBeVisible();
     await expect(
       page.getByRole('checkbox', { name: 'Vector layer' }),
