@@ -462,6 +462,9 @@ test('graph layouts run in a same-origin worker and release it after rendering',
     'data-state',
     'ready',
   );
+  await expect(
+    page.getByTestId('knowledge-graph').locator('canvas[tabindex="1"]'),
+  ).toHaveCount(0);
   // Production chunk names are content hashes, so observe Worker lifecycle itself.
   await expect.poll(() => workers.length).toBeGreaterThan(0);
   expect(
