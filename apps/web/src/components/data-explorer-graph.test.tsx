@@ -229,7 +229,7 @@ it('restores saved graph focus, relation filtering and page navigation as one re
           queryId: id,
           view: 'graph',
           versionId: id,
-          first: 30,
+          first: 8,
           after: 'neighbors-2',
           graph: {
             detail: 'assets',

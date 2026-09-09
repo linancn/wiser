@@ -1,4 +1,5 @@
 export interface GraphLayoutInput {
+  readonly mode?: 'network' | 'hierarchy';
   readonly direction?: 'LR' | 'TB';
   readonly nodes: readonly { readonly id: string }[];
   readonly edges: readonly {

@@ -123,3 +123,8 @@
 .canvasControls button:disabled {
   opacity: 0.55;
 }
+
+.canvasControls button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}

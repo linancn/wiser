@@ -804,6 +804,8 @@ const zhCN = {
       prompt: '输入关键词开始检索。',
     },
     graphPage: {
+      networkLayout: '关系网络',
+      hierarchyLayout: '来源层级',
       controls: '图谱视角',
       zoomIn: '放大图谱',
       zoomOut: '缩小图谱',
@@ -2206,6 +2208,8 @@ const en: typeof zhCN = {
       prompt: 'Enter keywords to start searching.',
     },
     graphPage: {
+      networkLayout: 'Relationship network',
+      hierarchyLayout: 'Source hierarchy',
       controls: 'Graph viewport',
       zoomIn: 'Zoom in graph',
       zoomOut: 'Zoom out graph',

@@ -10,11 +10,12 @@ import { layoutGraph } from '@/lib/graph-layout';
 import styles from './data-foundation-graph.module.css';
 
 export interface CanvasGraphData {
-  readonly nodes: readonly { entityId: string; label: string }[];
+  readonly nodes: readonly { entityId: string; label: string; kind?: string }[];
   readonly edges: readonly {
     edgeId: string;
     fromEntityId: string;
     toEntityId: string;
+    label?: string;
   }[];
 }
 
@@ -25,11 +26,9 @@ export function KnowledgeGraphCanvas({
   selectedId,
   onSelect,
   locale,
-  hierarchical = false,
   path,
 }: {
   readonly result: CanvasGraphData;
-  readonly hierarchical?: boolean;
   readonly path?:
     | {
         readonly nodeIds: readonly string[];
@@ -57,6 +56,7 @@ export function KnowledgeGraphCanvas({
   const select = useRef(onSelect);
   select.current = onSelect;
   const [state, setState] = useState<GraphState>('loading');
+  const [mode, setMode] = useState<'network' | 'hierarchy'>('network');
   const [direction, setDirection] = useState<'LR' | 'TB'>('LR');
   useEffect(() => {
     const container = target.current;
@@ -86,29 +86,34 @@ export function KnowledgeGraphCanvas({
         labelFill: tokens.getPropertyValue('--text-primary').trim(),
         edge: tokens.getPropertyValue('--border-strong').trim(),
         selected: tokens.getPropertyValue('--warning-bright').trim(),
+        source:
+          tokens.getPropertyValue('--success-strong').trim() ||
+          tokens.getPropertyValue('--accent').trim(),
+        evidence:
+          tokens.getPropertyValue('--warning-strong').trim() ||
+          tokens.getPropertyValue('--accent').trim(),
       };
     };
     const initialize = async () => {
       const { Graph: GraphConstructor, NodeEvent } = await import('@antv/g6');
       if (disposed) return;
-      const positions = hierarchical
-        ? new Map(
-            (
-              await layoutGraph(
-                {
-                  direction,
-                  nodes: result.nodes.map((node) => ({ id: node.entityId })),
-                  edges: result.edges.map((edge) => ({
-                    id: edge.edgeId,
-                    source: edge.fromEntityId,
-                    target: edge.toEntityId,
-                  })),
-                },
-                layoutController.signal,
-              )
-            ).map((node) => [node.id, node]),
+      const positions = new Map(
+        (
+          await layoutGraph(
+            {
+              direction,
+              mode,
+              nodes: result.nodes.map((node) => ({ id: node.entityId })),
+              edges: result.edges.map((edge) => ({
+                id: edge.edgeId,
+                source: edge.fromEntityId,
+                target: edge.toEntityId,
+              })),
+            },
+            layoutController.signal,
           )
-        : null;
+        ).map((node) => [node.id, node]),
+      );
       if (disposed) return;
       const palette = colors();
       const columns = Math.max(1, Math.ceil(Math.sqrt(result.nodes.length)));
@@ -118,13 +123,19 @@ export function KnowledgeGraphCanvas({
         height: container.clientHeight,
         animation: false,
         autoFit: 'view',
-        zoomRange: [0.15, 1.5],
+        zoomRange: [0.02, 2],
         padding: [direction === 'TB' ? 120 : 80, 40, 40, 40],
         data: {
           nodes: result.nodes.map((node, index) => ({
             id: node.entityId,
             data: { label: node.label },
             style: {
+              fill:
+                node.kind === 'RESOURCE'
+                  ? palette.source
+                  : node.kind === 'EVIDENCE'
+                    ? palette.evidence
+                    : palette.fill,
               x: positions?.get(node.entityId)?.x ?? (index % columns) * 180,
               y:
                 positions?.get(node.entityId)?.y ??
@@ -135,6 +146,7 @@ export function KnowledgeGraphCanvas({
             id: edge.edgeId,
             source: edge.fromEntityId,
             target: edge.toEntityId,
+            data: { label: edge.label ?? '' },
           })),
         },
         node: {
@@ -146,7 +158,7 @@ export function KnowledgeGraphCanvas({
             labelText: (node) => {
               const label = node.data?.['label'];
               if (typeof label !== 'string') return '';
-              const limit = hierarchical ? 24 : 48;
+              const limit = 36;
               return label.length > limit
                 ? `${label.slice(0, limit - 1)}…`
                 : label;
@@ -163,7 +175,21 @@ export function KnowledgeGraphCanvas({
         },
         edge: {
           state: { path: { stroke: palette.selected, lineWidth: 4 } },
-          style: { stroke: palette.edge, lineWidth: 1.5, endArrow: true },
+          style: {
+            stroke: palette.edge,
+            lineWidth: 1.5,
+            endArrow: true,
+            labelText: (edge) =>
+              typeof edge.data?.['label'] === 'string'
+                ? edge.data['label']
+                : '',
+            labelFill: palette.labelFill,
+            labelFontSize: 11,
+            labelBackground: true,
+            labelBackgroundFill: getComputedStyle(document.documentElement)
+              .getPropertyValue('--surface')
+              .trim(),
+          },
         },
         behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element'],
       });
@@ -206,7 +232,12 @@ export function KnowledgeGraphCanvas({
               result.nodes.map((node) => ({
                 id: node.entityId,
                 style: {
-                  fill: palette.fill,
+                  fill:
+                    node.kind === 'RESOURCE'
+                      ? palette.source
+                      : node.kind === 'EVIDENCE'
+                        ? palette.evidence
+                        : palette.fill,
                   stroke: palette.stroke,
                   labelFill: palette.labelFill,
                 },
@@ -246,7 +277,7 @@ export function KnowledgeGraphCanvas({
       if (highlights.current?.instance === instance) highlights.current = null;
       void pending.current.finally(() => instance?.destroy()).catch(() => {});
     };
-  }, [result, hierarchical, direction]);
+  }, [result, mode, direction]);
 
   useEffect(() => {
     const active = graph.current;
@@ -294,8 +325,8 @@ export function KnowledgeGraphCanvas({
         } else
           await active.zoomTo(
             Math.max(
-              0.15,
-              Math.min(1.5, active.getZoom() * (action === 'in' ? 1.25 : 0.8)),
+              0.02,
+              Math.min(2, active.getZoom() * (action === 'in' ? 1.25 : 0.8)),
             ),
             false,
           );
@@ -310,12 +341,27 @@ export function KnowledgeGraphCanvas({
       data-testid="knowledge-graph"
       data-state={state}
       data-layout-direction={direction}
+      data-layout-mode={mode}
     >
       <div
         className={styles.canvasControls}
         role="toolbar"
         aria-label={copy.controls}
       >
+        <button
+          type="button"
+          aria-pressed={mode === 'network'}
+          onClick={() => setMode('network')}
+        >
+          {copy.networkLayout}
+        </button>
+        <button
+          type="button"
+          aria-pressed={mode === 'hierarchy'}
+          onClick={() => setMode('hierarchy')}
+        >
+          {copy.hierarchyLayout}
+        </button>
         <button
           disabled={state !== 'ready'}
           aria-label={copy.zoomIn}

@@ -81,7 +81,7 @@ export function DataExplorerGraph({
     const request = {
       queryId,
       view: 'graph' as const,
-      first: seed?.first ?? 30,
+      first: seed?.first ?? (focus.versionId ? 30 : 8),
       ...(focus.versionId ? { versionId: focus.versionId } : {}),
       ...(focus.recordId ? { recordId: focus.recordId } : {}),
       ...(focus.assetId ? { assetId: focus.assetId } : {}),
@@ -159,12 +159,16 @@ export function DataExplorerGraph({
     () => ({
       nodes: (nodes ?? []).map((node) => ({
         entityId: node.id,
+        kind: node.kind,
         label: `${copy.graphNodeKinds[node.kind]} · ${node.kind === 'ASSET' ? node.label.split('/').at(-1) : node.kind === 'EVIDENCE' ? node.label.slice(0, 8) : node.label}`,
       })),
       edges: (edges ?? []).map((edge) => ({
         edgeId: edge.id,
         fromEntityId: edge.source,
         toEntityId: edge.target,
+        label: ExplorationGraphRelationSchema.safeParse(edge.relation).success
+          ? copy.graphRelationsLabels[edge.relation as ExplorationGraphRelation]
+          : '',
       })),
     }),
     [nodes, edges, copy],
@@ -205,7 +209,6 @@ export function DataExplorerGraph({
           result={canvas}
           locale={locale}
           selectedId={selectedId}
-          hierarchical
           path={graph.path}
           onSelect={(id) => {
             const node = graph.nodes.find((node) => node.id === id);
