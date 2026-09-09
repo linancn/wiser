@@ -33,6 +33,23 @@ const complete = {
 } as const;
 
 describe('Data Foundation API runtime configuration', () => {
+  it('selects the configured Qwen model for semantic queries', () => {
+    const config = loadDataFoundationApiRuntimeConfig({
+      ...complete,
+      DATA_EMBEDDING_PROVIDER: 'openai-compatible',
+      DATA_EMBEDDING_BASE_URL: 'http://embedding:7710/v1',
+      DATA_EMBEDDING_MODEL: 'Qwen/Qwen3-Embedding-8B',
+      DATA_EMBEDDING_VERSION: '1.0.0-qwen3',
+      DATA_EMBEDDING_DIMENSIONS: '4096',
+    });
+    expect(config).toMatchObject({
+      embedding: {
+        provider: 'openai-compatible',
+        model: 'Qwen/Qwen3-Embedding-8B',
+        dimensions: 4096,
+      },
+    });
+  });
   it('stays explicitly disabled for an unconfigured local EXCON process', () => {
     expect(
       loadDataFoundationApiRuntimeConfig({ NODE_ENV: 'development' }),
@@ -104,7 +121,7 @@ describe('Data Foundation API runtime configuration', () => {
         martinUrl: complete.DATA_MARTIN_URL,
       },
       publicApiOrigin: complete.DATA_PUBLIC_API_ORIGIN,
-      fakeEmbeddingDimensions: 64,
+      embedding: { provider: 'fake', dimensions: 64, version: '1.0.0-fixture' },
     });
   });
 

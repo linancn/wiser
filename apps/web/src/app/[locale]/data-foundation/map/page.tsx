@@ -9,7 +9,8 @@ import {
   DataPageMain,
   DataSection,
   MapQueryForm,
-  Notice,
+  DataDisclosure,
+  ExplorationEntry,
   SectionHeading,
 } from '@/components/data-foundation-workspace';
 import {
@@ -133,29 +134,32 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
         lede={copy.mapPage.lede}
         aside={<AuthorityFlag locale={locale} />}
       />
-      <MapQueryForm
-        action={route}
-        bbox={typeof search.bbox === 'string' ? search.bbox : ''}
-        bboxHint={copy.geoPage.bboxHint}
-        bboxLabel={copy.mapPage.bboxLabel}
-        bboxPlaceholder={copy.mapPage.bboxPlaceholder}
-        crs={crs ?? 'EPSG:4326'}
-        crsLabel={copy.mapPage.crsLabel}
-        dataItem={typeof search.dataItem === 'string' ? search.dataItem : ''}
-        version={typeof search.version === 'string' ? search.version : ''}
-        versionLabel={copy.mapPage.versionLabel}
-        versionPlaceholder={copy.mapPage.versionPlaceholder}
-        submitLabel={copy.common.searchAction}
-        resetLabel={copy.common.resetAction}
-      />
+      <ExplorationEntry locale={locale} view="map" />
+      <DataDisclosure
+        title={copy.presentation.advanced}
+        open={search.bbox !== undefined || search.version !== undefined}
+      >
+        <MapQueryForm
+          action={route}
+          bbox={typeof search.bbox === 'string' ? search.bbox : ''}
+          bboxHint={copy.geoPage.bboxHint}
+          bboxLabel={copy.mapPage.bboxLabel}
+          bboxPlaceholder={copy.mapPage.bboxPlaceholder}
+          crs={crs ?? 'EPSG:4326'}
+          crsLabel={copy.mapPage.crsLabel}
+          dataItem={typeof search.dataItem === 'string' ? search.dataItem : ''}
+          version={typeof search.version === 'string' ? search.version : ''}
+          versionLabel={copy.mapPage.versionLabel}
+          versionPlaceholder={copy.mapPage.versionPlaceholder}
+          submitLabel={copy.common.searchAction}
+          resetLabel={copy.common.resetAction}
+        />
+      </DataDisclosure>
       {failure === undefined ? null : (
         <DataFailureState locale={locale} error={failure} />
       )}
       {!capabilityAvailable ? null : (
-        <Notice
-          title={copy.common.capabilityAvailable}
-          copy={copy.mapPage.prompt}
-        />
+        <DataEmpty title={copy.mapPage.title} copy={copy.mapPage.prompt} />
       )}
       {result === undefined ? null : (
         <DataSection>
@@ -190,7 +194,7 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
             />
           )}
           {unsupportedCount === 0 ? null : (
-            <Notice
+            <DataEmpty
               title={copy.common.coordinates}
               copy={copy.mapPage.unsupportedCrs}
             />

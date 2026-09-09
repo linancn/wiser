@@ -1,5 +1,7 @@
 import {
   loadSeaweedFsS3AuthorityConfig,
+  loadDataEmbeddingConfig,
+  type DataEmbeddingConfig,
   type DataJobScope,
   type SeaweedFsS3AuthorityConfig,
 } from '@wiser/data-infra';
@@ -48,8 +50,7 @@ export interface DataWorkerRuntimeConfig {
     readonly httpTimeoutMs: number;
     readonly httpMaximumResponseBytes: number;
     readonly maximumCachedEvents: number;
-    readonly embeddingDimensions: number;
-    readonly embeddingVersion: string;
+    readonly embedding: DataEmbeddingConfig;
     readonly publicationWaitTimeoutMs: number;
     readonly publicationWaitPollMs: number;
   };
@@ -63,7 +64,6 @@ interface ResolvedValue {
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const SEMANTIC_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 const SECURITY_LEVELS = new Set<DataJobScope['maxSecurityLevel']>([
   'L0_PUBLIC',
   'L1_INTERNAL',
@@ -481,18 +481,13 @@ export function loadDataWorkerConfig(
       1,
       1_000,
     ),
-    embeddingDimensions: integer(
-      value('DATA_FAKE_EMBEDDING_DIMENSIONS'),
-      'DATA_FAKE_EMBEDDING_DIMENSIONS',
-      32,
-      8,
-      4_096,
-    ),
-    embeddingVersion: safeKey(
-      value('DATA_FAKE_EMBEDDING_VERSION'),
-      'DATA_FAKE_EMBEDDING_VERSION',
-      SEMANTIC_VERSION_PATTERN,
-    ),
+    embedding: (() => {
+      try {
+        return loadDataEmbeddingConfig(environment);
+      } catch {
+        throw invalid('DATA_EMBEDDING_*');
+      }
+    })(),
     publicationWaitTimeoutMs,
     publicationWaitPollMs: integer(
       value('DATA_PUBLICATION_WAIT_POLL_MS'),

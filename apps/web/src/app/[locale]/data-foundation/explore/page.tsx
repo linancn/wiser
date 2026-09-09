@@ -21,6 +21,8 @@ interface Props {
   params: Promise<{ locale: string }>;
   searchParams: Promise<{
     saved?: string | string[];
+    dataItem?: string | string[];
+    version?: string | string[];
     q?: string | string[];
     query?: string | string[];
     quality?: string | string[];
@@ -45,6 +47,11 @@ export default async function ExplorePage({ params, searchParams }: Props) {
   const text =
     typeof search.q === 'string' && search.q.length <= 512 ? search.q : '';
   try {
+    if (
+      (search.dataItem !== undefined || search.version !== undefined) &&
+      (search.saved !== undefined || search.query !== undefined)
+    )
+      throw new DataFoundationApiError('invalid-request', 422);
     if (search.saved !== undefined) {
       saved = OpenExplorationViewOutputSchema.parse(
         await (
@@ -57,6 +64,17 @@ export default async function ExplorePage({ params, searchParams }: Props) {
         ...(search.query === undefined
           ? {
               spec: {
+                ...(search.dataItem !== undefined ||
+                search.version !== undefined
+                  ? {
+                      versions: [
+                        {
+                          dataItemId: search.dataItem,
+                          versionId: search.version,
+                        },
+                      ],
+                    }
+                  : {}),
                 ...(text.trim() ? { text: text.trim() } : {}),
                 ...(search.quality ? { qualityGrades: [search.quality] } : {}),
               },

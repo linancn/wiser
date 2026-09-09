@@ -15,7 +15,7 @@ checkPaths:
   - apps/web/src/**
   - apps/docs/src/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: c707fa20715254db0b0e46d1534d7741535a6532
+lastReviewedCommit: cd2b52e42ef15715e6f9747a4b7ede07078c1734
 ---
 
 ## Design direction
@@ -135,3 +135,5 @@ Overview task cards open the shared exploration workspace, including its map vie
 Graph selection and path updates send only changed node/edge states to G6. Unchanged elements are not redrawn through a full-state submission; removing a path clears its previous highlights while preserving selection. Large graphs still incur bounded initial rendering work; layout computation remains in a cancellable worker.
 
 The Portal derives its primary action from a verified session: authenticated users enter the Data workspace; anonymous users sign in. Catalog browsing uses 25-row cursor pages and a keyboard-focusable, internally scrolling table, preserving the name query on continuation and return to the first page. Source, publication, quality and security remain visible; the details explain check scope and content readiness.
+
+Data discovery and review pages use a compact shared heading and project-scope label. Catalog and quality tables keep status labels on one line, align text to the reading direction and scroll within a keyboard-focusable region. Quality review uses 25-row cursor pages. Search and knowledge results use 10-row cursor pages with a bounded result region, named version links, short excerpts and expandable source conditions, original excerpts and technical evidence. Registration manifests are labeled as source registration rather than rendered as article prose. The same disclosure component keeps protocol details secondary across versions, intake and agent access.

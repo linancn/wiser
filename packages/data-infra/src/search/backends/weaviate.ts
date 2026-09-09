@@ -76,7 +76,8 @@ export class WeaviateSearchBackend implements SearchBackendPort {
   constructor(options: WeaviateSearchBackendOptions) {
     const endpoint = safeEndpoint(options.endpoint);
     if (
-      options.collectionName !== WEAVIATE_EVIDENCE_COLLECTION ||
+      (options.collectionName !== WEAVIATE_EVIDENCE_COLLECTION &&
+        !/^WiserEvidenceChunkV3_[a-f0-9]{20}$/.test(options.collectionName)) ||
       typeof options.embed !== 'function' ||
       !Number.isSafeInteger(options.vectorDimensions) ||
       options.vectorDimensions < 1 ||

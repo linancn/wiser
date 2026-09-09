@@ -11,10 +11,16 @@ import type {
   IngestionState,
   OperationEventDto,
   PublicationStatus,
-  SearchResultDto,
   SecurityLevel,
 } from '@/lib/data-foundation';
 import { ingestionStepState } from '@/lib/data-foundation';
+import {
+  isRegistrationExcerpt,
+  SOURCE_REGISTRATION_LIMITATION,
+  namedCapability,
+  sourceLimitationLabel,
+  type DisplaySearchResult,
+} from '@/lib/data-foundation-presentation';
 import type { DataFoundationApiError } from '@/lib/data-foundation-dal.server';
 import { getDictionary, type Locale } from '@/lib/i18n';
 
@@ -69,6 +75,42 @@ export function DataSection({
 
 export function PanelGrid({ children }: { readonly children: ReactNode }) {
   return <div className={styles.panelGrid}>{children}</div>;
+}
+
+export function DataDisclosure({
+  title,
+  children,
+  open = false,
+}: {
+  readonly title: string;
+  readonly children: ReactNode;
+  readonly open?: boolean;
+}) {
+  return (
+    <details className={styles.disclosure} open={open}>
+      <summary>{title}</summary>
+      <div>{children}</div>
+    </details>
+  );
+}
+
+export function ExplorationEntry({
+  locale,
+  view,
+}: {
+  readonly locale: Locale;
+  readonly view: 'map' | 'graph';
+}) {
+  const copy = getDictionary(locale).dataFoundation.presentation;
+  return (
+    <div className={styles.explorationEntry}>
+      <p>{copy.exploreGuide}</p>
+      <Link href={`/${locale}/data-foundation/explore?view=${view}`}>
+        {view === 'map' ? copy.openMap : copy.openGraph}
+        <span aria-hidden="true"> →</span>
+      </Link>
+    </div>
+  );
 }
 
 export function QueryForm({
@@ -204,7 +246,9 @@ export function DataPageHeader({
   return (
     <header className={styles.pageHeader}>
       <div>
-        <p className={styles.eyebrow}>{eyebrow}</p>
+        {eyebrow.toLowerCase() === title.toLowerCase() ? null : (
+          <p className={styles.eyebrow}>{eyebrow}</p>
+        )}
         <h1>{title}</h1>
         <p className={styles.lede}>{lede}</p>
       </div>
@@ -217,7 +261,6 @@ export function AuthorityFlag({ locale }: { readonly locale: Locale }) {
   const copy = getDictionary(locale).dataFoundation.common;
   return (
     <aside className={styles.authorityFlag}>
-      <span>{copy.authorityEyebrow}</span>
       <strong>{copy.liveData}</strong>
       <small>{copy.noReferenceData}</small>
     </aside>
@@ -272,6 +315,7 @@ export function DataFailureState({
   })();
   return (
     <FailureState
+      headingLevel={2}
       eyebrow={copy.title}
       title={failure.title}
       copy={failure.copy}
@@ -506,7 +550,6 @@ export function VersionList({
             </Link>
           )}
           <div>
-            <ProtocolValue>{version.versionId}</ProtocolValue>
             <div className={styles.badgeRow}>
               <StatusBadge
                 code={version.securityLevel}
@@ -532,9 +575,18 @@ export function VersionList({
               <dd>{version.assetIds.length}</dd>
             </div>
             <div>
-              <dt>{copy.common.sourceHash}</dt>
+              <dt>{copy.presentation.technical}</dt>
               <dd>
-                <ProtocolValue>{version.sourceHash}</ProtocolValue>
+                <DataDisclosure title={copy.presentation.evidenceDetails}>
+                  <p>
+                    {copy.common.versionId}:{' '}
+                    <ProtocolValue>{version.versionId}</ProtocolValue>
+                  </p>
+                  <p>
+                    {copy.common.sourceHash}:{' '}
+                    <ProtocolValue>{version.sourceHash}</ProtocolValue>
+                  </p>
+                </DataDisclosure>
               </dd>
             </div>
           </dl>
@@ -647,7 +699,6 @@ export function IngestionStateRail({
           <li key={stage} data-step-state={stepState}>
             <i aria-hidden="true" />
             <span>{copy.status.ingestion[stage]}</span>
-            <code>{stage}</code>
           </li>
         );
       })}
@@ -683,8 +734,22 @@ export function IngestionRuntimeSummaries({
             {qualityIssues.map((issue) => (
               <li key={issue.issueId}>
                 <div className={styles.badgeRow}>
-                  <StatusBadge code={issue.severity} label={issue.severity} />
-                  <StatusBadge code={issue.status} label={issue.status} />
+                  <StatusBadge
+                    code={issue.severity}
+                    label={namedCapability(
+                      issue.severity,
+                      copy.presentation.runtimeStatus,
+                      copy.presentation.unknownStatus,
+                    )}
+                  />
+                  <StatusBadge
+                    code={issue.status}
+                    label={namedCapability(
+                      issue.status,
+                      copy.presentation.runtimeStatus,
+                      copy.presentation.unknownStatus,
+                    )}
+                  />
                 </div>
                 <p>{issue.message}</p>
                 <dl className={styles.compactFacts}>
@@ -718,40 +783,51 @@ export function IngestionRuntimeSummaries({
             {agentRuns.map((run) => (
               <li key={run.agentRunId}>
                 <div className={styles.runtimeRecordHeader}>
-                  <strong>{run.agentKind}</strong>
-                  <StatusBadge code={run.status} label={run.status} />
+                  <strong>{copy.presentation.agentUnknown}</strong>
+                  <StatusBadge
+                    code={run.status}
+                    label={namedCapability(
+                      run.status,
+                      copy.presentation.runtimeStatus,
+                      copy.presentation.unknownStatus,
+                    )}
+                  />
                 </div>
-                <p>
-                  {run.provider} · {run.model}
-                </p>
-                <dl className={styles.compactFacts}>
-                  <div>
-                    <dt>{copy.ingestionPage.deterministic}</dt>
-                    <dd>
-                      {run.deterministic
-                        ? copy.ingestionPage.yes
-                        : copy.ingestionPage.no}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>{copy.ingestionPage.inputHash}</dt>
-                    <dd>
-                      <ProtocolValue>{run.inputHash}</ProtocolValue>
-                    </dd>
-                  </div>
-                  {run.outputHash === undefined ? null : (
+                <DataDisclosure title={copy.presentation.processingDetails}>
+                  <p>
+                    <ProtocolValue>
+                      {run.agentKind} · {run.provider} · {run.model}
+                    </ProtocolValue>
+                  </p>
+                  <dl className={styles.compactFacts}>
                     <div>
-                      <dt>{copy.ingestionPage.outputHash}</dt>
+                      <dt>{copy.ingestionPage.deterministic}</dt>
                       <dd>
-                        <ProtocolValue>{run.outputHash}</ProtocolValue>
+                        {run.deterministic
+                          ? copy.ingestionPage.yes
+                          : copy.ingestionPage.no}
                       </dd>
                     </div>
-                  )}
-                  <div>
-                    <dt>{copy.common.updatedAt}</dt>
-                    <dd>{formatDataDate(run.updatedAt, locale)}</dd>
-                  </div>
-                </dl>
+                    <div>
+                      <dt>{copy.ingestionPage.inputHash}</dt>
+                      <dd>
+                        <ProtocolValue>{run.inputHash}</ProtocolValue>
+                      </dd>
+                    </div>
+                    {run.outputHash === undefined ? null : (
+                      <div>
+                        <dt>{copy.ingestionPage.outputHash}</dt>
+                        <dd>
+                          <ProtocolValue>{run.outputHash}</ProtocolValue>
+                        </dd>
+                      </div>
+                    )}
+                    <div>
+                      <dt>{copy.common.updatedAt}</dt>
+                      <dd>{formatDataDate(run.updatedAt, locale)}</dd>
+                    </div>
+                  </dl>
+                </DataDisclosure>
               </li>
             ))}
           </ol>
@@ -773,33 +849,49 @@ export function IngestionRuntimeSummaries({
             {projectionStatuses.map((projection) => (
               <li key={`${projection.versionId}:${projection.projectionKind}`}>
                 <div className={styles.runtimeRecordHeader}>
-                  <strong>{projection.projectionKind}</strong>
+                  <strong>
+                    {namedCapability(
+                      projection.projectionKind.toUpperCase(),
+                      copy.presentation.projectionNames,
+                      copy.presentation.projectionUnknown,
+                    )}
+                  </strong>
                   <StatusBadge
                     code={projection.status}
-                    label={projection.status}
+                    label={namedCapability(
+                      projection.status,
+                      copy.presentation.runtimeStatus,
+                      copy.presentation.unknownStatus,
+                    )}
                   />
                 </div>
-                <ProtocolValue>{projection.dataItemId}</ProtocolValue>
-                <dl className={styles.compactFacts}>
-                  <div>
-                    <dt>{copy.common.versionId}</dt>
-                    <dd>
-                      <ProtocolValue>{projection.versionId}</ProtocolValue>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>{copy.ingestionPage.attemptCount}</dt>
-                    <dd>{projection.attemptCount}</dd>
-                  </div>
-                  <div>
-                    <dt>{copy.ingestionPage.projectedAt}</dt>
-                    <dd>
-                      {projection.projectedAt === undefined
-                        ? copy.common.notProvided
-                        : formatDataDate(projection.projectedAt, locale)}
-                    </dd>
-                  </div>
-                </dl>
+                <Link
+                  href={`/${locale}/data-foundation/catalog/${projection.dataItemId}?version=${projection.versionId}`}
+                >
+                  {copy.common.inspect}
+                </Link>
+                <DataDisclosure title={copy.presentation.technical}>
+                  <dl className={styles.compactFacts}>
+                    <div>
+                      <dt>{copy.common.versionId}</dt>
+                      <dd>
+                        <ProtocolValue>{projection.versionId}</ProtocolValue>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>{copy.ingestionPage.attemptCount}</dt>
+                      <dd>{projection.attemptCount}</dd>
+                    </div>
+                    <div>
+                      <dt>{copy.ingestionPage.projectedAt}</dt>
+                      <dd>
+                        {projection.projectedAt === undefined
+                          ? copy.common.notProvided
+                          : formatDataDate(projection.projectedAt, locale)}
+                      </dd>
+                    </div>
+                  </dl>
+                </DataDisclosure>
               </li>
             ))}
           </ol>
@@ -837,12 +929,11 @@ export function OperationEventList({
                 label={copy.status.events[event.eventType]}
               />
             </div>
-            {event.message === undefined ? null : <p>{event.message}</p>}
             <time dateTime={event.occurredAt}>
               {formatDataDate(event.occurredAt, locale)}
             </time>
           </div>
-          <ProtocolValue>{event.eventId}</ProtocolValue>
+          <span>{event.progressPercent}%</span>
         </li>
       ))}
     </ol>
@@ -854,68 +945,105 @@ export function SearchResultList({
   locale,
   title,
 }: {
-  readonly items: readonly SearchResultDto[];
+  readonly items: readonly DisplaySearchResult[];
   readonly locale: Locale;
   readonly title: string;
 }) {
   const copy = getDictionary(locale).dataFoundation;
+  const labels = copy.presentation;
   if (items.length === 0)
     return <DataEmpty title={title} copy={copy.common.empty} />;
   return (
-    <div className={styles.searchResults}>
-      {items.map((result) => (
-        <article key={`${result.evidenceId}:${result.versionId}`}>
-          <header>
-            <ProtocolValue>{result.source}</ProtocolValue>
-            <span className={styles.score}>{result.score.toFixed(3)}</span>
-          </header>
-          {result.excerpt === undefined ? (
-            <p>{copy.common.notProvided}</p>
-          ) : (
-            <p>{result.excerpt}</p>
-          )}
-          <div className={styles.badgeRow}>
-            <StatusBadge
-              code={result.securityLevel}
-              label={copy.status.security[result.securityLevel]}
-            />
-            <StatusBadge
-              code={result.acceptanceStatus}
-              label={copy.status.acceptance[result.acceptanceStatus]}
-            />
-          </div>
-          <dl className={styles.compactFacts}>
-            <div>
-              <dt>{copy.common.dataItemId}</dt>
-              <dd>
-                <ProtocolValue>{result.dataItemId}</ProtocolValue>
-              </dd>
-            </div>
-            <div>
-              <dt>{copy.common.versionId}</dt>
-              <dd>
-                <ProtocolValue>{result.versionId}</ProtocolValue>
-              </dd>
-            </div>
-            <div>
-              <dt>{copy.common.evidenceId}</dt>
-              <dd>
-                <ProtocolValue>{result.evidenceId}</ProtocolValue>
-              </dd>
-            </div>
-          </dl>
-          {result.limitations.length === 0 ? null : (
-            <div className={styles.limitations}>
-              <strong>{copy.common.limitations}</strong>
-              <ul>
-                {result.limitations.map((limitation) => (
-                  <li key={limitation}>{limitation}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </article>
-      ))}
+    <div
+      className={styles.searchResults}
+      tabIndex={0}
+      role="region"
+      aria-label={title}
+    >
+      {items.map((result) => {
+        const registration =
+          isRegistrationExcerpt(result.excerpt) ||
+          result.limitations.includes(SOURCE_REGISTRATION_LIMITATION);
+        const excerpt = result.excerpt?.trim();
+        const preview = registration
+          ? labels.registrationPreview
+          : excerpt
+            ? [...excerpt].slice(0, 320).join('') +
+              ([...excerpt].length > 320 ? '…' : '')
+            : labels.noExcerpt;
+        return (
+          <article key={`${result.evidenceId}:${result.versionId}`}>
+            <header>
+              <h3>
+                <Link
+                  href={`/${locale}/data-foundation/catalog/${result.dataItemId}?version=${result.versionId}`}
+                >
+                  {result.resourceName ?? labels.searchFallback}
+                </Link>
+              </h3>
+              <StatusBadge
+                code={result.securityLevel}
+                label={copy.status.security[result.securityLevel]}
+              />
+            </header>
+            {registration ? (
+              <span className={styles.resultKind}>{labels.registration}</span>
+            ) : null}
+            <p>{preview}</p>
+            <DataDisclosure
+              title={`${labels.sourceDetails} · ${result.limitations.length}`}
+            >
+              <div className={styles.badgeRow}>
+                <StatusBadge
+                  code={result.acceptanceStatus}
+                  label={copy.status.acceptance[result.acceptanceStatus]}
+                />
+              </div>
+              {result.limitations.length === 0 ? (
+                <p>{copy.common.notProvided}</p>
+              ) : (
+                <ul>
+                  {result.limitations.map((limitation) => (
+                    <li key={limitation}>
+                      {sourceLimitationLabel(limitation, labels)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </DataDisclosure>
+            {excerpt && (registration || [...excerpt].length > 320) ? (
+              <DataDisclosure title={labels.originalExcerpt}>
+                <p className={styles.originalExcerpt} tabIndex={0}>
+                  {excerpt}
+                </p>
+              </DataDisclosure>
+            ) : null}
+            <DataDisclosure title={labels.evidenceDetails}>
+              <FieldGrid
+                fields={[
+                  {
+                    label: copy.common.dataItemId,
+                    value: <ProtocolValue>{result.dataItemId}</ProtocolValue>,
+                  },
+                  {
+                    label: copy.common.versionId,
+                    value: <ProtocolValue>{result.versionId}</ProtocolValue>,
+                  },
+                  {
+                    label: copy.common.evidenceId,
+                    value: <ProtocolValue>{result.evidenceId}</ProtocolValue>,
+                  },
+                  {
+                    label: labels.retrievalSource,
+                    value: <ProtocolValue>{result.source}</ProtocolValue>,
+                  },
+                  { label: labels.ranking, value: result.score.toFixed(3) },
+                ]}
+              />
+            </DataDisclosure>
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -947,28 +1075,43 @@ export function GeoFeatureList({
     <div className={styles.geoList}>
       {features.map((feature) => (
         <article key={feature.featureId}>
-          <strong>{feature.geometry.type}</strong>
-          <ProtocolValue>{feature.featureId}</ProtocolValue>
-          <dl className={styles.compactFacts}>
-            <div>
-              <dt>{copy.common.dataItemId}</dt>
-              <dd>
-                <ProtocolValue>{feature.dataItemId}</ProtocolValue>
-              </dd>
-            </div>
-            <div>
-              <dt>{copy.common.versionId}</dt>
-              <dd>
-                <ProtocolValue>{feature.versionId}</ProtocolValue>
-              </dd>
-            </div>
-            <div>
-              <dt>{copy.common.coordinates}</dt>
-              <dd>
-                <ProtocolValue>{feature.geometry.crs}</ProtocolValue>
-              </dd>
-            </div>
-          </dl>
+          <header>
+            <strong>
+              {copy.presentation.geometryNames[feature.geometry.type]}
+            </strong>
+          </header>
+          <p>
+            {copy.common.coordinates}:{' '}
+            <ProtocolValue>{feature.geometry.crs}</ProtocolValue>
+          </p>
+          <Link
+            href={`/${locale}/data-foundation/catalog/${feature.dataItemId}?version=${feature.versionId}`}
+          >
+            {copy.presentation.searchFallback}
+          </Link>
+          <DataDisclosure title={copy.presentation.technical}>
+            <ProtocolValue>{feature.featureId}</ProtocolValue>
+            <dl className={styles.compactFacts}>
+              <div>
+                <dt>{copy.common.dataItemId}</dt>
+                <dd>
+                  <ProtocolValue>{feature.dataItemId}</ProtocolValue>
+                </dd>
+              </div>
+              <div>
+                <dt>{copy.common.versionId}</dt>
+                <dd>
+                  <ProtocolValue>{feature.versionId}</ProtocolValue>
+                </dd>
+              </div>
+              <div>
+                <dt>{copy.common.coordinates}</dt>
+                <dd>
+                  <ProtocolValue>{feature.geometry.crs}</ProtocolValue>
+                </dd>
+              </div>
+            </dl>
+          </DataDisclosure>
         </article>
       ))}
     </div>
@@ -983,47 +1126,69 @@ export function CapabilityList({
   readonly registry: CapabilityRegistryDto;
 }) {
   const copy = getDictionary(locale).dataFoundation;
+  const labels = copy.presentation;
   return (
     <div className={styles.capabilityList}>
       {registry.capabilities.map((capability) => (
         <article key={capability.id}>
           <header>
-            <div>
-              <ProtocolValue>{capability.id}</ProtocolValue>
-              <h3>{capability.kind}</h3>
-            </div>
-            <ProtocolValue>v{capability.version}</ProtocolValue>
+            <h3>
+              {namedCapability(
+                capability.id,
+                labels.capabilityNames,
+                labels.capabilityFallback,
+              )}
+            </h3>
+            <span className={styles.resultKind}>
+              {capability.kind === 'query'
+                ? labels.queryKind
+                : labels.commandKind}
+            </span>
           </header>
-          <FieldGrid
-            fields={[
-              {
-                label: copy.capabilitiesPage.execution,
-                value: capability.executionMode,
-              },
-              {
-                label: copy.capabilitiesPage.timeout,
-                value: `${capability.timeout} ms`,
-              },
-              {
-                label: copy.capabilitiesPage.idempotent,
-                value: capability.idempotent
-                  ? copy.capabilitiesPage.yes
-                  : copy.capabilitiesPage.no,
-              },
-              {
-                label: copy.capabilitiesPage.endpoint,
-                value: (
-                  <ProtocolValue>
-                    {capability.restMethod} {capability.restPath}
-                  </ProtocolValue>
-                ),
-              },
-              {
-                label: copy.capabilitiesPage.scopes,
-                value: capability.requiredScopes.join(' · '),
-              },
-            ]}
-          />
+          <DataDisclosure title={labels.technical}>
+            <p>
+              <ProtocolValue>
+                {capability.id} · v{capability.version}
+              </ProtocolValue>
+            </p>
+            <FieldGrid
+              fields={[
+                {
+                  label: copy.capabilitiesPage.execution,
+                  value:
+                    capability.executionMode === 'SYNCHRONOUS'
+                      ? labels.sync
+                      : labels.async,
+                },
+                {
+                  label: copy.capabilitiesPage.timeout,
+                  value: `${capability.timeout} ms`,
+                },
+                {
+                  label: copy.capabilitiesPage.idempotent,
+                  value: capability.idempotent
+                    ? copy.capabilitiesPage.yes
+                    : copy.capabilitiesPage.no,
+                },
+                {
+                  label: copy.capabilitiesPage.endpoint,
+                  value: (
+                    <ProtocolValue>
+                      {capability.restMethod} {capability.restPath}
+                    </ProtocolValue>
+                  ),
+                },
+                {
+                  label: copy.capabilitiesPage.scopes,
+                  value: (
+                    <ProtocolValue>
+                      {capability.requiredScopes.join(' · ')}
+                    </ProtocolValue>
+                  ),
+                },
+              ]}
+            />
+          </DataDisclosure>
         </article>
       ))}
     </div>

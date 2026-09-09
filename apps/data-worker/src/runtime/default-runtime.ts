@@ -1,12 +1,11 @@
 import {
-  DeterministicFakeEmbedding,
+  createDataEmbedding,
   Neo4jKnowledgeGraphProjection,
   OPENSEARCH_EVIDENCE_INDEX,
   OpenSearchEvidenceProjection,
   PostgisSpatialProjection,
   PostgresDataJobRepository,
   PostgresProjectionOutboxRepository,
-  ProjectionOutboxConsumer,
   StacCatalogProjection,
   WeaviateEvidenceProjection,
   createDataPostgresPool,
@@ -25,11 +24,11 @@ import { createAnalysisHandler } from '../handlers/analysis.js';
 import { DataWorkerScheduler, type DataWorkerLogger } from '../scheduler.js';
 import {
   DataWorkerRuntime,
-  PublishingProjectionRepository,
   createDefaultHandlerRegistry,
   createProjectionAwareIngestionHandler,
 } from '../runtime.js';
 import { createDefaultIngestionPipelineOptions } from './default-ports.js';
+import { createProfiledProjectionConsumer } from './projection-profile.js';
 import { BoundedProjectionHttpClient } from './http-client.js';
 import {
   PostgresProjectionHydrationAuthority,
@@ -139,12 +138,10 @@ export function createDefaultDataWorkerRuntime(
   const hydrationAuthority = new PostgresProjectionHydrationAuthority(
     hydrationPool,
   );
+  const embedding = createDataEmbedding(config.projection.embedding);
   const hydrator = new ProjectionInputHydrator({
     authority: hydrationAuthority,
-    embedding: new DeterministicFakeEmbedding({
-      dimensions: config.projection.embeddingDimensions,
-      version: config.projection.embeddingVersion,
-    }),
+    embedding,
     maximumCachedEvents: config.projection.maximumCachedEvents,
   });
   const spatialPool = createDataPostgresPool({
@@ -157,7 +154,8 @@ export function createDefaultDataWorkerRuntime(
     weaviate: new WeaviateEvidenceProjection({
       baseUrl: config.projection.weaviateBaseUrl,
       apiKey: config.projection.weaviateApiKey,
-      vectorDimensions: config.projection.embeddingDimensions,
+      vectorDimensions: embedding.model.dimensions,
+      embeddingModel: embedding.model,
       http,
     }),
     opensearch: new OpenSearchEvidenceProjection({
@@ -187,14 +185,12 @@ export function createDefaultDataWorkerRuntime(
       applicationName: 'wiser-data-outbox',
     }),
   );
-  const publishingRepository = new PublishingProjectionRepository(
-    outbox,
+  const projectionConsumer = createProfiledProjectionConsumer({
+    repository: outbox,
     publication,
-  );
-  const projectionConsumer = new ProjectionOutboxConsumer({
-    repository: publishingRepository,
     targets,
     consumerName: config.projection.consumerName,
+    embeddingModel: embedding.model,
   });
   const runtime = new DataWorkerRuntime({
     scheduler,

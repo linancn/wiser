@@ -132,3 +132,33 @@ There is no “delete every local state” command. `.wiser/local/runtime-secret
 When the complete stack fails, check Docker resources, port conflicts, and failed-service logs before rerunning the convergent `pnpm stack:full:up`.
 
 The Data profile builds `source-parser` and connects it only to the worker on the internal `data-parser` network. It has no host port, database credentials or outbound network access; the filesystem is read-only and temporary files live in bounded memory storage. `DATA_ANALYSIS_PARSER_URL` is optional for a host-only worker; without it, external formats remain explicitly unavailable. The profile configures it automatically. CI runs parser tests in the pinned GDAL image.
+
+## Semantic embeddings and index cutover
+
+Use the same `DATA_EMBEDDING_*` settings for API and Data Worker. Keep `fake` for CI and repeatable smoke; `NODE_ENV=production` requires an explicit real provider. Qwen3-Embedding-8B is supported through an OpenAI-compatible `/v1/embeddings` endpoint. Set the server address in private deployment configuration; the browser never receives it or its optional API key.
+
+```dotenv
+DATA_EMBEDDING_PROVIDER=openai-compatible
+DATA_EMBEDDING_BASE_URL=http://embedding.internal:7710/v1
+DATA_EMBEDDING_MODEL=Qwen/Qwen3-Embedding-8B
+DATA_EMBEDDING_VERSION=1.0.0-qwen3
+DATA_EMBEDDING_DIMENSIONS=4096
+DATA_EMBEDDING_API_KEY=
+DATA_EMBEDDING_TIMEOUT_MS=15000
+```
+
+An omitted/empty `DATA_EMBEDDING_QUERY_INSTRUCTION` selects the versioned English retrieval instruction. It is applied only to queries. The adapter requires the response model to match, checks exactly 4,096 finite nonzero vector values for this profile, and normalizes them. A call accepts at most 16 documents of 32,768 characters each and a 4 MiB response; excess input fails explicitly. No prompt or upstream response is written to logs.
+
+Changing model, revision, dimensions or query instruction derives a new `WiserEvidenceChunkV3_*` collection. The revision is operator-managed: bump it when the served weights or preprocessing change. Keep API on the previous profile while preparing the target. Run the Worker rebuild against the new profile using the same Compose files as the running case, including `compose.override.yaml`; supply temporary new-profile environment only to the rebuild process when staging.
+
+```bash
+# Include the running case/runtime file as well when that deployment uses one.
+docker compose -f compose.yaml -f compose.override.yaml run --rm --no-deps \
+  data-worker pnpm --filter @wiser/data-worker exec tsx src/embedding-rebuild-cli.ts
+```
+
+The CLI uses the Worker's explicit tenant/project/security/policy scope, a per-profile/project advisory lock, immutable authority evidence, deterministic projection IDs and an independent consumer checkpoint. It writes only the target Weaviate collection and its rebuild checkpoint; it does not reset ingestion/publication state or replay other projections. Interrupted/failed events do not advance the checkpoint. Resume with the same profile.
+
+The live Worker also isolates its checkpoint by configured consumer name and real embedding profile. Its first pass rechecks the retained event history and writes Weaviate even when the shared projection ledger already reports success; other successful projections are skipped. This bounded pass is separate from the rebuild checkpoint, so a prepared collection does not eliminate the initial catch-up work. Later starts resume that profile's live checkpoint. Fake mode retains the legacy checkpoint for local fixture compatibility and rollback; real profiles never advance it.
+
+After rebuilding, switch the Worker first, let its profile checkpoint catch up to the project's committed events, and verify evidence coverage, model identity and Chinese/English real-case queries before switching API to the same settings. Keep the old collection. Rollback follows the same order: restore the old Worker profile, wait for it to index events published while that profile was inactive, verify coverage, then restore the API profile. Restoring configuration alone is not evidence of a complete index. Existing source-registration content does not become scientific evidence merely because its embeddings improve.

@@ -55,7 +55,8 @@
   text-transform: uppercase;
 }
 
-.state h1 {
+.state h1,
+.state h2 {
   margin: 0;
   color: var(--text-strong);
   font-family: var(--display);
@@ -63,6 +64,18 @@
   font-weight: 590;
   letter-spacing: -0.04em;
   line-height: 1.08;
+}
+
+.embedded {
+  width: 100%;
+  gap: 20px;
+  margin: 0;
+  padding: clamp(20px, 3vw, 32px);
+}
+
+.embedded h2 {
+  font-size: clamp(21px, 3vw, 28px);
+  line-height: 1.25;
 }
 
 .copy,

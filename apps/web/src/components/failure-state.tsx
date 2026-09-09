@@ -6,26 +6,32 @@ export function FailureState({
   copy,
   eyebrow,
   guidance,
+  headingLevel = 1,
   primaryAction,
   title,
 }: {
   readonly copy: string;
   readonly eyebrow: string;
   readonly guidance?: string;
+  readonly headingLevel?: 1 | 2;
   readonly primaryAction: {
     readonly href: string;
     readonly label: string;
   };
   readonly title: string;
 }) {
+  const Heading = headingLevel === 1 ? 'h1' : 'h2';
   return (
-    <section className={styles.state} role="alert">
+    <section
+      className={`${styles.state} ${headingLevel === 2 ? styles.embedded : ''}`}
+      role="alert"
+    >
       <span className={styles.mark} aria-hidden="true">
         <i />
       </span>
       <div>
         <p className={styles.eyebrow}>{eyebrow}</p>
-        <h1>{title}</h1>
+        <Heading>{title}</Heading>
         <p className={styles.copy}>{copy}</p>
         {guidance === undefined ? null : (
           <p className={styles.guidance}>{guidance}</p>

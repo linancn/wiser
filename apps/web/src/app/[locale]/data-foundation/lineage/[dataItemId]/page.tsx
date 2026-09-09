@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 
 import {
   AuthorityFlag,
-  CoverageGap,
+  DataEmpty,
   DataFailureState,
   DataPageHeader,
   DataPageMain,
@@ -71,14 +71,25 @@ export default async function LineagePage({ params }: LineagePageProps) {
         <>
           <DataSection>
             <SectionHeading title={copy.lineagePage.anchorsTitle} />
-            <VersionList locale={locale} versions={versions.items} />
+            <VersionList
+              hrefBase={`/${locale}/data-foundation/catalog/${detail.item.dataItemId}`}
+              locale={locale}
+              versions={versions.items}
+            />
           </DataSection>
           <DataSection>
             <SectionHeading title={copy.lineagePage.graphTitle} />
-            <CoverageGap
+            <DataEmpty
               title={copy.lineagePage.graphTitle}
               copy={copy.lineagePage.gapCopy}
             />
+            {detail.selectedVersion === undefined ? null : (
+              <Link
+                href={`/${locale}/data-foundation/explore?dataItem=${detail.item.dataItemId}&version=${detail.selectedVersion.versionId}&view=graph`}
+              >
+                {copy.presentation.openGraph}
+              </Link>
+            )}
           </DataSection>
           <Link
             href={`/${locale}/data-foundation/catalog/${detail.item.dataItemId}`}

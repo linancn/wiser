@@ -3,13 +3,12 @@ import { notFound } from 'next/navigation';
 
 import {
   AuthorityFlag,
-  CoverageGap,
+  DataDisclosure,
   DataFailureState,
   DataPageHeader,
   DataPageMain,
   DataSection,
   FieldGrid,
-  PanelGrid,
   ProtocolValue,
   SectionHeading,
   StatusBadge,
@@ -112,32 +111,24 @@ export default async function DataItemPage({
         <>
           <DataSection>
             <SectionHeading title={copy.itemPage.authorityTitle} />
+            <p>{copy.presentation.checkHint}</p>
             <FieldGrid
               fields={[
-                {
-                  label: copy.common.dataItemId,
-                  value: <ProtocolValue>{item.dataItemId}</ProtocolValue>,
-                },
                 {
                   label: copy.common.source,
                   value: item.sourceOrganization,
                 },
-                {
-                  label: copy.common.authorization,
-                  value: (
-                    <ProtocolValue>{item.authorizationScope}</ProtocolValue>
-                  ),
-                },
-                {
-                  label: copy.common.ownerProject,
-                  value: <ProtocolValue>{item.ownerProjectId}</ProtocolValue>,
-                },
+
                 {
                   label: copy.common.security,
                   value: (
                     <StatusBadge
-                      code={item.securityLevel}
-                      label={copy.status.security[item.securityLevel]}
+                      code={(selectedVersion ?? item).securityLevel}
+                      label={
+                        copy.status.security[
+                          (selectedVersion ?? item).securityLevel
+                        ]
+                      }
                     />
                   ),
                 },
@@ -145,8 +136,8 @@ export default async function DataItemPage({
                   label: copy.common.quality,
                   value: (
                     <StatusBadge
-                      code={item.qualityGrade}
-                      label={`${copy.common.quality} ${item.qualityGrade}`}
+                      code={(selectedVersion ?? item).qualityGrade}
+                      label={`${copy.common.quality} ${(selectedVersion ?? item).qualityGrade}`}
                     />
                   ),
                 },
@@ -154,8 +145,12 @@ export default async function DataItemPage({
                   label: copy.common.acceptance,
                   value: (
                     <StatusBadge
-                      code={item.acceptanceStatus}
-                      label={copy.status.acceptance[item.acceptanceStatus]}
+                      code={(selectedVersion ?? item).acceptanceStatus}
+                      label={
+                        copy.status.acceptance[
+                          (selectedVersion ?? item).acceptanceStatus
+                        ]
+                      }
                     />
                   ),
                 },
@@ -163,14 +158,21 @@ export default async function DataItemPage({
                   label: copy.common.publication,
                   value: (
                     <StatusBadge
-                      code={item.publicationStatus}
-                      label={copy.status.publication[item.publicationStatus]}
+                      code={(selectedVersion ?? item).publicationStatus}
+                      label={
+                        copy.status.publication[
+                          (selectedVersion ?? item).publicationStatus
+                        ]
+                      }
                     />
                   ),
                 },
                 {
                   label: copy.common.processing,
-                  value: copy.status.processing[item.processingStage],
+                  value:
+                    copy.status.processing[
+                      (selectedVersion ?? item).processingStage
+                    ],
                 },
                 {
                   label: copy.common.coordinates,
@@ -186,14 +188,40 @@ export default async function DataItemPage({
                         label: copy.itemPage.selectedVersion,
                         value: (
                           <ProtocolValue>
-                            v{selectedVersion.version} ·{' '}
-                            {selectedVersion.versionId}
+                            v{selectedVersion.version}
                           </ProtocolValue>
                         ),
                       },
                     ]),
               ]}
             />
+            <DataDisclosure title={copy.presentation.technical}>
+              <FieldGrid
+                fields={[
+                  {
+                    label: copy.common.dataItemId,
+                    value: <ProtocolValue>{item.dataItemId}</ProtocolValue>,
+                  },
+                  {
+                    label: copy.common.authorization,
+                    value: (
+                      <ProtocolValue>{item.authorizationScope}</ProtocolValue>
+                    ),
+                  },
+                  {
+                    label: copy.common.ownerProject,
+                    value: <ProtocolValue>{item.ownerProjectId}</ProtocolValue>,
+                  },
+                ]}
+              />
+            </DataDisclosure>
+            {selectedVersion === undefined ? null : (
+              <Link
+                href={`/${locale}/data-foundation/explore?dataItem=${item.dataItemId}&version=${selectedVersion.versionId}`}
+              >
+                {copy.common.openResource}
+              </Link>
+            )}
           </DataSection>
           <DataSection>
             <SectionHeading title={copy.itemPage.versionsTitle} />
@@ -211,31 +239,13 @@ export default async function DataItemPage({
               </Link>
             )}
           </DataSection>
-          <DataSection>
-            <SectionHeading title={copy.itemPage.governanceTitle} />
-            <PanelGrid>
-              <CoverageGap
-                title={copy.itemPage.issues}
-                copy={copy.common.notProvided}
-              />
-              <CoverageGap
-                title={copy.itemPage.agentRuns}
-                copy={copy.common.notProvided}
-              />
-              <CoverageGap
-                title={copy.itemPage.projection}
-                copy={copy.common.notProvided}
-              />
-              <article>
-                <p>{copy.itemPage.lineage}</p>
-                <Link
-                  href={`/${locale}/data-foundation/lineage/${item.dataItemId}`}
-                >
-                  {copy.common.openLineage}
-                </Link>
-              </article>
-            </PanelGrid>
-          </DataSection>
+          {selectedVersion === undefined ? null : (
+            <Link
+              href={`/${locale}/data-foundation/explore?dataItem=${item.dataItemId}&version=${selectedVersion.versionId}&view=graph`}
+            >
+              {copy.common.openLineage}
+            </Link>
+          )}
           <Link href={`/${locale}/data-foundation/catalog`}>
             {copy.common.backToCatalog}
           </Link>

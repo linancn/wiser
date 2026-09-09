@@ -64,6 +64,23 @@ const canonicalEnvironment = {
 } as const;
 
 describe('Data Worker environment contract', () => {
+  it('uses the configured Qwen profile for new projections', () => {
+    const config = loadDataWorkerConfig({
+      ...canonicalEnvironment,
+      DATA_EMBEDDING_PROVIDER: 'openai-compatible',
+      DATA_EMBEDDING_BASE_URL: 'http://embedding:7710/v1',
+      DATA_EMBEDDING_MODEL: 'Qwen/Qwen3-Embedding-8B',
+      DATA_EMBEDDING_VERSION: '1.0.0-qwen3',
+      DATA_EMBEDDING_DIMENSIONS: '4096',
+    });
+    expect(config.projection).toMatchObject({
+      embedding: {
+        provider: 'openai-compatible',
+        model: 'Qwen/Qwen3-Embedding-8B',
+        dimensions: 4096,
+      },
+    });
+  });
   it('accepts only a configured parser origin without credentials or request paths', () => {
     expect(
       loadDataWorkerConfig({
@@ -141,8 +158,11 @@ describe('Data Worker environment contract', () => {
         httpTimeoutMs: 30000,
         httpMaximumResponseBytes: 1048576,
         maximumCachedEvents: 32,
-        embeddingDimensions: 32,
-        embeddingVersion: '1.0.0-fixture',
+        embedding: {
+          provider: 'fake',
+          dimensions: 32,
+          version: '1.0.0-fixture',
+        },
         publicationWaitTimeoutMs: 90000,
         publicationWaitPollMs: 250,
       },

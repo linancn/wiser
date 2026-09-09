@@ -10,7 +10,7 @@
   min-width: 640px;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.875rem;
+  font-size: 1rem;
   text-align: start;
 }
 .frame th,
@@ -18,6 +18,7 @@
   padding: 12px;
   border-bottom: 1px solid var(--border);
   vertical-align: top;
+  text-align: start;
   overflow-wrap: anywhere;
   min-width: 80px;
 }
@@ -27,6 +28,14 @@
 }
 .frame td:nth-child(2) {
   min-width: 160px;
+}
+.frame td:nth-child(n + 3),
+.frame thead th {
+  white-space: nowrap;
+}
+.frame th:first-child a {
+  font-weight: 550;
+  line-height: 1.6;
 }
 .frame thead th {
   position: sticky;

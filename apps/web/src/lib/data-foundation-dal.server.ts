@@ -117,8 +117,8 @@ export interface DataFoundationDal {
   ingestion(ingestionId: string): Promise<IngestionDto>;
   operation(operationId: string): Promise<OperationDto>;
   operationEvents(operationId: string): Promise<readonly OperationEventDto[]>;
-  search(query: string): Promise<SearchPageDto>;
-  knowledge(query: string): Promise<SearchPageDto>;
+  search(query: string, after?: string): Promise<SearchPageDto>;
+  knowledge(query: string, after?: string): Promise<SearchPageDto>;
   graph(entityId: string): Promise<GraphResultDto>;
   geo(input: {
     readonly geometry: GeoGeometryDto;
@@ -527,24 +527,34 @@ export function createDataFoundationDal(
         throw new DataFoundationApiError('contract', 502);
       }
     },
-    search: (query) => {
+    search: (query, after) => {
       validateQuery(query, 2_048);
+      if (after !== undefined) validateQuery(after, 8_192);
       return parsed(
         () =>
           call('/api/data/v1/search', {
             method: 'POST',
-            body: { query, first: 50 },
+            body: {
+              query,
+              first: 10,
+              ...(after === undefined ? {} : { after }),
+            },
           }),
         parseSearchPage,
       );
     },
-    knowledge: (query) => {
+    knowledge: (query, after) => {
       validateQuery(query, 2_048);
+      if (after !== undefined) validateQuery(after, 8_192);
       return parsed(
         () =>
           call('/api/data/v1/knowledge/search', {
             method: 'POST',
-            body: { query, first: 50 },
+            body: {
+              query,
+              first: 10,
+              ...(after === undefined ? {} : { after }),
+            },
           }),
         parseSearchPage,
       );

@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: c707fa20715254db0b0e46d1534d7741535a6532
+lastReviewedCommit: d513c1fed81e36d1de9d769ec6182cadbf713ea0
 ---
 
 ## 权威边界
@@ -149,7 +149,7 @@ Agent 只提出解释与计划，不能修改原始数据、静默纠正字段�
 
 Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbeat、priority、attempt count、确定性指数退避、取消、等待输入/审核、超时回收和 dead letter。带时间参数的 claim function 在更新前保留被选中行的真实 previous status；缺少 Job Attempt/Event/Outbox 语义的旧 claim function 已从数据库删除。Native Node HTTP 暴露 `/health/live`、`/health/ready` 与 Prometheus `/metrics`，优雅关闭先停止领取并等待 in-flight Handler。
 
-`ProjectionOutboxConsumer` 读取单调 checkpoint。每个 target 的 `PENDING/RUNNING/SUCCEEDED/FAILED` ledger 跨崩溃保留；外部写成功但 ledger 尚未更新时可安全重试，已成功 target 会跳过。投影 identity 由 DataItem/Version/Evidence 等权威 ID 派生：
+`ProjectionOutboxConsumer` 读取单调 checkpoint。每个 target 的 `PENDING/RUNNING/SUCCEEDED/FAILED` ledger 跨崩溃保留；外部写成功但 ledger 尚未更新时可安全重试。持续运行的 Worker 按真实嵌入配置与消费者名称派生独立位点；位点之后的事件即使已在共享台账标记成功，也会写入当前 Weaviate 集合，其他成功 target 仍跳过。fake 保留原位点以兼容样本和回退。首次启用会独立于重建 CLI 遍历保留的历史，之后续跑；切换和回退均先让 Worker 追平并完成验收，再切换 API 查询。投影 identity 由 DataItem/Version/Evidence 等权威 ID 派生：
 
 若五个 completion target 已成功，但对应 Operation 已进入 `FAILED` 或 `CANCELLED`，该 publication poison event 不得改写 Operation 终态，也不得发布权威版本。Consumer 以 `PUBLICATION_OPERATION_TERMINAL` 写入 `consumer_checkpoint.last_error` 并推进该 event，避免队首永久阻塞；后续成功 event 清除摘要。原 Job、Operation、target ledger 与版本证据全部保留。
 
@@ -280,3 +280,7 @@ G6 5.1.1 的分层画布在 Next.js 打包的显式同源模块 Worker 中调用
 宽度不超过 900 像素时，可通过底部按钮在非模态抽屉中查看所选来源。展开后键盘焦点进入带名称的详情区域；收起或 Escape 将焦点返回按钮，保留当前选择。取消选择时按需将焦点返回当前视图页签。桌面详情仍在侧栏中滚动。G6 内部画布图层不参与 Tab 顺序，键盘交互由有名称的视角控件和来源节点列表提供。
 
 Portal 根据已验证会话选择主操作：已登录用户进入数据工作区，匿名用户进入登录页。数据目录使用每页 25 行的游标分页及可键盘聚焦的内部滚动表格，后续页和返回第一页均保留名称条件。列表保留来源、发布、质量和安全信息，并引导结合详情中的检查范围与内容就绪状态判断。
+
+API 与 Worker 共用 `DATA_EMBEDDING_PROVIDER` 和明确的嵌入配置。本机 smoke 与 CI 默认使用 `DeterministicFakeEmbedding`；生产环境拒绝 fake。OpenAI 兼容适配器支持配置的 Qwen3-Embedding-8B 服务及 4,096 维输出，区分查询指令与文档输入，限制批量与响应大小，校验返回模型、维度与有限数值并做 L2 归一化；服务失败时不替换为伪向量。模型、部署修订号、维度和查询指令共同派生独立的 Weaviate 集合；修订号标识部署的嵌入配置，不冒充未经核实的模型权重 commit。服务权重或预处理变化时必须增加修订号。Worker 的限定项目、可续跑重建工具从权威证据写入新集合，验收后再切换查询，保留旧集合和原发布台账。配置与切换步骤见[本机开发环境](/zh-CN/development/local-environment/)。
+
+搜索证据仍可能包含来源登记清单；Web 说明其检查范围，将原始摘录与结果摘要分开，不改写权威事实。智能分析仍需要按内容类型索引、领域与字段语义、相关性评测和受治理的计划执行。Neo4j 承担关联发现与投影，HTTP 授权和 PostgreSQL/PostGIS 保持权威。Web 把精确版本连接到资源、记录、地图、图谱与统计视图，不宣称已能够生成分析答案。

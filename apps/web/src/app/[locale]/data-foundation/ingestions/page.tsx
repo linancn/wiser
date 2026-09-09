@@ -1,21 +1,16 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { DataAgentEntry } from '@/components/data-foundation-agent-entry';
 
 import {
   AuthorityFlag,
-  CapabilityList,
   DataFailureState,
   DataPageHeader,
   DataPageMain,
-  DataSection,
-  Notice,
   QueryForm,
   SectionHeading,
 } from '@/components/data-foundation-workspace';
-import {
-  parseDataRouteUuid,
-  type CapabilityRegistryDto,
-} from '@/lib/data-foundation';
+import { parseDataRouteUuid } from '@/lib/data-foundation';
 import { getDataFoundationDal } from '@/lib/data-foundation-dal.server';
 import {
   dataFoundationMetadata,
@@ -49,20 +44,13 @@ export default async function IngestionsPage({
   const rawId = search.id;
   const ingestionId =
     rawId === undefined ? undefined : parseDataRouteUuid(rawId);
-  let registry: CapabilityRegistryDto | undefined;
   let failure: ReturnType<typeof handleDataPageError> | undefined;
   try {
     if (rawId !== undefined && ingestionId === null) {
       throw invalidDataPageRequest();
     }
     const dal = await getDataFoundationDal();
-    const all = await dal.capabilities();
-    registry = {
-      registryVersion: all.registryVersion,
-      capabilities: all.capabilities.filter((capability) =>
-        capability.id.startsWith('data.ingestion.'),
-      ),
-    };
+    await dal.capabilities();
   } catch (error) {
     failure = handleDataPageError(error, locale, route);
   }
@@ -75,11 +63,14 @@ export default async function IngestionsPage({
         lede={copy.ingestionsPage.lede}
         aside={<AuthorityFlag locale={locale} />}
       />
+      <DataAgentEntry locale={locale} />
+      <SectionHeading title={copy.presentation.taskLookup} />
       <QueryForm
         action={route}
         name="id"
         label={copy.ingestionsPage.idLabel}
         placeholder={copy.ingestionsPage.idPlaceholder}
+        hint={copy.presentation.taskLookupHint}
         defaultValue={typeof rawId === 'string' ? rawId : ''}
         submitLabel={copy.ingestionsPage.openAction}
         resetHref={route}
@@ -92,18 +83,6 @@ export default async function IngestionsPage({
       )}
       {failure === undefined ? null : (
         <DataFailureState locale={locale} error={failure} />
-      )}
-      {registry === undefined ? null : (
-        <>
-          <Notice
-            title={copy.ingestionsPage.listGapTitle}
-            copy={copy.ingestionsPage.listGapCopy}
-          />
-          <DataSection>
-            <SectionHeading title={copy.ingestionsPage.registeredTitle} />
-            <CapabilityList locale={locale} registry={registry} />
-          </DataSection>
-        </>
       )}
     </DataPageMain>
   );

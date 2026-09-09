@@ -12,6 +12,7 @@ import {
   type ExplorationView,
 } from '@/lib/exploration-navigation';
 import Link from 'next/link';
+import { sourceLimitationLabel } from '@/lib/data-foundation-presentation';
 import { EXPLORATION_TOOLS } from '@/lib/navigation';
 import { DataExplorerReadiness } from './data-explorer-readiness';
 import dynamic from 'next/dynamic';
@@ -1061,7 +1062,12 @@ export function DataExplorer({
                   <summary>{copy.limitations}</summary>
                   <ul>
                     {selected.limitations.map((value, index) => (
-                      <li key={index}>{value}</li>
+                      <li key={index}>
+                        {sourceLimitationLabel(
+                          value,
+                          getDictionary(locale).dataFoundation.presentation,
+                        )}
+                      </li>
                     ))}
                   </ul>
                 </details>

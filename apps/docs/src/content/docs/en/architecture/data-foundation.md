@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: c707fa20715254db0b0e46d1534d7741535a6532
+lastReviewedCommit: d513c1fed81e36d1de9d769ec6182cadbf713ea0
 ---
 
 ## Authority boundary
@@ -149,7 +149,7 @@ Quality reads deterministic checks only; one failed blocking rule prevents passa
 
 Worker uses PostgreSQL `FOR UPDATE SKIP LOCKED`, lease owner/expiry, heartbeat, priority, attempt count, deterministic exponential backoff, cancellation, waiting-input/review, timeout recovery, and dead letter. The timestamped claim function records the selected row's actual previous status before mutation; the superseded claim function without Job Attempt/Event/Outbox semantics is removed from the database. Native Node HTTP exposes `/health/live`, `/health/ready`, and Prometheus `/metrics`. Graceful shutdown stops claiming and drains in-flight handlers.
 
-`ProjectionOutboxConsumer` reads after a monotonic checkpoint. Per-target `PENDING/RUNNING/SUCCEEDED/FAILED` ledger survives crashes; an external write that completed before ledger update can be retried safely, while a succeeded target is skipped. Projection identity derives from authoritative DataItem/Version/Evidence IDs:
+`ProjectionOutboxConsumer` reads after a monotonic checkpoint. Per-target `PENDING/RUNNING/SUCCEEDED/FAILED` ledger survives crashes; an external write that completed before ledger update can be retried safely. The live Worker derives a separate checkpoint for each real embedding profile and configured consumer name. It writes Weaviate for every event after that checkpoint even if the shared ledger already succeeded for another collection, while skipping other successful targets. The legacy fake checkpoint remains available for fixture compatibility and rollback. First activation traverses retained history independently of the rebuild CLI; later starts resume. Cutover and rollback switch the Worker first and verify catch-up before changing API reads. Projection identity derives from authoritative DataItem/Version/Evidence IDs:
 
 If all five completion targets succeeded but the matching Operation is already `FAILED` or `CANCELLED`, that publication poison event may neither rewrite the terminal Operation nor publish the authoritative version. Consumer writes `PUBLICATION_OPERATION_TERMINAL` to `consumer_checkpoint.last_error` and advances past the event so it cannot block the queue head; a later successful event clears the summary. Original Job, Operation, target ledger, and version evidence remain intact.
 
@@ -280,3 +280,7 @@ The Data workspace navigation groups search, knowledge and specialist GIS/graph 
 On screens up to 900 px, a selected source can be inspected in a non-modal bottom drawer. Opening moves keyboard focus into its labeled region; collapse or Escape returns focus to the toggle without clearing selection. Clearing the selection returns focus to the active view tab when needed. Desktop inspection remains inline and scrollable. G6 internal canvas layers are removed from the tab order; named viewport controls and the source node list provide the keyboard interaction.
 
 The Portal derives its primary action from a verified session: authenticated users enter the Data workspace; anonymous users sign in. Catalog browsing uses 25-row cursor pages and a keyboard-focusable, internally scrolling table, preserving the name query on continuation and return to the first page. Source, publication, quality and security remain visible; the details explain check scope and content readiness.
+
+The API and Worker share `DATA_EMBEDDING_PROVIDER` and one explicit embedding profile. Local smoke and CI default to `DeterministicFakeEmbedding`; production rejects fake mode. The OpenAI-compatible adapter supports the configured Qwen3-Embedding-8B service with 4,096 dimensions, distinct query instructions, bounded batches and responses, model/dimension validation, and L2 normalization. It never substitutes fake vectors on a service failure. Model, deployment revision, dimensions and query instruction derive a separate Weaviate collection; the revision identifies the deployed embedding profile and does not assert an unverified model-weight commit. Operators must bump it when server weights or preprocessing change. A scoped, restartable Worker rebuild reads authority evidence into that collection before query cutover, preserving the prior collection and publication ledger. See [Local environment](/en/development/local-environment/) for configuration and cutover.
+
+Search evidence can still contain source-registration manifests; the Web labels their check scope and separates original excerpts from the result summary without changing authority facts. Intelligent analysis still requires content-specific indexing, domain/field semantics, relevance evaluation and governed plan execution. Neo4j provides relationship discovery and projections, while HTTP authorization and PostgreSQL/PostGIS remain authoritative. The Web links exact versions into resource, record, map, graph and statistics views and does not claim to generate analytical answers.

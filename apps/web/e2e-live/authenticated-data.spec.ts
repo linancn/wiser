@@ -92,6 +92,7 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
       }
     });
     await login(page, 'zh-CN', detailPath('zh-CN'));
+    await page.getByText('技术详情', { exact: true }).first().click();
 
     await expect(
       page.getByText(fixture.dataItemId, { exact: true }),
@@ -121,7 +122,9 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
     await expect(
       page.getByText(fixture.operationId, { exact: true }).first(),
     ).toBeVisible();
-    await expect(page.getByText('100%', { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('definition').filter({ hasText: /^100%$/ }),
+    ).toBeVisible();
     await expect(
       page.getByText('已成功', { exact: true }).first(),
     ).toBeVisible();
@@ -211,7 +214,7 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
 
     await login(page, 'zh-CN', '/zh-CN/data-foundation/map?bbox=invalid');
     await expect(
-      page.getByRole('heading', { name: '请求输入无效' }),
+      page.getByRole('heading', { name: '请检查查询条件' }),
     ).toBeVisible();
     await expect(page.locator('main')).not.toContainText(unsafeNarrative);
 

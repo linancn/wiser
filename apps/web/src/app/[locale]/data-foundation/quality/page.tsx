@@ -1,25 +1,32 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
+import { DataCatalogTable } from '@/components/data-catalog-table';
+import styles from '@/components/data-catalog-table.module.css';
 
 import {
   AuthorityFlag,
-  CoverageGap,
   DataFailureState,
-  DataItemList,
   DataPageHeader,
   DataPageMain,
   DataSection,
+  QueryForm,
   SectionHeading,
 } from '@/components/data-foundation-workspace';
-import type { DataCatalogPageDto } from '@/lib/data-foundation';
+import { parseSearchQuery } from '@/lib/data-foundation';
 import { getDataFoundationDal } from '@/lib/data-foundation-dal.server';
 import {
   dataFoundationMetadata,
   handleDataPageError,
+  invalidDataPageRequest,
 } from '@/lib/data-foundation-page.server';
 import { getDictionary, isLocale } from '@/lib/i18n';
 
 interface QualityPageProps {
   readonly params: Promise<{ locale: string }>;
+  readonly searchParams: Promise<{
+    q?: string | string[];
+    after?: string | string[];
+  }>;
 }
 
 export async function generateMetadata({ params }: QualityPageProps) {
@@ -31,19 +38,45 @@ export async function generateMetadata({ params }: QualityPageProps) {
   );
 }
 
-export default async function QualityPage({ params }: QualityPageProps) {
-  const { locale } = await params;
+export default async function QualityPage({
+  params,
+  searchParams,
+}: QualityPageProps) {
+  const [{ locale }, rawSearch] = await Promise.all([params, searchParams]);
   if (!isLocale(locale)) notFound();
   const copy = getDictionary(locale).dataFoundation;
   const route = `/${locale}/data-foundation/quality`;
-  let catalog: DataCatalogPageDto | undefined;
+  const query = parseSearchQuery(rawSearch.q);
+  const after = rawSearch.after;
+  const pageHref = (cursor?: string) => {
+    const search = new URLSearchParams();
+    if (query) search.set('q', query);
+    if (cursor) search.set('after', cursor);
+    return `${route}${search.size ? `?${search.toString()}` : ''}`;
+  };
+  let page:
+    | Awaited<
+        ReturnType<Awaited<ReturnType<typeof getDataFoundationDal>>['catalog']>
+      >
+    | undefined;
   let failure: ReturnType<typeof handleDataPageError> | undefined;
   try {
+    if (query === null || query.length > 512) throw invalidDataPageRequest();
+    if (
+      after !== undefined &&
+      (typeof after !== 'string' || after.length < 1 || after.length > 8192)
+    )
+      throw invalidDataPageRequest();
     const dal = await getDataFoundationDal();
-    catalog = await dal.catalog({ first: 50 });
+    page = await dal.catalog({
+      first: 25,
+      ...(after === undefined ? {} : { after }),
+      ...(query.length === 0 ? {} : { query }),
+    });
   } catch (error) {
     failure = handleDataPageError(error, locale, route);
   }
+
   return (
     <DataPageMain>
       <DataPageHeader
@@ -52,23 +85,40 @@ export default async function QualityPage({ params }: QualityPageProps) {
         lede={copy.qualityPage.lede}
         aside={<AuthorityFlag locale={locale} />}
       />
+      <QueryForm
+        action={route}
+        name="q"
+        label={copy.catalogPage.queryLabel}
+        placeholder={copy.catalogPage.queryPlaceholder}
+        defaultValue={query ?? ''}
+        submitLabel={copy.common.searchAction}
+        resetHref={route}
+        resetLabel={copy.common.resetAction}
+      />
       {failure === undefined ? null : (
         <DataFailureState locale={locale} error={failure} />
       )}
-      {catalog === undefined ? null : (
-        <>
-          <DataSection>
-            <SectionHeading title={copy.qualityPage.registerTitle} />
-            <DataItemList locale={locale} items={catalog.items} />
-          </DataSection>
-          <DataSection>
-            <SectionHeading title={copy.qualityPage.issuesTitle} />
-            <CoverageGap
-              title={copy.qualityPage.issuesTitle}
-              copy={copy.qualityPage.issuesCopy}
-            />
-          </DataSection>
-        </>
+      {page === undefined ? null : (
+        <DataSection>
+          <SectionHeading
+            title={copy.qualityPage.registerTitle}
+            lede={`${copy.catalogPage.resultCount} · ${page.items.length}`}
+          />
+          <DataCatalogTable qualityReview locale={locale} items={page.items} />
+          <nav
+            className={styles.pagination}
+            aria-label={copy.catalogPage.pagination}
+          >
+            {after === undefined ? null : (
+              <Link href={pageHref()}>{copy.catalogPage.firstPage}</Link>
+            )}
+            {page.nextCursor === undefined ? null : (
+              <Link href={pageHref(page.nextCursor)}>
+                {copy.catalogPage.nextPage}
+              </Link>
+            )}
+          </nav>
+        </DataSection>
       )}
     </DataPageMain>
   );

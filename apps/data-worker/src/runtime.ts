@@ -32,6 +32,7 @@ export class PublishingProjectionRepository implements ProjectionOutboxRepositor
   constructor(
     private readonly delegate: ProjectionOutboxRepository,
     private readonly publication: ProjectionPublicationGate,
+    private readonly replaySucceededKinds: readonly ProjectionKind[] = [],
   ) {}
 
   readBatch(
@@ -42,11 +43,17 @@ export class PublishingProjectionRepository implements ProjectionOutboxRepositor
     return this.delegate.readBatch(scope, consumerName, limit);
   }
 
-  prepare(
+  async prepare(
     event: ProjectionEvent,
     kinds: readonly ProjectionKind[],
   ): Promise<ReadonlyMap<ProjectionKind, ProjectionState>> {
-    return this.delegate.prepare(event, kinds);
+    const states = new Map(await this.delegate.prepare(event, kinds));
+    // A shared success ledger cannot prove that a new physical collection has
+    // this event. Only that profile's checkpoint proves a completed write.
+    for (const kind of this.replaySucceededKinds) {
+      if (states.get(kind) === 'SUCCEEDED') states.set(kind, 'PENDING');
+    }
+    return states;
   }
 
   markRunning(event: ProjectionEvent, kind: ProjectionKind): Promise<void> {

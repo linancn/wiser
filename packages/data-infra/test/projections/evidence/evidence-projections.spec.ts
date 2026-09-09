@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { embeddingCollectionName } from '../../../src/embedding/index.js';
 
 import {
   EvidenceProjectionError,
@@ -86,6 +87,69 @@ describe('evidence projection identity and validation', () => {
 });
 
 describe('Weaviate evidence projection', () => {
+  it('writes evidence using the served namespace/model identity', async () => {
+    const embeddingModel = {
+      provider: 'openai-compatible' as const,
+      model: 'Qwen/Qwen3-Embedding-8B',
+      version: '1.0.0-qwen3',
+      dimensions: 4096,
+    };
+    const http = new FakeHttpClient();
+    const projection = new WeaviateEvidenceProjection({
+      baseUrl: 'http://weaviate:8080',
+      apiKey: 'weaviate-secret',
+      vectorDimensions: 4096,
+      embeddingModel,
+      http,
+    });
+    await expect(
+      projection.put({
+        ...input,
+        embeddingModel: embeddingModel.model,
+        embeddingVersion: embeddingModel.version,
+        vector: Array<number>(4096).fill(1 / 64),
+      }),
+    ).resolves.toHaveProperty('projectionId');
+    expect(http.requests.at(-1)?.body).toMatchObject({
+      class: embeddingCollectionName(embeddingModel),
+      properties: { embeddingModel: embeddingModel.model },
+    });
+  });
+  it('isolates a real embedding profile and rejects an existing collection with incompatible semantics', async () => {
+    const embeddingModel = {
+      provider: 'openai-compatible' as const,
+      model: 'Qwen/Qwen3-Embedding-8B',
+      version: '1.0.0-qwen3',
+      dimensions: 4096,
+    };
+    const http = new FakeHttpClient();
+    http.responses.push({ status: 404 }, { status: 200 });
+    const projection = new WeaviateEvidenceProjection({
+      baseUrl: 'http://weaviate:8080',
+      apiKey: 'weaviate-secret',
+      vectorDimensions: 4096,
+      embeddingModel,
+      http,
+    });
+    await projection.ensureCollection();
+    const collection = embeddingCollectionName(embeddingModel);
+    expect(http.requests[0]?.url).toBe(
+      `http://weaviate:8080/v1/schema/${collection}`,
+    );
+    expect(http.requests[1]?.body).toMatchObject({
+      class: collection,
+      vectorizer: 'none',
+    });
+    http.responses.push({
+      status: 200,
+      body: { class: collection, description: 'another model' },
+    });
+    await expect(projection.ensureCollection()).rejects.toThrow();
+    await expect(
+      projection.put({ ...input, vector: Array<number>(4096).fill(0.1) }),
+    ).rejects.toThrow();
+  });
+
   it('creates one self-vectorized multi-tenant collection with every governed field', async () => {
     const http = new FakeHttpClient();
     http.responses.push({ status: 404 }, { status: 200 });

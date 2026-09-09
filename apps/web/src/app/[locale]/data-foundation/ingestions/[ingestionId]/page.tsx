@@ -58,7 +58,7 @@ export default async function IngestionPage({ params }: IngestionPageProps) {
       <DataPageHeader
         eyebrow={copy.ingestionPage.eyebrow}
         title={copy.ingestionPage.title}
-        lede={copy.ingestionsPage.lede}
+        lede={copy.ingestionPage.lede}
         aside={<AuthorityFlag locale={locale} />}
       />
       {failure === undefined ? null : (
@@ -96,7 +96,7 @@ export default async function IngestionPage({ params }: IngestionPageProps) {
                 },
                 {
                   label: copy.common.ownerProject,
-                  value: <ProtocolValue>{ingestion.projectId}</ProtocolValue>,
+                  value: copy.common.liveData,
                 },
                 {
                   label: copy.common.assetIds,
