@@ -189,6 +189,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install Chromium for authenticated Data browser checks
+        run: pnpm --filter @wiser/web exec playwright install --with-deps chromium
+
       - name: Generate isolated Data PostgreSQL credentials
         shell: bash
         run: |
@@ -215,11 +218,11 @@ jobs:
             printf 'DATA_WORKER_PG_SMOKE_URL=postgresql://wiser_data_worker:%s@127.0.0.1:55432/wiser_data\n' "$data_worker_password"
           } >> "$GITHUB_ENV"
 
-      - name: Install Chromium for authenticated Data browser checks and prepare the stack
-        run: node scripts/data-foundation/prepare-ci.mjs
+      - name: Start and seed unified Supabase Auth
+        run: pnpm supabase:start && pnpm supabase:reset
 
       - name: Start pinned Data Foundation profile
-        run: pnpm data:up --no-build
+        run: pnpm data:up
 
       - name: Verify isolated source parsers in the pinned GDAL runtime
         run: docker compose --profile data-foundation run --rm --no-deps source-parser python -m unittest discover -s . -v
@@ -300,7 +303,7 @@ jobs:
         run: docker compose build api
 
       - name: Start pinned observability profile
-        run: docker compose --profile observability up -d --no-build otel-collector telemetry-ingress tempo prometheus loki grafana
+        run: docker compose --profile observability up -d --build otel-collector telemetry-ingress tempo prometheus loki grafana
 
       - name: Verify OTLP traces, metrics, logs, and redaction
         run: node infrastructure/observability/smoke.mjs

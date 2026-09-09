@@ -166,5 +166,3 @@ CLI 使用 Worker 明确的租户、项目、安全等级和策略范围，以�
 高德官方适配器从 Web 服务端环境读取 `WISER_AMAP_KEY` 和 `WISER_AMAP_SECURITY_CODE`，保存在本机 `.env` 或部署秘密配置中。`/api/maps/amap/config` 仅在会话校验后返回公开 JS API Key。同源代理只允许地图样式和坐标转换，服务端注入安全密钥，限制响应大小并禁用缓存。安全密钥不得使用 `NEXT_PUBLIC_*` 变量；本机 Compose override 仍必须加载。
 
 Data 纵切 smoke 为已登录 Web 目录页 GET 单独保留 60 秒请求预算，以容纳 Next.js 开发模式的首次编译。API 和登录请求仍使用默认 10 秒上限，所有请求继续受整轮 180 秒总期限约束。程序化选项 `webRequestTimeoutMs` 可收紧页面预算（100–60,000 毫秒）；超时不能算作页面断言成功。
-
-已从目标提交构建好本机应用与解析器镜像时，可使用 `pnpm data:up --no-build`。它仍等待服务健康，并保留全部运行时 Auth 与迁移依赖；默认命令继续构建。仅供 CI 使用的 `prepare-ci.mjs` 初始化器会 reset Supabase，因此拒绝在本机或 self-hosted 环境运行。CI 顺序见[测试与验证](/development/testing/)。
