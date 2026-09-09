@@ -67,7 +67,7 @@ it('allows only official map endpoints, injects credentials on the server and st
   );
   expect(response.status).toBe(200);
   expect(response.headers.get('set-cookie')).toBeNull();
-  const target = new URL(String(fetch.mock.calls[0][0]));
+  const target = fetch.mock.calls[0][0] as URL;
   expect(target.origin).toBe('https://restapi.amap.com');
   expect(target.searchParams.get('jscode')).toBe('server-secret');
   expect(target.searchParams.get('key')).toBe('public-key');
