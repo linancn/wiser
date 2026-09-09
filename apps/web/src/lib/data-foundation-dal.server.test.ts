@@ -509,7 +509,7 @@ describe('Data Foundation server-only HTTP DAL', () => {
     expect(fetch.mock.calls.length).toBeLessThanOrEqual(101);
   });
 
-  it.each(['versions', 'queries'])(
+  it.each(['versions', 'queries', 'amap/versions', 'amap/queries'])(
     'keeps %s browser tiles same-origin with server-only credentials',
     async (kind) => {
       const fetch = vi.fn((url: string | URL | Request, init?: RequestInit) => {
@@ -543,7 +543,7 @@ describe('Data Foundation server-only HTTP DAL', () => {
         path: [
           'tiles',
           'vector',
-          kind,
+          ...kind.split('/'),
           '55555555-5555-4555-8555-555555555555',
           '3',
           '4',
