@@ -8,6 +8,28 @@ const options = {
   verifySession: () => Promise.resolve(true),
 };
 
+it('serves validated SDK JSONP as executable JavaScript under nosniff', async () => {
+  const response = await amapService(
+    new Request(
+      'https://wiser.test/api/maps/amap/v3/assistant/coordinate/convert?callback=jsonp_123',
+    ),
+    ['v3', 'assistant', 'coordinate', 'convert'],
+    {
+      ...options,
+      fetch: () =>
+        Promise.resolve(
+          new Response('jsonp_123({"status":"1"})', {
+            headers: { 'content-type': 'application/json' },
+          }),
+        ),
+    },
+  );
+  expect(response.headers.get('content-type')).toBe(
+    'application/javascript; charset=utf-8',
+  );
+  expect(await response.text()).toBe('jsonp_123({"status":"1"});');
+});
+
 it('requires a verified session and never returns the security code in configuration', async () => {
   const request = new Request('https://wiser.test/api/maps/amap/config');
   const response = await amapService(request, ['config'], options);
