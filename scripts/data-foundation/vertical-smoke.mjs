@@ -217,6 +217,13 @@ function createRuntime(options) {
     60_000,
     stepId,
   );
+  const webRequestTimeoutMs = numberOption(
+    options.webRequestTimeoutMs,
+    60_000,
+    100,
+    60_000,
+    stepId,
+  );
   const pollIntervalMs = numberOption(
     options.pollIntervalMs,
     250,
@@ -233,14 +240,15 @@ function createRuntime(options) {
     now,
     deadline: now() + maximumDurationMs,
     requestTimeoutMs,
+    webRequestTimeoutMs,
     pollIntervalMs,
   });
 }
 
-function remaining(runtime, stepId) {
+function remaining(runtime, stepId, timeoutMs = runtime.requestTimeoutMs) {
   const value = runtime.deadline - runtime.now();
   if (!Number.isFinite(value) || value <= 0) fail(stepId, 'DEADLINE_EXCEEDED');
-  return Math.max(1, Math.min(runtime.requestTimeoutMs, Math.floor(value)));
+  return Math.max(1, Math.min(timeoutMs, Math.floor(value)));
 }
 
 async function boundedText(response, maximumBytes, stepId) {
@@ -294,13 +302,13 @@ async function boundedText(response, maximumBytes, stepId) {
   }
 }
 
-async function request(runtime, stepId, url, init, maximumBytes) {
+async function request(runtime, stepId, url, init, maximumBytes, timeoutMs) {
   let response;
   try {
     response = await runtime.fetch(url, {
       ...init,
       redirect: init.redirect ?? 'error',
-      signal: AbortSignal.timeout(remaining(runtime, stepId)),
+      signal: AbortSignal.timeout(remaining(runtime, stepId, timeoutMs)),
     });
   } catch (error) {
     if (error instanceof VerticalSmokeError) throw error;
@@ -1334,6 +1342,7 @@ async function queryWeb(
         redirect: 'manual',
       },
       MAX_WEB_RESPONSE_BYTES,
+      runtime.webRequestTimeoutMs,
     );
     appendCookies(jar, page.response, stepId);
     if (![301, 302, 303, 307, 308].includes(page.response.status)) break;

@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: e9287c37c5853f6b4d897137d2393530703208d0
+lastReviewedCommit: 5eeead372664c3ae7ada5a4d94e4901343e27565
 ---
 
 ## Runtime modes
@@ -164,3 +164,5 @@ The live Worker also isolates its checkpoint by configured consumer name and rea
 After rebuilding, switch the Worker first, let its profile checkpoint catch up to the project's committed events, and verify evidence coverage, model identity and Chinese/English real-case queries before switching API to the same settings. Keep the old collection. Rollback follows the same order: restore the old Worker profile, wait for it to index events published while that profile was inactive, verify coverage, then restore the API profile. Restoring configuration alone is not evidence of a complete index. Existing source-registration content does not become scientific evidence merely because its embeddings improve.
 
 The official AMap adapter reads `WISER_AMAP_KEY` and `WISER_AMAP_SECURITY_CODE` from the Web server environment. Keep both in local `.env` or deployment secrets. `/api/maps/amap/config` returns the public JS API key only after session verification. The same-origin proxy permits only map styles and coordinate conversion, injects the security code server-side, bounds responses and disables caching. The security code is never placed in `NEXT_PUBLIC_*` variables. Existing local Compose overrides remain mandatory.
+
+The Data vertical smoke gives authenticated Web catalog GETs a separate 60-second request budget for cold Next.js development compilation. API/login requests retain the 10-second default and every request remains bounded by the 180-second overall smoke deadline. The programmatic `webRequestTimeoutMs` option may narrow this budget (100–60,000 ms); timeout never counts as a successful page assertion.
