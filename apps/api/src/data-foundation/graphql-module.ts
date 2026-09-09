@@ -126,6 +126,8 @@ input ApprovalInput {
 }
 
 type Query {
+  dataReconciliation(input: JSON!): JSON!
+  dataReconciliations(input: JSON!): JSON!
   dataCatalog(
     filter: DataCatalogFilter
     first: Int
@@ -155,6 +157,8 @@ type Query {
 }
 
 type Mutation {
+  createDataReconciliation(input: JSON!): JSON!
+  reviewDataReconciliation(input: JSON!): JSON!
   createDataExploreView(input: JSON!): JSON!
   revokeDataExploreView(input: JSON!): JSON!
   createDataAnalysis(input: JSON!): JSON!
@@ -171,6 +175,10 @@ type Mutation {
 export const GRAPHQL_CAPABILITY_BY_FIELD: Readonly<
   Record<string, DataCapabilityId>
 > = Object.freeze({
+  dataReconciliation: 'data.reconciliation.get',
+  dataReconciliations: 'data.reconciliation.list',
+  createDataReconciliation: 'data.reconciliation.create',
+  reviewDataReconciliation: 'data.reconciliation.review',
   dataCatalog: 'data.catalog.search',
   dataItem: 'data.catalog.get',
   dataQuery: 'data.query',
@@ -496,6 +504,17 @@ function connectionFrom(value: unknown) {
 const resolvers = {
   JSON: JsonScalar,
   Query: {
+    dataReconciliation: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeQuery(context, 'data.reconciliation.get', args.input),
+    dataReconciliations: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeQuery(context, 'data.reconciliation.list', args.input),
+
     dataCatalog: async (
       _: unknown,
       args: {
@@ -652,6 +671,17 @@ const resolvers = {
       ),
   },
   Mutation: {
+    createDataReconciliation: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeCommand(context, 'data.reconciliation.create', args.input),
+    reviewDataReconciliation: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeCommand(context, 'data.reconciliation.review', args.input),
+
     createDataExploreView: (
       _: unknown,
       args: { input: unknown },

@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: b77a5c015a09f12bcc9e7cad8bb9d988ebf5ed35
+lastReviewedCommit: bac8703efbf93c408d68b6f7a8ca8305d9565c1b
 ---
 
 ## Authority boundary
@@ -47,7 +47,7 @@ GeoServer, TiTiler, and Martin run as Compose-internal GIS services in the same 
 
 | Module                                      | Responsibility                                                                      |
 | ------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `@wiser/data-contracts`                     | Strict Zod DTOs, 29 Capabilities, four transport mappings                           |
+| `@wiser/data-contracts`                     | Strict Zod DTOs, 33 Capabilities, four transport mappings                           |
 | `@wiser/data-core`                          | Pure ingestion/Operation state, quality, security inheritance, publication gates    |
 | `@wiser/data-infra`                         | Checksum migration, PostgreSQL/S3, jobs/Outbox, projections, search, fake embedding |
 | `@wiser/data-worker`                        | Concrete ingestion Handler, Scheduler, projection consumer, health and metrics      |
@@ -177,9 +177,9 @@ The graph workspace lazily loads G6 5.1.1 on the client and renders only the bou
 
 The Data overview reads the scoped catalog total with `includeTotal=true`; its metric is independent of the preview page size. Catalog count and page use one short repeatable-read authority transaction. Counts describe registered objects, not analytically validated records.
 
-- REST: `/api/data/v1` discovery, 29 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 29 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
+- REST: `/api/data/v1` discovery, 33 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 33 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
 - GraphQL: `POST /graphql`, 24 schema-first fields sharing the same Handler; see [Data GraphQL](/en/protocols/data-graphql/).
-- MCP: stdio/stateless Streamable HTTP, 29 Tools and governed Resources that call HTTP only; see [Data MCP](/en/protocols/data-mcp/).
+- MCP: stdio/stateless Streamable HTTP, 33 Tools and governed Resources that call HTTP only; see [Data MCP](/en/protocols/data-mcp/).
 - Skill: `skills/wiser-data-foundation` documents discovery, query, upload, ingestion, Operation, and security workflows.
 - Web: 14 Data routes in the existing Next.js app with server-only DAL, real Supabase session, both locales/themes, immutable-version selection, an official AMap JS API 2.0 basemap with synchronized transparent MapLibre overlays: PostGIS authority GeoJSON, STAC extents, governed vector MVT, and raster.
 
@@ -292,3 +292,15 @@ Exact source bytes are available through `GET/HEAD /api/data/v1/tenants/{tenantI
 Maps use GCJ-02 only at the display boundary. Original WGS84/CGCS2000 coordinates, spatial predicates, and saved cameras retain their authority CRS. AMap zoom is MapLibre zoom plus one; bearing and pitch stay zero. GeoJSON and scoped vector tiles use calibrated display coordinates. The native AMap logo and attribution remain visible and interactive. The official JS key is public; the security code stays in the authenticated server proxy.
 
 Raster overlays inverse-map GCJ-02 pixel centers to authorized WGS84 TiTiler tiles in a dedicated browser Worker. Nearest-neighbor sampling preserves classes and nodata. The display grid uses eight-pixel interpolation inside China at zoom 8 and above, and exact mapping at coarse zooms or the coordinate-conversion boundary. Adjacent source requests are bounded; map disposal cancels requests and terminates the Worker. Raster values and originals remain unchanged.
+
+## Copy verification and business observation deduplication
+
+`data.reconciliation.create/get/list/review` maintains separate, durable reconciliation evidence. A batch pins two distinct CSV/XLSX/XLS assets, their immutable DataItem versions, completed analysis IDs, source SHA-256 hashes and paths. Both assets must be fully parsed (`READY` or `EMPTY`); document fragments, unsupported or truncated sources cannot establish observations. The browser starts the workflow from resource content for two files in the current version; the API also accepts explicit authorized pins across versions.
+
+The caller defines up to eight paired business keys (text, exact decimal, or an explicit-offset ISO timestamp), observation value fields, measure and unit fields or constants, and optional decimal affine unit conversions. Text retains leading zeros; whitespace trimming is explicit. Different measures and unconverted units remain separate. Missing, blank or invalid values/keys remain incomplete; zero is valid. Unsafe numeric integer keys are incomplete rather than rounded. Only the selected fields define equivalence: matching filenames, byte sizes or row totals do not prove a copy, and a result does not establish equivalence of unused columns or source completeness beyond the parsed assets.
+
+The pure deterministic engine groups by normalized business keys, measure and unit. It preserves every source record ID, side and row index, normalized value and group status. Equal observations collapse into one group; added and baseline-only observations remain. Different values remain conflicts unless the frozen plan explicitly declares that the comparison source revises the baseline. This precedence cannot resolve conflicting values within either individual source. Original files, parsed records, versions and source values are never changed or deleted.
+
+Batches distinguish candidate format copies, overlap, revisions, disjoint observations and unresolved relationships. Four parsed rows representing two observations remain four parsed rows and yield two candidate observations. Any conflict or incomplete record makes the candidate total unknown. Only the creating human, with `data.publish`, can verify or reject a candidate using its expected version and a review note; only verification exposes `independentObservationCount`. Confirmation is scoped to this batch and its rules, never to an entire resource or catalog. Reviewed batches are immutable; different rules require a new batch.
+
+Creation is synchronous and fails without truncation above 50,000 combined parsed rows, 8 MiB of selected fields per source, or 24 MiB of serialized group evidence. Group and source-member pages are separate, at most 100 items, with batch/version/group-bound cursors. Listing returns at most 100 recent batches involving the requested version. Commands use the shared transaction, audit, Outbox and idempotency ledger; replay reauthorizes the pinned sources. The private, forced-RLS `service.observation_reconciliation` table is bound to owner, tenant, project, purpose and security context. Every read/review rechecks current authorization for both versions and analyses, including after policy changes. Migration `0022_observation_reconciliation.sql` and the disposable PostgreSQL integration test enforce this boundary.

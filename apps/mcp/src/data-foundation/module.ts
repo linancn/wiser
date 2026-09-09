@@ -22,6 +22,7 @@ const IDEMPOTENCY_KEY_SCHEMA = z
   .string()
   .uuid('idempotencyKey 必须是 UUID。 / idempotencyKey must be a UUID.');
 const VERSIONED_COMMANDS = new Set<DataCapabilityId>([
+  'data.reconciliation.review',
   'data.ingestion.submit',
   'data.uploadSession.complete',
   'data.ingestion.approve',

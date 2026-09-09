@@ -368,3 +368,72 @@ test('bounds an injected wait implementation that never settles', async () => {
   );
   assert.ok(Date.now() - startedAt < 1_000);
 });
+
+function slowCatalog(harness, delayMs) {
+  const original = harness.options.fetch;
+  harness.options.fetch = async (input, init = {}) => {
+    if (
+      new URL(String(input)).pathname.startsWith(
+        '/zh-CN/data-foundation/catalog/',
+      )
+    ) {
+      await new Promise((resolve, reject) => {
+        const abort = () => {
+          clearTimeout(timer);
+          reject(new Error('request timed out'));
+        };
+        const timer = setTimeout(() => {
+          init.signal.removeEventListener('abort', abort);
+          resolve();
+        }, delayMs);
+        init.signal.addEventListener('abort', abort, { once: true });
+      });
+    }
+    return original(input, init);
+  };
+}
+
+test('allows bounded cold Web compilation without relaxing API request deadlines', async () => {
+  const harness = createHarness();
+  harness.options.requestTimeoutMs = 100;
+  harness.options.webRequestTimeoutMs = 500;
+  slowCatalog(harness, 180);
+  const result = await runDataFoundationVerticalSmoke(harness.options);
+  assert.equal(result.dataItemId, INGESTION_ID);
+  const apiSignal = harness.requests.find(
+    ({ url }) => url.pathname === '/api/data/v1/upload-sessions',
+  ).init.signal;
+  assert.equal(
+    apiSignal.aborted,
+    true,
+    'API requests must retain the shorter timeout',
+  );
+});
+
+test('keeps cold Web loads bounded by both their request limit and the overall deadline', async () => {
+  for (const totalDeadline of [false, true]) {
+    const harness = createHarness();
+    harness.options.requestTimeoutMs = 100;
+    harness.options.webRequestTimeoutMs = totalDeadline ? 500 : 100;
+    if (totalDeadline) {
+      let clock = 0;
+      harness.options.now = () => clock;
+      harness.options.maximumDurationMs = 1000;
+      const original = harness.options.fetch;
+      harness.options.fetch = (input, init) => {
+        if (new URL(String(input)).pathname === '/zh-CN/auth/login')
+          clock = 950;
+        return original(input, init);
+      };
+    }
+    slowCatalog(harness, 180);
+    await assert.rejects(
+      runDataFoundationVerticalSmoke(harness.options),
+      (error) => {
+        assert.equal(error.stepId, 'web-catalog');
+        assert.equal(error.code, 'REQUEST_FAILED');
+        return true;
+      },
+    );
+  }
+});

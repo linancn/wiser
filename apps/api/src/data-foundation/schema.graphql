@@ -95,6 +95,8 @@ input ApprovalInput {
 }
 
 type Query {
+  dataReconciliation(input: JSON!): JSON!
+  dataReconciliations(input: JSON!): JSON!
   dataCatalog(
     filter: DataCatalogFilter
     first: Int
@@ -124,6 +126,8 @@ type Query {
 }
 
 type Mutation {
+  createDataReconciliation(input: JSON!): JSON!
+  reviewDataReconciliation(input: JSON!): JSON!
   createDataExploreView(input: JSON!): JSON!
   revokeDataExploreView(input: JSON!): JSON!
   createDataAnalysis(input: JSON!): JSON!

@@ -18,6 +18,7 @@ import {
 } from '@/lib/data-content-presentation';
 import { invalidatesExploration } from '@/lib/exploration-request';
 import { DataRasterView } from './data-raster-view';
+import { DataReconciliation } from './data-reconciliation';
 import { DataContentValue } from './data-content-value';
 import { DataExplorerGraph } from './data-explorer-graph';
 import styles from './data-resource-content.module.css';
@@ -223,6 +224,13 @@ export function DataResourceContent({
       <header className={styles.heading}>
         <div>
           <h2>{copy.title}</h2>
+          <p>{explorer.recordCountScope}</p>
+          <p>
+            {explorer.independentObservations}
+            {' · '}
+            <strong>{explorer.observationsUnverified}</strong>
+          </p>
+          <p>{explorer.observationVerification}</p>
         </div>
         {queryId ? (
           <Link
@@ -232,6 +240,14 @@ export function DataResourceContent({
           </Link>
         ) : null}
       </header>
+      <DataReconciliation
+        locale={locale}
+        dataItemId={dataItemId}
+        versionId={versionId}
+        queryId={queryId}
+        assets={assets}
+        initialAnalysisId={initialResult?.records?.[0]?.analysisId}
+      />
       <div className={styles.workspace}>
         <aside className={styles.files} aria-label={copy.files}>
           <h3>
@@ -271,9 +287,12 @@ export function DataResourceContent({
               <h3>{name}</h3>
               {asset ? (
                 <span>
-                  {asset.recordCount === null
-                    ? explorer.unknown
-                    : `${asset.recordCount.toLocaleString(locale)} ${explorer.records}`}
+                  {explorer.parsedFileRecords.replace(
+                    '{count}',
+                    asset.recordCount === null
+                      ? explorer.unknown
+                      : asset.recordCount.toLocaleString(locale),
+                  )}
                 </span>
               ) : null}
             </div>

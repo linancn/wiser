@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: b77a5c015a09f12bcc9e7cad8bb9d988ebf5ed35
+lastReviewedCommit: bac8703efbf93c408d68b6f7a8ca8305d9565c1b
 ---
 
 ## 权威边界
@@ -32,7 +32,7 @@ Data Foundation 是与 Agent EXCON 平级的 WISER 业务系统。它拥有 Data
 ```text
 Supabase principal + Tenant/Project/Purpose
   → Fastify REST / schema-first GraphQL
-  → 同一 DataCapabilityHandler（29 项静态 executor）
+  → 同一 DataCapabilityHandler（33 项静态 executor）
   → data-postgres RLS transaction / SeaweedFS S3
   → PostgreSQL durable job + Transactional Outbox
   → Data Worker
@@ -47,7 +47,7 @@ GeoServer、TiTiler 和 Martin 作为 Compose-internal GIS 服务存在于同一
 
 | 模块                                        | 职责                                                                        |
 | ------------------------------------------- | --------------------------------------------------------------------------- |
-| `@wiser/data-contracts`                     | 严格 Zod DTO、29 项 Capability、四种 transport mapping                      |
+| `@wiser/data-contracts`                     | 严格 Zod DTO、33 项 Capability、四种 transport mapping                      |
 | `@wiser/data-core`                          | 纯确定性的入库/Operation 状态机、质量、安全继承和发布门禁                   |
 | `@wiser/data-infra`                         | checksum migration、PostgreSQL/S3、任务/Outbox、投影、检索和 fake embedding |
 | `@wiser/data-worker`                        | 具体入库 Handler、Scheduler、投影 consumer、健康与指标                      |
@@ -177,9 +177,9 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 
 数据总览使用 `includeTotal=true` 取得受授权的目录总数，指标不再取预览页大小。目录计数和当前页使用同一个短 repeatable-read 权威事务。该数量表示登记对象，不表示已经通过分析验证的记录。
 
-- REST：`/api/data/v1` 的 discovery、29 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；29 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
-- GraphQL：`POST /graphql`，29 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
-- MCP：stdio/无状态 Streamable HTTP，29 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
+- REST：`/api/data/v1` 的 discovery、33 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；33 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
+- GraphQL：`POST /graphql`，33 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
+- MCP：stdio/无状态 Streamable HTTP，33 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
 - Skill：`skills/wiser-data-foundation` 定义发现、查询、上传、入库、Operation 与安全解释流程。
 - Web：现有 Next.js 应用中的 14 个 Data route，server-only DAL、真实 Supabase Session、双语/主题、不可变版本选择，以及高德 JS API 2.0 官方底图与同步的透明 MapLibre 业务图层：PostGIS authority GeoJSON、STAC extent、受控 vector MVT 与 raster 四图层。
 
@@ -292,3 +292,15 @@ API 与 Worker 共用 `DATA_EMBEDDING_PROVIDER` 和明确的嵌入配置。本�
 地图仅在显示边界使用 GCJ-02。原始 WGS84/CGCS2000 坐标、空间查询和已保存视角保留权威坐标系。高德缩放级别等于 MapLibre 加一，方位角与俯仰角固定为零。GeoJSON 和授权矢量瓦片使用校准后的显示坐标。高德原生标识和版权信息始终可见、可点击。JS Key 属于公开客户端标识，安全密钥仅由经过认证的服务端代理使用。
 
 栅格叠加在独立浏览器 Worker 中，将 GCJ-02 像素中心反向映射至授权 WGS84 TiTiler 瓦片，采用最近邻采样保留类别和无数据区域。中国境内且缩放级别不低于 8 时使用八像素间隔的显示插值；低缩放级别及坐标转换边界采用精确映射。相邻瓦片请求有数量上限，地图销毁时取消请求并终止 Worker。原始栅格数值和文件保持不变。
+
+## 副本关系核验与业务观测去重
+
+`data.reconciliation.create/get/list/review` 保存独立、持久的核验证据。每批固定两份不同的 CSV/XLSX/XLS 资产、不可变 DataItem 版本、已完成的分析 ID、来源 SHA-256 和路径。两份资产都必须完整解析（`READY` 或 `EMPTY`）；文档片段、不支持或截断的来源不能作为观测。浏览器从资源内容中选择当前版本的两份文件；API 也支持明确指定、已授权的跨版本来源。
+
+调用者定义最多八个成对业务键（文本、精确十进制或带明确偏移的 ISO 时间）、观测值字段、指标与单位的字段或固定值，以及可选的十进制仿射单位换算。文本保留前导零，去除首尾空白须显式选择。不同指标、未经换算的不同单位保持独立。缺失、空白、无效值或键均保留为信息不完整；零是有效值。不安全的大整数数值键不作舍入合并。等价关系仅覆盖所选字段；文件名、字节数或记录总数相同不能证明副本，也不能据此判断未选字段等价或来源在解析资产之外的完整性。
+
+纯确定性引擎按规范化业务键、指标和单位分组，保留每条来源记录 ID、所属文件侧、行号、规范化值和处理状态。相同观测合并成一组，新增及仅基准存在的观测继续保留。不同值默认保持冲突；只有冻结规则明确声明“对照文件修订基准文件”时才采用修订值。此优先级不能消除任何单份来源内部的不同值冲突。原文件、解析记录、版本和来源值均不修改或删除。
+
+批次区分候选格式副本、部分重叠、修订、无共同观测和待核对关系。两份文件各两条记录仍计四条解析记录，可以得到两个候选观测。存在任何冲突或信息不完整的记录时，候选总数保持未知。只有创建批次的人类用户具备 `data.publish` 权限，提交预期版本和核验说明后，才能确认或拒绝候选；仅确认后提供 `independentObservationCount`。确认仅覆盖本批所选规则，不能推广至整个资源或目录。已审核批次不可变；调整规则须创建新批次。
+
+创建同步执行；两份来源合计超过 50,000 条记录、任一来源所选字段超过 8 MiB，或分组证据序列化超过 24 MiB 时直接失败，不截断计算。观测组和来源成员分别分页，每页最多 100 项，游标绑定批次、版本和观测组。列表返回涉及指定版本的最近最多 100 批。命令复用事务、审计、Outbox 和幂等账本，重放也重新授权来源。私有的 `service.observation_reconciliation` 表强制 RLS，绑定所有者、租户、项目、用途和安全上下文。每次读取或审核均重新检查两份版本及分析的当前权限，包括策略变更后。`0022_observation_reconciliation.sql` 和隔离 PostgreSQL 集成测试验证这些边界。

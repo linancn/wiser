@@ -16,7 +16,7 @@ checkPaths:
   - apps/web/src/**
   - apps/web/e2e/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: 9b27d90ac8cce54fa408da2f5508993ff9b387d2
+lastReviewedCommit: 2e98d90315eae4e86b3fb20219d5fb2a94f650f4
 ---
 
 ## What this guide governs
@@ -145,6 +145,8 @@ The `/[locale]/data-foundation/explore` workspace shares the strict exploration 
 
 Resource readiness precedes analytical inspection. Record views expose original column labels, bounded pages, source filenames and hashes without inferring units. Map selection retains the version and source record in the Inspector. The map distinguishes viewport features/clusters from the total number of records representable in Web Mercator.
 
+Exploration summaries, resource tables and inspectors label indexed totals as “Parsed content records”; source-file content uses the same count label. Exploration and resource content explain that counts accumulate per file and can include CSV/XLSX format copies and document fragments. “Independent business observations” remains “Not counted / pending verification” at the resource/catalog level, which has no resource-wide verified observation count. Two files with two parsed records each therefore retain four content records, while the independent count stays unknown. Original files, hashes, versions and values remain unchanged. File names, byte hashes and matching row counts do not establish semantic equivalence; verified format-copy relationships and business deduplication require a separate governed workflow for business keys, measures, units, time, completeness and revisions.
+
 Exploration 1.5 adds optional map-wide `spatial.bounds` (WGS84 or null for an empty result) and `mercatorFeatureCount`, computed over the same authorized record set independently of pagination. The browser requests one initial record and this summary, fits the full result bounds, and loads same-origin query MVT by viewport. Clicking an individual feature performs a 1.4 exact-record lookup; a cluster click zooms in. The map distinguishes viewport feature/cluster counts from map-ready record totals. Tile-boundary ownership is corrected by append-only migration `0015_exploration_tile_boundaries.sql`, so points at tile seams contribute once. The 1.4 contract remains archived.
 
 Exploration clears the current query, selection, asset details and rendered views when a response invalidates its authorization or immutable membership, or when the advertised result deadline is reached. Background/page restoration checks the same deadline. Late failures from an older query cannot clear a newer result, and aborted requests cannot restore stale data. Query form conditions remain available for a fresh authorized query. Temporary map failures unload the canvas and offer reload without exposing upstream diagnostics.
@@ -172,3 +174,5 @@ Data Foundation starts with a name-based exploration entry and common tasks; nor
 Knowledge graph canvases default to a ForceAtlas2 relationship layout with deterministic initial positions and 160 bounded iterations, computed in the existing cancellable worker. A keyboard-operable layout switch offers Dagre source hierarchy; only hierarchy changes direction on narrow screens. Both layouts retain bounded identities, selection, path highlighting and text alternatives. Independent resource neighborhoods are packed separately across both axes. The initial overview pages eight resources at a time; focused neighbor pages retain their own bounds. Relationship labels and semantic node colors supplement the node-kind text.
 
 A resource opens its content workspace before collapsed governance details. A version-scoped file list, source-file download and local content tabs share the resource identity. Tables preserve scalar source values and provide readable known-field labels; document and structured views expand nested content lazily. The file preview is inert, and unsupported formats retain an explicit download action. Resource names in exploration link directly to content while a separate selection control retains query-wide analysis.
+
+Resource content provides “Copy verification and observation deduplication”: select two fully parsed tables, explicitly map business keys, measures, units and time, and review candidate groups with source references. Show files, parsed records, candidate observations and verified observations separately. Verification updates only the batch-scoped metric after a human confirms the rules and evidence. The form must not infer mappings from filenames or erase conflicts. Retain the command key on ambiguous retries, clear displayed evidence on access denial, and preserve equivalent Chinese/English, keyboard, small-screen and light/dark states.

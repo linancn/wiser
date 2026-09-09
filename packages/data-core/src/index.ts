@@ -7,3 +7,4 @@ export * from './quality/index.js';
 export * from './security/index.js';
 export * from './exploration-readiness.js';
 export * from './exploration-path.js';
+export * from './reconciliation.js';

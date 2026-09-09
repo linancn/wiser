@@ -154,6 +154,53 @@ for (const serverOwnedField of [
 }
 
 const validCapabilityInputs = {
+  'data.reconciliation.create': {
+    title: 'Observations',
+    left: {
+      dataItemId: DATA_ITEM_ID,
+      versionId: VERSION_ID,
+      analysisId: OPERATION_ID,
+      assetId: ASSET_ID,
+    },
+    right: {
+      dataItemId: DATA_ITEM_ID,
+      versionId: VERSION_ID,
+      analysisId: OPERATION_ID,
+      assetId: '20000000-0000-4000-8000-000000000099',
+    },
+    plan: {
+      keys: [
+        {
+          name: 'station',
+          leftField: 'c1',
+          rightField: 'c1',
+          type: 'text',
+          trim: false,
+        },
+      ],
+      left: {
+        valueField: 'c2',
+        measure: { literal: 'level' },
+        unit: { literal: 'm' },
+      },
+      right: {
+        valueField: 'c2',
+        measure: { literal: 'level' },
+        unit: { literal: 'm' },
+      },
+      unitConversions: [],
+      conflictPolicy: 'preserve',
+    },
+  },
+  'data.reconciliation.get': { batchId: OPERATION_ID, first: 25 },
+  'data.reconciliation.review': {
+    batchId: OPERATION_ID,
+    expectedVersion: 1,
+    decision: 'verify',
+    note: 'Checked originals',
+  },
+  'data.reconciliation.list': { versionId: VERSION_ID },
+
   'data.explore.view.create': {
     queryId: OPERATION_ID,
     title: 'View',
@@ -263,6 +310,53 @@ const validCapabilityInputs = {
 } satisfies Record<DataCapabilityId, Readonly<Record<string, unknown>>>;
 
 const expectedCapabilityMappings = {
+  'data.reconciliation.create': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/reconciliations',
+      successStatus: 201,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'createDataReconciliation',
+    },
+    mcpMapping: { toolName: 'data_reconciliation_create' },
+    skillMapping: { operation: 'data.reconciliation.create' },
+  },
+  'data.reconciliation.get': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/reconciliations/:batchId',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataReconciliation' },
+    mcpMapping: { toolName: 'data_reconciliation_get' },
+    skillMapping: { operation: 'data.reconciliation.get' },
+  },
+  'data.reconciliation.review': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/reconciliations/:batchId/review',
+      successStatus: 200,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'reviewDataReconciliation',
+    },
+    mcpMapping: { toolName: 'data_reconciliation_review' },
+    skillMapping: { operation: 'data.reconciliation.review' },
+  },
+  'data.reconciliation.list': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/reconciliations',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataReconciliations' },
+    mcpMapping: { toolName: 'data_reconciliation_list' },
+    skillMapping: { operation: 'data.reconciliation.list' },
+  },
+
   'data.explore.view.create': {
     restMapping: {
       method: 'POST',
@@ -585,6 +679,19 @@ const expectedCapabilityMappings = {
 } satisfies Record<DataCapabilityId, unknown>;
 
 const expectedCapabilityScopes = {
+  'data.reconciliation.create': [
+    'data.query.execute',
+    'data.catalog.read',
+    'data.ingestion.write',
+  ],
+  'data.reconciliation.get': ['data.query.execute', 'data.catalog.read'],
+  'data.reconciliation.review': [
+    'data.query.execute',
+    'data.catalog.read',
+    'data.publish',
+  ],
+  'data.reconciliation.list': ['data.query.execute', 'data.catalog.read'],
+
   'data.explore.view.create': ['data.query.execute', 'data.catalog.read'],
   'data.explore.view.list': ['data.query.execute', 'data.catalog.read'],
   'data.explore.view.open': ['data.query.execute', 'data.catalog.read'],
@@ -625,6 +732,23 @@ const asynchronousCapabilityIds = new Set<DataCapabilityId>([
 ]);
 
 const expectedJsonSchemaHashes = {
+  'data.reconciliation.create': {
+    input: '174f36b476aadd5f390397981c199625802d4318ae22bf05fc0cf05a335104f8',
+    output: 'f6f66367e8d65a82bdbf0086b7f263d05ad5cf96570dfa91a49c55f30298c73c',
+  },
+  'data.reconciliation.get': {
+    input: '98308743cf4087655a748398f77bb16bf192f42cdfa4c1825f30d61497047da5',
+    output: '03a85d6ec4d6326b143c7316da955a823a18af4f3bfb2f5803b258cfa07fc575',
+  },
+  'data.reconciliation.review': {
+    input: 'df9fe93f13fcf307e5209a2e8927bf966be5a4318fe49a4af75b8fe2b967de12',
+    output: 'f6f66367e8d65a82bdbf0086b7f263d05ad5cf96570dfa91a49c55f30298c73c',
+  },
+  'data.reconciliation.list': {
+    input: '2091e288610093ebfe39b2e93ab4ee032b2504b001a23f0370510224e71d0b07',
+    output: '4f794152ce2bf45367bb318a22b0bcde32127ba7cff985f8a357e90150cf28f8',
+  },
+
   'data.explore.view.create': {
     input: 'b87e4f4b326ae62836ddd3a4411c5537a17fa2444fc73adf9e88dff049829fb4',
     output: 'ae6e18d80bf0a0aa54c402a6a791d4e73ddc7e447ba7863539aab549efe12179',
@@ -1084,6 +1208,10 @@ describe('Data Foundation capability registry', () => {
       'data.explore.export',
       'data.explore.query',
       'data.analysis.create',
+      'data.reconciliation.create',
+      'data.reconciliation.get',
+      'data.reconciliation.review',
+      'data.reconciliation.list',
     ]);
     expect(Object.keys(DATA_CAPABILITY_REGISTRY)).toEqual(DATA_CAPABILITY_IDS);
 

@@ -16,8 +16,8 @@ checkPaths:
   - compose.yaml
   - .env.example
   - scripts/data-foundation/**
-lastReviewedAt: 2026-09-08
-lastReviewedCommit: 4d8a440d12ab9e554934b531bb3c781134966e6c
+lastReviewedAt: 2026-09-09
+lastReviewedCommit: 5eeead372664c3ae7ada5a4d94e4901343e27565
 ---
 
 ## 运行模式
@@ -164,3 +164,5 @@ CLI 使用 Worker 明确的租户、项目、安全等级和策略范围，以�
 重建后先切换 Worker，等待其配置位点追上当前项目已提交的事件，核验全部证据覆盖、模型信息与中英文真实案例检索，再把 API 切换到相同配置。保留旧集合；回退也先恢复旧 Worker 配置，让它补齐停用期间发布的数据，确认覆盖后再恢复 API 配置。仅恢复配置不能证明索引完整。嵌入效果提升不会把来源登记内容变成科学证据。
 
 高德官方适配器从 Web 服务端环境读取 `WISER_AMAP_KEY` 和 `WISER_AMAP_SECURITY_CODE`，保存在本机 `.env` 或部署秘密配置中。`/api/maps/amap/config` 仅在会话校验后返回公开 JS API Key。同源代理只允许地图样式和坐标转换，服务端注入安全密钥，限制响应大小并禁用缓存。安全密钥不得使用 `NEXT_PUBLIC_*` 变量；本机 Compose override 仍必须加载。
+
+Data 纵切 smoke 为已登录 Web 目录页 GET 单独保留 60 秒请求预算，以容纳 Next.js 开发模式的首次编译。API 和登录请求仍使用默认 10 秒上限，所有请求继续受整轮 180 秒总期限约束。程序化选项 `webRequestTimeoutMs` 可收紧页面预算（100–60,000 毫秒）；超时不能算作页面断言成功。

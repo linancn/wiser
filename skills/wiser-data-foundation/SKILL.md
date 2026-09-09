@@ -27,6 +27,12 @@ Read [capability-protocol.md](references/capability-protocol.md) before the firs
 - Use `data.geo.query` or `data.geo.intersect` for bounded GIS questions. Keep the source CRS explicit and treat Web Mercator as display-only.
 - Use `data.ingestion.create` and the ingestion workflow for every new source, bulk import, API capture, generated result, or Agent-produced dataset. Track its long-running work with `data.operation.get`. Never write a formal version or projection directly.
 
+## Verify copies and deduplicate observations
+
+Use `data.reconciliation.create/list/get/review` through HTTP/MCP. Pin two distinct fully parsed CSV/XLSX/XLS assets with their DataItem, version and analysis IDs. Define paired business keys, measure/unit bindings, value fields, explicit unit conversions and revision precedence with the user; do not infer scientific identity from file names, hashes or row counts. The deterministic API computes evidence; the Agent does not produce counts or verdicts.
+
+The synchronous batch is bounded to 50,000 combined rows and 8 MiB of selected fields per source. Follow group pages and separate `groupIndex` member pages (up to 100 items); keep pins, source references, hashes and limitations in the explanation. Original data is preserved. Conflicts or incomplete records keep candidate counts unknown. Only a verified batch exposes its rule-scoped independent count; never substitute it for the whole catalog/resource count. A human owner with `data.publish` must review with a note and current expected version. Agent identities cannot perform the final review. Reuse the same command key on identical retries; every access reauthorizes sources.
+
 ## Query with evidence discipline
 
 1. Search the catalog and record the selected `dataItemId`, immutable `versionId`, hashes, security level, quality grade, acceptance status, publication status, limitations, and citation requirements.

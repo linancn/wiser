@@ -17,8 +17,8 @@ checkPaths:
   - infrastructure/**
   - supabase/**
   - package.json
-lastReviewedAt: 2026-08-26
-lastReviewedCommit: e048ff2ee4cc0f3c5065ca36947094463e3b1841
+lastReviewedAt: 2026-09-09
+lastReviewedCommit: a67f905d4afbb2008494f5ebd7a50fd21953bd99
 ---
 
 ## Before you start
