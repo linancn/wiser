@@ -7,6 +7,14 @@ const environment = {
   GITHUB_ACTIONS: 'true',
   RUNNER_ENVIRONMENT: 'github-hosted',
 };
+const configuration = JSON.stringify({
+  services: {
+    api: { image: 'app:local', build: { context: '.' } },
+    web: { image: 'app:local' },
+    parser: { image: 'parser:local', build: { context: './parser' } },
+    postgres: { image: 'postgres:pinned' },
+  },
+});
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
 test('rejects local and self-hosted environments before touching a database', async () => {
@@ -29,12 +37,18 @@ test('validates merged Compose before starting independent Auth and image prepar
   const calls = [];
   const auth = Promise.withResolvers();
   const images = Promise.withResolvers();
+  const build = Promise.withResolvers();
   let completed = false;
   const running = prepareCiData({
     environment,
     command: async (name, args, options) => {
       assert.equal(options.environment, environment);
       calls.push([name, ...args].join(' '));
+      if (args.includes('config')) {
+        assert.equal(options.capture, true);
+        return configuration;
+      }
+      if (args.includes('build')) await build.promise;
       if (args.includes('supabase:start')) await auth.promise;
       if (args.includes('pull')) await images.promise;
     },
@@ -43,9 +57,10 @@ test('validates merged Compose before starting independent Auth and image prepar
   });
   await tick();
   assert.deepEqual(calls, [
-    'docker compose --profile data-foundation config --quiet',
+    'docker compose --profile data-foundation config --format json',
     'pnpm supabase:start',
-    'docker compose --profile data-foundation pull --policy missing --ignore-buildable',
+    'docker compose --profile data-foundation build api parser',
+    'docker compose --profile data-foundation pull --policy missing postgres',
   ]);
   assert.equal(completed, false);
   auth.resolve();
@@ -53,6 +68,9 @@ test('validates merged Compose before starting independent Auth and image prepar
   assert.equal(calls.at(-1), 'pnpm supabase:reset');
   assert.equal(completed, false);
   images.resolve();
+  await tick();
+  assert.equal(completed, false);
+  build.resolve();
   await running;
   assert.equal(completed, true);
 });
@@ -72,7 +90,7 @@ test('configuration failure prevents both preparation lanes', async () => {
   assert.equal(calls.length, 1);
 });
 
-for (const failure of ['supabase:start', 'supabase:reset', 'pull']) {
+for (const failure of ['supabase:start', 'supabase:reset', 'pull', 'build']) {
   test(`propagates ${failure} failure only after every started lane has settled`, async () => {
     const calls = [];
     const other = Promise.withResolvers();
@@ -81,6 +99,7 @@ for (const failure of ['supabase:start', 'supabase:reset', 'pull']) {
       environment,
       command: async (_, args) => {
         calls.push(args);
+        if (args.includes('config')) return configuration;
         if (args.includes(failure)) throw new Error(failure);
         if (args.includes(failure === 'pull' ? 'supabase:start' : 'pull'))
           await other.promise;

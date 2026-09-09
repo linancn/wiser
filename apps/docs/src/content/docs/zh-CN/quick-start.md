@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: 16dcdcd418fd8e109ee83cc35121584bf2602f0a
+lastReviewedCommit: 8306292bc9e3b2d7e211bacd2809b40717b57073
 ---
 
 本页只覆盖第一次完整运行。日常的前后端单独启动、所有端口、环境变量和故障排查见[本机开发环境](/development/local-environment/)。
