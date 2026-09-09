@@ -734,6 +734,16 @@ export function DataExplorer({
             ))}
           </div>
         </div>
+        {result ? (
+          <div className={styles.countScope}>
+            <p>{copy.recordCountScope}</p>
+            <dl>
+              <dt>{copy.independentObservations}</dt>
+              <dd>{copy.observationsUnverified}</dd>
+            </dl>
+            <p>{copy.observationVerification}</p>
+          </div>
+        ) : null}
         {failure === null ? null : (
           <div role="alert" className={styles.failure}>
             {copy[failure]}
@@ -757,7 +767,7 @@ export function DataExplorer({
                       <tr>
                         <th scope="col">{copy.name}</th>
                         <th scope="col">{copy.provider}</th>
-                        <th scope="col">{copy.records}</th>
+                        <th scope="col">{copy.indexedRecords}</th>
                         <th scope="col">{copy.spatial}</th>
                       </tr>
                     </thead>
@@ -1048,7 +1058,7 @@ export function DataExplorer({
                   </dd>
                   <dt>{copy.assets}</dt>
                   <dd>{number.format(selected.assetCount)}</dd>
-                  <dt>{copy.records}</dt>
+                  <dt>{copy.indexedRecords}</dt>
                   <dd>
                     {copy.readiness[selected.readiness.records]} ·{' '}
                     {selected.recordCount === null

@@ -16,7 +16,7 @@ checkPaths:
   - apps/web/src/**
   - apps/web/e2e/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: 7686dfea3add97e9a16d1db860cd9ec910524405
+lastReviewedCommit: 483959867bbd133ed8de7a59b6d658fdf551ba50
 ---
 
 ## What this guide governs
@@ -144,6 +144,8 @@ Every product UI change verifies:
 The `/[locale]/data-foundation/explore` workspace shares the strict exploration contracts with the API. A compact query bar, resource table and selection inspector keep the result area near the top of the viewport. Server rendering starts or resumes an authorized result set; subsequent queries pass through the session-verified Next.js endpoint `/api/data-foundation/explore`. Filters start a new version manifest; paging keeps the same `queryId`. Keyboard-operable resource names expose exact versions, readiness and source limitations. Unknown analytical counts remain explicit instead of becoming zero.
 
 Resource readiness precedes analytical inspection. Record views expose original column labels, bounded pages, source filenames and hashes without inferring units. Map selection retains the version and source record in the Inspector. The map distinguishes viewport features/clusters from the total number of records representable in Web Mercator.
+
+Exploration summaries, resource tables and inspectors label indexed totals as “Parsed content records”; source-file content uses the same count label. Exploration and resource content explain that counts accumulate per file and can include CSV/XLSX format copies and document fragments. “Independent business observations” remains “Not counted / pending verification” because the current contract supplies no verified observation count. Two files with two parsed records each therefore retain four content records, while the independent count stays unknown. Original files, hashes, versions and values remain unchanged. File names, byte hashes and matching row counts do not establish semantic equivalence; verified format-copy relationships and business deduplication require a separate governed workflow for business keys, measures, units, time, completeness and revisions.
 
 Exploration 1.5 adds optional map-wide `spatial.bounds` (WGS84 or null for an empty result) and `mercatorFeatureCount`, computed over the same authorized record set independently of pagination. The browser requests one initial record and this summary, fits the full result bounds, and loads same-origin query MVT by viewport. Clicking an individual feature performs a 1.4 exact-record lookup; a cluster click zooms in. The map distinguishes viewport feature/cluster counts from map-ready record totals. Tile-boundary ownership is corrected by append-only migration `0015_exploration_tile_boundaries.sql`, so points at tile seams contribute once. The 1.4 contract remains archived.
 

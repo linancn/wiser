@@ -223,6 +223,13 @@ export function DataResourceContent({
       <header className={styles.heading}>
         <div>
           <h2>{copy.title}</h2>
+          <p>{explorer.recordCountScope}</p>
+          <p>
+            {explorer.independentObservations}
+            {' · '}
+            <strong>{explorer.observationsUnverified}</strong>
+          </p>
+          <p>{explorer.observationVerification}</p>
         </div>
         {queryId ? (
           <Link
@@ -271,9 +278,12 @@ export function DataResourceContent({
               <h3>{name}</h3>
               {asset ? (
                 <span>
-                  {asset.recordCount === null
-                    ? explorer.unknown
-                    : `${asset.recordCount.toLocaleString(locale)} ${explorer.records}`}
+                  {explorer.parsedFileRecords.replace(
+                    '{count}',
+                    asset.recordCount === null
+                      ? explorer.unknown
+                      : asset.recordCount.toLocaleString(locale),
+                  )}
                 </span>
               ) : null}
             </div>

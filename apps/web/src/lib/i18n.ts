@@ -457,7 +457,14 @@ const zhCN = {
       spatialReadiness: '空间就绪状态',
       allReadiness: '全部状态',
       analyzedSources: '已检查来源',
-      indexedRecords: '可查询记录',
+      indexedRecords: '解析内容记录数',
+      parsedFileRecords: '解析内容记录数：{count}',
+      recordCountScope:
+        '按文件累计，可能包含 CSV/XLSX 格式副本、文档片段等；不代表去重后的业务观测数。',
+      independentObservations: '独立业务观测数',
+      observationsUnverified: '未统计／待核验',
+      observationVerification:
+        '使用前请核对原文件的业务键、指标、单位、时间与修订情况。',
       indexedFeatures: '已验证空间要素',
       queryAction: '查询',
       querying: '查询中…',
@@ -1993,7 +2000,14 @@ const en: typeof zhCN = {
       spatialReadiness: 'Spatial readiness',
       allReadiness: 'All states',
       analyzedSources: 'Assessed sources',
-      indexedRecords: 'Indexed content records',
+      indexedRecords: 'Parsed content records',
+      parsedFileRecords: 'Parsed content records: {count}',
+      recordCountScope:
+        'Counted per file; may include CSV/XLSX format copies, document fragments and other content. This is not a deduplicated business observation count.',
+      independentObservations: 'Independent business observations',
+      observationsUnverified: 'Not counted / pending verification',
+      observationVerification:
+        'Before use, check the original files for business keys, measures, units, times and revisions.',
       indexedFeatures: 'Verified spatial features',
       queryAction: 'Query',
       querying: 'Querying…',
