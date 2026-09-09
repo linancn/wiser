@@ -36,7 +36,7 @@ test('rejects local and self-hosted environments before touching a database', as
 test('validates merged Compose before starting independent Auth and image preparation', async () => {
   const calls = [];
   const auth = Promise.withResolvers();
-  const images = Promise.withResolvers();
+  const browser = Promise.withResolvers();
   const build = Promise.withResolvers();
   let completed = false;
   const running = prepareCiData({
@@ -50,7 +50,7 @@ test('validates merged Compose before starting independent Auth and image prepar
       }
       if (args.includes('build')) await build.promise;
       if (args.includes('supabase:start')) await auth.promise;
-      if (args.includes('pull')) await images.promise;
+      if (args.includes('playwright')) await browser.promise;
     },
   }).then(() => {
     completed = true;
@@ -59,16 +59,19 @@ test('validates merged Compose before starting independent Auth and image prepar
   assert.deepEqual(calls, [
     'docker compose --profile data-foundation config --format json',
     'pnpm supabase:start',
-    'docker compose --profile data-foundation build api parser',
-    'docker compose --profile data-foundation pull --policy missing postgres',
+    'pnpm --filter @wiser/web exec playwright install --with-deps chromium',
   ]);
   assert.equal(completed, false);
   auth.resolve();
   await tick();
   assert.equal(calls.at(-1), 'pnpm supabase:reset');
   assert.equal(completed, false);
-  images.resolve();
+  browser.resolve();
   await tick();
+  assert.equal(
+    calls.at(-1),
+    'docker compose --profile data-foundation build api parser',
+  );
   assert.equal(completed, false);
   build.resolve();
   await running;
@@ -111,7 +114,12 @@ test('rejects incomplete service selections instead of expanding empty commands 
   }
 });
 
-for (const failure of ['supabase:start', 'supabase:reset', 'pull', 'build']) {
+for (const failure of [
+  'supabase:start',
+  'supabase:reset',
+  'playwright',
+  'build',
+]) {
   test(`propagates ${failure} failure only after every started lane has settled`, async () => {
     const calls = [];
     const other = Promise.withResolvers();
@@ -122,7 +130,13 @@ for (const failure of ['supabase:start', 'supabase:reset', 'pull', 'build']) {
         calls.push(args);
         if (args.includes('config')) return configuration;
         if (args.includes(failure)) throw new Error(failure);
-        if (args.includes(failure === 'pull' ? 'supabase:start' : 'pull'))
+        if (
+          args.includes(
+            ['build', 'playwright'].includes(failure)
+              ? 'supabase:start'
+              : 'playwright',
+          )
+        )
           await other.promise;
       },
     });
@@ -136,6 +150,8 @@ for (const failure of ['supabase:start', 'supabase:reset', 'pull', 'build']) {
     assert.equal(settled, false);
     other.resolve();
     await rejection;
+    if (failure === 'playwright')
+      assert.ok(!calls.some((args) => args.includes('build')));
     if (failure === 'supabase:start')
       assert.ok(!calls.some((args) => args.includes('supabase:reset')));
   });
