@@ -91,3 +91,5 @@ The statistics view aggregates a selected source through the shared HTTP query a
 Graph exploration includes bounded neighbor pages and current-page directed path highlighting, with keyboard controls and shared identity. / 图谱探索支持有界邻居分页和当前页有向路径高亮，复用键盘控件与共享身份。
 
 Exploration groups specialist tools without breaking deep links, preserves aggregate units on narrow screens, and offers responsive graph layouts and viewport controls. / 数据探索集中专业工具入口并保留深链接，窄屏统计保留单位，图谱提供响应式布局及视角控件。
+
+Mobile exploration details use a non-modal bottom drawer with explicit focus return and persistent selection. / 手机探索详情使用非模态底部抽屉，明确返回键盘焦点并保留所选数据。

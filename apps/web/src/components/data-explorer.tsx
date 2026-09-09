@@ -1,5 +1,6 @@
 'use client';
 
+import { DataExplorerInspector } from './data-explorer-inspector';
 import { DataExplorerSaved } from './data-explorer-saved';
 import { ExplorationViewContext } from './exploration-view-context';
 import { createExplorationViewState } from '@/lib/exploration-view-state';
@@ -909,17 +910,21 @@ export function DataExplorer({
               />
             ) : null}
           </section>
-          <aside
-            className={styles.inspector}
-            data-testid="explorer-inspector"
-            aria-label={copy.details}
+          <DataExplorerInspector
+            locale={locale}
+            selectionKey={
+              selectedRecord?.recordId ??
+              selectedNode?.id ??
+              selected?.versionId ??
+              null
+            }
           >
             {selectedRecord !== null ? (
               <>
                 <div className={styles.inspectorHeading}>
                   <h2>{copy.recordDetails}</h2>
                   <button
-                    aria-label={copy.close}
+                    aria-label={copy.clearSelection}
                     onClick={() => setSelected(null)}
                   >
                     ×
@@ -976,7 +981,7 @@ export function DataExplorer({
                 <div className={styles.inspectorHeading}>
                   <h2>{copy.graphNodeDetails}</h2>
                   <button
-                    aria-label={copy.close}
+                    aria-label={copy.clearSelection}
                     onClick={() => setSelected(null)}
                   >
                     ×
@@ -1015,7 +1020,7 @@ export function DataExplorer({
                 <div className={styles.inspectorHeading}>
                   <h2>{selected.name}</h2>
                   <button
-                    aria-label={copy.close}
+                    aria-label={copy.clearSelection}
                     onClick={() => setSelected(null)}
                   >
                     ×
@@ -1062,7 +1067,7 @@ export function DataExplorer({
                 </details>
               </>
             )}
-          </aside>
+          </DataExplorerInspector>
         </div>
       </main>
     </ExplorationViewContext.Provider>

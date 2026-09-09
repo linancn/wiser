@@ -162,6 +162,10 @@ export function KnowledgeGraphCanvas({
       );
       await active.render();
       if (disposed) return;
+      for (const canvas of container.querySelectorAll('canvas')) {
+        canvas.tabIndex = -1;
+        canvas.setAttribute('aria-hidden', 'true');
+      }
       graph.current = active;
       resize = new ResizeObserver(() => {
         if (

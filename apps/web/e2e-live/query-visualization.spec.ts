@@ -802,7 +802,7 @@ test('real NLDI records select the same station on the exploration map', async (
     'data-selected-record',
     /^[0-9a-f-]{36}$/,
   );
-  await page.getByRole('button', { name: '关闭详情', exact: true }).click();
+  await page.getByRole('button', { name: '取消选择', exact: true }).click();
   await expect(page.getByTestId('explorer-map')).toHaveAttribute(
     'data-rendered-feature-count',
     '1',
@@ -929,4 +929,43 @@ test('real graph supports canvas and keyboard selection with version provenance'
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
     .toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
+});
+
+test('mobile selection opens a bounded detail drawer and Escape preserves the selected source', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  const source = page.getByRole('button', {
+    name: 'DS-0558 · NLDI API',
+    exact: true,
+  });
+  await source.click();
+  const inspector = page.getByTestId('explorer-inspector');
+  await expect(inspector).toBeHidden();
+  const toggle = page.getByRole('button', {
+    name: '查看所选详情',
+    exact: true,
+  });
+  await toggle.click();
+  await expect(inspector).toBeVisible();
+  await expect(inspector).toBeFocused();
+  const bounds = await inspector.boundingBox();
+  expect(bounds!.height).toBeLessThanOrEqual(844 * 0.6 + 1);
+  expect(bounds!.y + bounds!.height).toBeCloseTo(844, 0);
+  await page.keyboard.press('Escape');
+  await expect(inspector).toBeHidden();
+  await expect(toggle).toBeFocused();
+  await expect(source).toHaveAttribute('aria-pressed', 'true');
+  await toggle.click();
+  await inspector
+    .getByRole('button', { name: '取消选择', exact: true })
+    .click();
+  await expect(
+    page.getByRole('tab', { name: '资源', exact: true }),
+  ).toBeFocused();
+  await expect(inspector).toBeHidden();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(390);
 });

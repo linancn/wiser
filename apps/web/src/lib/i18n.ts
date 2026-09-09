@@ -89,6 +89,10 @@ const zhCN = {
   },
   dataFoundation: {
     explorer: {
+      inspectSelection: '查看所选详情',
+      collapseDetails: '收起详情',
+      clearSelection: '取消选择',
+
       tools: '专业工具',
       readinessOverview: '资源就绪概况',
       saved: {
@@ -1338,6 +1342,10 @@ const en: typeof zhCN = {
   },
   dataFoundation: {
     explorer: {
+      inspectSelection: 'Inspect selection',
+      collapseDetails: 'Collapse details',
+      clearSelection: 'Clear selection',
+
       tools: 'Specialist tools',
       readinessOverview: 'Resource readiness overview',
       saved: {
