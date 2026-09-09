@@ -39,3 +39,11 @@ it('does not mutate authority coordinates, lose elevation, or apply a second off
   expect(toAmap(position, 'GCJ-02')).toEqual(position);
   expect(() => toAmap([Infinity, 40])).toThrow();
 });
+
+it('rejects malformed and out-of-range geometry while accepting empty rings', () => {
+  for (const position of [[], [116], [181, 40], [116, 91], [116, NaN]])
+    expect(() => toAmap(position)).toThrow();
+  expect(amapCoordinates([])).toEqual([]);
+  expect(() => amapCoordinates(null)).toThrow();
+  expect(() => amapCoordinates([116, 'bad'])).toThrow();
+});
