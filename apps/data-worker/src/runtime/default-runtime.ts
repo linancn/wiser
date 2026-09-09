@@ -6,7 +6,6 @@ import {
   PostgisSpatialProjection,
   PostgresDataJobRepository,
   PostgresProjectionOutboxRepository,
-  ProjectionOutboxConsumer,
   StacCatalogProjection,
   WeaviateEvidenceProjection,
   createDataPostgresPool,
@@ -25,11 +24,11 @@ import { createAnalysisHandler } from '../handlers/analysis.js';
 import { DataWorkerScheduler, type DataWorkerLogger } from '../scheduler.js';
 import {
   DataWorkerRuntime,
-  PublishingProjectionRepository,
   createDefaultHandlerRegistry,
   createProjectionAwareIngestionHandler,
 } from '../runtime.js';
 import { createDefaultIngestionPipelineOptions } from './default-ports.js';
+import { createProfiledProjectionConsumer } from './projection-profile.js';
 import { BoundedProjectionHttpClient } from './http-client.js';
 import {
   PostgresProjectionHydrationAuthority,
@@ -186,14 +185,12 @@ export function createDefaultDataWorkerRuntime(
       applicationName: 'wiser-data-outbox',
     }),
   );
-  const publishingRepository = new PublishingProjectionRepository(
-    outbox,
+  const projectionConsumer = createProfiledProjectionConsumer({
+    repository: outbox,
     publication,
-  );
-  const projectionConsumer = new ProjectionOutboxConsumer({
-    repository: publishingRepository,
     targets,
     consumerName: config.projection.consumerName,
+    embeddingModel: embedding.model,
   });
   const runtime = new DataWorkerRuntime({
     scheduler,
