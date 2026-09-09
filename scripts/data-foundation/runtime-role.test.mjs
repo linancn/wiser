@@ -115,3 +115,23 @@ test('starts certificate consumers after initialization without enabling Data in
   assert.equal(base['opensearch-icu-init'], undefined);
   assert.equal(base.opensearch, undefined);
 });
+
+test('restores reconciliation review-only grants after the common table grants', async () => {
+  const sql = (await readFile(sqlPath, 'utf8')).toLowerCase();
+  const common = sql.indexOf('grant select, insert, update on all tables');
+  const revoke = sql.indexOf(
+    'revoke update on service.observation_reconciliation from wiser_data_runtime',
+  );
+  assert.ok(
+    revoke > common,
+    'provisioning must remove inherited whole-row update permission',
+  );
+  const review =
+    /grant update\(status,\s*row_version,\s*reviewed_at,\s*review_note\) on service\.observation_reconciliation to wiser_data_runtime/.exec(
+      sql,
+    );
+  assert.ok(
+    review && review.index > revoke,
+    'only the four review fields may be updated',
+  );
+});

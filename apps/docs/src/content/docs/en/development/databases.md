@@ -19,7 +19,7 @@ checkPaths:
   - scripts/data-foundation/**
   - compose.yaml
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: a67f905d4afbb2008494f5ebd7a50fd21953bd99
+lastReviewedCommit: 5c98d03e974cb590afa9d2738caace27e5cf08a4
 ---
 
 ## Start with the two PostgreSQL boundaries
