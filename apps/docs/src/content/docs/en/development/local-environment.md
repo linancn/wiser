@@ -34,6 +34,8 @@ lastReviewedCommit: 4d8a440d12ab9e554934b531bb3c781134966e6c
 
 ## Host readiness
 
+Local development must load `compose.override.yaml`, including when using an explicit file list: `docker compose -f compose.yaml -f compose.override.yaml ...`. If a case/runtime file is also needed, retain the local override and review the merge order and effective configuration before starting, rebuilding, or recreating services. Preserve manual local changes; do not silently replace their ports, source mounts, or development commands. Use the same file list for configuration checks and the subsequent Compose operation. `docker compose ... config --quiet` validates the configuration without printing resolved secrets.
+
 - The complete Data profile runs databases, ClamAV, search, graph, and GIS together. `compose.yaml` is authoritative for resource bounds; confirm adequate Docker capacity and disk instead of relying on an unverified “minimum machine” number.
 - Some images use explicit `linux/amd64` emulation on Apple Silicon, so the first pull, initialization, and health checks take longer.
 - Installation and the first build need access to npm and container registries.

@@ -34,6 +34,8 @@ lastReviewedCommit: 4d8a440d12ab9e554934b531bb3c781134966e6c
 
 ## 宿主准备
 
+本地开发必须加载 `compose.override.yaml`，显式指定文件时也要包含它：`docker compose -f compose.yaml -f compose.override.yaml ...`。如果还需要 case/runtime 文件，仍须保留本地 override，并在启动、构建或重建服务前核对合并顺序和最终配置。保留用户手动修改的本地配置，不得静默覆盖其中的端口、源码挂载或开发命令。配置检查与后续 Compose 操作使用同一组文件；`docker compose ... config --quiet` 可校验配置而不打印解析后的秘密。
+
 - 完整 Data profile 会同时运行数据库、ClamAV、搜索、图谱与 GIS，资源上限以 `compose.yaml` 为准；启动前确认 Docker 可用容量与磁盘，而不是依赖一个未经仓库验证的“最低配置”数字。
 - 部分镜像在 Apple Silicon 上使用显式 `linux/amd64` 模拟，首次拉取、初始化和健康检查会更久。
 - 安装和首次构建需要访问 npm registry 与容器 registry。
