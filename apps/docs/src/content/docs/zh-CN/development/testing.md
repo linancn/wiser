@@ -176,7 +176,7 @@ pnpm --filter @wiser/web test:e2e
 pnpm --filter @wiser/docs test:e2e
 ```
 
-两个 Playwright 配置都会启动自己的隔离开发服务器：Web 使用 `127.0.0.1:3200`，Docs 使用 `127.0.0.1:4322`。CI 的 browser job 在 `pnpm verify` 通过后运行同一根命令，只在失败时保留 screenshot、trace 和 HTML report。标准套件使用 reference/Auth-off 配置，证明浏览器中的路由、语言、主题和交互；它不能替代统一 Auth 或数据库纵向 smoke。
+两个 Playwright 配置都会启动自己的隔离开发服务器：Web 使用 `127.0.0.1:3200`，Docs 使用 `127.0.0.1:4322`。Web 在这一隔离套件中显式配置 reference/Auth-off 模式，生产环境继续禁止关闭认证。CI 的 Web 使用一个浏览器 worker，每个测试上限 60 秒，避免并发首次路由编译，并允许多视口导航用例在 runner 上完成；本地 Web 使用四个 worker。CI 的 browser job 在 `pnpm verify` 通过后运行同一根命令，只在失败时保留 screenshot、trace 和 HTML report。这些套件证明浏览器中的路由、语言、主题和交互；它不能替代统一 Auth 或数据库纵向 smoke，包含编译的耗时也不作为生产延迟预算。
 
 ### 登录态 Data live 套件
 

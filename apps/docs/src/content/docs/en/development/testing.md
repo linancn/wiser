@@ -176,7 +176,7 @@ pnpm --filter @wiser/web test:e2e
 pnpm --filter @wiser/docs test:e2e
 ```
 
-Both Playwright configurations start isolated development servers: Web uses `127.0.0.1:3200`, while Docs uses `127.0.0.1:4322`. The CI browser job runs the same root command after `pnpm verify` and retains screenshots, traces, and the HTML report only on failure. The standard suites use reference/Auth-off configuration to prove browser routing, language, theme, and interaction; they do not replace unified-Auth or database vertical smoke.
+Both Playwright configurations start isolated development servers: Web uses `127.0.0.1:3200`, while Docs uses `127.0.0.1:4322`. Web explicitly configures reference/Auth-off mode in this isolated suite; production continues to forbid Auth-off mode. CI runs Web with one browser worker and a 60-second per-test limit to avoid concurrent cold-route compilation and allow the multi-viewport navigation cases to finish on the runner. Local Web runs use four workers. The CI browser job runs the same root command after `pnpm verify` and retains screenshots, traces, and the HTML report only on failure. These suites prove browser routing, language, theme, and interaction; they do not replace unified-Auth or database vertical smoke, and their compilation-inclusive timing is not a production latency budget.
 
 ### Authenticated Data live suite
 

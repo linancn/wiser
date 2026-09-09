@@ -87,7 +87,7 @@ test('switches WISER systems without losing locale or color theme', async ({
 
   await page.getByRole('button', { name: '切换至深色模式' }).click();
   await systems.getByRole('link', { name: '数据基座' }).click();
-  // This reference suite uses next dev; a cold route compiles on navigation.
+  // Local reference runs use next dev and compile cold routes on navigation.
   await page.waitForURL(/\/zh-CN\/data-foundation$/, { timeout: 20_000 });
   await expect(
     page.getByRole('heading', { name: '管理可信的水系统数据' }),
