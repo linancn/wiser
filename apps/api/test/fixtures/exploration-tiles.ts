@@ -21,6 +21,7 @@ export async function verifyExplorationTiles(
     filteredQueryId: string;
     filteredRecord: string;
   },
+  display: 'authority' | 'amap' = 'authority',
 ) {
   await client.query('reset role');
   const migration = await readFile(
@@ -77,11 +78,30 @@ export async function verifyExplorationTiles(
       'utf8',
     ),
   );
+  const tileFunction =
+    display === 'amap' ? 'wiser_exploration_amap_mvt' : 'wiser_exploration_mvt';
+  if (display === 'amap') {
+    const existing = await client.query(
+      "select to_regclass('service.analysis_amap_geometry') present",
+    );
+    if (!existing.rows[0]?.present)
+      await client.query(
+        await readFile(
+          'infrastructure/data-foundation/postgres/migrations/0021_amap_display.sql',
+          'utf8',
+        ),
+      );
+    const converted = await client.query<{ lng: number; lat: number }>(
+      'select st_x(p) lng, st_y(p) lat from (select service.amap_display_point(st_setsrid(st_makepoint(116.3913,39.9075),4326)) p) coords',
+    );
+    expect(converted.rows[0]!.lng).toBeCloseTo(116.39754, 5);
+    expect(converted.rows[0]!.lat).toBeCloseTo(39.908901, 5);
+  }
   const tileRole = `wiser_tile_test_${randomUUID().replaceAll('-', '')}`;
   await client.query(`create role ${tileRole} nologin nosuperuser nobypassrls`);
   await client.query(`grant usage on schema service to ${tileRole}`);
   await client.query(
-    `grant execute on function service.wiser_exploration_mvt(integer,integer,integer,json) to ${tileRole}`,
+    `grant execute on function service.${tileFunction}(integer,integer,integer,json) to ${tileRole}`,
   );
   const params = {
     tenantId: scope.tenant,
@@ -95,7 +115,7 @@ export async function verifyExplorationTiles(
   const tile = async (supplied: typeof params, z = 0, x = 0, y = 0) => {
     await client.query(`set local role ${tileRole}`);
     const result = await client.query<{ tile: Buffer }>(
-      'select service.wiser_exploration_mvt($1,$2,$3,$4::json) tile',
+      `select service.${tileFunction}($1,$2,$3,$4::json) tile`,
       [z, x, y, JSON.stringify(supplied)],
     );
     await client.query('reset role');
@@ -271,6 +291,7 @@ export async function verifyExplorationTiles(
   console.info(
     'Authorized MVT stress',
     JSON.stringify({
+      display,
       records: 100000,
       features: stress.length,
       bytes: bytes.byteLength,

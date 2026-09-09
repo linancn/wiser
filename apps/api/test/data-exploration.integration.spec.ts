@@ -700,19 +700,25 @@ describe('authorized exploration result sets in PostgreSQL', () => {
             context,
           ),
         ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
-        await verifyExplorationTiles(client, {
-          tenant,
-          project,
-          actor,
-          item,
-          version,
-          asset,
-          analysis,
-          queryId: analyzed.queryId,
-          record,
-          filteredQueryId: filtered.queryId,
-          filteredRecord: secondRecord,
-        });
+        for (const display of ['authority', 'amap'] as const) {
+          await verifyExplorationTiles(
+            client,
+            {
+              tenant,
+              project,
+              actor,
+              item,
+              version,
+              asset,
+              analysis,
+              queryId: analyzed.queryId,
+              record,
+              filteredQueryId: filtered.queryId,
+              filteredRecord: secondRecord,
+            },
+            display,
+          );
+        }
         const records = ExplorationResultSchema.parse(
           await executor.execute(
             {
