@@ -103,6 +103,54 @@ export async function verifyExplorationTiles(
   await client.query(
     `grant execute on function service.${tileFunction}(integer,integer,integer,json) to ${tileRole}`,
   );
+  if (display === 'amap') {
+    await client.query(
+      `grant execute on function service.wiser_spatial_extent_amap_mvt(integer,integer,integer,json) to ${tileRole}`,
+    );
+    const extentId = randomUUID();
+    await client.query(
+      `insert into catalog.spatial_extent(spatial_extent_id,tenant_id,project_id,data_item_id,version_id,source_geometry,source_crs,canonical_geometry,security_level) values($1,$2,$3,$4,$5,st_setsrid(st_makepoint(116.3913,39.9075),4326),'EPSG:4326',st_setsrid(st_makepoint(116.3913,39.9075),4490),'L1_INTERNAL')`,
+      [extentId, scope.tenant, scope.project, scope.item, scope.version],
+    );
+    const z = 18;
+    const x = Math.floor(((116.39754 + 180) / 360) * 2 ** z);
+    const latitude = (39.908901 * Math.PI) / 180;
+    const y = Math.floor(
+      ((1 - Math.log(Math.tan(latitude) + 1 / Math.cos(latitude)) / Math.PI) /
+        2) *
+        2 ** z,
+    );
+    await client.query(`set local role ${tileRole}`);
+    const result = await client.query<{ tile: Buffer }>(
+      'select service.wiser_spatial_extent_amap_mvt($1,$2,$3,$4::json) tile',
+      [
+        z,
+        x,
+        y,
+        JSON.stringify({
+          tenantId: scope.tenant,
+          projectId: scope.project,
+          versionId: scope.version,
+          maxSecurityLevel: 'L1_INTERNAL',
+          policyVersion: '1',
+        }),
+      ],
+    );
+    await client.query('reset role');
+    const point = new VectorTile(new PbfReader(result.rows[0]!.tile)).layers[
+      'authority'
+    ]!.feature(0).toGeoJSON(x, y, z).geometry;
+    expect(point.type).toBe('Point');
+    if (point.type === 'Point') {
+      expect(point.coordinates[0]).toBeCloseTo(116.39754, 5);
+      expect(point.coordinates[1]).toBeCloseTo(39.908901, 5);
+    }
+    const authority = await client.query<{ lng: number; lat: number }>(
+      'select st_x(source_geometry) lng,st_y(source_geometry) lat from catalog.spatial_extent where spatial_extent_id=$1',
+      [extentId],
+    );
+    expect(authority.rows[0]).toEqual({ lng: 116.3913, lat: 39.9075 });
+  }
   const params = {
     tenantId: scope.tenant,
     projectId: scope.project,
@@ -114,11 +162,14 @@ export async function verifyExplorationTiles(
   };
   const tile = async (supplied: typeof params, z = 0, x = 0, y = 0) => {
     await client.query(`set local role ${tileRole}`);
+    const timing = performance.now();
+    console.info('Tile start', display, z, x, y);
     const result = await client.query<{ tile: Buffer }>(
       `select service.${tileFunction}($1,$2,$3,$4::json) tile`,
       [z, x, y, JSON.stringify(supplied)],
     );
     await client.query('reset role');
+    console.info('Tile done', display, Math.round(performance.now() - timing));
     return result.rows[0]!.tile;
   };
   const layer = new VectorTile(new PbfReader(await tile(params))).layers[

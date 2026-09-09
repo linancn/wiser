@@ -43,9 +43,11 @@ function scopedPool(client: PoolClient, role: string): QueryAdapterPgPool {
 }
 
 describe('authorized exploration result sets in PostgreSQL', () => {
-  it.skipIf(process.env['WISER_DATA_PG_INTEGRATION'] !== '1')(
-    'pins versions and totals across pages, rejects foreign, expired and stale-policy result sets',
-    async () => {
+  it
+    .skipIf(process.env['WISER_DATA_PG_INTEGRATION'] !== '1')
+    .each(['authority', 'amap'] as const)(
+    '%s pins versions and totals across pages, rejects foreign, expired and stale-policy result sets',
+    async (display) => {
       const pool = new Pool({
         connectionString: process.env['DATA_TEST_DATABASE_URL'],
         max: 1,
@@ -700,25 +702,23 @@ describe('authorized exploration result sets in PostgreSQL', () => {
             context,
           ),
         ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
-        for (const display of ['authority', 'amap'] as const) {
-          await verifyExplorationTiles(
-            client,
-            {
-              tenant,
-              project,
-              actor,
-              item,
-              version,
-              asset,
-              analysis,
-              queryId: analyzed.queryId,
-              record,
-              filteredQueryId: filtered.queryId,
-              filteredRecord: secondRecord,
-            },
-            display,
-          );
-        }
+        await verifyExplorationTiles(
+          client,
+          {
+            tenant,
+            project,
+            actor,
+            item,
+            version,
+            asset,
+            analysis,
+            queryId: analyzed.queryId,
+            record,
+            filteredQueryId: filtered.queryId,
+            filteredRecord: secondRecord,
+          },
+          display,
+        );
         const records = ExplorationResultSchema.parse(
           await executor.execute(
             {
