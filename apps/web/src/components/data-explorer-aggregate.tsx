@@ -523,8 +523,8 @@ export function DataExplorerAggregate({
               </button>
             </fieldset>
           ) : null}
-          <div className={styles.tableScroll}>
-            <table>
+          <div className={styles.aggregateScroll}>
+            <table className={styles.aggregateTable}>
               <thead>
                 <tr>
                   {[

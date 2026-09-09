@@ -1,4 +1,5 @@
 export interface GraphLayoutInput {
+  readonly direction?: 'LR' | 'TB';
   readonly nodes: readonly { readonly id: string }[];
   readonly edges: readonly {
     readonly id: string;

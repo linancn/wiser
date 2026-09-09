@@ -17,9 +17,9 @@ export async function computeGraphLayout(
   )
     throw new Error('Invalid bounded graph');
   const layout = new DagreLayout({
-    rankdir: 'LR',
-    nodesep: 40,
-    ranksep: 120,
+    rankdir: input.direction ?? 'LR',
+    nodesep: input.direction === 'TB' ? 180 : 40,
+    ranksep: input.direction === 'TB' ? 80 : 120,
     nodeSize: 24,
     enableWorker: false,
   });

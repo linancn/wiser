@@ -89,6 +89,8 @@ const zhCN = {
   },
   dataFoundation: {
     explorer: {
+      tools: '专业工具',
+      readinessOverview: '资源就绪概况',
       saved: {
         title: '保存、分享与导出',
         description:
@@ -673,6 +675,12 @@ const zhCN = {
       prompt: '输入关键词开始检索。',
     },
     graphPage: {
+      controls: '图谱视角',
+      zoomIn: '放大图谱',
+      zoomOut: '缩小图谱',
+      fit: '显示全图',
+      focusSelection: '定位所选节点',
+
       canvasLabel: '知识图谱，可用下方实体列表进行键盘选择',
       loading: '正在绘制关联…',
       unavailable: '画布暂时无法显示，请使用实体列表查看数据。',
@@ -1330,6 +1338,8 @@ const en: typeof zhCN = {
   },
   dataFoundation: {
     explorer: {
+      tools: 'Specialist tools',
+      readinessOverview: 'Resource readiness overview',
       saved: {
         title: 'Save, share and export',
         description:
@@ -1928,6 +1938,12 @@ const en: typeof zhCN = {
       prompt: 'Enter keywords to start searching.',
     },
     graphPage: {
+      controls: 'Graph viewport',
+      zoomIn: 'Zoom in graph',
+      zoomOut: 'Zoom out graph',
+      fit: 'Fit graph',
+      focusSelection: 'Focus selected node',
+
       canvasLabel:
         'Knowledge graph; use the entity list for keyboard selection',
       loading: 'Drawing relationships…',

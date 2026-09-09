@@ -11,6 +11,8 @@ import {
   type ExplorationView,
 } from '@/lib/exploration-navigation';
 import Link from 'next/link';
+import { EXPLORATION_TOOLS } from '@/lib/navigation';
+import { DataExplorerReadiness } from './data-explorer-readiness';
 import dynamic from 'next/dynamic';
 import { DataExplorerGraph } from './data-explorer-graph';
 import {
@@ -44,13 +46,6 @@ import {
 } from './data-explorer-analysis';
 import styles from './data-explorer.module.css';
 
-const DataExplorerStatistics = dynamic(
-  () =>
-    import('./data-explorer-statistics').then(
-      (module) => module.DataExplorerStatistics,
-    ),
-  { ssr: false },
-);
 const DataExplorerAggregate = dynamic(
   () =>
     import('./data-explorer-aggregate').then(
@@ -678,6 +673,19 @@ export function DataExplorer({
               capture={capture}
             />
           ) : null}
+          <details className={styles.tools}>
+            <summary>{copy.tools}</summary>
+            <nav aria-label={copy.tools}>
+              {EXPLORATION_TOOLS.map((tool) => (
+                <Link
+                  key={tool.key}
+                  href={`/${locale}/data-foundation${tool.path}`}
+                >
+                  {getDictionary(locale).dataFoundation.navigation[tool.key]}
+                </Link>
+              ))}
+            </nav>
+          </details>
           <div
             className={styles.viewTabs}
             role="tablist"
@@ -739,7 +747,7 @@ export function DataExplorer({
             {view === 'resources' ? (
               <>
                 <div className={styles.tableScroll}>
-                  <table>
+                  <table className={styles.resourceTable}>
                     <thead>
                       <tr>
                         <th scope="col">{copy.name}</th>
@@ -836,7 +844,9 @@ export function DataExplorer({
                   onConfigure={configureRecords}
                   onInvalidated={invalidate}
                 />
-                <DataExplorerStatistics
+                <DataExplorerReadiness
+                  key={`${result.queryId}:${focusedVersion}`}
+                  initiallyOpen={!focusedVersion}
                   summary={result.summary}
                   locale={locale}
                   onFilter={(dimension, status) => {

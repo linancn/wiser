@@ -1,5 +1,12 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { GraphOptions } from '@antv/g6';
 import { KnowledgeGraphCanvas } from './data-foundation-graph';
@@ -10,6 +17,9 @@ const engine = vi.hoisted(() => ({
   destroy: vi.fn(),
   resize: vi.fn(),
   fitView: vi.fn().mockResolvedValue(undefined),
+  zoomTo: vi.fn().mockResolvedValue(undefined),
+  getZoom: vi.fn(() => 1),
+  focusElement: vi.fn().mockResolvedValue(undefined),
   draw: vi.fn().mockResolvedValue(undefined),
   updateNodeData: vi.fn(),
   updateEdgeData: vi.fn(),
@@ -29,6 +39,9 @@ vi.mock('@antv/g6', () => ({
     destroy = engine.destroy;
     resize = engine.resize;
     fitView = engine.fitView;
+    zoomTo = engine.zoomTo;
+    getZoom = engine.getZoom;
+    focusElement = engine.focusElement;
     draw = engine.draw;
     updateNodeData = engine.updateNodeData;
     updateEdgeData = engine.updateEdgeData;
@@ -135,6 +148,14 @@ it('renders worker positions, preserves the canvas on selection and disposes aft
       false,
     ),
   );
+  fireEvent.click(screen.getByRole('button', { name: '放大图谱' }));
+  await waitFor(() =>
+    expect(engine.zoomTo).toHaveBeenLastCalledWith(1.25, false),
+  );
+  fireEvent.click(screen.getByRole('button', { name: '定位所选节点' }));
+  await waitFor(() =>
+    expect(engine.focusElement).toHaveBeenCalledWith('b', false),
+  );
   expect(engine.render).toHaveBeenCalledOnce();
   act(() => {
     engine.click?.({ target: { id: 'a' } });
@@ -145,6 +166,7 @@ it('renders worker positions, preserves the canvas on selection and disposes aft
 });
 
 it('cancels unfinished layout when the graph is removed', async () => {
+  vi.stubGlobal('ResizeObserver', ResizeDouble);
   vi.stubGlobal('Worker', WorkerDouble);
   const rendered = render(
     <KnowledgeGraphCanvas

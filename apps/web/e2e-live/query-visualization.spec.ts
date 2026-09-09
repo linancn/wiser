@@ -303,6 +303,13 @@ test('source statistics aggregate the real station and drill into the same filte
     'data-state',
     'ready',
   );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    statistics.getByRole('columnheader', { name: '单位', exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(390);
   await statistics
     .getByRole('button', { name: '查看分组 USGS-01646500' })
     .click();

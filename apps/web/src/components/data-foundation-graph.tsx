@@ -46,6 +46,17 @@ export function KnowledgeGraphCanvas({
   const select = useRef(onSelect);
   select.current = onSelect;
   const [state, setState] = useState<GraphState>('loading');
+  const [direction, setDirection] = useState<'LR' | 'TB'>('LR');
+  useEffect(() => {
+    const container = target.current;
+    if (!container) return;
+    const measure = () =>
+      setDirection(container.clientWidth < 560 ? 'TB' : 'LR');
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
   const copy = getDictionary(locale).dataFoundation.graphPage;
 
   useEffect(() => {
@@ -74,6 +85,7 @@ export function KnowledgeGraphCanvas({
             (
               await layoutGraph(
                 {
+                  direction,
                   nodes: result.nodes.map((node) => ({ id: node.entityId })),
                   edges: result.edges.map((edge) => ({
                     id: edge.edgeId,
@@ -96,7 +108,7 @@ export function KnowledgeGraphCanvas({
         animation: false,
         autoFit: 'view',
         zoomRange: [0.15, 1.5],
-        padding: 48,
+        padding: [direction === 'TB' ? 120 : 80, 40, 40, 40],
         data: {
           nodes: result.nodes.map((node, index) => ({
             id: node.entityId,
@@ -218,7 +230,7 @@ export function KnowledgeGraphCanvas({
       graph.current = null;
       void pending.current.finally(() => instance?.destroy()).catch(() => {});
     };
-  }, [result, hierarchical]);
+  }, [result, hierarchical, direction]);
 
   useEffect(() => {
     const active = graph.current;
@@ -248,12 +260,68 @@ export function KnowledgeGraphCanvas({
       });
   }, [selectedId, result, state, path]);
 
+  function viewport(action: 'in' | 'out' | 'fit' | 'selection') {
+    const active = graph.current;
+    if (!active) return;
+    pending.current = pending.current
+      .then(async () => {
+        if (graph.current !== active) return;
+        if (action === 'fit') await active.fitView(undefined, false);
+        else if (action === 'selection' && selectedId) {
+          await active.zoomTo(1, false);
+          await active.focusElement(selectedId, false);
+        } else
+          await active.zoomTo(
+            Math.max(
+              0.15,
+              Math.min(1.5, active.getZoom() * (action === 'in' ? 1.25 : 0.8)),
+            ),
+            false,
+          );
+      })
+      .catch(() => {
+        if (graph.current === active) setState('unavailable');
+      });
+  }
   return (
     <div
       className={styles.canvasFrame}
       data-testid="knowledge-graph"
       data-state={state}
+      data-layout-direction={direction}
     >
+      <div
+        className={styles.canvasControls}
+        role="toolbar"
+        aria-label={copy.controls}
+      >
+        <button
+          disabled={state !== 'ready'}
+          aria-label={copy.zoomIn}
+          onClick={() => viewport('in')}
+        >
+          +
+        </button>
+        <button
+          disabled={state !== 'ready'}
+          aria-label={copy.zoomOut}
+          onClick={() => viewport('out')}
+        >
+          −
+        </button>
+        <button disabled={state !== 'ready'} onClick={() => viewport('fit')}>
+          {copy.fit}
+        </button>
+        <button
+          disabled={
+            state !== 'ready' ||
+            !result.nodes.some((node) => node.entityId === selectedId)
+          }
+          onClick={() => viewport('selection')}
+        >
+          {copy.focusSelection}
+        </button>
+      </div>
       <div
         ref={target}
         className={styles.canvas}
