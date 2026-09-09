@@ -149,7 +149,7 @@ Agent 只提出解释与计划，不能修改原始数据、静默纠正字段�
 
 Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbeat、priority、attempt count、确定性指数退避、取消、等待输入/审核、超时回收和 dead letter。带时间参数的 claim function 在更新前保留被选中行的真实 previous status；缺少 Job Attempt/Event/Outbox 语义的旧 claim function 已从数据库删除。Native Node HTTP 暴露 `/health/live`、`/health/ready` 与 Prometheus `/metrics`，优雅关闭先停止领取并等待 in-flight Handler。
 
-`ProjectionOutboxConsumer` 读取单调 checkpoint。每个 target 的 `PENDING/RUNNING/SUCCEEDED/FAILED` ledger 跨崩溃保留；外部写成功但 ledger 尚未更新时可安全重试，已成功 target 会跳过。投影 identity 由 DataItem/Version/Evidence 等权威 ID 派生：
+`ProjectionOutboxConsumer` 读取单调 checkpoint。每个 target 的 `PENDING/RUNNING/SUCCEEDED/FAILED` ledger 跨崩溃保留；外部写成功但 ledger 尚未更新时可安全重试。持续运行的 Worker 按真实嵌入配置与消费者名称派生独立位点；位点之后的事件即使已在共享台账标记成功，也会写入当前 Weaviate 集合，其他成功 target 仍跳过。fake 保留原位点以兼容样本和回退。首次启用会独立于重建 CLI 遍历保留的历史，之后续跑；切换和回退均先让 Worker 追平并完成验收，再切换 API 查询。投影 identity 由 DataItem/Version/Evidence 等权威 ID 派生：
 
 若五个 completion target 已成功，但对应 Operation 已进入 `FAILED` 或 `CANCELLED`，该 publication poison event 不得改写 Operation 终态，也不得发布权威版本。Consumer 以 `PUBLICATION_OPERATION_TERMINAL` 写入 `consumer_checkpoint.last_error` 并推进该 event，避免队首永久阻塞；后续成功 event 清除摘要。原 Job、Operation、target ledger 与版本证据全部保留。
 

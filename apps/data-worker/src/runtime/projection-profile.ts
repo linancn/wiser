@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto';
 import {
+  embeddingCollectionName,
   ProjectionOutboxConsumer,
   type EmbeddingModelIdentity,
   type ProjectionOutboxRepository,
@@ -16,12 +18,27 @@ export function createProfiledProjectionConsumer(options: {
   readonly consumerName: string;
   readonly embeddingModel: EmbeddingModelIdentity;
 }): ProjectionOutboxConsumer {
+  // Preserve the legacy fake checkpoint so rollback can catch events published
+  // while a real profile was active. Real profiles must never advance it.
+  const consumerName =
+    options.embeddingModel.provider === 'fake'
+      ? options.consumerName
+      : `projection-embedding-v1-${createHash('sha256')
+          .update(
+            JSON.stringify([
+              options.consumerName,
+              embeddingCollectionName(options.embeddingModel),
+            ]),
+          )
+          .digest('hex')
+          .slice(0, 32)}`;
   return new ProjectionOutboxConsumer({
     repository: new PublishingProjectionRepository(
       options.repository,
       options.publication,
+      ['WEAVIATE'],
     ),
     targets: options.targets,
-    consumerName: options.consumerName,
+    consumerName,
   });
 }

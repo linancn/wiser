@@ -734,7 +734,7 @@ const zhCN = {
       title: '数据接入',
       lede: '通过智能体接入文件和数据来源，跟踪检查、审核与发布进度。',
       idLabel: '接入任务编号',
-      idPlaceholder: 'Paste the task ID returned by your agent',
+      idPlaceholder: '粘贴智能体返回的接入任务编号',
       openAction: '查看接入任务',
       listGapTitle: '暂不支持浏览全部任务',
       listGapCopy: '如已有任务 ID，可直接查询处理进度。',
