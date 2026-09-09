@@ -23,6 +23,27 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe('bounded graph layout', () => {
+  it('spreads a resource overview across both axes instead of a single column', async () => {
+    const overview = {
+      mode: 'network' as const,
+      nodes: Array.from({ length: 30 }, (_, index) => ({
+        id: `resource-${index}`,
+      })),
+      edges: [],
+    };
+    const positions = await computeGraphLayout(overview);
+    expect(validGraphPositions(positions, overview)).toBe(true);
+    const width =
+      Math.max(...positions.map((p) => p.x)) -
+      Math.min(...positions.map((p) => p.x));
+    const height =
+      Math.max(...positions.map((p) => p.y)) -
+      Math.min(...positions.map((p) => p.y));
+    expect(width).toBeGreaterThan(300);
+    expect(width / height).toBeGreaterThan(0.5);
+    expect(width / height).toBeLessThan(2);
+    expect(await computeGraphLayout(overview)).toEqual(positions);
+  });
   it('computes stable left-to-right finite positions from graph structure', async () => {
     const positions = await computeGraphLayout(input);
     expect(validGraphPositions(positions, input)).toBe(true);
@@ -100,4 +121,38 @@ it('lays out narrow-screen provenance vertically while preserving stable identit
   expect(validGraphPositions(positions, input)).toBe(true);
   expect(positions[1].y).toBeGreaterThan(positions[0].y);
   expect(positions[1].x).toBe(positions[0].x);
+});
+
+it('keeps unrelated resource neighborhoods separate in a network overview', async () => {
+  const nodes = Array.from({ length: 24 }, (_, i) => ({ id: String(i) }));
+  const edges = nodes
+    .filter((_, i) => i % 4 !== 0)
+    .map((node) => ({
+      id: node.id,
+      source: String(Number(node.id) - (Number(node.id) % 4)),
+      target: node.id,
+    }));
+  const positions = await computeGraphLayout({ mode: 'network', nodes, edges });
+  const boxes = Array.from({ length: 6 }, (_, group) => {
+    const members = positions.filter(
+      (p) => Math.floor(Number(p.id) / 4) === group,
+    );
+    return {
+      left: Math.min(...members.map((p) => p.x)),
+      right: Math.max(...members.map((p) => p.x)),
+      top: Math.min(...members.map((p) => p.y)),
+      bottom: Math.max(...members.map((p) => p.y)),
+    };
+  });
+  for (let i = 0; i < boxes.length; i++)
+    for (let j = i + 1; j < boxes.length; j++) {
+      const a = boxes[i],
+        b = boxes[j];
+      expect(
+        a.right + 80 <= b.left ||
+          b.right + 80 <= a.left ||
+          a.bottom + 80 <= b.top ||
+          b.bottom + 80 <= a.top,
+      ).toBe(true);
+    }
 });

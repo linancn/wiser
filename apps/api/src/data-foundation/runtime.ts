@@ -183,6 +183,7 @@ const defaultFactories: DataFoundationRuntimeFactories = {
       bucket: config.objectStore.bucket,
       client,
       presign: createS3AuthorityPresigner(signingClient),
+      presignInternal: createS3AuthorityPresigner(client),
     });
     return {
       store,

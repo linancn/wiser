@@ -24,6 +24,8 @@ const probe = vi.hoisted(() => ({
   fitBounds: vi.fn(),
   easeTo: vi.fn(),
 }));
+vi.mock('./amap-basemap', () => ({ AmapBasemap: () => null }));
+
 vi.mock('maplibre-gl', () => ({ setWorkerUrl: vi.fn() }));
 vi.mock('react-map-gl/maplibre', async () => {
   const { forwardRef, useImperativeHandle } = await import('react');
@@ -41,6 +43,7 @@ vi.mock('react-map-gl/maplibre', async () => {
           getNorth: () => 39,
         }),
         getMap: () => ({
+          touchZoomRotate: { disableRotation: vi.fn() },
           getLayer: () => true,
           queryRenderedFeatures: () => [
             { properties: { recordId: 'one' } },

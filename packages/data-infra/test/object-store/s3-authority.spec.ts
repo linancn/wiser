@@ -15,6 +15,33 @@ const VERSION_ID = '71000000-0000-4000-8000-000000000004';
 const HASH = 'a'.repeat(64);
 const SIZE = 12_345;
 
+it('signs server-streamed version downloads for the internal endpoint only', async () => {
+  const presign = vi.fn(() => Promise.resolve('https://public.example/object'));
+  const presignInternal = vi.fn(() =>
+    Promise.resolve('http://private-store/object'),
+  );
+  const store = createS3AuthorityObjectStore({
+    bucket: 'authority',
+    client: new MemoryS3Client(),
+    presign,
+    presignInternal,
+  });
+  expect(
+    (
+      await store.planVersionDownload({
+        tenantId: TENANT_ID,
+        projectId: PROJECT_ID,
+        versionId: VERSION_ID,
+        sha256: HASH,
+        ttlSeconds: 60,
+        internal: true,
+      })
+    ).url,
+  ).toBe('http://private-store/object');
+  expect(presign).not.toHaveBeenCalled();
+  expect(presignInternal).toHaveBeenCalledOnce();
+});
+
 interface StoredObject {
   readonly size: number;
   readonly sha256: string;

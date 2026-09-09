@@ -1,0 +1,332 @@
+.frame {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.heading h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+.heading p {
+  margin: 0.3rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+.heading a,
+.download {
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  min-width: 0;
+}
+.files {
+  padding: 1rem;
+  background: var(--surface-muted);
+  border-right: 1px solid var(--border);
+  min-width: 0;
+}
+.files h3 {
+  margin: 0 0 0.8rem;
+  font-size: 1rem;
+}
+.files h3 span {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+.files ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 620px;
+  overflow: auto;
+  display: grid;
+  gap: 0.5rem;
+}
+.files button {
+  width: 100%;
+  text-align: start;
+  overflow-wrap: anywhere;
+  font-size: 0.85rem;
+}
+.files small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--text-secondary);
+}
+.frame button {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  padding: 0.5rem 0.7rem;
+  font: inherit;
+  cursor: pointer;
+}
+.frame button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.frame button[aria-pressed='true'],
+.frame button[aria-selected='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+.body {
+  min-width: 0;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+.toolbar h3 {
+  font-size: 1rem;
+  margin: 0 0 0.25rem;
+  overflow-wrap: anywhere;
+}
+.toolbar > div {
+  min-width: 0;
+  flex: 1;
+}
+.toolbar span,
+.muted {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+.download {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  flex-shrink: 0;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 0.45rem 0.8rem;
+}
+.tabs {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  padding: 0 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.tabs button {
+  font-size: 0.9rem;
+}
+.panel {
+  padding: 1rem;
+  min-height: 280px;
+  min-width: 0;
+}
+.tableScroll {
+  max-width: 100%;
+  max-height: 620px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.tableScroll table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9rem;
+  text-align: start;
+}
+.tableScroll th,
+.tableScroll td {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+  min-width: 200px;
+  max-width: 400px;
+  overflow-wrap: anywhere;
+}
+.tableScroll th:first-child {
+  min-width: 52px;
+}
+.tableScroll thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-muted);
+  z-index: 1;
+  color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tableScroll tbody tr:hover {
+  background: var(--accent-soft);
+}
+.value {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
+.object {
+  max-width: 100%;
+  min-width: 0;
+}
+.object summary {
+  cursor: pointer;
+  color: var(--accent-strong);
+  min-height: 32px;
+  padding: 0.2rem 0;
+}
+.object dl {
+  margin: 0.4rem 0;
+  display: grid;
+  gap: 0;
+}
+.object dl > div {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.3fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+}
+.object dt {
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+}
+.object dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.documents {
+  display: grid;
+  gap: 1rem;
+}
+.documents article {
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-width: 0;
+}
+.preview {
+  width: 100%;
+  height: 65vh;
+  min-height: 380px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.selection {
+  padding: 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+.selection h3 {
+  display: inline;
+  margin-right: 1rem;
+}
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .files {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .files ul {
+    display: flex;
+    max-height: 170px;
+    overflow: auto;
+  }
+  .files li {
+    min-width: 180px;
+    max-width: 260px;
+  }
+}
+@media (max-width: 500px) {
+  .heading,
+  .toolbar {
+    padding: 0.85rem;
+  }
+  .tabs {
+    padding-inline: 0.85rem;
+  }
+  .panel {
+    padding: 0.6rem;
+  }
+  .object dl > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+  .pagination {
+    flex-wrap: wrap;
+  }
+}
+
+.raster {
+  min-width: 0;
+}
+.raster canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  cursor: crosshair;
+  background: var(--surface-muted);
+}
+.rasterLegend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-block: 12px;
+}
+.rasterLegend i {
+  flex: 1;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    #440154,
+    #3b528b,
+    #21918c,
+    #5ec962,
+    #fde725
+  );
+}
+.rasterSample {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: end;
+  margin-block: 16px;
+}
+.rasterSample label {
+  display: grid;
+  gap: 4px;
+}
+.rasterSample input {
+  width: 7rem;
+}

@@ -11,7 +11,7 @@ describe('MapLibre client boundary', () => {
 
     expect(source.trimStart()).toMatch(/^['"]use client['"]/);
     expect(source).toContain("import 'maplibre-gl/dist/maplibre-gl.css';");
-    expect(source).toMatch(/return\s*\(\)\s*=>\s*map\.remove\(\)/);
+    expect(source).toMatch(/return\s*\(\)\s*=>\s*\{[^}]*map\.remove\(\)/);
     expect(source).toContain('MutationObserver');
     expect(source).toContain('setPaintProperty');
     expect(source).toContain("type: 'vector'");

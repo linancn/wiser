@@ -28,12 +28,13 @@ const engine = vi.hoisted(() => ({
 }));
 vi.mock('@antv/g6', () => ({
   NodeEvent: { CLICK: 'node:click' },
+  GraphEvent: { AFTER_TRANSFORM: 'aftertransform' },
   Graph: class {
     constructor(options: GraphOptions) {
       engine.options = options;
     }
     on(_event: string, callback: typeof engine.click) {
-      engine.click = callback;
+      if (_event === 'node:click') engine.click = callback;
     }
     render = engine.render;
     destroy = engine.destroy;
@@ -88,7 +89,6 @@ it('renders worker positions, preserves the canvas on selection and disposes aft
       result={result}
       selectedId={null}
       onSelect={selected}
-      hierarchical
     />,
   );
   await waitFor(() =>
@@ -123,7 +123,6 @@ it('renders worker positions, preserves the canvas on selection and disposes aft
       result={result}
       selectedId="b"
       onSelect={selected}
-      hierarchical
     />,
   );
   await waitFor(() =>
@@ -139,7 +138,6 @@ it('renders worker positions, preserves the canvas on selection and disposes aft
       selectedId="b"
       path={{ nodeIds: ['a', 'b'], edgeIds: ['ab'] }}
       onSelect={selected}
-      hierarchical
     />,
   );
   await waitFor(() =>
@@ -154,7 +152,6 @@ it('renders worker positions, preserves the canvas on selection and disposes aft
       result={result}
       selectedId="b"
       onSelect={selected}
-      hierarchical
     />,
   );
   await waitFor(() =>
@@ -189,7 +186,6 @@ it('cancels unfinished layout when the graph is removed', async () => {
       result={result}
       selectedId={null}
       onSelect={vi.fn()}
-      hierarchical
     />,
   );
   await waitFor(() =>

@@ -73,6 +73,8 @@ grant execute on function service.wiser_spatial_extent_mvt(
   json
 ) to wiser_data_gis;
 grant execute on function service.wiser_exploration_mvt(integer, integer, integer, json) to wiser_data_gis;
+grant execute on function service.wiser_exploration_amap_mvt(integer, integer, integer, json) to wiser_data_gis;
+grant execute on function service.wiser_spatial_extent_amap_mvt(integer, integer, integer, json) to wiser_data_gis;
 revoke all on all tables in schema
   catalog,
   ingestion,
@@ -169,5 +171,7 @@ do $$ begin
     revoke update on service.exploration_snapshot from wiser_data_runtime;
   end if;
 end $$;
+
+revoke all on service.analysis_amap_geometry from wiser_data_runtime;
 
 commit;

@@ -1,3 +1,4 @@
+import { dataResourceName } from '@/lib/data-foundation-presentation';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -441,7 +442,7 @@ export function DataItemList({
               <p className={styles.rowKicker}>
                 {item.businessDomains.join(' · ')}
               </p>
-              <h3>{item.name}</h3>
+              <h3>{dataResourceName(item.name)}</h3>
             </div>
             <Link
               className={styles.textAction}

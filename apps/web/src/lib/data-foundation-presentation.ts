@@ -48,3 +48,10 @@ export function namedCapability(
 ): string {
   return Object.hasOwn(labels, id) ? labels[id] : fallback;
 }
+
+/** Remove generated catalog prefixes from display names; authority names stay intact. */
+export function dataResourceName(name: string): string {
+  const collection = /^files\.[a-f\d]+ · (.+)$/i.exec(name);
+  if (collection) return collection[1].replaceAll('_', ' ');
+  return name;
+}

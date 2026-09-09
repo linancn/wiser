@@ -138,6 +138,8 @@ services:
       WISER_DATA_PURPOSE: data-steward-console
       WISER_DATA_REQUEST_TIMEOUT_MS: '8000'
       WISER_DATA_RESPONSE_LIMIT_BYTES: '4194304'
+      WISER_AMAP_KEY: ${WISER_AMAP_KEY:-}
+      WISER_AMAP_SECURITY_CODE: ${WISER_AMAP_SECURITY_CODE:-}
     ports:
       - 127.0.0.1:3100:3000
     networks:

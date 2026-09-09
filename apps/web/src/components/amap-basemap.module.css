@@ -1,0 +1,27 @@
+.base {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.base :global(.amap-logo),
+.base :global(.amap-copyright a) {
+  pointer-events: auto;
+}
+.status {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 60px;
+  width: fit-content;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  background: var(--surface);
+  font-size: 0.85rem;
+}

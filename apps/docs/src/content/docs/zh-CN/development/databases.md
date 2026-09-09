@@ -176,3 +176,5 @@ WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
 迁移 `0017_exploration_predicate_compilation.sql` 保持类型化比较语义，并将最多八条条件的表达式交给 PostgreSQL 规划。数值转换采用带格式边界的精确 SQL/JSON 数值解析。记录查询在限定文件范围内只计算一次每个类型化字段，物化记录标识与比较值，在同一关系上完成计数和排序分页，最后仅按当前页标识读取原始内容。空值排序及来源序号的稳定并列顺序保持不变。集成测试先对比 187 组旧、新标量条件结果，再验证 RLS、分页和筛选后的瓦片。
 
 迁移 `0020_exploration_saved_views.sql` 创建强制 RLS 的保存配置，支持本人私有或显式项目可见。内容不可变，仅允许单向设置 `revoked_at`；运行角色配置在通用授权后恢复仅撤销列的更新权限。复用现有命令事务，原子写入幂等、审计与 Outbox。保存表不承担身份或成员权限权威。
+
+迁移 `0021_amap_display.sql` 保持 WGS84 分析记录只追加，另建带空间索引的 `service.analysis_amap_geometry` 显示投影。在合法记录插入后派生一次显示几何，迁移回填也只写投影。投影 RLS 继承来源作用域，不授予 runtime 或 GIS 角色直接表权限。共享瓦片鉴权逻辑选择原始或高德显示平面；通过 lateral 主键查询读取记录，避免投影统计信息尚未刷新时出现低效关联。线、面非线性转换会加密显示顶点，原始坐标不变。

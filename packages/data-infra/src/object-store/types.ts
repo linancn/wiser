@@ -107,6 +107,7 @@ export interface S3AuthorityObjectStore {
     },
   ): Promise<QuarantineMultipartPlan>;
   planVersionDownload(input: {
+    readonly internal?: boolean;
     readonly tenantId: string;
     readonly projectId: string;
     readonly versionId: string;

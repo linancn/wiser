@@ -4,6 +4,12 @@ import {
   type InvalidateExploration,
 } from '@/lib/exploration-request';
 import dynamic from 'next/dynamic';
+import { DataContentValue } from './data-content-value';
+import {
+  contentFieldLabel,
+  assetContentHref,
+  sourceFilename,
+} from '@/lib/data-content-presentation';
 import { useExplorationViewState } from './exploration-view-context';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -215,6 +221,19 @@ export function DataExplorerAnalysis({
             ))}
           </select>
         </label>
+        {selectedAsset && versionId ? (
+          <a
+            href={assetContentHref(
+              versionId,
+              selectedAsset.assetId,
+              sourceFilename(selectedAsset, selectedAsset.assetId),
+              locale,
+            )}
+            download
+          >
+            {getDictionary(locale).dataFoundation.content.download}
+          </a>
+        ) : null}
         <span>
           {result.totalCount.toLocaleString(locale)} {copy.records}
         </span>
@@ -237,7 +256,7 @@ export function DataExplorerAnalysis({
               <th scope="col">#</th>
               {visibleColumns?.map((column) => (
                 <th key={column.key} scope="col">
-                  {column.label}
+                  {contentFieldLabel(column.key, column.label, locale)}
                 </th>
               ))}
             </tr>
@@ -259,7 +278,11 @@ export function DataExplorerAnalysis({
                 </td>
                 {visibleColumns?.map((column) => (
                   <td key={column.key}>
-                    {formatRecordValue(record.values[column.key])}
+                    <DataContentValue
+                      locale={locale}
+                      value={record.values[column.key]}
+                      field={column.label}
+                    />
                   </td>
                 ))}
               </tr>

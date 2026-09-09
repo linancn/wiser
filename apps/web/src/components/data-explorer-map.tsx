@@ -9,7 +9,6 @@ import Map, {
   Source,
   Layer,
   NavigationControl,
-  AttributionControl,
   type MapRef,
 } from 'react-map-gl/maplibre';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -22,6 +21,9 @@ import {
 } from '@wiser/data-contracts';
 import { getDictionary, type Locale } from '@/lib/i18n';
 import styles from './data-explorer.module.css';
+import { AmapBasemap, type AmapBasemapHandle } from './amap-basemap';
+import { authorityCamera, displayCamera } from '@/lib/amap-camera';
+import { toAmap, fromAmap } from '@/lib/amap-coordinates';
 import { useExplorationViewState } from './exploration-view-context';
 
 maplibre.setWorkerUrl('/vendor/maplibre/6.8.0/maplibre-gl-worker.mjs');
@@ -45,6 +47,7 @@ export default function DataExplorerMap({
   const [savedMap] = useState(() => viewState?.initial.map);
   const camera = useRef(savedMap?.camera);
   const map = useRef<MapRef>(null);
+  const basemap = useRef<AmapBasemapHandle>(null);
   const [ready, setReady] = useState(false);
   const [renderedCount, setRenderedCount] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -91,8 +94,14 @@ export default function DataExplorerMap({
     if (extent)
       map.current?.fitBounds(
         [
-          [extent[0], Math.max(-85.0511287798066, extent[1])],
-          [extent[2], Math.min(85.0511287798066, extent[3])],
+          toAmap([extent[0], Math.max(-85.0511287798066, extent[1])]) as [
+            number,
+            number,
+          ],
+          toAmap([extent[2], Math.min(85.0511287798066, extent[3])]) as [
+            number,
+            number,
+          ],
         ],
         { padding: 60, maxZoom: 5.5, duration: 0 },
       );
@@ -100,11 +109,19 @@ export default function DataExplorerMap({
   function filterArea() {
     const bounds = map.current?.getBounds();
     if (!bounds) return;
-    const parsed = ExplorationBoundsSchema.safeParse([
+    const southWest = fromAmap([
       Math.max(-180, bounds.getWest()),
-      Math.max(-90, bounds.getSouth()),
+      Math.max(-85.0511287798066, bounds.getSouth()),
+    ]);
+    const northEast = fromAmap([
       Math.min(180, bounds.getEast()),
-      Math.min(90, bounds.getNorth()),
+      Math.min(85.0511287798066, bounds.getNorth()),
+    ]);
+    const parsed = ExplorationBoundsSchema.safeParse([
+      southWest[0],
+      southWest[1],
+      northEast[0],
+      northEast[1],
     ]);
     if (parsed.success) onBounds?.(parsed.data);
   }
@@ -163,38 +180,13 @@ export default function DataExplorerMap({
   }, [ready, result]);
   const tiles = useMemo(
     () => [
-      `${window.location.origin}/api/data-foundation/geo/tiles/vector/queries/${result.queryId}/{z}/{x}/{y}.pbf`,
+      `${window.location.origin}/api/data-foundation/geo/tiles/vector/amap/queries/${result.queryId}/{z}/{x}/{y}.pbf`,
     ],
     [result.queryId],
   );
   const style = useMemo<maplibre.StyleSpecification>(
-    () => ({
-      version: 8,
-      sources: {
-        land: {
-          type: 'geojson',
-          data: '/basemap/land-110m.geojson',
-          attribution: 'Natural Earth',
-        },
-      },
-      layers: [
-        {
-          id: 'ocean',
-          type: 'background',
-          paint: { 'background-color': palette.background },
-        },
-        {
-          id: 'land',
-          type: 'fill',
-          source: 'land',
-          paint: {
-            'fill-color': palette.land,
-            'fill-outline-color': palette.border,
-          },
-        },
-      ],
-    }),
-    [palette],
+    () => ({ version: 8, sources: {}, layers: [] }),
+    [],
   );
   return (
     <div
@@ -204,15 +196,31 @@ export default function DataExplorerMap({
       data-rendered-feature-count={renderedCount}
       data-selected-record={selected ?? ''}
     >
+      <AmapBasemap ref={basemap} locale={locale} />
       {failed ? null : (
         <Map
           ref={map}
           mapLib={maplibre}
-          initialViewState={
-            savedMap?.camera ?? { longitude: 105, latitude: 35, zoom: 2 }
-          }
+          initialViewState={displayCamera(
+            savedMap?.camera ?? {
+              longitude: 105,
+              latitude: 35,
+              zoom: 2,
+              bearing: 0,
+              pitch: 0,
+            },
+          )}
           mapStyle={style}
-          style={{ height: '100%', width: '100%' }}
+          style={{
+            height: '100%',
+            width: '100%',
+            clipPath: 'inset(0 0 28px 0)',
+          }}
+          minZoom={1}
+          maxZoom={21}
+          dragRotate={false}
+          pitchWithRotate={false}
+          maxPitch={0}
           attributionControl={false}
           renderWorldCopies={false}
           locale={{
@@ -227,17 +235,36 @@ export default function DataExplorerMap({
             'records-lines',
             'records-polygons',
           ]}
-          onLoad={() => setReady(true)}
+          onLoad={() => {
+            const instance = map.current?.getMap();
+            instance?.touchZoomRotate.disableRotation();
+            if (instance)
+              basemap.current?.syncCamera({
+                longitude: instance.getCenter().lng,
+                latitude: instance.getCenter().lat,
+                zoom: instance.getZoom(),
+                bearing: 0,
+                pitch: 0,
+              });
+            setReady(true);
+          }}
+          onMove={(event) =>
+            basemap.current?.syncCamera({
+              ...event.viewState,
+              bearing: 0,
+              pitch: 0,
+            })
+          }
           onMoveEnd={(event) => {
             const { longitude, latitude, zoom, bearing, pitch } =
               event.viewState;
-            camera.current = {
+            camera.current = authorityCamera({
               longitude: ((((longitude + 180) % 360) + 360) % 360) - 180,
               latitude,
               zoom,
               bearing: ((((bearing + 180) % 360) + 360) % 360) - 180,
               pitch,
-            };
+            });
             viewState?.reportMap({ camera: camera.current, layers });
           }}
           onIdle={() => {
@@ -281,14 +308,13 @@ export default function DataExplorerMap({
             if (properties['cluster'] === true) {
               map.current?.easeTo({
                 center: event.lngLat,
-                zoom: Math.min(22, (map.current?.getZoom() ?? 0) + 2),
+                zoom: Math.min(21, (map.current?.getZoom() ?? 0) + 2),
                 duration: 0,
               });
             } else void select(properties);
           }}
         >
-          <NavigationControl position="top-right" />
-          <AttributionControl compact={false} />
+          <NavigationControl position="top-right" showCompass={false} />
           <Source
             id="records"
             type="vector"

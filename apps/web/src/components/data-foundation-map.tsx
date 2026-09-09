@@ -3,7 +3,6 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import {
-  AttributionControl,
   setWorkerUrl,
   LngLatBounds,
   Map as MapLibreMap,
@@ -18,6 +17,14 @@ import type {
 } from '@/lib/data-foundation';
 
 import styles from './data-foundation-map.module.css';
+import { AmapBasemap, type AmapBasemapHandle } from './amap-basemap';
+import {
+  amapCoordinates,
+  toAmap,
+  type MapCoordinateSystem,
+} from '@/lib/amap-coordinates';
+import { getDictionary, type Locale } from '@/lib/i18n';
+import { registerAmapRaster } from '@/lib/amap-raster-protocol';
 
 setWorkerUrl('/vendor/maplibre/6.8.0/maplibre-gl-worker.mjs');
 
@@ -79,7 +86,10 @@ function polygons(value: unknown): Position[][][] {
   return array(value).map(rings);
 }
 
-function geoJsonData(features: MapFeatureCollectionDto) {
+function geoJsonData(
+  features: MapFeatureCollectionDto,
+  crs: MapCoordinateSystem,
+) {
   return {
     type: 'FeatureCollection' as const,
     features: features.features.map((feature) => {
@@ -112,7 +122,13 @@ function geoJsonData(features: MapFeatureCollectionDto) {
       return {
         type: 'Feature' as const,
         id: feature.id,
-        geometry,
+        geometry: {
+          ...geometry,
+          coordinates: amapCoordinates(
+            geometry.coordinates,
+            crs,
+          ) as typeof geometry.coordinates,
+        },
         properties: feature.properties,
       };
     }),
@@ -135,11 +151,11 @@ function stacData(extents: readonly StacExtentDto[]) {
           type: 'Polygon' as const,
           coordinates: [
             [
-              [minimumX, minimumY],
-              [maximumX, minimumY],
-              [maximumX, maximumY],
-              [minimumX, maximumY],
-              [minimumX, minimumY],
+              toAmap([minimumX, minimumY]),
+              toAmap([maximumX, minimumY]),
+              toAmap([maximumX, maximumY]),
+              toAmap([minimumX, maximumY]),
+              toAmap([minimumX, minimumY]),
             ],
           ],
         },
@@ -172,25 +188,32 @@ interface MapLayerLabels {
 }
 
 export function DataFoundationMap({
+  locale,
   ariaLabel,
   displayCrs,
   features,
   labels,
   rasterTileUrl,
   selectedVersion,
+  selectedName,
   stacExtents,
   vectorTileUrl,
 }: {
+  readonly locale: Locale;
   readonly ariaLabel: string;
   readonly displayCrs: 'EPSG:4326' | 'EPSG:4490';
   readonly features: MapFeatureCollectionDto;
   readonly labels: MapLayerLabels;
   readonly rasterTileUrl?: string;
   readonly selectedVersion?: string;
+  readonly selectedName?: string;
   readonly stacExtents: readonly StacExtentDto[];
   readonly vectorTileUrl?: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const basemap = useRef<AmapBasemapHandle>(null);
+  const amapCopy = getDictionary(locale).dataFoundation.amap;
   const [visible, setVisible] = useState<Readonly<Record<MapLayer, boolean>>>(
     () => ({
       authority: true,
@@ -205,8 +228,9 @@ export function DataFoundationMap({
     const color = (name: string, fallback: string) =>
       getComputedStyle(container.current!).getPropertyValue(name).trim() ||
       fallback;
+    const raster = rasterTileUrl ? registerAmapRaster(rasterTileUrl) : null;
     const sources: StyleSpecification['sources'] = {
-      authority: { type: 'geojson', data: geoJsonData(features) },
+      authority: { type: 'geojson', data: geoJsonData(features, displayCrs) },
     };
     if (stacExtents.length > 0) {
       sources['stac-extents'] = {
@@ -217,7 +241,12 @@ export function DataFoundationMap({
     if (vectorTileUrl !== undefined) {
       sources['governed-vector'] = {
         type: 'vector',
-        tiles: [vectorTileUrl],
+        tiles: [
+          vectorTileUrl.replace(
+            '/tiles/vector/versions/',
+            '/tiles/vector/amap/versions/',
+          ),
+        ],
         minzoom: 0,
         maxzoom: 22,
       };
@@ -225,7 +254,7 @@ export function DataFoundationMap({
     if (rasterTileUrl !== undefined) {
       sources['governed-raster'] = {
         type: 'raster',
-        tiles: [rasterTileUrl],
+        tiles: [raster!.url],
         tileSize: 256,
         minzoom: 0,
         maxzoom: 22,
@@ -233,15 +262,7 @@ export function DataFoundationMap({
     }
     const visibility = (layer: MapLayer) =>
       visible[layer] ? ('visible' as const) : ('none' as const);
-    const layers: StyleSpecification['layers'] = [
-      {
-        id: 'authority-background',
-        type: 'background',
-        paint: {
-          'background-color': color('--surface-strong', '#071a21'),
-        },
-      },
-    ];
+    const layers: StyleSpecification['layers'] = [];
     if (rasterTileUrl !== undefined) {
       layers.push({
         id: 'governed-raster-layer',
@@ -363,6 +384,11 @@ export function DataFoundationMap({
       style,
       center: [105, 35],
       zoom: 2.3,
+      minZoom: 1,
+      maxZoom: 21,
+      dragRotate: false,
+      pitchWithRotate: false,
+      maxPitch: 0,
       attributionControl: false,
       cooperativeGestures: true,
       locale: {
@@ -378,16 +404,37 @@ export function DataFoundationMap({
         'CooperativeGesturesHandler.MobileHelpText': labels.controls.mobileHelp,
       },
     });
-    map.addControl(new NavigationControl({ showCompass: true }), 'top-right');
-    map.addControl(new AttributionControl({ compact: true }));
+    mapRef.current = map;
+    map.touchZoomRotate.disableRotation();
+    map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
+    const sync = () => {
+      const center = map.getCenter();
+      basemap.current?.syncCamera({
+        longitude: center.lng,
+        latitude: center.lat,
+        zoom: map.getZoom(),
+        bearing: 0,
+        pitch: 0,
+      });
+    };
+    map.on('move', sync);
+    map.on('resize', sync);
+    map.on('load', sync);
     map.once('load', () => {
       const bounds = new LngLatBounds();
       for (const feature of features.features) {
-        collectBounds(feature.geometry.coordinates, bounds);
+        collectBounds(
+          amapCoordinates(feature.geometry.coordinates, displayCrs),
+          bounds,
+        );
       }
       for (const extent of stacExtents) {
-        bounds.extend([extent.bbox[0], extent.bbox[1]]);
-        bounds.extend([extent.bbox[2], extent.bbox[3]]);
+        bounds.extend(
+          toAmap([extent.bbox[0], extent.bbox[1]]) as [number, number],
+        );
+        bounds.extend(
+          toAmap([extent.bbox[2], extent.bbox[3]]) as [number, number],
+        );
       }
       if (!bounds.isEmpty()) {
         map.fitBounds(bounds, { padding: 52, maxZoom: 11, duration: 0 });
@@ -453,15 +500,51 @@ export function DataFoundationMap({
       attributeFilter: ['data-theme'],
     });
     map.once('remove', () => themeObserver.disconnect());
-    return () => map.remove();
+    return () => {
+      mapRef.current = null;
+      map.remove();
+      raster?.dispose();
+    };
   }, [
     features,
     labels.controls,
     rasterTileUrl,
     stacExtents,
     vectorTileUrl,
-    visible,
+    displayCrs,
   ]);
+  useEffect(() => {
+    const instance = mapRef.current;
+    if (!instance) return;
+    const update = () => {
+      for (const [group, ids] of Object.entries({
+        authority: [
+          'authority-polygons',
+          'authority-lines',
+          'authority-points',
+        ],
+        stac: ['stac-extents-fill', 'stac-extents-line'],
+        vector: [
+          'governed-vector-fill',
+          'governed-vector-line',
+          'governed-vector-point',
+        ],
+        raster: ['governed-raster-layer'],
+      }))
+        for (const id of ids)
+          if (instance.getLayer(id))
+            instance.setLayoutProperty(
+              id,
+              'visibility',
+              visible[group as MapLayer] ? 'visible' : 'none',
+            );
+    };
+    update();
+    instance.on('load', update);
+    return () => {
+      instance.off('load', update);
+    };
+  }, [visible]);
 
   const controls: readonly {
     readonly id: MapLayer;
@@ -511,21 +594,25 @@ export function DataFoundationMap({
         <dl>
           <div>
             <dt>{labels.selectedVersion}</dt>
-            <dd>{selectedVersion ?? labels.noSelectedVersion}</dd>
+            <dd title={selectedVersion}>
+              {selectedName ?? labels.noSelectedVersion}
+            </dd>
           </div>
           <div>
-            <dt>{labels.displayCrs}</dt>
-            <dd>{displayCrs} → EPSG:3857</dd>
+            <dt>{amapCopy.coordinateLabel}</dt>
+            <dd>{amapCopy.aligned}</dd>
           </div>
         </dl>
       </div>
       <div
-        ref={container}
         className={styles.map}
-        role="img"
+        role="region"
         aria-label={ariaLabel}
         data-testid="data-foundation-map"
-      />
+      >
+        <AmapBasemap ref={basemap} locale={locale} />
+        <div ref={container} className={styles.overlay} />
+      </div>
     </section>
   );
 }

@@ -211,15 +211,16 @@ function validateProxyRequest(request: DataFoundationGeoProxyRequest): void {
       break;
     }
     case 'MARTIN': {
-      const isQuery = /^\/wiser_exploration_mvt\/\d{1,2}\/\d+\/\d+$/.test(
-        request.path,
-      );
+      const isQuery =
+        /^\/wiser_exploration_(?:amap_)?mvt\/\d{1,2}\/\d+\/\d+$/.test(
+          request.path,
+        );
       const validTarget = isQuery
         ? Object.keys(query).length === 7 &&
           UUID_PATTERN.test(query['queryId'] ?? '') &&
           query['actorId'] === context.data.principal.actorId &&
           query['purpose'] === context.data.authorization.purpose
-        : /^\/wiser_spatial_extent_mvt\/\d{1,2}\/\d+\/\d+$/.test(
+        : /^\/wiser_spatial_extent_(?:amap_)?mvt\/\d{1,2}\/\d+\/\d+$/.test(
             request.path,
           ) &&
           Object.keys(query).length === 5 &&

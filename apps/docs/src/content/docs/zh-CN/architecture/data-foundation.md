@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: d513c1fed81e36d1de9d769ec6182cadbf713ea0
+lastReviewedCommit: b77a5c015a09f12bcc9e7cad8bb9d988ebf5ed35
 ---
 
 ## 权威边界
@@ -181,9 +181,9 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 - GraphQL：`POST /graphql`，29 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
 - MCP：stdio/无状态 Streamable HTTP，29 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
 - Skill：`skills/wiser-data-foundation` 定义发现、查询、上传、入库、Operation 与安全解释流程。
-- Web：现有 Next.js 应用中的 14 个 Data route，server-only DAL、真实 Supabase Session、双语/主题、不可变版本选择，以及 MapLibre 的 PostGIS authority GeoJSON、STAC extent、受控 vector MVT 与 raster 四图层。
+- Web：现有 Next.js 应用中的 14 个 Data route，server-only DAL、真实 Supabase Session、双语/主题、不可变版本选择，以及高德 JS API 2.0 官方底图与同步的透明 MapLibre 业务图层：PostGIS authority GeoJSON、STAC extent、受控 vector MVT 与 raster 四图层。
 
-DataItem detail 的 `?version=<uuid>` 会把指定版本送入 API 并核对 `selectedVersion`，版本列表以 `aria-current` 切换并可打开受控地图。地图查询为 `?bbox=minx,miny,maxx,maxy&dataItem=<uuid>&version=<uuid>&crs=EPSG:4326|EPSG:4490`，可分别切换四图层，显示固定 Version 与 `source CRS → EPSG:3857`。对 `data.geo.query`，省略单数 `versionId` 时，从每个 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent；每次响应受 `first` 限制，并用绑定 snapshot/query/scope 的不透明 `nextCursor` 继续。若同时给出 `dataItemIds`，它与上述版本选择取交集；版本不可见或不存在时返回空结果集。`data.geo.intersect` 使用同样的 snapshot cursor，先选择 DataItem target 的版本，再合并该版本全部 sibling extent；任一 target 不存在、不可见或无 extent 时返回空结果，绝不回退历史版本。Map server 必须在权威 PostGIS 版本排名之前把选定的 `versionId` 传入查询，受控取完不超过 10,000 个 feature 的分页，并在 cursor 重复或越界时 fail closed，不能先取最新版本再做事后过滤。浏览器只请求同源 `/api/data-foundation/geo/...`；Next server 使用刚验证的 Supabase 短期 Session 追加 Tenant/Project/Purpose 后转发 Fastify，Bearer 和内部 GIS origin 永不进入客户端。
+DataItem detail 的 `?version=<uuid>` 会把指定版本送入 API 并核对 `selectedVersion`，版本列表以 `aria-current` 切换并可打开受控地图。地图查询为 `?bbox=minx,miny,maxx,maxy&dataItem=<uuid>&version=<uuid>&crs=EPSG:4326|EPSG:4490`，可分别切换四图层，显示固定 Version 与 高德显示校准状态。对 `data.geo.query`，省略单数 `versionId` 时，从每个 DataItem 的最新可见且已提交版本选择 extent；指定时则从该精确不可变版本选择 extent；每次响应受 `first` 限制，并用绑定 snapshot/query/scope 的不透明 `nextCursor` 继续。若同时给出 `dataItemIds`，它与上述版本选择取交集；版本不可见或不存在时返回空结果集。`data.geo.intersect` 使用同样的 snapshot cursor，先选择 DataItem target 的版本，再合并该版本全部 sibling extent；任一 target 不存在、不可见或无 extent 时返回空结果，绝不回退历史版本。Map server 必须在权威 PostGIS 版本排名之前把选定的 `versionId` 传入查询，受控取完不超过 10,000 个 feature 的分页，并在 cursor 重复或越界时 fail closed，不能先取最新版本再做事后过滤。浏览器只请求同源 `/api/data-foundation/geo/...`；Next server 使用刚验证的 Supabase 短期 Session 追加 Tenant/Project/Purpose 后转发 Fastify，Bearer 和内部 GIS origin 永不进入客户端。
 
 每个当前 `DataItemVersion` 都必须带有权威 `tileAvailability: { vector, raster }`。`vector=true` 表示这个可见、已提交 Version 存在可见的版本级 spatial extent；`raster=true` 表示存在可见 RAW TIFF/GeoTIFF asset，且 blob/hash/input 关联和内容寻址 storage key 全部有效。这两个布尔量只表示受控 tile source 可路由，不代表 Martin/TiTiler 健康，也不证明 COG 合规。Catalog 链接同时携带 DataItem 与 Version，Map 在生成任一 tile URL 前会重新读取该精确权威配对。
 
@@ -275,7 +275,7 @@ G6 5.1.1 的分层画布在 Next.js 打包的显式同源模块 Worker 中调用
 
 探索工作区默认保存有名称的私人视图，支持明确选择项目分享、持久链接和创建者撤销。保存链接恢复经授权的固定查询、记录／图谱分页、所选来源、地图图层／视角及已应用的聚合配置；每次打开都会重新授权并建立新查询。导出下载一次有界 JSON 结果页，保留来源原值、准确返回／总量及完整／部分标记；地图初始记录页不代表全部已加载瓦片。尚未应用的草稿条件不会保存。
 
-数据工作区导航将检索、知识和专业空间／图谱工具归入数据探索，原有深链接继续有效，探索工具栏提供专业入口。窄屏下只有资源表可以隐藏提供机构列；记录与聚合表在自身滚动区域内保留全部所选字段和单位。来源统计将资源就绪概况放入独立折叠区，仅在展开时挂载图表。图谱画布宽度小于 560 像素时由 Worker 计算纵向布局，并提供键盘可用的缩放、全图及所选节点定位控件；视角操作不使用动画。
+数据工作区导航将检索、知识和专业空间／图谱工具归入数据探索，原有深链接继续有效，探索工具栏提供专业入口。窄屏下只有资源表可以隐藏提供机构列；记录与聚合表在自身滚动区域内保留全部所选字段和单位。来源统计将资源就绪概况放入独立折叠区，仅在展开时挂载图表。来源层级图谱宽度小于 560 像素时由 Worker 计算纵向布局，并提供键盘可用的缩放、全图及所选节点定位控件；视角操作不使用动画。
 
 宽度不超过 900 像素时，可通过底部按钮在非模态抽屉中查看所选来源。展开后键盘焦点进入带名称的详情区域；收起或 Escape 将焦点返回按钮，保留当前选择。取消选择时按需将焦点返回当前视图页签。桌面详情仍在侧栏中滚动。G6 内部画布图层不参与 Tab 顺序，键盘交互由有名称的视角控件和来源节点列表提供。
 
@@ -284,3 +284,11 @@ Portal 根据已验证会话选择主操作：已登录用户进入数据工作�
 API 与 Worker 共用 `DATA_EMBEDDING_PROVIDER` 和明确的嵌入配置。本机 smoke 与 CI 默认使用 `DeterministicFakeEmbedding`；生产环境拒绝 fake。OpenAI 兼容适配器支持配置的 Qwen3-Embedding-8B 服务及 4,096 维输出，区分查询指令与文档输入，限制批量与响应大小，校验返回模型、维度与有限数值并做 L2 归一化；服务失败时不替换为伪向量。模型、部署修订号、维度和查询指令共同派生独立的 Weaviate 集合；修订号标识部署的嵌入配置，不冒充未经核实的模型权重 commit。服务权重或预处理变化时必须增加修订号。Worker 的限定项目、可续跑重建工具从权威证据写入新集合，验收后再切换查询，保留旧集合和原发布台账。配置与切换步骤见[本机开发环境](/zh-CN/development/local-environment/)。
 
 搜索证据仍可能包含来源登记清单；Web 说明其检查范围，将原始摘录与结果摘要分开，不改写权威事实。智能分析仍需要按内容类型索引、领域与字段语义、相关性评测和受治理的计划执行。Neo4j 承担关联发现与投影，HTTP 授权和 PostgreSQL/PostGIS 保持权威。Web 把精确版本连接到资源、记录、地图、图谱与统计视图，不宣称已能够生成分析答案。
+
+知识图谱画布默认使用使用确定性初始位置、最多 160 次迭代的 ForceAtlas2 关系网络，由现有可取消 Worker 计算。键盘可操作的布局切换提供 Dagre 来源层级；只有层级布局在窄屏改变方向。两种布局均保留有界身份、选择、路径高亮和文字替代视图，独立资源的关联组在二维平面分区排布。初始概览每页显示八项资源，聚焦后的邻居页保留独立条数上限。关系文字与语义节点颜色辅助表达节点类型。
+
+原文件字节通过 `GET/HEAD /api/data/v1/tenants/{tenantId}/projects/{projectId}/versions/{versionId}/assets/{assetId}/content` 提供。API 重复既有资产／版本授权和审计，仅为内部存储入口签名，并以两分钟截止和单范围请求支持流式传输，不暴露签名地址。验证当前会话的 Web 入口 `/api/data-foundation/assets/{versionId}/{assetId}` 提供带文件名的附件或白名单内的惰性预览，剥离上游 Cookie，使用 no-store、nosniff 和沙箱内容策略。原文件下载与有界查询页导出相互独立。资源页先显示解析内容，再展示治理信息，保持精确版本与文件身份，提供分页表格、来源文档、结构化内容及地图／图谱联动。嵌套结构按有界分组懒加载，展示标签之外保留原始标签。
+
+地图仅在显示边界使用 GCJ-02。原始 WGS84/CGCS2000 坐标、空间查询和已保存视角保留权威坐标系。高德缩放级别等于 MapLibre 加一，方位角与俯仰角固定为零。GeoJSON 和授权矢量瓦片使用校准后的显示坐标。高德原生标识和版权信息始终可见、可点击。JS Key 属于公开客户端标识，安全密钥仅由经过认证的服务端代理使用。
+
+栅格叠加在独立浏览器 Worker 中，将 GCJ-02 像素中心反向映射至授权 WGS84 TiTiler 瓦片，采用最近邻采样保留类别和无数据区域。中国境内且缩放级别不低于 8 时使用八像素间隔的显示插值；低缩放级别及坐标转换边界采用精确映射。相邻瓦片请求有数量上限，地图销毁时取消请求并终止 Worker。原始栅格数值和文件保持不变。

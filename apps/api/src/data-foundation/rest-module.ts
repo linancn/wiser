@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { Readable } from 'node:stream';
+import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -57,6 +59,7 @@ export interface DataFoundationRestCapabilityHandler {
 export interface DataFoundationAssetDownloadPort {
   createDownload(input: {
     readonly context: PlatformRequestContext;
+    readonly internal?: boolean;
     readonly versionId: string;
     readonly assetId?: string;
   }): Promise<{ readonly url: string; readonly expiresAt: string }>;
@@ -66,6 +69,7 @@ export interface DataFoundationRestModuleOptions {
   readonly resolver: DataFoundationRequestContextResolver;
   readonly handler: DataFoundationRestCapabilityHandler;
   readonly assetDownload?: DataFoundationAssetDownloadPort;
+  readonly assetContentFetch?: typeof globalThis.fetch;
 }
 
 interface ErrorMapping {
@@ -614,64 +618,146 @@ export function createDataFoundationRestModule(
         });
       }
       if (options.assetDownload !== undefined) {
-        app.get(
-          '/api/data/v1/tenants/:tenantId/projects/:projectId/versions/:versionId/assets/:assetId',
-          async (request, reply) => {
-            setNoStore(reply);
-            const params = record(request.params);
-            const tenantId = params?.['tenantId'];
-            const projectId = params?.['projectId'];
-            const versionId = params?.['versionId'];
-            const assetId = params?.['assetId'];
-            if (
-              typeof tenantId !== 'string' ||
-              !UUID_PATTERN.test(tenantId) ||
-              typeof projectId !== 'string' ||
-              !UUID_PATTERN.test(projectId) ||
-              typeof versionId !== 'string' ||
-              !UUID_PATTERN.test(versionId) ||
-              typeof assetId !== 'string' ||
-              (assetId !== 'source' && !UUID_PATTERN.test(assetId))
-            ) {
-              return sendError(request, reply, errors.validation);
-            }
-            const resolved = await resolveContext(request, options.resolver);
-            if ('error' in resolved) {
-              return sendError(request, reply, resolved.error);
-            }
-            if (
-              resolved.context.authorization.tenantId !== tenantId ||
-              resolved.context.authorization.projectId !== projectId ||
-              !resolved.context.authorization.scopes.includes(
-                'data.catalog.read',
-              )
-            ) {
-              return sendError(request, reply, errors.forbidden);
-            }
-            let download: { readonly url: string; readonly expiresAt: string };
-            try {
-              download = await options.assetDownload!.createDownload({
-                context: resolved.context,
-                versionId,
-                ...(assetId === 'source' ? {} : { assetId }),
-              });
-              const url = new URL(download.url);
+        for (const delivery of ['redirect', 'content'] as const)
+          app.route({
+            method: delivery === 'content' ? ['GET', 'HEAD'] : 'GET',
+            url:
+              '/api/data/v1/tenants/:tenantId/projects/:projectId/versions/:versionId/assets/:assetId' +
+              (delivery === 'content' ? '/content' : ''),
+            handler: async (request, reply) => {
+              setNoStore(reply);
+              const params = record(request.params);
+              const tenantId = params?.['tenantId'];
+              const projectId = params?.['projectId'];
+              const versionId = params?.['versionId'];
+              const assetId = params?.['assetId'];
               if (
-                !['http:', 'https:'].includes(url.protocol) ||
-                url.username.length > 0 ||
-                url.password.length > 0 ||
-                !Number.isFinite(Date.parse(download.expiresAt))
+                typeof tenantId !== 'string' ||
+                !UUID_PATTERN.test(tenantId) ||
+                typeof projectId !== 'string' ||
+                !UUID_PATTERN.test(projectId) ||
+                typeof versionId !== 'string' ||
+                !UUID_PATTERN.test(versionId) ||
+                typeof assetId !== 'string' ||
+                (assetId !== 'source' && !UUID_PATTERN.test(assetId))
               ) {
-                throw new Error('invalid download contract');
+                return sendError(request, reply, errors.validation);
               }
-            } catch (error) {
-              return sendError(request, reply, mapError(error));
-            }
-            reply.header('Location', download.url);
-            reply.header('X-Signed-Url-Expires-At', download.expiresAt);
-            return reply.status(303).send();
-          },
-        );
+              const resolved = await resolveContext(request, options.resolver);
+              if ('error' in resolved) {
+                return sendError(request, reply, resolved.error);
+              }
+              if (
+                resolved.context.authorization.tenantId !== tenantId ||
+                resolved.context.authorization.projectId !== projectId ||
+                !resolved.context.authorization.scopes.includes(
+                  'data.catalog.read',
+                )
+              ) {
+                return sendError(request, reply, errors.forbidden);
+              }
+              const range = request.headers.range;
+              if (
+                delivery === 'content' &&
+                (Object.keys(record(request.query) ?? {}).length > 0 ||
+                  (range !== undefined &&
+                    !/^bytes=(?:[0-9]{1,15}-[0-9]{0,15}|-[0-9]{1,15})$/.test(
+                      range,
+                    )))
+              )
+                return sendError(request, reply, errors.validation);
+              let download: {
+                readonly url: string;
+                readonly expiresAt: string;
+              };
+              try {
+                download = await options.assetDownload!.createDownload({
+                  context: resolved.context,
+                  versionId,
+                  ...(assetId === 'source' ? {} : { assetId }),
+                  ...(delivery === 'content' ? { internal: true } : {}),
+                });
+                const url = new URL(download.url);
+                if (
+                  !['http:', 'https:'].includes(url.protocol) ||
+                  url.username.length > 0 ||
+                  url.password.length > 0 ||
+                  !Number.isFinite(Date.parse(download.expiresAt))
+                ) {
+                  throw new Error('invalid download contract');
+                }
+              } catch (error) {
+                return sendError(request, reply, mapError(error));
+              }
+              if (delivery === 'content') {
+                const controller = new AbortController();
+                const close = () => controller.abort();
+                reply.raw.once('close', close);
+                try {
+                  const upstream = await (
+                    options.assetContentFetch ?? globalThis.fetch
+                  )(download.url, {
+                    method: request.method,
+                    headers: range === undefined ? {} : { range },
+                    redirect: 'error',
+                    signal: AbortSignal.any([
+                      controller.signal,
+                      AbortSignal.timeout(120000),
+                    ]),
+                  });
+                  if (![200, 206, 416].includes(upstream.status)) {
+                    await upstream.body?.cancel();
+                    return sendError(request, reply, errors.unavailable);
+                  }
+                  const type =
+                    upstream.headers.get('content-type') ??
+                    'application/octet-stream';
+                  if (type.length > 256 || /[\r\n]/.test(type)) {
+                    await upstream.body?.cancel();
+                    return sendError(request, reply, errors.unavailable);
+                  }
+                  reply
+                    .status(upstream.status)
+                    .header('Content-Type', type)
+                    .header('X-Content-Type-Options', 'nosniff')
+                    .header(
+                      'Content-Security-Policy',
+                      "default-src 'none'; sandbox; frame-ancestors 'self'",
+                    )
+                    .header('Content-Disposition', 'attachment');
+                  for (const header of [
+                    'content-length',
+                    'content-range',
+                    'accept-ranges',
+                  ]) {
+                    const value = upstream.headers.get(header);
+                    if (
+                      value !== null &&
+                      value.length < 128 &&
+                      !/[\r\n]/.test(value)
+                    )
+                      reply.header(header, value);
+                  }
+                  if (request.method === 'HEAD' || upstream.status === 416) {
+                    await upstream.body?.cancel();
+                    return reply.send();
+                  }
+                  if (!upstream.body)
+                    return sendError(request, reply, errors.unavailable);
+                  return reply.send(
+                    Readable.fromWeb(
+                      upstream.body as NodeReadableStream<Uint8Array>,
+                    ),
+                  );
+                } catch {
+                  return sendError(request, reply, errors.unavailable);
+                }
+              }
+              reply.header('Location', download.url);
+              reply.header('X-Signed-Url-Expires-At', download.expiresAt);
+              return reply.status(303).send();
+            },
+          });
       }
     },
   };

@@ -1,4 +1,7 @@
 'use client';
+import { dataResourceName } from '@/lib/data-foundation-presentation';
+
+import { graphNodeLabel } from '@/lib/data-graph-label';
 
 import { DataExplorerInspector } from './data-explorer-inspector';
 import { DataExplorerSaved } from './data-explorer-saved';
@@ -767,14 +770,23 @@ export function DataExplorer({
                           }
                         >
                           <td>
-                            <button
+                            <Link
                               className={styles.resource}
+                              href={`/${locale}/data-foundation/catalog/${resource.dataItemId}?version=${resource.versionId}`}
+                            >
+                              {dataResourceName(resource.name)}
+                            </Link>
+                            <button
+                              aria-label={dataResourceName(resource.name)}
                               aria-pressed={
                                 selected?.versionId === resource.versionId
                               }
                               onClick={() => setSelected(resource)}
                             >
-                              {resource.name}
+                              {
+                                getDictionary(locale).dataFoundation.content
+                                  .select
+                              }
                             </button>
                           </td>
                           <td>{resource.provider}</td>
@@ -988,7 +1000,7 @@ export function DataExplorer({
                     ×
                   </button>
                 </div>
-                <h3>{selectedNode.label}</h3>
+                <h3>{graphNodeLabel(selectedNode, locale)}</h3>
                 <dl>
                   <dt>{copy.graphKind}</dt>
                   <dd>{copy.graphNodeKinds[selectedNode.kind]}</dd>
@@ -1019,7 +1031,7 @@ export function DataExplorer({
             ) : (
               <>
                 <div className={styles.inspectorHeading}>
-                  <h2>{selected.name}</h2>
+                  <h2>{dataResourceName(selected.name)}</h2>
                   <button
                     aria-label={copy.clearSelection}
                     onClick={() => setSelected(null)}

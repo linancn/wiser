@@ -21,6 +21,7 @@ export async function verifyExplorationTiles(
     filteredQueryId: string;
     filteredRecord: string;
   },
+  display: 'authority' | 'amap' = 'authority',
 ) {
   await client.query('reset role');
   const migration = await readFile(
@@ -77,12 +78,79 @@ export async function verifyExplorationTiles(
       'utf8',
     ),
   );
+  const tileFunction =
+    display === 'amap' ? 'wiser_exploration_amap_mvt' : 'wiser_exploration_mvt';
+  if (display === 'amap') {
+    const existing = await client.query<{ present: string | null }>(
+      "select to_regclass('service.analysis_amap_geometry') present",
+    );
+    if (!existing.rows[0]?.present)
+      await client.query(
+        await readFile(
+          'infrastructure/data-foundation/postgres/migrations/0021_amap_display.sql',
+          'utf8',
+        ),
+      );
+    const converted = await client.query<{ lng: number; lat: number }>(
+      'select st_x(p) lng, st_y(p) lat from (select service.amap_display_point(st_setsrid(st_makepoint(116.3913,39.9075),4326)) p) coords',
+    );
+    expect(converted.rows[0]!.lng).toBeCloseTo(116.39754, 5);
+    expect(converted.rows[0]!.lat).toBeCloseTo(39.908901, 5);
+  }
   const tileRole = `wiser_tile_test_${randomUUID().replaceAll('-', '')}`;
   await client.query(`create role ${tileRole} nologin nosuperuser nobypassrls`);
   await client.query(`grant usage on schema service to ${tileRole}`);
   await client.query(
-    `grant execute on function service.wiser_exploration_mvt(integer,integer,integer,json) to ${tileRole}`,
+    `grant execute on function service.${tileFunction}(integer,integer,integer,json) to ${tileRole}`,
   );
+  if (display === 'amap') {
+    await client.query(
+      `grant execute on function service.wiser_spatial_extent_amap_mvt(integer,integer,integer,json) to ${tileRole}`,
+    );
+    const extentId = randomUUID();
+    await client.query(
+      `insert into catalog.spatial_extent(spatial_extent_id,tenant_id,project_id,data_item_id,version_id,source_geometry,source_crs,canonical_geometry,security_level) values($1,$2,$3,$4,$5,st_setsrid(st_makepoint(116.3913,39.9075),4326),'EPSG:4326',st_setsrid(st_makepoint(116.3913,39.9075),4490),'L1_INTERNAL')`,
+      [extentId, scope.tenant, scope.project, scope.item, scope.version],
+    );
+    const z = 18;
+    const x = Math.floor(((116.39754 + 180) / 360) * 2 ** z);
+    const latitude = (39.908901 * Math.PI) / 180;
+    const y = Math.floor(
+      ((1 - Math.log(Math.tan(latitude) + 1 / Math.cos(latitude)) / Math.PI) /
+        2) *
+        2 ** z,
+    );
+    await client.query(`set local role ${tileRole}`);
+    const result = await client.query<{ tile: Buffer }>(
+      'select service.wiser_spatial_extent_amap_mvt($1,$2,$3,$4::json) tile',
+      [
+        z,
+        x,
+        y,
+        JSON.stringify({
+          tenantId: scope.tenant,
+          projectId: scope.project,
+          versionId: scope.version,
+          maxSecurityLevel: 'L1_INTERNAL',
+          policyVersion: '1',
+        }),
+      ],
+    );
+    await client.query('reset role');
+    const point = new VectorTile(new PbfReader(result.rows[0]!.tile)).layers[
+      'authority'
+    ]!.feature(0).toGeoJSON(x, y, z).geometry;
+    expect(point.type).toBe('Point');
+    if (point.type === 'Point') {
+      expect(point.coordinates[0]).toBeCloseTo(116.39754, 5);
+      expect(point.coordinates[1]).toBeCloseTo(39.908901, 5);
+    }
+    const authority = await client.query<{ lng: number; lat: number }>(
+      'select st_x(source_geometry) lng,st_y(source_geometry) lat from catalog.spatial_extent where spatial_extent_id=$1',
+      [extentId],
+    );
+    expect(authority.rows[0]).toEqual({ lng: 116.3913, lat: 39.9075 });
+  }
   const params = {
     tenantId: scope.tenant,
     projectId: scope.project,
@@ -95,7 +163,7 @@ export async function verifyExplorationTiles(
   const tile = async (supplied: typeof params, z = 0, x = 0, y = 0) => {
     await client.query(`set local role ${tileRole}`);
     const result = await client.query<{ tile: Buffer }>(
-      'select service.wiser_exploration_mvt($1,$2,$3,$4::json) tile',
+      `select service.${tileFunction}($1,$2,$3,$4::json) tile`,
       [z, x, y, JSON.stringify(supplied)],
     );
     await client.query('reset role');
@@ -271,6 +339,7 @@ export async function verifyExplorationTiles(
   console.info(
     'Authorized MVT stress',
     JSON.stringify({
+      display,
       records: 100000,
       features: stress.length,
       bytes: bytes.byteLength,

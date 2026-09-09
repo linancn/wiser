@@ -1235,82 +1235,95 @@ export function createDataFoundationGeoProxyModule(
         stacHandler,
       );
 
-      const vectorHandler: RouteHandlerMethod = (request, reply) =>
-        execute(request, reply, async (context) => {
-          const tile = tileCoordinates(request.params);
-          if (tile === null || tile.format !== 'pbf') return null;
-          const query = strictQuery(request, new Set());
-          if (query === null || query.length !== 0) return null;
-          await options.authority.authorizeVectorVersion({
-            context,
-            versionId: tile.versionId,
-          });
-          return {
-            target: 'MARTIN',
-            path: `/wiser_spatial_extent_mvt/${tile.z}/${tile.x}/${tile.y}`,
-            method: request.method as 'GET' | 'HEAD',
-            query: sortedQuery({
-              tenantId: context.authorization.tenantId,
-              projectId: context.authorization.projectId,
+      for (const amap of [false, true]) {
+        const vectorHandler: RouteHandlerMethod = (request, reply) =>
+          execute(request, reply, async (context) => {
+            const tile = tileCoordinates(request.params);
+            if (tile === null || tile.format !== 'pbf') return null;
+            const query = strictQuery(request, new Set());
+            if (query === null || query.length !== 0) return null;
+            await options.authority.authorizeVectorVersion({
+              context,
               versionId: tile.versionId,
-              maxSecurityLevel: context.authorization.maxSecurityLevel,
-              policyVersion: String(context.authorization.authzVersion),
-            }),
-            context,
-            signal: AbortSignal.timeout(timeoutMs),
-          };
-        });
-      registerReadOnlyRoute(
-        app,
-        '/api/data/v1/geo/tiles/vector/versions/:versionId/:z/:x/:tile',
-        VectorTileRouteSchema,
-        vectorHandler,
-      );
+            });
+            return {
+              target: 'MARTIN',
+              path: `/wiser_spatial_extent_${amap ? 'amap_' : ''}mvt/${tile.z}/${tile.x}/${tile.y}`,
+              method: request.method as 'GET' | 'HEAD',
+              query: sortedQuery({
+                tenantId: context.authorization.tenantId,
+                projectId: context.authorization.projectId,
+                versionId: tile.versionId,
+                maxSecurityLevel: context.authorization.maxSecurityLevel,
+                policyVersion: String(context.authorization.authzVersion),
+              }),
+              context,
+              signal: AbortSignal.timeout(timeoutMs),
+            };
+          });
+        registerReadOnlyRoute(
+          app,
+          `/api/data/v1/geo/tiles/vector/${amap ? 'amap/' : ''}versions/:versionId/:z/:x/:tile`,
+          {
+            ...VectorTileRouteSchema,
+            operationId: amap
+              ? 'data_geo_amap_vector_tile'
+              : VectorTileRouteSchema.operationId,
+          },
+          vectorHandler,
+        );
 
-      const queryVectorHandler: RouteHandlerMethod = (request, reply) =>
-        execute(request, reply, async (context) => {
-          if (
-            !['data.query.execute', 'data.catalog.read'].every((scope) =>
-              context.authorization.scopes.includes(scope),
+        const queryVectorHandler: RouteHandlerMethod = (request, reply) =>
+          execute(request, reply, async (context) => {
+            if (
+              !['data.query.execute', 'data.catalog.read'].every((scope) =>
+                context.authorization.scopes.includes(scope),
+              )
             )
-          )
-            return 'FORBIDDEN';
-          const params = request.params as Record<string, unknown>;
-          const tile = tileCoordinates({
-            ...params,
-            versionId: params['queryId'],
-          });
-          if (tile === null || tile.format !== 'pbf') return null;
-          const query = strictQuery(request, new Set());
-          if (query === null || query.length !== 0) return null;
-          if (!options.authority.authorizeExplorationQuery) return 'NOT_FOUND';
-          await options.authority.authorizeExplorationQuery({
-            context,
-            queryId: tile.versionId,
-          });
-          return {
-            target: 'MARTIN',
-            path: `/wiser_exploration_mvt/${tile.z}/${tile.x}/${tile.y}`,
-            method: request.method as 'GET' | 'HEAD',
-            query: sortedQuery({
-              tenantId: context.authorization.tenantId,
-              projectId: context.authorization.projectId,
-              actorId: context.principal.actorId,
+              return 'FORBIDDEN';
+            const params = request.params as Record<string, unknown>;
+            const tile = tileCoordinates({
+              ...params,
+              versionId: params['queryId'],
+            });
+            if (tile === null || tile.format !== 'pbf') return null;
+            const query = strictQuery(request, new Set());
+            if (query === null || query.length !== 0) return null;
+            if (!options.authority.authorizeExplorationQuery)
+              return 'NOT_FOUND';
+            await options.authority.authorizeExplorationQuery({
+              context,
               queryId: tile.versionId,
-              purpose: context.authorization.purpose,
-              maxSecurityLevel: context.authorization.maxSecurityLevel,
-              policyVersion: String(context.authorization.authzVersion),
-            }),
-            context,
-            signal: AbortSignal.timeout(timeoutMs),
-          };
-        });
-      registerReadOnlyRoute(
-        app,
-        '/api/data/v1/geo/tiles/vector/queries/:queryId/:z/:x/:tile',
-        QueryVectorTileRouteSchema,
-        queryVectorHandler,
-      );
+            });
+            return {
+              target: 'MARTIN',
+              path: `/wiser_exploration_${amap ? 'amap_' : ''}mvt/${tile.z}/${tile.x}/${tile.y}`,
+              method: request.method as 'GET' | 'HEAD',
+              query: sortedQuery({
+                tenantId: context.authorization.tenantId,
+                projectId: context.authorization.projectId,
+                actorId: context.principal.actorId,
+                queryId: tile.versionId,
+                purpose: context.authorization.purpose,
+                maxSecurityLevel: context.authorization.maxSecurityLevel,
+                policyVersion: String(context.authorization.authzVersion),
+              }),
+              context,
+              signal: AbortSignal.timeout(timeoutMs),
+            };
+          });
+        registerReadOnlyRoute(
+          app,
+          `/api/data/v1/geo/tiles/vector/${amap ? 'amap/' : ''}queries/:queryId/:z/:x/:tile`,
+          {
+            ...QueryVectorTileRouteSchema,
+            operationId: amap
+              ? 'data_geo_amap_query_vector_tile'
+              : QueryVectorTileRouteSchema.operationId,
+          },
+          queryVectorHandler,
+        );
+      }
 
       const rasterHandler: RouteHandlerMethod = (request, reply) =>
         execute(request, reply, async (context) => {
