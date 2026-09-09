@@ -165,7 +165,10 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
       '115.6078,39.8496,116.2186,40.2217',
     );
     expect(mapUrl.searchParams.get('crs')).toBe('EPSG:4490');
-    await mapLink.click();
+    await Promise.all([
+      page.waitForURL(mapUrl.href, { waitUntil: 'domcontentloaded' }),
+      mapLink.click(),
+    ]);
     await expect(
       page.getByRole('heading', { name: 'Map preview' }),
     ).toBeVisible();
