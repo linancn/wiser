@@ -158,15 +158,21 @@ describe('workspace test entrypoints', () => {
     expect(end).toBeGreaterThan(start);
     const verifyJob = workflow.slice(start, end);
     const verify = verifyJob.indexOf('run: pnpm verify');
-    const coverageStep = verifyJob.indexOf(
-      'name: Verify unit coverage ratchet',
-    );
-    const coverage = verifyJob.indexOf('run: pnpm test:coverage');
     const artifact = verifyJob.indexOf('name: Upload unit coverage report');
+    const scripts = readJson('package.json').scripts as Record<string, string>;
 
-    expect(coverageStep).toBeGreaterThan(verify);
-    expect(coverage).toBeGreaterThan(coverageStep);
-    expect(artifact).toBeGreaterThan(coverage);
+    expect(scripts.verify.split(' && ')).toEqual([
+      'pnpm format:check',
+      'pnpm lint',
+      'pnpm typecheck',
+      'pnpm test:coverage',
+      'pnpm test:ops',
+      'pnpm build',
+      'pnpm compose:config',
+    ]);
+    expect(verify).toBeGreaterThan(-1);
+    expect(verifyJob).not.toContain('run: pnpm test:coverage');
+    expect(artifact).toBeGreaterThan(verify);
     expect(verifyJob.slice(artifact)).toContain('coverage/lcov.info');
     expect(verifyJob.slice(artifact)).toContain(
       'coverage/coverage-summary.json',
