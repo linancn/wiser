@@ -189,9 +189,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Chromium for authenticated Data browser checks
-        run: pnpm --filter @wiser/web exec playwright install --with-deps chromium
-
       - name: Generate isolated Data PostgreSQL credentials
         shell: bash
         run: |
@@ -218,7 +215,7 @@ jobs:
             printf 'DATA_WORKER_PG_SMOKE_URL=postgresql://wiser_data_worker:%s@127.0.0.1:55432/wiser_data\n' "$data_worker_password"
           } >> "$GITHUB_ENV"
 
-      - name: Prepare unified Auth, native builds, and Data images concurrently
+      - name: Install Chromium for authenticated Data browser checks and prepare the stack
         run: node scripts/data-foundation/prepare-ci.mjs
 
       - name: Start pinned Data Foundation profile

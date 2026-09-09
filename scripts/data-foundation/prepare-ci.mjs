@@ -33,23 +33,33 @@ export async function prepareCiData({
   }
 
   // Resolve the merged configuration without logging its runtime credentials.
-  // Skip local image aliases during pulls: their build runs concurrently.
+  // Limit competing Docker downloads; browser installation precedes builds.
   // Runtime startup waits for all preparation, including every failed branch.
   const results = await Promise.allSettled([
     (async () => {
       await command('pnpm', ['supabase:start'], options);
       await command('pnpm', ['supabase:reset'], options);
     })(),
-    command(
-      'docker',
-      [...compose, 'build', ...builds.map(([name]) => name)],
-      options,
-    ),
-    command(
-      'docker',
-      [...compose, 'pull', '--policy', 'missing', ...remoteServices],
-      options,
-    ),
+    (async () => {
+      await command(
+        'pnpm',
+        [
+          '--filter',
+          '@wiser/web',
+          'exec',
+          'playwright',
+          'install',
+          '--with-deps',
+          'chromium',
+        ],
+        options,
+      );
+      await command(
+        'docker',
+        [...compose, 'build', ...builds.map(([name]) => name)],
+        options,
+      );
+    })(),
   ]);
   const errors = results
     .filter((result) => result.status === 'rejected')

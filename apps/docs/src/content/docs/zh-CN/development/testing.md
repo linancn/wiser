@@ -80,9 +80,9 @@ push 前运行 `pnpm verify`，本地便会执行与 CI 相同的单元覆盖率
 
 ### CI 镜像与环境准备
 
-`scripts/data-foundation/prepare-ci.mjs` 读取并校验合并后的 Compose 配置，不输出凭据；随后并行执行三个独立分支：`supabase:start → supabase:reset`、全部可构建服务的原生镜像构建，以及缺失远程镜像拉取。拉取时排除仍在构建的本机镜像别名。若构建或远程服务选择为空，启动前直接拒绝，避免空参数意外扩大为整个 profile 的操作。
+`scripts/data-foundation/prepare-ci.mjs` 读取并校验合并后的 Compose 配置，不输出凭据；随后并行执行两个独立分支：`supabase:start → supabase:reset`，以及 Chromium 安装后执行全部可构建服务的原生镜像构建。缺失远程镜像在运行时启动阶段拉取，减少同时进行的 Docker 下载。若构建或远程服务选择为空，启动前直接拒绝，避免空参数意外扩大为整个 profile 的操作。
 
-初始化器只允许可丢弃的 GitHub-hosted runner，等待三个分支都结束，任一失败都会阻止运行时启动。CI 随后使用 `pnpm data:up --no-build`；迁移、seed、服务健康、解析器、smoke、登录浏览器和 PostgreSQL 检查仍全部运行。每个作业使用新建数据库及 Docker 原生存储；运行凭据、数据库卷和 smoke 状态不进入缓存。
+初始化器只允许可丢弃的 GitHub-hosted runner，等待两个分支都结束，任一失败都会阻止运行时启动。CI 随后使用 `pnpm data:up --no-build`；迁移、seed、服务健康、解析器、smoke、登录浏览器和 PostgreSQL 检查仍全部运行。每个作业使用新建数据库及 Docker 原生存储；运行凭据、数据库卷和 smoke 状态不进入缓存。
 
 应用 Dockerfile 先复制根 package manifest（含 pnpm 版本）、workspace 配置和 lockfile，再执行 `pnpm fetch`；随后复制源码，用 `pnpm install --offline --frozen-lockfile` 校验全部 workspace manifest。本机重复构建时，仅修改源码可复用依赖层。普通 `pnpm data:up` 继续构建镜像并加载本机 Compose override。
 
