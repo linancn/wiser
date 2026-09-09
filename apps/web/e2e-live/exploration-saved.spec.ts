@@ -121,7 +121,9 @@ test('saved graph restores exact source selection and map layers; project link r
     await revoke(page, [viewId]);
     ids.splice(ids.indexOf(viewId), 1);
     await page.goto(`/zh-CN/data-foundation/explore?saved=${viewId}`);
-    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(
+      page.getByTestId('data-explorer').getByRole('alert'),
+    ).toBeVisible();
     await expect(page.getByTestId('explorer-inspector')).not.toContainText(
       'USGS-01646500',
     );
