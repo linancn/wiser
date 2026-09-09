@@ -8,6 +8,39 @@ import { loadLiveCredentials } from './support/live-fixture';
 const credentials = loadLiveCredentials();
 const hydroAtlasId = 'e90d54eb-4740-4f21-a85e-1d497cc2cc57';
 
+test('authenticated Portal continues into workspaces', async ({ page }) => {
+  await login(page, '/zh-CN');
+  await expect(
+    page.locator('main').getByRole('link', { name: /登录 WISER/ }),
+  ).toHaveCount(0);
+  await page
+    .locator('main')
+    .getByRole('link', { name: /进入数据工作区/ })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/zh-CN\/data-foundation$/);
+});
+
+test('catalog pages stay compact and retain query pagination', async ({
+  page,
+}) => {
+  await login(page, '/zh-CN/data-foundation/catalog');
+  const table = page.getByRole('table', { name: '数据资源列表' });
+  await expect(table.getByTestId('data-item-row')).toHaveCount(25);
+  const first = await table.getByTestId('data-item-row').first().innerText();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(390);
+  await page.getByRole('link', { name: '下一页', exact: true }).click();
+  await expect(table.getByTestId('data-item-row')).toHaveCount(25);
+  await expect(table.getByTestId('data-item-row').first()).not.toHaveText(
+    first,
+  );
+  await page.getByRole('link', { name: '返回第一页', exact: true }).click();
+  await expect(table.getByTestId('data-item-row').first()).toHaveText(first);
+});
+
 test('overview guides users to shared exploration without internal processing terminology', async ({
   page,
 }) => {
