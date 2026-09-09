@@ -82,8 +82,6 @@ push 前运行 `pnpm verify`，本地便会执行与 CI 相同的单元覆盖率
 
 Data 环境准备保留 Chromium、全新 Supabase 启动/reset 和 `pnpm data:up` 的顺序。迁移、seed、服务健康、解析器、smoke、登录浏览器和 PostgreSQL 检查仍全部运行。每个作业使用新建数据库及 Docker 原生存储；运行凭据、数据库卷和 smoke 状态不进入缓存。
 
-应用 Dockerfile 先复制根 package manifest（含 pnpm 版本）、workspace 配置和 lockfile，再执行 `pnpm fetch`；随后复制源码，用 `pnpm install --offline --frozen-lockfile` 校验全部 workspace manifest。本机重复构建时，仅修改源码可复用依赖层。普通 `pnpm data:up` 继续构建镜像并加载本机 Compose override。
-
 ## Vitest 与 workspace 聚焦命令
 
 开发循环先运行最窄命令，再在完成前回到根验证。

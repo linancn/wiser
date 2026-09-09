@@ -8,14 +8,9 @@ RUN corepack enable \
 
 WORKDIR /workspace
 RUN chown node:node /workspace
-USER node
-
-# Fetch only from the frozen dependency graph so source edits retain this layer.
-# Keep the dependency store in the image layer for the later offline install.
-COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm fetch --frozen-lockfile
-
 COPY --chown=node:node . .
-RUN pnpm install --offline --frozen-lockfile
+
+USER node
+RUN pnpm install --frozen-lockfile
 
 ENV NODE_ENV=development

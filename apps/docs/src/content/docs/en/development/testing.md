@@ -82,8 +82,6 @@ Use `pnpm verify` before pushing so local validation includes the same unit cove
 
 Data preparation preserves the sequential Chromium, fresh Supabase start/reset, and `pnpm data:up` flow. All migration, seed, service-health, parser, smoke, authenticated-browser, and PostgreSQL checks still run. Each job uses fresh databases and native Docker storage. Runtime credentials, database volumes, and smoke state are never cached.
 
-The application Dockerfile copies the root package manifest (including the pnpm pin), workspace configuration, and lockfile before `pnpm fetch`; source files follow, then `pnpm install --offline --frozen-lockfile` validates all workspace manifests. Repeated local builds can reuse the dependency layer for source-only changes. Ordinary local `pnpm data:up` continues to build images and load the local Compose override.
-
 ## Focused Vitest and workspace commands
 
 Use the narrowest command during development, then return to root verification before completion.
