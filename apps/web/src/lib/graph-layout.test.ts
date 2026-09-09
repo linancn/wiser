@@ -23,6 +23,21 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe('bounded graph layout', () => {
+  it('spreads a resource overview across both axes instead of a single column', async () => {
+    const overview = {
+      mode: 'network' as const,
+      nodes: Array.from({ length: 30 }, (_, index) => ({ id: `resource-${index}` })),
+      edges: [],
+    };
+    const positions = await computeGraphLayout(overview);
+    expect(validGraphPositions(positions, overview)).toBe(true);
+    const width = Math.max(...positions.map((p) => p.x)) - Math.min(...positions.map((p) => p.x));
+    const height = Math.max(...positions.map((p) => p.y)) - Math.min(...positions.map((p) => p.y));
+    expect(width).toBeGreaterThan(300);
+    expect(width / height).toBeGreaterThan(0.5);
+    expect(width / height).toBeLessThan(2);
+    expect(await computeGraphLayout(overview)).toEqual(positions);
+  });
   it('computes stable left-to-right finite positions from graph structure', async () => {
     const positions = await computeGraphLayout(input);
     expect(validGraphPositions(positions, input)).toBe(true);
