@@ -18,8 +18,8 @@ checkPaths:
   - packages/data-infra/src/migrations/**
   - scripts/data-foundation/**
   - compose.yaml
-lastReviewedAt: 2026-09-08
-lastReviewedCommit: 3cef59b9346fb4b348c8713f6965e88b7e2f1dc3
+lastReviewedAt: 2026-09-09
+lastReviewedCommit: a67f905d4afbb2008494f5ebd7a50fd21953bd99
 ---
 
 ## 先区分两个 PostgreSQL 边界
@@ -178,3 +178,5 @@ WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
 迁移 `0020_exploration_saved_views.sql` 创建强制 RLS 的保存配置，支持本人私有或显式项目可见。内容不可变，仅允许单向设置 `revoked_at`；运行角色配置在通用授权后恢复仅撤销列的更新权限。复用现有命令事务，原子写入幂等、审计与 Outbox。保存表不承担身份或成员权限权威。
 
 迁移 `0021_amap_display.sql` 保持 WGS84 分析记录只追加，另建带空间索引的 `service.analysis_amap_geometry` 显示投影。在合法记录插入后派生一次显示几何，迁移回填也只写投影。投影 RLS 继承来源作用域，不授予 runtime 或 GIS 角色直接表权限。共享瓦片鉴权逻辑选择原始或高德显示平面；通过 lateral 主键查询读取记录，避免投影统计信息尚未刷新时出现低效关联。线、面非线性转换会加密显示顶点，原始坐标不变。
+
+`0022_observation_reconciliation.sql` 增加不可变候选与审核证据，强制所有者/范围 RLS、单向乐观版本审核及最小列权限。`pnpm test:postgres:data-api` 包含 `data-reconciliation.integration.spec.ts`，仅在已迁移的隔离测试数据库运行；使用无 BYPASSRLS 角色验证来源重新授权、幂等、分页、审核冲突及原记录不变。

@@ -189,6 +189,22 @@ describe('non-destructive business observation reconciliation', () => {
     expect(output.summary.candidateObservationCount).toBeNull();
     expect(left).toEqual(before);
   });
+  it('keeps unsafe numeric business keys unresolved instead of merging rounded identifiers', () => {
+    const numericPlan = {
+      ...plan,
+      keys: [{ ...plan.keys[0]!, type: 'decimal' as const }],
+    };
+    expect(
+      reconcileObservations(
+        numericPlan,
+        [row('a1', 9007199254740992, 1)],
+        [row('b1', '9007199254740992', 1)],
+      ).summary,
+    ).toMatchObject({
+      incompleteRecordCount: 1,
+      candidateObservationCount: null,
+    });
+  });
   it('does not claim an empty pair is a format copy', () => {
     expect(reconcileObservations(plan, [], []).summary).toMatchObject({
       candidateObservationCount: 0,

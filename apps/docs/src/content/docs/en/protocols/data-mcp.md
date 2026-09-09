@@ -1,6 +1,6 @@
 ---
 title: Data MCP integration
-description: Invoke 29 Data Capabilities and five governed Resources through the shared WISER MCP Gateway.
+description: Invoke 33 Data Capabilities and five governed Resources through the shared WISER MCP Gateway.
 docType: protocol-reference
 scope: data-mcp-adapter
 status: active
@@ -17,8 +17,8 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - packages/data-contracts/src/capability/**
   - skills/wiser-data-foundation/**
-lastReviewedAt: 2026-09-08
-lastReviewedCommit: d88b0f5a3a4f451e8bbcb98d06d73a49a96eec58
+lastReviewedAt: 2026-09-09
+lastReviewedCommit: a67f905d4afbb2008494f5ebd7a50fd21953bd99
 ---
 
 ## HTTP adapter only
@@ -88,7 +88,7 @@ The two credentials have different jobs:
 
 Never place either token in a query, Tool argument, Resource URI, log, telemetry, or Git. `GET /health/live` and `/health/ready` are unauthenticated and non-cacheable. Graceful shutdown makes readiness false before draining requests. Every `/mcp` request gets a fresh server/transport; the boundary does not issue or resume MCP sessions.
 
-## The 29 Tools
+## The 33 Tools
 
 | MCP Tool                       | Capability                    | Kind    |
 | ------------------------------ | ----------------------------- | ------- |
@@ -235,3 +235,9 @@ Exploration 1.11 adds `graph.detail` (`assets`, `evidence`, `records`) for versi
 Saved exploration views use `data.explore.view.create`, `.list`, `.open` and `.revoke`; `data.explore.export` exports one bounded query representation. They require `data.query.execute` and `data.catalog.read`. Create/revoke are synchronous commands with UUID `Idempotency-Key`, atomic audit and command ledger. A saved view keeps the original QuerySpec, version/analysis pins and typed ViewSpec (view requests, page history, selection IDs, map camera/layers), not copied record content. At most 100 active views are kept per owner and project. Private is the default; explicit project sharing still requires authenticated project scope, purpose/security checks and authorization of every pinned member when opening. Listing returns only the caller's saved configurations. Opening reissues an owner-bound 30-minute query and continuation bindings without resolving newer versions or analyses; expiry of the original query does not expire the saved configuration. Revocation is one-way and owner-only. Export reauthorizes the request and returns original values, provenance and explicit returned/total counts with a coverage unit; a later page or truncated representation is never marked complete. No transport drains all pages into SSR/BFF memory.
 
 `data_explore_view_create`, `data_explore_view_list`, `data_explore_view_open`, `data_explore_view_revoke`, `data_explore_export` forward the corresponding HTTP capabilities with the same verified scope. Commands require `idempotencyKey`.
+
+## Observation reconciliation
+
+`data_reconciliation_create`, `data_reconciliation_list`, `data_reconciliation_get`, `data_reconciliation_review` project `data.reconciliation.create/list/get/review`. See [copy verification and business deduplication](/en/architecture/data-foundation/#copy-verification-and-business-observation-deduplication) for source pins, normalization, immutable evidence and limits. Reads require `data.query` and `data.catalog.read`; creation additionally requires `data.ingestion.write`, review requires `data.publish` and the creating human identity. Review requires `expectedVersion`; REST also requires matching `If-Match: "v1"`. MCP forwards its expected version as that header. Both commands require a stable UUID idempotency key across identical retries.
+
+`get` takes `batchId`, `first` (default 25, maximum 100), optional `after`, and optional `groupIndex`. Without a group index it pages group summaries; with it, it pages that group's source members. Continue with the returned `nextCursor` without changing the batch/version/group. `list` takes `versionId` and returns at most 100 recent owned batches. Creation freezes `left`, `right` and `plan`; review accepts `decision: "verify" | "reject"` and `note`. Conflicts or incomplete records block verification. Candidate results have null `independentObservationCount`; only a human-verified batch has a count within the declared rules. Agents may propose batches and read deterministic evidence but cannot issue the final review as an Agent identity.

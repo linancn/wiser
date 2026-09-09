@@ -19,7 +19,7 @@ checkPaths:
   - apps/docs/src/**
   - apps/docs/e2e/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: 483959867bbd133ed8de7a59b6d658fdf551ba50
+lastReviewedCommit: a67f905d4afbb2008494f5ebd7a50fd21953bd99
 ---
 
 ## 两个前端应用
@@ -180,3 +180,5 @@ Portal 根据已验证会话选择主操作：已登录用户进入数据工作�
 二维栅格波段与 NetCDF 变量在已保存像元不超过 65,536 个时直接绘制真实数值，提供透明无效值、各波段色标与可用键盘操作的行列像元检查。零值和负值保持原样。缺少像元、非数值或更高维数组保留结构化内容与原文件下载，不生成虚构影像。
 
 原生 PDF 预览仅在响应类型精确为 `application/pdf` 时使用浏览器 PDF 阅读器，保留 nosniff 和受限 CSP；不添加会阻止原生阅读器的 iframe sandbox。HTML 等其他文档仍保留服务端 sandbox 策略，客户端文件扩展名不能放宽 HTML 的响应策略。
+
+资源内容为两份完整解析表格挂载 `DataReconciliation`。同源核验路由复用已验证会话 DAL、严格 Capability 契约、客户端幂等键和审核版本前提。候选与人工核验观测计数仅覆盖本批规则范围。结果和来源成员分别有界分页，窄屏在表格内部滚动。权限拒绝清除保留证据并使旧请求响应失效。

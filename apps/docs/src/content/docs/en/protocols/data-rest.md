@@ -1,6 +1,6 @@
 ---
 title: Data REST API
-description: Data Foundation's 29 Capabilities, OpenAPI, governed Resources, idempotency, SSE, and asset-download protocol.
+description: Data Foundation's 33 Capabilities, OpenAPI, governed Resources, idempotency, SSE, and asset-download protocol.
 docType: protocol-reference
 scope: data-rest-api
 status: active
@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: b57c120df93cf8ac60ba243afaf3840ea6082a14
+lastReviewedCommit: a67f905d4afbb2008494f5ebd7a50fd21953bd99
 ---
 
 ## Protocol boundary
@@ -32,7 +32,7 @@ These non-cacheable reads require no identity:
 | Method | Path                                               | Result                                                                             |
 | ------ | -------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `GET`  | `/api/data/v1/health`                              | data-postgres, object-store, Worker readiness; any missing authority returns `503` |
-| `GET`  | `/api/data/v1/capabilities`                        | ordered 29-item Registry, draft-7 I/O Schemas, and four mappings                   |
+| `GET`  | `/api/data/v1/capabilities`                        | ordered 33-item Registry, draft-7 I/O Schemas, and four mappings                   |
 | `GET`  | `/api/data/v1/capabilities/:capabilityId/:version` | one fixed Capability version; unknown version returns `404`                        |
 
 A ready response has this core shape:
@@ -51,7 +51,7 @@ A ready response has this core shape:
 
 ## OpenAPI contract projection
 
-Shared `GET /openapi.json` returns OpenAPI 3.1 with the fixed title **WISER Platform API**, covering Platform, Agent EXCON, and Data Foundation. The 29 Data Capabilities do not maintain another handwritten schema. At route registration, Fastify converts Registry Zod 4 input/output into draft-7 JSON Schema and projects it into path, query, body, and required-header OpenAPI operations.
+Shared `GET /openapi.json` returns OpenAPI 3.1 with the fixed title **WISER Platform API**, covering Platform, Agent EXCON, and Data Foundation. The 33 Data Capabilities do not maintain another handwritten schema. At route registration, Fastify converts Registry Zod 4 input/output into draft-7 JSON Schema and projects it into path, query, body, and required-header OpenAPI operations.
 
 Every Data operation has the `data-foundation` tag, a stable `operationId`, `bearerAuth`, its successful response Schema, plus `Idempotency-Key` for commands and `If-Match` for versioned commands. Fastify schema compilers serve the OpenAPI projection here; the single runtime behavior gate remains strict Zod input/output validation in the shared `DataCapabilityHandler`. Generated documentation never becomes a second behavior source.
 
@@ -85,7 +85,7 @@ If-Match: "v3"
 
 This applies to upload Session completion, ingestion submit/approve/reject, and Operation cancel. The header must equal an `expectedVersion` already present in the body. Successful responses include `ETag: "vN"` when an aggregate version is present. Identity, business, and error responses are all `private, no-store`.
 
-## The 29 Capability routes
+## The 33 Capability routes
 
 | Capability                    | Method and path                                           | Success            |
 | ----------------------------- | --------------------------------------------------------- | ------------------ |
@@ -183,7 +183,7 @@ Publication consumer respects terminal Operations. Even after all five completio
 
 ## Evidence and STAC Resource reads
 
-These governed GETs are not part of the 29 business Capabilities. They specifically back MCP Resources while still using unified Auth, data-postgres RLS, post-authorization audit, and no-store:
+These governed GETs are not part of the 33 business Capabilities. They specifically back MCP Resources while still using unified Auth, data-postgres RLS, post-authorization audit, and no-store:
 
 | Path                                                        | Scope                 | Authority and output boundary                                                                                                                                       |
 | ----------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -306,3 +306,9 @@ Saved exploration views use `data.explore.view.create`, `.list`, `.open` and `.r
 Exact source bytes are available through `GET/HEAD /api/data/v1/tenants/{tenantId}/projects/{projectId}/versions/{versionId}/assets/{assetId}/content`. The API repeats the existing asset/version authorization and audit, signs only the internal storage endpoint, and streams with a two-minute deadline and single-range support. It does not expose a signed URL. The session-verified Web endpoint `/api/data-foundation/assets/{versionId}/{assetId}` provides an explicitly named attachment or an allowlisted inert preview; it strips upstream cookies and uses no-store, nosniff and a sandbox content policy. File downloads are independent of bounded query-page exports. Resource pages open parsed content before governance metadata, preserve exact version/file identities, and offer paged tables, source documents, structured values and linked map/graph views. Nested structures mount lazily in bounded groups and source labels remain available alongside display labels.
 
 AMap vector display routes add `/geo/tiles/vector/amap/queries/{queryId}/{z}/{x}/{y}.pbf` and `/geo/tiles/vector/amap/versions/{versionId}/{z}/{x}/{y}.pbf` under `/api/data/v1`. They use the same scopes, immutable query membership, record/spatial predicates, expiry and per-request authorization as the original vector routes. Their tile coordinates are already shifted for the AMap display plane; clients must not shift them again. Original record coordinates, analytical bounds and downloads remain in the declared source/authority CRS.
+
+## Observation reconciliation
+
+`POST /reconciliations`, `GET /reconciliations?versionId=...`, `GET /reconciliations/{batchId}`, `POST /reconciliations/{batchId}/review` project `data.reconciliation.create/list/get/review`. See [copy verification and business deduplication](/en/architecture/data-foundation/#copy-verification-and-business-observation-deduplication) for source pins, normalization, immutable evidence and limits. Reads require `data.query` and `data.catalog.read`; creation additionally requires `data.ingestion.write`, review requires `data.publish` and the creating human identity. Review requires `expectedVersion`; REST also requires matching `If-Match: "v1"`. MCP forwards its expected version as that header. Both commands require a stable UUID idempotency key across identical retries.
+
+`get` takes `batchId`, `first` (default 25, maximum 100), optional `after`, and optional `groupIndex`. Without a group index it pages group summaries; with it, it pages that group's source members. Continue with the returned `nextCursor` without changing the batch/version/group. `list` takes `versionId` and returns at most 100 recent owned batches. Creation freezes `left`, `right` and `plan`; review accepts `decision: "verify" | "reject"` and `note`. Conflicts or incomplete records block verification. Candidate results have null `independentObservationCount`; only a human-verified batch has a count within the declared rules. Agents may propose batches and read deterministic evidence but cannot issue the final review as an Agent identity.

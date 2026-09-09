@@ -2,6 +2,8 @@ import 'server-only';
 
 import { connection } from 'next/server';
 import {
+  DATA_CAPABILITY_REGISTRY,
+  type DataCapabilityId,
   CreateExplorationViewInputSchema,
   CreateExplorationViewOutputSchema,
   ListExplorationViewsInputSchema,
@@ -97,6 +99,11 @@ export class DataFoundationApiError extends Error {
 }
 
 export interface DataFoundationDal {
+  reconcile(
+    action: 'create' | 'get' | 'review' | 'list',
+    input: unknown,
+    idempotencyKey?: string,
+  ): Promise<unknown>;
   explorationView(
     action: 'create' | 'list' | 'open' | 'revoke' | 'export',
     input: unknown,
@@ -306,6 +313,7 @@ export function createDataFoundationDal(
     path: string,
     init: {
       readonly idempotencyKey?: string;
+      readonly expectedVersion?: number;
       readonly method?: 'GET' | 'POST';
       readonly body?: unknown;
       readonly acceptedStatuses?: readonly number[];
@@ -325,6 +333,8 @@ export function createDataFoundationDal(
     });
     if (init.idempotencyKey)
       headers.set('Idempotency-Key', init.idempotencyKey);
+    if (init.expectedVersion !== undefined)
+      headers.set('If-Match', `"v${init.expectedVersion}"`);
     if (init.body !== undefined) {
       headers.set('Content-Type', 'application/json; charset=utf-8');
     }
@@ -380,6 +390,42 @@ export function createDataFoundationDal(
   }
 
   const dal: DataFoundationDal = {
+    reconcile: (action, input, idempotencyKey) => {
+      const id: DataCapabilityId = `data.reconciliation.${action}`;
+      const definition = DATA_CAPABILITY_REGISTRY[id];
+      const checked = definition.inputSchema.safeParse(input);
+      if (
+        !checked.success ||
+        (definition.kind === 'command' &&
+          (!idempotencyKey || !UUID_PATTERN.test(idempotencyKey)))
+      )
+        throw new DataFoundationApiError('invalid-request', 422);
+      const values = checked.data as Record<string, unknown>;
+      let path = definition.restMapping.path;
+      const body = { ...values };
+      if (typeof body['batchId'] === 'string') {
+        path = path.replace(':batchId', encodeURIComponent(body['batchId']));
+        delete body['batchId'];
+      }
+      if (definition.restMapping.method === 'GET') {
+        const query = new URLSearchParams(
+          Object.entries(body).map(([key, value]) => [key, String(value)]),
+        );
+        if (query.size) path += `?${query}`;
+      }
+      return parsed(
+        () =>
+          call(path, {
+            method: definition.restMapping.method as 'GET' | 'POST',
+            ...(definition.kind === 'command' ? { body, idempotencyKey } : {}),
+            ...(action === 'review'
+              ? { expectedVersion: Number(values['expectedVersion']) }
+              : {}),
+          }),
+        (value) => definition.outputSchema.parse(value),
+      );
+    },
+
     explorationView: (action, input, idempotencyKey) => {
       if (
         (action === 'create' || action === 'revoke') &&

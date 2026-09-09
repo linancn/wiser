@@ -69,6 +69,53 @@ const point = {
 };
 
 const validInputs = {
+  'data.reconciliation.create': {
+    title: 'Observations',
+    left: {
+      dataItemId: DATA_ITEM_ID,
+      versionId: VERSION_ID,
+      analysisId: OPERATION_ID,
+      assetId: ASSET_ID,
+    },
+    right: {
+      dataItemId: DATA_ITEM_ID,
+      versionId: VERSION_ID,
+      analysisId: OPERATION_ID,
+      assetId: '20000000-0000-4000-8000-000000000099',
+    },
+    plan: {
+      keys: [
+        {
+          name: 'station',
+          leftField: 'c1',
+          rightField: 'c1',
+          type: 'text',
+          trim: false,
+        },
+      ],
+      left: {
+        valueField: 'c2',
+        measure: { literal: 'level' },
+        unit: { literal: 'm' },
+      },
+      right: {
+        valueField: 'c2',
+        measure: { literal: 'level' },
+        unit: { literal: 'm' },
+      },
+      unitConversions: [],
+      conflictPolicy: 'preserve',
+    },
+  },
+  'data.reconciliation.get': { batchId: OPERATION_ID, first: 25 },
+  'data.reconciliation.review': {
+    batchId: OPERATION_ID,
+    expectedVersion: 1,
+    decision: 'verify',
+    note: 'Checked originals',
+  },
+  'data.reconciliation.list': { versionId: VERSION_ID },
+
   'data.explore.view.create': {
     queryId: OPERATION_ID,
     title: 'View',
@@ -191,6 +238,7 @@ const validInputs = {
 } satisfies Record<DataCapabilityId, Readonly<Record<string, unknown>>>;
 
 const VERSIONED_COMMANDS = new Set<DataCapabilityId>([
+  'data.reconciliation.review',
   'data.ingestion.submit',
   'data.uploadSession.complete',
   'data.ingestion.approve',

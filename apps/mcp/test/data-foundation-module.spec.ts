@@ -55,6 +55,10 @@ const EXPECTED_DATA_TOOLS = [
   'data_explore_export',
   'data_explore_query',
   'data_analysis_create',
+  'data_reconciliation_create',
+  'data_reconciliation_get',
+  'data_reconciliation_review',
+  'data_reconciliation_list',
 ] as const;
 
 class StubExconHttpClient implements AgentExconHttpClient {

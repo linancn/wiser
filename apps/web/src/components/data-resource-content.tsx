@@ -18,6 +18,7 @@ import {
 } from '@/lib/data-content-presentation';
 import { invalidatesExploration } from '@/lib/exploration-request';
 import { DataRasterView } from './data-raster-view';
+import { DataReconciliation } from './data-reconciliation';
 import { DataContentValue } from './data-content-value';
 import { DataExplorerGraph } from './data-explorer-graph';
 import styles from './data-resource-content.module.css';
@@ -239,6 +240,14 @@ export function DataResourceContent({
           </Link>
         ) : null}
       </header>
+      <DataReconciliation
+        locale={locale}
+        dataItemId={dataItemId}
+        versionId={versionId}
+        queryId={queryId}
+        assets={assets}
+        initialAnalysisId={initialResult?.records?.[0]?.analysisId}
+      />
       <div className={styles.workspace}>
         <aside className={styles.files} aria-label={copy.files}>
           <h3>

@@ -25,6 +25,7 @@ import type { WiserApiModule } from '../platform/modules.js';
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VERSIONED_COMMANDS = new Set<DataCapabilityId>([
+  'data.reconciliation.review',
   'data.ingestion.submit',
   'data.uploadSession.complete',
   'data.ingestion.approve',
@@ -359,6 +360,12 @@ function normalizeQuery(
     if (key === 'includeTotal') {
       if (entry !== 'true' && entry !== 'false') return null;
       normalized[key] = entry === 'true';
+      continue;
+    }
+    if (key === 'groupIndex') {
+      if (typeof entry !== 'string' || !/^(?:0|[1-9]\d{0,4})$/.test(entry))
+        return null;
+      normalized[key] = Number(entry);
       continue;
     }
     if (key === 'first') {

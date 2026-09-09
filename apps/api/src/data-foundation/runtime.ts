@@ -64,6 +64,7 @@ import {
 import { createSpecialQueryExecutors } from './special-query-executors.js';
 import { PostgresExplorationExecutor } from './exploration-runtime.js';
 import { createExplorationSavedExecutors } from './exploration-saved.js';
+import { createReconciliationExecutors } from './reconciliation-runtime.js';
 import type { PlatformAuthRuntime } from '../platform/auth-runtime.js';
 import type { WiserApiModule } from '../platform/modules.js';
 
@@ -249,6 +250,7 @@ const defaultFactories: DataFoundationRuntimeFactories = {
       }),
       new PostgresExplorationExecutor(pg),
       ...createExplorationSavedExecutors(pg),
+      ...createReconciliationExecutors(pg),
     ];
   },
   createAssetDownloadPort(pool, objectStore) {

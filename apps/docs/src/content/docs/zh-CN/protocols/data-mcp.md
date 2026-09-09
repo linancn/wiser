@@ -1,6 +1,6 @@
 ---
 title: Data MCP 接入
-description: 通过共享 WISER MCP Gateway 调用 29 项 Data Capability 与 5 类受控 Resource。
+description: 通过共享 WISER MCP Gateway 调用 33 项 Data Capability 与 5 类受控 Resource。
 docType: protocol-reference
 scope: data-mcp-adapter
 status: active
@@ -17,15 +17,15 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - packages/data-contracts/src/capability/**
   - skills/wiser-data-foundation/**
-lastReviewedAt: 2026-09-08
-lastReviewedCommit: d88b0f5a3a4f451e8bbcb98d06d73a49a96eec58
+lastReviewedAt: 2026-09-09
+lastReviewedCommit: a67f905d4afbb2008494f5ebd7a50fd21953bd99
 ---
 
 ## 只做 HTTP 适配
 
 Data MCP 是现有 WISER MCP Gateway 的静态 `WiserMcpModule`，不是第二套业务实现。stdio 与无状态 Streamable HTTP 都调用 `/api/data/v1`，从不连接 data-postgres、SeaweedFS 或任一投影，也不持有 Supabase service-role key。
 
-模块从 `@wiser/data-contracts` 的有序 Registry 注册 29 个 strict Zod Tool。Tool name、输入 schema、query/command 注解和 REST mapping 在运行时来自同一 Capability definition；不存在 AST 扫描、通用 SQL/Cypher/DSL Tool 或自动发现的数据库命令。
+模块从 `@wiser/data-contracts` 的有序 Registry 注册 33 个 strict Zod Tool。Tool name、输入 schema、query/command 注解和 REST mapping 在运行时来自同一 Capability definition；不存在 AST 扫描、通用 SQL/Cypher/DSL Tool 或自动发现的数据库命令。
 
 ## Data API 配置
 
@@ -88,7 +88,7 @@ pnpm --filter @wiser/mcp start:http
 
 禁止把任一 token 放进 query、Tool 参数、Resource URI、日志、Telemetry 或 Git。`GET /health/live` 与 `/health/ready` 无需认证且禁止缓存；优雅关闭先让 ready 变为 false，再排空在途请求。每个 `/mcp` 请求创建新 server/transport，当前入口不签发或恢复 MCP session。
 
-## 29 个 Tools
+## 33 个 Tools
 
 | MCP Tool                       | Capability                    | 类型    |
 | ------------------------------ | ----------------------------- | ------- |
@@ -235,3 +235,9 @@ MCP 不替调用方保存 bearer、upload id、multipart ETag 或 Operation curs
 保存视图使用 `data.explore.view.create`、`.list`、`.open` 和 `.revoke`；`data.explore.export` 导出一次有界查询表示。均要求 `data.query.execute` 与 `data.catalog.read`。创建／撤销为同步命令，必须携带 UUID `Idempotency-Key`，并原子写入审计与命令账本。视图保存原 QuerySpec、版本／解析批次，以及类型化 ViewSpec（视图请求、分页历史、选择身份、地图视角与图层），不复制记录正文。每位用户在项目内最多保留 100 个有效视图。默认私人可见；显式项目分享仍需当前登录用户的项目范围、用途与安全级别检查，打开时重新授权每个固定成员。列表仅返回当前用户自己的保存配置。打开时重新签发本人绑定的 30 分钟查询和游标，不解析更新版本或批次；原临时查询到期不影响持久配置。仅创建者可以单向撤销。导出重新授权请求，返回原始值、来源、明确的返回／总量和计数单位；后续页或截断结果不会标成完整。各传输入口不会在 SSR/BFF 内排空所有分页。
 
 `data_explore_view_create`, `data_explore_view_list`, `data_explore_view_open`, `data_explore_view_revoke`, `data_explore_export` 以相同已验证范围转发对应 HTTP 能力。命令需携带 `idempotencyKey`。
+
+## 观测核验
+
+`data_reconciliation_create`, `data_reconciliation_list`, `data_reconciliation_get`, `data_reconciliation_review` 对应 `data.reconciliation.create/list/get/review`。来源固定、规范化、不可变证据和限额见[副本核验与业务去重](/architecture/data-foundation/#副本关系核验与业务观测去重)。读取需要 `data.query` 和 `data.catalog.read`；创建另需 `data.ingestion.write`，审核另需 `data.publish` 且只能由创建批次的人类身份执行。审核携带 `expectedVersion`；REST 还要求一致的 `If-Match: "v1"`，MCP 将预期版本转为该请求头。两个命令在相同重试中均须保留原 UUID 幂等键。
+
+`get` 接收 `batchId`、`first`（默认 25，最多 100）、可选 `after` 和 `groupIndex`。未指定组号时分页返回观测组摘要；指定时分页返回该组来源成员。使用 `nextCursor` 继续，不得改变绑定的批次、版本和组。`list` 接收 `versionId`，返回本人最近最多 100 批。创建冻结 `left`、`right` 和 `plan`；审核接收 `decision: "verify" | "reject"` 和 `note`。冲突或信息不完整时不能确认；候选的 `independentObservationCount` 为 null，只有人工确认的批次才返回所选规则范围内的计数。Agent 可以提出批次并读取确定性证据，不能以 Agent 身份作最终审核。
