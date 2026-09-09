@@ -304,3 +304,5 @@ Data REST 错误是扁平安全 envelope：
 | `data.explore.export`      | `POST /explore/export`               |
 
 原文件字节通过 `GET/HEAD /api/data/v1/tenants/{tenantId}/projects/{projectId}/versions/{versionId}/assets/{assetId}/content` 提供。API 重复既有资产／版本授权和审计，仅为内部存储入口签名，并以两分钟截止和单范围请求支持流式传输，不暴露签名地址。验证当前会话的 Web 入口 `/api/data-foundation/assets/{versionId}/{assetId}` 提供带文件名的附件或白名单内的惰性预览，剥离上游 Cookie，使用 no-store、nosniff 和沙箱内容策略。原文件下载与有界查询页导出相互独立。资源页先显示解析内容，再展示治理信息，保持精确版本与文件身份，提供分页表格、来源文档、结构化内容及地图／图谱联动。嵌套结构按有界分组懒加载，展示标签之外保留原始标签。
+
+高德矢量显示接口在 `/api/data/v1` 下增加 `/geo/tiles/vector/amap/queries/{queryId}/{z}/{x}/{y}.pbf` 和 `/geo/tiles/vector/amap/versions/{versionId}/{z}/{x}/{y}.pbf`，沿用原矢量接口的 scope、不可变查询成员、记录与空间条件、有效期及逐请求鉴权。瓦片已经完成高德显示坐标转换，客户端不得再次偏移；原始记录坐标、分析范围与下载内容仍保持声明的来源或权威坐标系。

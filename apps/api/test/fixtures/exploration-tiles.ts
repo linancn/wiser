@@ -81,7 +81,7 @@ export async function verifyExplorationTiles(
   const tileFunction =
     display === 'amap' ? 'wiser_exploration_amap_mvt' : 'wiser_exploration_mvt';
   if (display === 'amap') {
-    const existing = await client.query(
+    const existing = await client.query<{ present: string | null }>(
       "select to_regclass('service.analysis_amap_geometry') present",
     );
     if (!existing.rows[0]?.present)
@@ -162,14 +162,11 @@ export async function verifyExplorationTiles(
   };
   const tile = async (supplied: typeof params, z = 0, x = 0, y = 0) => {
     await client.query(`set local role ${tileRole}`);
-    const timing = performance.now();
-    console.info('Tile start', display, z, x, y);
     const result = await client.query<{ tile: Buffer }>(
       `select service.${tileFunction}($1,$2,$3,$4::json) tile`,
       [z, x, y, JSON.stringify(supplied)],
     );
     await client.query('reset role');
-    console.info('Tile done', display, Math.round(performance.now() - timing));
     return result.rows[0]!.tile;
   };
   const layer = new VectorTile(new PbfReader(await tile(params))).layers[

@@ -663,7 +663,7 @@ function governedGeoPath(path: readonly string[]): string | null {
   }
   const joined = path.join('/');
   if (
-    /^(?:ogc\/(?:wms|wfs|wcs|wmts)|stac\/(?:conformance|search|collections\/(?:current|wiser-[a-f0-9]{32})(?:\/items(?:\/wiser-[a-f0-9]{48})?)?)|tiles\/vector\/(?:versions|queries)\/[0-9a-f-]{36}\/\d{1,2}\/\d+\/\d+\.pbf|tiles\/raster\/versions\/[0-9a-f-]{36}\/WebMercatorQuad\/\d{1,2}\/\d+\/\d+\.(?:png|jpg|webp))$/i.test(
+    /^(?:ogc\/(?:wms|wfs|wcs|wmts)|stac\/(?:conformance|search|collections\/(?:current|wiser-[a-f0-9]{32})(?:\/items(?:\/wiser-[a-f0-9]{48})?)?)|tiles\/vector\/(?:amap\/)?(?:versions|queries)\/[0-9a-f-]{36}\/\d{1,2}\/\d+\/\d+\.pbf|tiles\/raster\/versions\/[0-9a-f-]{36}\/WebMercatorQuad\/\d{1,2}\/\d+\/\d+\.(?:png|jpg|webp))$/i.test(
       joined,
     )
   ) {
