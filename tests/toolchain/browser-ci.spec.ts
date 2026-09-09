@@ -20,7 +20,7 @@ describe('reference browser CI', () => {
     const scripts = manifest.scripts as Record<string, string>;
 
     expect(scripts['test:e2e:reference']).toBe(
-      'pnpm --workspace-concurrency=1 --no-bail --filter @wiser/web --filter @wiser/docs run test:e2e',
+      'pnpm --workspace-concurrency=2 --no-bail --filter @wiser/web --filter @wiser/docs run test:e2e',
     );
   });
 
