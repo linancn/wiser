@@ -166,7 +166,7 @@ export function validateEvidenceProjectionInput(
     invalid('Evidence projection chunkingStrategy is invalid.');
   }
   const embeddingModel = text(candidate.embeddingModel, 'embeddingModel', 128);
-  if (!SAFE_KEY.test(embeddingModel)) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/.test(embeddingModel)) {
     invalid('Evidence projection embeddingModel is invalid.');
   }
   const embeddingVersion = text(

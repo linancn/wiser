@@ -108,3 +108,9 @@ CSV/JSON analysis is bounded at 64 MiB and 2,000,000 records per asset. Capacity
 `DATA_ANALYSIS_PARSER_URL` 配置内部解析器根地址，完整 Data profile 自动连接。XLSX/XLS、文档与压缩包逐资产解析，部分结果保留原因，容量失败回滚记录。 / `DATA_ANALYSIS_PARSER_URL` configures the private parser origin and is supplied by the complete Data profile. Workbook, document and archive analysis retains partial reasons and rolls back records on capacity failure.
 
 地理分析只读取同版本清单里的格式伴随文件，并逐文件核验哈希；ADF 头文件产生覆盖记录，其余成员保留为格式组附件。 / Geospatial analysis reads only same-version manifest companions and verifies each hash; the ADF header produces coverage records while other members remain accounted-for format companions.
+
+## Embedding projection rebuild / 嵌入投影重建
+
+`src/embedding-rebuild-cli.ts` reads the configured project's authority evidence and writes a separate model-profile Weaviate collection with a resumable checkpoint and advisory lock. It leaves original publication state and other projections unchanged. API and Worker share `DATA_EMBEDDING_*`; tests use fake, while production requires a real provider. Run the configured Worker command `pnpm --filter @wiser/data-worker exec tsx src/embedding-rebuild-cli.ts` with the current Compose/runtime files, including `compose.override.yaml`. See the [local environment guide](../docs/src/content/docs/en/development/local-environment.md) for staging, verification, cutover and rollback.
+
+该 CLI 在明确的项目范围内从权威证据重建独立模型集合，以独立位点和 advisory lock 支持续跑；不修改原发布状态及其他投影。API 与 Worker 共用 `DATA_EMBEDDING_*`，测试保留 fake，生产要求真实 provider。切换前按[本机环境指南](../docs/src/content/docs/zh-CN/development/local-environment.md)完成重建和检索验收，保留旧集合供回退。

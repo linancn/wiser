@@ -21,8 +21,8 @@ describe('OpenAI-compatible embeddings', () => {
   it('uses the served model and query instruction while leaving source documents unchanged', async () => {
     const fetcher = vi
       .fn<typeof fetch>()
-      .mockImplementation(async () =>
-        response([{ index: 0, embedding: vector }]),
+      .mockImplementation(() =>
+        Promise.resolve(response([{ index: 0, embedding: vector }])),
       );
     const provider = new OpenAiCompatibleEmbedding({
       ...options,
@@ -30,8 +30,8 @@ describe('OpenAI-compatible embeddings', () => {
     });
     const result = await provider.embed('北京水库', { purpose: 'query' });
     expect(result.slice(0, 2)).toEqual([0.6, 0.8]);
-    expect(fetcher.mock.calls[0]?.[0].toString()).toBe(
-      'http://embedding.local:7710/v1/embeddings',
+    expect(fetcher.mock.calls[0]?.[0]).toEqual(
+      new URL('http://embedding.local:7710/v1/embeddings'),
     );
     expect(JSON.parse(fetcher.mock.calls[0]?.[1]?.body as string)).toEqual({
       model: options.model,
@@ -40,8 +40,8 @@ describe('OpenAI-compatible embeddings', () => {
     });
     await provider.embed('原始观测记录');
     expect(
-      JSON.parse(fetcher.mock.calls[1]?.[1]?.body as string).input,
-    ).toEqual(['原始观测记录']);
+      JSON.parse(fetcher.mock.calls[1]?.[1]?.body as string),
+    ).toMatchObject({ input: ['原始观测记录'] });
     expect(fetcher.mock.calls[0]?.[1]?.redirect).toBe('error');
   });
 
@@ -59,19 +59,21 @@ describe('OpenAI-compatible embeddings', () => {
     expect(result.map((entry) => entry[0])).toEqual([0.6, -0.6]);
   });
 
-  it.each([
-    [],
-    [{ index: 1, embedding: vector }],
-    [{ index: 0, embedding: [1, 2] }],
-    [{ index: 0, embedding: Array<number>(4096).fill(0) }],
-    [{ index: 0, embedding: [null, ...vector.slice(1)] }],
+  it.each(
     [
-      { index: 0, embedding: vector },
-      { index: 0, embedding: vector },
-    ],
-  ])(
+      [],
+      [{ index: 1, embedding: vector }],
+      [{ index: 0, embedding: [1, 2] }],
+      [{ index: 0, embedding: Array<number>(4096).fill(0) }],
+      [{ index: 0, embedding: [null, ...vector.slice(1)] }],
+      [
+        { index: 0, embedding: vector },
+        { index: 0, embedding: vector },
+      ],
+    ].map((data) => ({ data })),
+  )(
     'rejects invalid embedding envelopes without returning fake vectors: %#',
-    async (data) => {
+    async ({ data }) => {
       const provider = new OpenAiCompatibleEmbedding({
         ...options,
         fetch: vi.fn<typeof fetch>().mockResolvedValue(response(data)),

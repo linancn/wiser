@@ -1,5 +1,7 @@
 import {
   loadSeaweedFsS3AuthorityConfig,
+  loadDataEmbeddingConfig,
+  type DataEmbeddingConfig,
   type SeaweedFsS3AuthorityConfig,
 } from '@wiser/data-infra';
 
@@ -36,7 +38,7 @@ export type DataFoundationApiRuntimeConfig =
         readonly martinUrl: string;
       };
       readonly publicApiOrigin: string;
-      readonly fakeEmbeddingDimensions: number;
+      readonly embedding: DataEmbeddingConfig;
     };
 
 const RUNTIME_FIELDS = [
@@ -132,14 +134,6 @@ function identifier(value: string, field: string): string {
     throw invalid(field);
   }
   return value;
-}
-
-function embeddingDimensions(value: string | undefined): number {
-  const parsed = Number(value ?? '64');
-  if (!Number.isSafeInteger(parsed) || parsed < 8 || parsed > 4_096) {
-    throw invalid('DATA_FAKE_EMBEDDING_DIMENSIONS');
-  }
-  return parsed;
 }
 
 function objectStore(environment: NodeJS.ProcessEnv) {
@@ -263,9 +257,7 @@ export function loadDataFoundationApiRuntimeConfig(
       required(environment, 'DATA_PUBLIC_API_ORIGIN'),
       'DATA_PUBLIC_API_ORIGIN',
     ),
-    fakeEmbeddingDimensions: embeddingDimensions(
-      environment['DATA_FAKE_EMBEDDING_DIMENSIONS'],
-    ),
+    embedding: loadDataEmbeddingConfig(environment),
   };
   return Object.freeze(config);
 }

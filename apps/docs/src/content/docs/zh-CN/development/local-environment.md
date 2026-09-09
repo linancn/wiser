@@ -132,3 +132,29 @@ pnpm stack:down
 若完整栈失败，先检查 Docker 资源、端口占用和失败服务日志，再重新运行可幂等收敛的 `pnpm stack:full:up`。
 
 Data profile 构建 `source-parser`，它仅通过内部 `data-parser` 网络连接 Worker，不开放主机端口，不持有数据库凭据，也不能访问外网。文件系统只读，临时文件保存在有界内存中。本机单独运行 Worker 时可选配置 `DATA_ANALYSIS_PARSER_URL`；未配置时外部格式明确保持不可解析，完整 profile 自动配置。CI 在固定的 GDAL 镜像中运行解析测试。
+
+## 语义嵌入与索引切换
+
+API 与 Data Worker 必须使用相同的 `DATA_EMBEDDING_*` 配置。CI 和可复现 smoke 保留 `fake`；`NODE_ENV=production` 要求明确的真实 provider。Qwen3-Embedding-8B 通过 OpenAI 兼容的 `/v1/embeddings` 端点接入。服务地址配置在私有部署文件中；浏览器不接收地址或可选 API Key。
+
+```dotenv
+DATA_EMBEDDING_PROVIDER=openai-compatible
+DATA_EMBEDDING_BASE_URL=http://embedding.internal:7710/v1
+DATA_EMBEDDING_MODEL=Qwen/Qwen3-Embedding-8B
+DATA_EMBEDDING_VERSION=1.0.0-qwen3
+DATA_EMBEDDING_DIMENSIONS=4096
+DATA_EMBEDDING_API_KEY=
+DATA_EMBEDDING_TIMEOUT_MS=15000
+```
+
+`DATA_EMBEDDING_QUERY_INSTRUCTION` 省略或留空时使用已版本化的英文检索指令，仅用于查询。适配器要求返回模型一致，校验该配置下恰好 4,096 个有限且非全零的向量值，并执行归一化。每次最多 16 段文档，每段最多 32,768 字符，响应最多 4 MiB；超限明确失败，不写入截断向量。日志不记录输入或上游响应。
+
+修改模型、修订号、维度或查询指令会派生新的 `WiserEvidenceChunkV3_*` 集合。修订号由运维管理：服务权重或预处理变化时增加版本。准备新集合时，API 继续使用旧配置。使用当前 case 的同一组 Compose 文件（包括 `compose.override.yaml`）启动重建；准备阶段只向重建进程注入新模型环境。
+
+```bash
+# Include the running case/runtime file as well when that deployment uses one.
+docker compose -f compose.yaml -f compose.override.yaml run --rm --no-deps \
+  data-worker pnpm --filter @wiser/data-worker exec tsx src/embedding-rebuild-cli.ts
+```
+
+CLI 使用 Worker 明确的租户、项目、安全等级和策略范围，以及每个配置/项目独立的 advisory lock、不可变权威证据、确定性投影 ID 和独立消费位点。它只写目标 Weaviate 集合与重建位点，不重置入库/发布状态，不重放其他投影。中断或失败的事件不推进位点；使用同一配置续跑。核验全部证据覆盖、模型信息与中英文真实案例检索后，再以匹配的新配置重建 API 和 Worker。保留旧集合供回退；同时恢复两端旧配置即可恢复其读写路径。嵌入效果提升不会把来源登记内容变成科学证据。

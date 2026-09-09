@@ -8,6 +8,25 @@ test.skip(
 );
 const resource = '0aaa32a4-6d76-479b-a33a-91775d426d50';
 const version = '3c9220e3-a5dc-5254-b134-4cc0f6944108';
+for (const query of ['HydroATLAS', 'HydroATLAS 河流流域属性']) {
+  test(`semantic recall finds the named source: ${query}`, async ({ page }) => {
+    test.skip(
+      process.env['WISER_REAL_EMBEDDING'] !== '1',
+      'Requires the rebuilt production embedding profile.',
+    );
+    await login(
+      page,
+      `/zh-CN/data-foundation/knowledge?q=${encodeURIComponent(query)}`,
+    );
+    const results = page.getByRole('region', { name: '知识证据' });
+    await expect(results.getByRole('article')).toHaveCount(10);
+    const names = await results
+      .getByRole('article')
+      .getByRole('heading')
+      .allTextContents();
+    expect(names.slice(0, 5).join(' ')).toMatch(/HydroATLAS/i);
+  });
+}
 async function login(page: Page, next: string) {
   const english = next.startsWith('/en/');
   await page.goto(

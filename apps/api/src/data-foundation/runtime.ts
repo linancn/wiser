@@ -4,14 +4,14 @@ import { Pool } from 'pg';
 
 import { DATA_CAPABILITY_IDS } from '@wiser/data-contracts';
 import {
-  DeterministicFakeEmbedding,
+  createDataEmbedding,
+  embeddingCollectionName,
   Neo4jSearchBackend,
   OPENSEARCH_EVIDENCE_INDEX,
   OpenSearchSearchBackend,
   PgSTACSearchBackend,
   PostGISSearchBackend,
   SearchOrchestrator,
-  WEAVIATE_EVIDENCE_COLLECTION,
   WeaviateSearchBackend,
   createS3AuthorityObjectStore,
   createS3AuthorityPresigner,
@@ -205,10 +205,7 @@ const defaultFactories: DataFoundationRuntimeFactories = {
   },
   createSpecialExecutors(config, pool) {
     const pg = (pool as DefaultPool).pg;
-    const embedding = new DeterministicFakeEmbedding({
-      dimensions: config.fakeEmbeddingDimensions,
-      version: '1.0.0-fixture',
-    });
+    const embedding = createDataEmbedding(config.embedding);
     const search = new SearchOrchestrator({
       openSearch: new OpenSearchSearchBackend({
         endpoint: config.openSearch.url,
@@ -219,9 +216,9 @@ const defaultFactories: DataFoundationRuntimeFactories = {
       weaviate: new WeaviateSearchBackend({
         endpoint: config.weaviate.url,
         apiKey: config.weaviate.apiKey,
-        collectionName: WEAVIATE_EVIDENCE_COLLECTION,
-        vectorDimensions: config.fakeEmbeddingDimensions,
-        embed: (text) => embedding.embed(text),
+        collectionName: embeddingCollectionName(embedding.model),
+        vectorDimensions: embedding.model.dimensions,
+        embed: (text) => embedding.embed(text, { purpose: 'query' }),
       }),
       neo4j: new Neo4jSearchBackend({
         endpoint: config.neo4j.url,

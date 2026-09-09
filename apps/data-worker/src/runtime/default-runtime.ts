@@ -1,5 +1,5 @@
 import {
-  DeterministicFakeEmbedding,
+  createDataEmbedding,
   Neo4jKnowledgeGraphProjection,
   OPENSEARCH_EVIDENCE_INDEX,
   OpenSearchEvidenceProjection,
@@ -139,12 +139,10 @@ export function createDefaultDataWorkerRuntime(
   const hydrationAuthority = new PostgresProjectionHydrationAuthority(
     hydrationPool,
   );
+  const embedding = createDataEmbedding(config.projection.embedding);
   const hydrator = new ProjectionInputHydrator({
     authority: hydrationAuthority,
-    embedding: new DeterministicFakeEmbedding({
-      dimensions: config.projection.embeddingDimensions,
-      version: config.projection.embeddingVersion,
-    }),
+    embedding,
     maximumCachedEvents: config.projection.maximumCachedEvents,
   });
   const spatialPool = createDataPostgresPool({
@@ -157,7 +155,8 @@ export function createDefaultDataWorkerRuntime(
     weaviate: new WeaviateEvidenceProjection({
       baseUrl: config.projection.weaviateBaseUrl,
       apiKey: config.projection.weaviateApiKey,
-      vectorDimensions: config.projection.embeddingDimensions,
+      vectorDimensions: embedding.model.dimensions,
+      embeddingModel: embedding.model,
       http,
     }),
     opensearch: new OpenSearchEvidenceProjection({

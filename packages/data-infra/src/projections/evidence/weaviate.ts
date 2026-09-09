@@ -1,4 +1,6 @@
 import { EvidenceProjectionError } from './errors.js';
+import { embeddingCollectionName } from '../../embedding/config.js';
+import type { EmbeddingModelIdentity } from '../../embedding/types.js';
 import { deterministicEvidenceProjectionId } from './identity.js';
 import {
   assertBackendAccepted,
@@ -93,6 +95,7 @@ export interface WeaviateEvidenceProjectionOptions {
   readonly baseUrl: string;
   readonly apiKey: string;
   readonly vectorDimensions: number;
+  readonly embeddingModel?: EmbeddingModelIdentity;
   readonly http: ProjectionHttpClient;
 }
 
@@ -101,6 +104,9 @@ export class WeaviateEvidenceProjection {
   readonly #headers: Readonly<Record<string, string>>;
   readonly #http: ProjectionHttpClient;
   readonly #vectorDimensions: number;
+  readonly #embeddingModel: EmbeddingModelIdentity | undefined;
+  readonly #collectionName: string;
+  readonly #description: string;
 
   constructor(options: WeaviateEvidenceProjectionOptions) {
     if (options.http === null || typeof options.http?.request !== 'function') {
@@ -122,6 +128,24 @@ export class WeaviateEvidenceProjection {
     this.#baseUrl = validateBaseUrl(options.baseUrl);
     this.#http = options.http;
     this.#vectorDimensions = options.vectorDimensions;
+    this.#embeddingModel = options.embeddingModel;
+    if (
+      options.embeddingModel !== undefined &&
+      options.embeddingModel.dimensions !== options.vectorDimensions
+    ) {
+      throw new EvidenceProjectionError(
+        'INVALID_EVIDENCE_PROJECTION_CONFIG',
+        'Weaviate embedding profile is invalid.',
+      );
+    }
+    this.#collectionName =
+      options.embeddingModel === undefined
+        ? WEAVIATE_EVIDENCE_COLLECTION
+        : embeddingCollectionName(options.embeddingModel);
+    this.#description =
+      options.embeddingModel?.provider === 'openai-compatible'
+        ? `WISER embedding profile ${this.#collectionName}: ${options.embeddingModel.model} ${options.embeddingModel.version} ${options.vectorDimensions} dimensions.`
+        : WEAVIATE_EVIDENCE_SCHEMA.description;
     this.#headers = Object.freeze({
       Accept: 'application/json',
       Authorization: `Bearer ${validateSecret(options.apiKey, 'Weaviate API key')}`,
@@ -132,16 +156,43 @@ export class WeaviateEvidenceProjection {
   async ensureCollection(): Promise<void> {
     const existing = await requestProjectionBackend(this.#http, {
       method: 'GET',
-      url: `${this.#baseUrl}/v1/schema/${WEAVIATE_EVIDENCE_COLLECTION}`,
+      url: `${this.#baseUrl}/v1/schema/${this.#collectionName}`,
       headers: this.#headers,
     });
-    if (existing.status === 200) return;
+    if (existing.status === 200) {
+      if (this.#embeddingModel?.provider === 'openai-compatible') {
+        const schema = existing.body as
+          | {
+              class?: unknown;
+              description?: unknown;
+              vectorizer?: unknown;
+              multiTenancyConfig?: { enabled?: unknown };
+            }
+          | undefined;
+        if (
+          schema?.class !== this.#collectionName ||
+          schema.description !== this.#description ||
+          schema.vectorizer !== 'none' ||
+          schema.multiTenancyConfig?.enabled !== true
+        ) {
+          throw new EvidenceProjectionError(
+            'INVALID_EVIDENCE_PROJECTION_CONFIG',
+            'Weaviate collection does not match the embedding profile.',
+          );
+        }
+      }
+      return;
+    }
     if (existing.status !== 404) assertBackendAccepted(existing, [200, 404]);
     const created = await requestProjectionBackend(this.#http, {
       method: 'POST',
       url: `${this.#baseUrl}/v1/schema`,
       headers: this.#headers,
-      body: WEAVIATE_EVIDENCE_SCHEMA,
+      body: {
+        ...WEAVIATE_EVIDENCE_SCHEMA,
+        class: this.#collectionName,
+        description: this.#description,
+      },
     });
     assertBackendAccepted(created, [200, 201]);
   }
@@ -154,23 +205,33 @@ export class WeaviateEvidenceProjection {
         'Evidence projection vector dimensions do not match the collection.',
       );
     }
+    if (
+      this.#embeddingModel?.provider === 'openai-compatible' &&
+      (input.embeddingModel !== this.#embeddingModel.model ||
+        input.embeddingVersion !== this.#embeddingModel.version)
+    ) {
+      throw new EvidenceProjectionError(
+        'INVALID_EVIDENCE_PROJECTION_INPUT',
+        'Evidence embedding profile does not match the collection.',
+      );
+    }
     const projectionId = deterministicEvidenceProjectionId(input);
     const tenant = encodeURIComponent(input.tenantId);
     const tenantResponse = await requestProjectionBackend(this.#http, {
       method: 'POST',
-      url: `${this.#baseUrl}/v1/schema/${WEAVIATE_EVIDENCE_COLLECTION}/tenants`,
+      url: `${this.#baseUrl}/v1/schema/${this.#collectionName}/tenants`,
       headers: this.#headers,
       body: [{ name: input.tenantId }],
     });
     assertBackendAccepted(tenantResponse, [200]);
     const body = {
-      class: WEAVIATE_EVIDENCE_COLLECTION,
+      class: this.#collectionName,
       id: projectionId,
       tenant: input.tenantId,
       properties: evidenceProperties(input),
       vector: input.vector,
     };
-    const objectUrl = `${this.#baseUrl}/v1/objects/${WEAVIATE_EVIDENCE_COLLECTION}/${projectionId}?tenant=${tenant}`;
+    const objectUrl = `${this.#baseUrl}/v1/objects/${this.#collectionName}/${projectionId}?tenant=${tenant}`;
     const existing = await requestProjectionBackend(this.#http, {
       method: 'GET',
       url: objectUrl,
