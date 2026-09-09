@@ -2,7 +2,7 @@
 
 import type { Graph, IElementEvent } from '@antv/g6';
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { GraphResultDto } from '@/lib/data-foundation';
 import { getDictionary, type Locale } from '@/lib/i18n';
@@ -42,6 +42,17 @@ export function KnowledgeGraphCanvas({
 }) {
   const target = useRef<HTMLDivElement>(null);
   const graph = useRef<Graph | null>(null);
+  const highlights = useRef<{
+    instance: Graph;
+    states: Map<string, string[]>;
+  } | null>(null);
+  const identities = useMemo(
+    () => ({
+      nodes: new Set(result.nodes.map((node) => node.entityId)),
+      edges: new Set(result.edges.map((edge) => edge.edgeId)),
+    }),
+    [result],
+  );
   const pending = useRef<Promise<void>>(Promise.resolve());
   const select = useRef(onSelect);
   select.current = onSelect;
@@ -232,6 +243,7 @@ export function KnowledgeGraphCanvas({
       resize?.disconnect();
       theme?.disconnect();
       graph.current = null;
+      if (highlights.current?.instance === instance) highlights.current = null;
       void pending.current.finally(() => instance?.destroy()).catch(() => {});
     };
   }, [result, hierarchical, direction]);
@@ -242,27 +254,32 @@ export function KnowledgeGraphCanvas({
     pending.current = pending.current
       .then(async () => {
         if (graph.current !== active) return;
-        await active.setElementState(
-          Object.fromEntries([
-            ...result.nodes.map((node): [string, string[]] => [
-              node.entityId,
-              [
-                ...(path?.nodeIds.includes(node.entityId) ? ['path'] : []),
-                ...(node.entityId === selectedId ? ['selected'] : []),
-              ],
-            ]),
-            ...result.edges.map((edge): [string, string[]] => [
-              edge.edgeId,
-              path?.edgeIds.includes(edge.edgeId) ? ['path'] : [],
-            ]),
-          ]),
-          false,
-        );
+        const previous =
+          highlights.current?.instance === active
+            ? highlights.current.states
+            : new Map<string, string[]>();
+        const next = new Map<string, string[]>();
+        for (const id of path?.nodeIds ?? [])
+          if (identities.nodes.has(id)) next.set(id, ['path']);
+        for (const id of path?.edgeIds ?? [])
+          if (identities.edges.has(id)) next.set(id, ['path']);
+        if (selectedId && identities.nodes.has(selectedId))
+          next.set(selectedId, [...(next.get(selectedId) ?? []), 'selected']);
+        const changes: Record<string, string[]> = {};
+        for (const id of new Set([...previous.keys(), ...next.keys()])) {
+          const before = previous.get(id) ?? [],
+            after = next.get(id) ?? [];
+          if (before.join(',') !== after.join(',')) changes[id] = after;
+        }
+        if (Object.keys(changes).length > 0)
+          await active.setElementState(changes, false);
+        if (graph.current === active)
+          highlights.current = { instance: active, states: next };
       })
       .catch(() => {
         if (graph.current === active) setState('unavailable');
       });
-  }, [selectedId, result, state, path]);
+  }, [selectedId, identities, state, path]);
 
   function viewport(action: 'in' | 'out' | 'fit' | 'selection') {
     const active = graph.current;

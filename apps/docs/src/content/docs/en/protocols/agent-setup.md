@@ -16,8 +16,8 @@ checkPaths:
   - skills/wiser-data-foundation/**
   - apps/web/src/components/agent-setup*
   - apps/docs/src/components/agent-setup*
-lastReviewedAt: 2026-09-08
-lastReviewedCommit: cee9c51ac26e77bd078edc3af41cfb6ca0de611d
+lastReviewedAt: 2026-09-09
+lastReviewedCommit: c707fa20715254db0b0e46d1534d7741535a6532
 ---
 
 The Portal and documentation pages provide **Connect your agent to WISER**. Copy its instructions into your AI assistant. The button copies a public setup URL; it grants no account or project access. A denied clipboard permission exposes the same instructions in a selectable text field.
@@ -32,7 +32,7 @@ The shared API serves these unauthenticated resources:
 | `/agent-setup/manifest.json`             | `wiser.agent-setup.v1`, API and optional MCP endpoints, content-pinned release and file list |
 | `/agent-setup/releases/{release}/{path}` | An allowlisted file from that exact release                                                  |
 
-The manifest includes `SKILL.md`, the agent metadata, protocol/governance/examples/bundle references, and both Python bundle helpers. Each file has a relative path, public URL, byte count and SHA-256. The release identifier hashes the ordered file descriptors. A release URL serves only its exact bytes with immutable caching; an unknown release or non-allowlisted file returns `404`. Source bundles, environment files, credentials and test fixtures are never included. Install all listed files while retaining their relative paths and checking size and hash.
+The manifest includes `SKILL.md`, the agent metadata, protocol/governance/examples/bundle references, and the inventory, ingestion and analysis Python helpers. Each file has a relative path, public URL, byte count and SHA-256. The release identifier hashes the ordered file descriptors. A release URL serves only its exact bytes with immutable caching; an unknown release or non-allowlisted file returns `404`. Source bundles, environment files, credentials and test fixtures are never included. Install all listed files while retaining their relative paths and checking size and hash.
 
 The running process advertises its current release; it does not promise retention of older releases across deployments. If a deployment changes during installation and an old file returns `404`, fetch the current manifest and restart verification. Never mix files from different releases.
 

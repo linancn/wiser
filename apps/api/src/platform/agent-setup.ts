@@ -12,6 +12,7 @@ const SKILL_FILES = [
   'references/water-bundle.md',
   'scripts/water_bundle.py',
   'scripts/water_import.py',
+  'scripts/analyze_bundle.py',
 ] as const;
 
 function publicOrigin(value: string): string {
