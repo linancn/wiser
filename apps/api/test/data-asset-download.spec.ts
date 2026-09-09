@@ -42,6 +42,9 @@ afterEach(async () => {
 
 describe('governed version asset download', () => {
   function downloadApp() {
+    const assetContentFetch = vi.fn(async () => new Response('source bytes', {
+      headers: {'content-type': 'text/plain', 'content-length': '12'},
+    }));
     const assetDownload = {
       createDownload: vi.fn(() =>
         Promise.resolve({
@@ -57,12 +60,31 @@ describe('governed version asset download', () => {
           resolver: { resolve: () => Promise.resolve(context) },
           handler: { execute: () => Promise.resolve({}) },
           assetDownload,
+          assetContentFetch,
         }),
       ],
     });
     apps.push(app);
-    return { app, assetDownload };
+    return { app, assetDownload, assetContentFetch };
   }
+
+  it('streams exact authorized source bytes without disclosing a signed storage URL', async () => {
+    const {app, assetDownload, assetContentFetch} = downloadApp();
+    const response = await app.inject({method:'GET',url:`/api/data/v1/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/assets/${ASSET_ID}/content`,headers:{authorization:'Bearer verified-token','x-wiser-tenant-id':TENANT_ID,'x-wiser-project-id':PROJECT_ID,'x-wiser-purpose':'operate'}});
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toBe('source bytes');
+    expect(response.headers.location).toBeUndefined();
+    expect(response.headers['cache-control']).toContain('no-store');
+    expect(assetDownload.createDownload).toHaveBeenCalledWith({context,versionId:VERSION_ID,assetId:ASSET_ID,internal:true});
+    expect(assetContentFetch).toHaveBeenCalledOnce();
+  });
+
+  it('rejects a cross-project content request before accessing storage', async () => {
+    const {app, assetContentFetch} = downloadApp();
+    const response = await app.inject({method:'GET',url:`/api/data/v1/tenants/${TENANT_ID}/projects/${ACTOR_ID}/versions/${VERSION_ID}/assets/${ASSET_ID}/content`,headers:{authorization:'Bearer verified-token','x-wiser-tenant-id':TENANT_ID,'x-wiser-project-id':PROJECT_ID,'x-wiser-purpose':'operate'}});
+    expect(response.statusCode).toBe(403);
+    expect(assetContentFetch).not.toHaveBeenCalled();
+  });
 
   it('downloads a specified asset from a source registration containing several files', async () => {
     const { app, assetDownload } = downloadApp();
