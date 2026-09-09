@@ -128,7 +128,7 @@ it('renders worker positions, preserves the canvas on selection and disposes aft
   );
   await waitFor(() =>
     expect(engine.setElementState).toHaveBeenLastCalledWith(
-      { a: [], b: ['selected'], ab: [] },
+      { b: ['selected'] },
       false,
     ),
   );
@@ -145,6 +145,21 @@ it('renders worker positions, preserves the canvas on selection and disposes aft
   await waitFor(() =>
     expect(engine.setElementState).toHaveBeenLastCalledWith(
       { a: ['path'], b: ['path', 'selected'], ab: ['path'] },
+      false,
+    ),
+  );
+  rendered.rerender(
+    <KnowledgeGraphCanvas
+      locale="zh-CN"
+      result={result}
+      selectedId="b"
+      onSelect={selected}
+      hierarchical
+    />,
+  );
+  await waitFor(() =>
+    expect(engine.setElementState).toHaveBeenLastCalledWith(
+      { a: [], b: ['selected'], ab: [] },
       false,
     ),
   );

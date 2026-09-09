@@ -32,6 +32,7 @@ describe('public Agent setup delivery', () => {
         'SKILL.md',
         'scripts/water_bundle.py',
         'scripts/water_import.py',
+        'scripts/analyze_bundle.py',
         'references/water-bundle.md',
       ]),
     );
