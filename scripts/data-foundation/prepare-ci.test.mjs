@@ -90,6 +90,27 @@ test('configuration failure prevents both preparation lanes', async () => {
   assert.equal(calls.length, 1);
 });
 
+test('rejects incomplete service selections instead of expanding empty commands to every service', async () => {
+  for (const services of [
+    {},
+    { postgres: { image: 'postgres:pinned' } },
+    { api: { image: 'app:local', build: { context: '.' } } },
+  ]) {
+    const calls = [];
+    await assert.rejects(
+      prepareCiData({
+        environment,
+        command: async (_, args) => {
+          calls.push(args);
+          return JSON.stringify({ services });
+        },
+      }),
+      /buildable and remote services/,
+    );
+    assert.equal(calls.length, 1);
+  }
+});
+
 for (const failure of ['supabase:start', 'supabase:reset', 'pull', 'build']) {
   test(`propagates ${failure} failure only after every started lane has settled`, async () => {
     const calls = [];

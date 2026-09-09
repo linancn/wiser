@@ -80,11 +80,11 @@ push 前运行 `pnpm verify`，本地便会执行与 CI 相同的单元覆盖率
 
 ### CI 镜像与环境准备
 
-CI 使用固定版本的 Buildx 和 Docker daemon 自带的 BuildKit，从当前 checkout 构建并加载共享应用及隔离解析器镜像。在可丢弃 runner 拉取镜像或启动容器前，CI 启用 Docker 的 containerd 镜像存储，以支持外部缓存并避免构建器到 daemon 的第二次镜像导入。BuildKit 的 GitHub Actions v2 缓存只保存镜像层，应用按作业使用独立 scope，解析器使用自己的 scope。缓存导出最多等待两分钟，导出失败不改变测试结果；缓存未命中仍执行完整构建。运行凭据、数据库卷和 smoke 状态不进入缓存，也不上传 build record。
+`scripts/data-foundation/prepare-ci.mjs` 读取并校验合并后的 Compose 配置，不输出凭据；随后并行执行三个独立分支：`supabase:start → supabase:reset`、全部可构建服务的原生镜像构建，以及缺失远程镜像拉取。拉取时排除仍在构建的本机镜像别名。若构建或远程服务选择为空，启动前直接拒绝，避免空参数意外扩大为整个 profile 的操作。
 
-应用 Dockerfile 先复制根 package manifest（含 pnpm 版本）、workspace 配置和 lockfile，再执行 `pnpm fetch`；随后复制源码，用 `pnpm install --offline --frozen-lockfile` 校验全部 workspace manifest。仅修改源码时可复用依赖下载，同时保留冻结依赖图检查。
+初始化器只允许可丢弃的 GitHub-hosted runner，等待三个分支都结束，任一失败都会阻止运行时启动。CI 随后使用 `pnpm data:up --no-build`；迁移、seed、服务健康、解析器、smoke、登录浏览器和 PostgreSQL 检查仍全部运行。每个作业使用新建数据库及 Docker 原生存储；运行凭据、数据库卷和 smoke 状态不进入缓存。
 
-镜像加载后，`scripts/data-foundation/prepare-ci.mjs` 先校验合并后的 Compose 配置，再并行执行 `supabase:start → supabase:reset` 与缺失远程镜像拉取。该入口只允许可丢弃的 GitHub-hosted runner，等待两个分支都结束，任一失败都会阻止运行时启动。CI 随后使用 `pnpm data:up --no-build`；迁移、seed、服务健康、解析器、smoke、登录浏览器和 PostgreSQL 检查仍全部运行。本机普通 `pnpm data:up` 继续构建镜像并加载本机 Compose override。
+应用 Dockerfile 先复制根 package manifest（含 pnpm 版本）、workspace 配置和 lockfile，再执行 `pnpm fetch`；随后复制源码，用 `pnpm install --offline --frozen-lockfile` 校验全部 workspace manifest。本机重复构建时，仅修改源码可复用依赖层。普通 `pnpm data:up` 继续构建镜像并加载本机 Compose override。
 
 ## Vitest 与 workspace 聚焦命令
 

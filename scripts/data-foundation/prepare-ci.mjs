@@ -14,10 +14,27 @@ export async function prepareCiData({
   }
   const options = { environment, capture: false };
   const compose = ['compose', '--profile', 'data-foundation'];
-  await command('docker', [...compose, 'config', '--quiet'], options);
+  const configuration = JSON.parse(
+    await command('docker', [...compose, 'config', '--format', 'json'], {
+      ...options,
+      capture: true,
+    }),
+  );
+  const services = Object.entries(configuration.services);
+  const builds = services.filter(([, service]) => service.build);
+  const builtImages = new Set(builds.map(([, service]) => service.image));
+  const remoteServices = services
+    .filter(([, service]) => !service.build && !builtImages.has(service.image))
+    .map(([name]) => name);
+  if (!builds.length || !remoteServices.length) {
+    throw new Error(
+      'CI Data preparation requires buildable and remote services.',
+    );
+  }
 
-  // Images are built and loaded by the preceding CI steps. Remote images can
-  // be pulled while Auth initializes; runtime startup still waits for both.
+  // Resolve the merged configuration without logging its runtime credentials.
+  // Skip local image aliases during pulls: their build runs concurrently.
+  // Runtime startup waits for all preparation, including every failed branch.
   const results = await Promise.allSettled([
     (async () => {
       await command('pnpm', ['supabase:start'], options);
@@ -25,7 +42,12 @@ export async function prepareCiData({
     })(),
     command(
       'docker',
-      [...compose, 'pull', '--policy', 'missing', '--ignore-buildable'],
+      [...compose, 'build', ...builds.map(([name]) => name)],
+      options,
+    ),
+    command(
+      'docker',
+      [...compose, 'pull', '--policy', 'missing', ...remoteServices],
       options,
     ),
   ]);

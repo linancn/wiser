@@ -14,9 +14,7 @@ describe('observability CI image lifecycle', () => {
     const observabilityJob = workflow.slice(
       workflow.indexOf('\n  observability:'),
     );
-    const buildImage = observabilityJob.indexOf(
-      'name: Build cached shared application image',
-    );
+    const buildImage = observabilityJob.indexOf('docker compose build api');
     const startProfile = observabilityJob.indexOf(
       'docker compose --profile observability up',
     );
