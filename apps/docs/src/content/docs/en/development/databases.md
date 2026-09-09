@@ -19,7 +19,7 @@ checkPaths:
   - scripts/data-foundation/**
   - compose.yaml
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: 5c98d03e974cb590afa9d2738caace27e5cf08a4
+lastReviewedCommit: bac8703efbf93c408d68b6f7a8ca8305d9565c1b
 ---
 
 ## Start with the two PostgreSQL boundaries
@@ -180,3 +180,5 @@ Migration `0020_exploration_saved_views.sql` creates forced-RLS saved configurat
 Migration `0021_amap_display.sql` keeps WGS84 analysis records append-only and builds a separate, indexed `service.analysis_amap_geometry` display projection. A guarded insert derives geometry once; migration backfill touches only the projection. Its RLS follows source scope, with no direct runtime or GIS table grants. Shared tile authorization selects the original or AMap display plane; lateral primary-key record lookups prevent a pathological join before fresh projection statistics are available. Nonlinear line/polygon conversion densifies display vertices; source coordinates are unchanged.
 
 `0022_observation_reconciliation.sql` adds immutable candidate/review evidence with forced owner/scope RLS, one-way optimistic review, and narrow column grants. `pnpm test:postgres:data-api` includes `data-reconciliation.integration.spec.ts`; run it only against a disposable migrated database. It verifies source reauthorization, idempotency, pagination, review conflicts, and unchanged original records using a role without BYPASSRLS.
+
+After its common table grants, runtime-role provisioning explicitly revokes whole-table updates on reconciliation evidence and restores updates only to `status`, `row_version`, `reviewed_at` and `review_note`. Repeated provisioning must preserve this boundary as well as forced RLS and the immutable-evidence trigger.

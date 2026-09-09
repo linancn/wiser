@@ -161,6 +161,10 @@ grant execute on functions to wiser_data_runtime;
 
 -- Query manifests are immutable, expiring caches owned by the verified caller.
 do $$ begin
+  if to_regclass('service.observation_reconciliation') is not null then
+    revoke update on service.observation_reconciliation from wiser_data_runtime;
+    grant update(status,row_version,reviewed_at,review_note) on service.observation_reconciliation to wiser_data_runtime;
+  end if;
   if to_regclass('service.exploration_saved_view') is not null then
     grant select,insert on service.exploration_saved_view to wiser_data_runtime;
     revoke update,delete on service.exploration_saved_view from wiser_data_runtime;
