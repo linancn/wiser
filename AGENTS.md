@@ -35,6 +35,7 @@ lastReviewedCommit: 398e6e8408b7dcaf9f703113b5d4c4928207b3b8
 - Every visible UI message belongs in both locale dictionaries. Chinese (`zh-CN`) is the default, and English preserves the same routes, states, and actions.
 - `apps/docs` is the human-facing source of truth for current architecture, protocols, and development workflows. Root READMEs orient first-time readers; component READMEs stay scoped to one process. Superseded plans and milestone narratives belong in Git history or issue tracking, not active runbooks.
 - Before adding or upgrading an npm package or Docker image, verify the latest compatible stable version from current primary sources. Pin npm packages exactly, commit the lockfile, and pin container images by stable tag and digest; never use `latest`.
+- During local development, always load `compose.override.yaml`. When supplying explicit Compose `-f` files, include `-f compose.override.yaml`; do not bypass it with only `compose.yaml` and a generated case/runtime file. Preserve the user's manual override changes, and check the merged configuration before starting, rebuilding, or recreating services so extra files do not silently replace the intended local ports, mounts, or development commands.
 
 ## Product experience
 
