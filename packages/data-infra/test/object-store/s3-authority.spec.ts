@@ -16,10 +16,28 @@ const HASH = 'a'.repeat(64);
 const SIZE = 12_345;
 
 it('signs server-streamed version downloads for the internal endpoint only', async () => {
-  const presign = vi.fn(async () => 'https://public.example/object');
-  const presignInternal = vi.fn(async () => 'http://private-store/object');
-  const store = createS3AuthorityObjectStore({bucket:'authority',client:new MemoryS3Client(),presign,presignInternal});
-  expect((await store.planVersionDownload({tenantId:TENANT_ID,projectId:PROJECT_ID,versionId:VERSION_ID,sha256:HASH,ttlSeconds:60,internal:true})).url).toBe('http://private-store/object');
+  const presign = vi.fn(() => Promise.resolve('https://public.example/object'));
+  const presignInternal = vi.fn(() =>
+    Promise.resolve('http://private-store/object'),
+  );
+  const store = createS3AuthorityObjectStore({
+    bucket: 'authority',
+    client: new MemoryS3Client(),
+    presign,
+    presignInternal,
+  });
+  expect(
+    (
+      await store.planVersionDownload({
+        tenantId: TENANT_ID,
+        projectId: PROJECT_ID,
+        versionId: VERSION_ID,
+        sha256: HASH,
+        ttlSeconds: 60,
+        internal: true,
+      })
+    ).url,
+  ).toBe('http://private-store/object');
   expect(presign).not.toHaveBeenCalled();
   expect(presignInternal).toHaveBeenCalledOnce();
 });

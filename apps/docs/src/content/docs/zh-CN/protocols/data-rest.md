@@ -302,3 +302,5 @@ Data REST 错误是扁平安全 envelope：
 | `data.explore.view.open`   | `POST /explore/views/:viewId/open`   |
 | `data.explore.view.revoke` | `POST /explore/views/:viewId/revoke` |
 | `data.explore.export`      | `POST /explore/export`               |
+
+原文件字节通过 `GET/HEAD /api/data/v1/tenants/{tenantId}/projects/{projectId}/versions/{versionId}/assets/{assetId}/content` 提供。API 重复既有资产／版本授权和审计，仅为内部存储入口签名，并以两分钟截止和单范围请求支持流式传输，不暴露签名地址。验证当前会话的 Web 入口 `/api/data-foundation/assets/{versionId}/{assetId}` 提供带文件名的附件或白名单内的惰性预览，剥离上游 Cookie，使用 no-store、nosniff 和沙箱内容策略。原文件下载与有界查询页导出相互独立。资源页先显示解析内容，再展示治理信息，保持精确版本与文件身份，提供分页表格、来源文档、结构化内容及地图／图谱联动。嵌套结构按有界分组懒加载，展示标签之外保留原始标签。

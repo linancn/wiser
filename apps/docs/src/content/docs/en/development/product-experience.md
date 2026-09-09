@@ -16,7 +16,7 @@ checkPaths:
   - apps/web/src/**
   - apps/web/e2e/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: 058420b3e7b9fa5ae270049324232ba9fc15823d
+lastReviewedCommit: 0db4a9e49457d010aa5105f22f44008e09a253ca
 ---
 
 ## What this guide governs
@@ -170,3 +170,5 @@ The Portal derives its primary action from a verified session: authenticated use
 Data Foundation starts with a name-based exploration entry and common tasks; normal service diagnostics are collapsed and degraded diagnostics open automatically. Agent access provides the existing setup-copy action and task-named capabilities, while ingestion keeps an explicit task-ID lookup. Quality and acceptance state is accompanied by the scope of checks; source-registration acceptance does not establish scientific validity. Resource-to-exploration links carry both resource and version identity; incomplete or invalid version links fail instead of broadening the query. Empty specialist graph/GIS pages lead into shared exploration. Runtime event payloads and error codes are not user-safe narrative contracts and are not shown as ordinary progress messages.
 
 Knowledge graph canvases default to a ForceAtlas2 relationship layout with deterministic initial positions and 160 bounded iterations, computed in the existing cancellable worker. A keyboard-operable layout switch offers Dagre source hierarchy; only hierarchy changes direction on narrow screens. Both layouts retain bounded identities, selection, path highlighting and text alternatives. Independent resource neighborhoods are packed separately across both axes. The initial overview pages eight resources at a time; focused neighbor pages retain their own bounds. Relationship labels and semantic node colors supplement the node-kind text.
+
+A resource opens its content workspace before collapsed governance details. A version-scoped file list, source-file download and local content tabs share the resource identity. Tables preserve scalar source values and provide readable known-field labels; document and structured views expand nested content lazily. The file preview is inert, and unsupported formats retain an explicit download action. Resource names in exploration link directly to content while a separate selection control retains query-wide analysis.

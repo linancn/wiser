@@ -19,7 +19,7 @@ checkPaths:
   - apps/docs/src/**
   - apps/docs/e2e/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: 8f19a27e424b25ae144846799719462953d9a0c1
+lastReviewedCommit: 0db4a9e49457d010aa5105f22f44008e09a253ca
 ---
 
 ## Two frontend applications
@@ -174,3 +174,7 @@ On screens up to 900 px, a selected source can be inspected in a non-modal botto
 The Portal derives its primary action from a verified session: authenticated users enter the Data workspace; anonymous users sign in. Catalog browsing uses 25-row cursor pages and a keyboard-focusable, internally scrolling table, preserving the name query on continuation and return to the first page. Source, publication, quality and security remain visible; the details explain check scope and content readiness.
 
 Search and knowledge pages send 10-row cursor requests and retain the keyword on continuation and first-page links. Display names are enriched on the server through the same authorized DAL, with at most six concurrent exact-version resource reads, per-request deduplication and no cross-session cache; unavailable optional names fall back to a resource link. Catalog and quality use 25-row cursors. The explorer also accepts a complete `dataItem`/`version` URL pair, validated by the shared query schema and reauthorized by the HTTP API. This pair cannot be combined with an existing query or saved-view identifier. The intake and Agent access pages reuse the configured public Agent setup URL. `e2e-live/data-foundation-product.spec.ts` covers the admitted research case, cursor navigation, version-preserving view entry and the locale/theme/viewport matrix.
+
+Exact source bytes are available through `GET/HEAD /api/data/v1/tenants/{tenantId}/projects/{projectId}/versions/{versionId}/assets/{assetId}/content`. The API repeats the existing asset/version authorization and audit, signs only the internal storage endpoint, and streams with a two-minute deadline and single-range support. It does not expose a signed URL. The session-verified Web endpoint `/api/data-foundation/assets/{versionId}/{assetId}` provides an explicitly named attachment or an allowlisted inert preview; it strips upstream cookies and uses no-store, nosniff and a sandbox content policy. File downloads are independent of bounded query-page exports. Resource pages open parsed content before governance metadata, preserve exact version/file identities, and offer paged tables, source documents, structured values and linked map/graph views. Nested structures mount lazily in bounded groups and source labels remain available alongside display labels.
+
+Two-dimensional indexed raster bands and NetCDF variables (at most 65,536 pixels) render from exact numeric values with transparent masks, a per-band legend and keyboard-accessible row/column inspection. Zero and negative values are preserved. Missing, nonnumeric or higher-dimensional arrays retain a structured view and an original-file download; they are not rendered as invented imagery.

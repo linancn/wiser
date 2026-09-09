@@ -35,7 +35,7 @@ describe('indexed raster content', () => {
       [[1], [1, 2]],
       [[Infinity]],
       [[[1]]],
-      Array.from({ length: 257 }, () => Array(256).fill(1)),
+      Array.from({ length: 257 }, () => Array.from({ length: 256 }, () => 1)),
     ]) {
       expect(rasterGrid({ __kind: 'RASTER_BAND', c3 })).toBeNull();
     }

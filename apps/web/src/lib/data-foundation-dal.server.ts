@@ -800,3 +800,119 @@ export async function getDataFoundationDal(): Promise<DataFoundationDal> {
       (await createWiserServerSupabaseClient()) as DataFoundationAuthClient | null,
   });
 }
+
+export async function proxyDataFoundationAssetRequest(
+  options: Omit<DataFoundationGeoWebProxyOptions, 'path'> & {
+    readonly versionId: string;
+    readonly assetId: string;
+  },
+): Promise<Response> {
+  validateUuid(options.versionId);
+  validateUuid(options.assetId);
+  if (!['GET', 'HEAD'].includes(options.request.method))
+    throw new DataFoundationApiError('invalid-request', 422);
+  const search = new URL(options.request.url).searchParams;
+  if (
+    [...search.keys()].some(
+      (key) => !['mode', 'filename', 'locale'].includes(key),
+    ) ||
+    [...search.keys()].some((key) => search.getAll(key).length !== 1) ||
+    !['preview', 'download'].includes(search.get('mode') ?? 'download')
+  )
+    throw new DataFoundationApiError('invalid-request', 422);
+  const rawName = search.get('filename') ?? options.assetId;
+  if (rawName.length > 512 || hasControlCharacter(rawName))
+    throw new DataFoundationApiError('invalid-request', 422);
+  const filename = rawName.split(/[\\/]/).at(-1) || options.assetId;
+  const accessToken = await verifiedAccessToken(
+    options.createAuthClient,
+    options.now ?? (() => new Date()),
+  );
+  const url = new URL(
+    `/api/data/v1/tenants/${options.config.tenantId}/projects/${options.config.projectId}/versions/${options.versionId}/assets/${options.assetId}/content`,
+    options.config.apiOrigin,
+  );
+  const range = options.request.headers.get('range');
+  if (
+    range !== null &&
+    !/^bytes=(?:[0-9]{1,15}-[0-9]{0,15}|-[0-9]{1,15})$/.test(range)
+  )
+    throw new DataFoundationApiError('invalid-request', 422);
+  let upstream: Response;
+  try {
+    upstream = await (options.fetch ?? globalThis.fetch)(url, {
+      method: options.request.method,
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        'x-wiser-tenant-id': options.config.tenantId,
+        'x-wiser-project-id': options.config.projectId,
+        'x-wiser-purpose': options.config.purpose,
+        ...(range === null ? {} : { range }),
+      },
+      cache: 'no-store',
+      redirect: 'error',
+      signal: AbortSignal.any([
+        options.request.signal,
+        AbortSignal.timeout(120000),
+      ]),
+    });
+  } catch {
+    throw new DataFoundationApiError('unavailable', 503);
+  }
+  if (![200, 206, 416].includes(upstream.status)) {
+    await upstream.body?.cancel();
+    throw classifyStatus(upstream.status);
+  }
+  const mediaType = (
+    upstream.headers.get('content-type') ?? 'application/octet-stream'
+  )
+    .split(';')[0]
+    .trim()
+    .toLowerCase();
+  const preview =
+    search.get('mode') === 'preview' &&
+    [
+      'text/html',
+      'text/plain',
+      'text/csv',
+      'application/json',
+      'application/geo+json',
+      'application/pdf',
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+      'image/gif',
+    ].includes(mediaType);
+  const type = [
+    'text/html',
+    'application/pdf',
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'image/gif',
+  ].includes(mediaType)
+    ? mediaType
+    : preview
+      ? 'text/plain; charset=utf-8'
+      : 'application/octet-stream';
+  const headers = new Headers({
+    'cache-control': 'private, no-cache, no-store, max-age=0, must-revalidate',
+    'content-type': type,
+    'x-content-type-options': 'nosniff',
+    'content-security-policy':
+      "default-src 'none'; sandbox; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'",
+    'content-disposition': `${preview ? 'inline' : 'attachment'}; filename="source"; filename*=UTF-8''${encodeURIComponent(filename).replace(/['()*]/g, (character) => '%' + character.charCodeAt(0).toString(16).toUpperCase())}`,
+  });
+  for (const key of ['content-length', 'content-range', 'accept-ranges']) {
+    const value = upstream.headers.get(key);
+    if (value !== null && value.length < 128 && !hasControlCharacter(value))
+      headers.set(key, value);
+  }
+  if (upstream.status === 416) headers.set('content-length', '0');
+  const empty = options.request.method === 'HEAD' || upstream.status === 416;
+  if (empty) await upstream.body?.cancel();
+  return new Response(empty ? null : upstream.body, {
+    status: upstream.status,
+    headers,
+  });
+}

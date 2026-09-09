@@ -15,7 +15,7 @@ checkPaths:
   - apps/web/src/**
   - apps/docs/src/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: 058420b3e7b9fa5ae270049324232ba9fc15823d
+lastReviewedCommit: 0db4a9e49457d010aa5105f22f44008e09a253ca
 ---
 
 ## Design direction
@@ -139,3 +139,5 @@ The Portal derives its primary action from a verified session: authenticated use
 Data discovery and review pages use a compact shared heading and project-scope label. Catalog and quality tables keep status labels on one line, align text to the reading direction and scroll within a keyboard-focusable region. Quality review uses 25-row cursor pages. Search and knowledge results use 10-row cursor pages with a bounded result region, named version links, short excerpts and expandable source conditions, original excerpts and technical evidence. Registration manifests are labeled as source registration rather than rendered as article prose. The same disclosure component keeps protocol details secondary across versions, intake and agent access.
 
 Knowledge graph canvases default to a ForceAtlas2 relationship layout with deterministic initial positions and 160 bounded iterations, computed in the existing cancellable worker. A keyboard-operable layout switch offers Dagre source hierarchy; only hierarchy changes direction on narrow screens. Both layouts retain bounded identities, selection, path highlighting and text alternatives. Independent resource neighborhoods are packed separately across both axes. The initial overview pages eight resources at a time; focused neighbor pages retain their own bounds. Relationship labels and semantic node colors supplement the node-kind text.
+
+A resource opens its content workspace before collapsed governance details. A version-scoped file list, source-file download and local content tabs share the resource identity. Tables preserve scalar source values and provide readable known-field labels; document and structured views expand nested content lazily. The file preview is inert, and unsupported formats retain an explicit download action. Resource names in exploration link directly to content while a separate selection control retains query-wide analysis.

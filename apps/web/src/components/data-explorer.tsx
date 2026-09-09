@@ -767,14 +767,23 @@ export function DataExplorer({
                           }
                         >
                           <td>
-                            <button
+                            <Link
                               className={styles.resource}
+                              href={`/${locale}/data-foundation/catalog/${resource.dataItemId}?version=${resource.versionId}`}
+                            >
+                              {resource.name}
+                            </Link>
+                            <button
+                              aria-label={resource.name}
                               aria-pressed={
                                 selected?.versionId === resource.versionId
                               }
                               onClick={() => setSelected(resource)}
                             >
-                              {resource.name}
+                              {
+                                getDictionary(locale).dataFoundation.content
+                                  .select
+                              }
                             </button>
                           </td>
                           <td>{resource.provider}</td>

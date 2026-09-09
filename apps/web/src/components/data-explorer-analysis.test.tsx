@@ -119,7 +119,7 @@ it('pages records, preserves original scalar values, selects a record and switch
   expect(callbacks.onSelect).toHaveBeenCalledWith(record);
   await user.click(screen.getByRole('button', { name: 'Next page' }));
   await screen.findByText('0026');
-  expect(screen.getByText('—')).toBeTruthy();
+  expect(screen.getByText('Not provided')).toBeTruthy();
   expect(body(fetch.mock.calls[1][1] as RequestInit)).toMatchObject({
     queryId: id(1),
     after: 'page-two',

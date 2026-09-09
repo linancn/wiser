@@ -37,6 +37,7 @@ interface S3AuthorityObjectStoreOptions {
   readonly bucket: string;
   readonly client: S3AuthorityCommandClient;
   readonly presign: S3AuthorityPresigner;
+  readonly presignInternal?: S3AuthorityPresigner;
   readonly clock?: () => Date;
 }
 
@@ -452,12 +453,16 @@ export function createS3AuthorityObjectStore(
     },
 
     async planVersionDownload(input) {
+      const presign = input.internal
+        ? options.presignInternal
+        : options.presign;
+      if (!presign) throw authorityError('OBJECT_STORE_UNAVAILABLE');
       validateVersionReference(input);
       validateTtl(input.ttlSeconds);
       const key = versionKey(input);
       let url: string;
       try {
-        url = await options.presign(
+        url = await presign(
           new GetObjectCommand({ Bucket: options.bucket, Key: key }),
           input.ttlSeconds,
         );

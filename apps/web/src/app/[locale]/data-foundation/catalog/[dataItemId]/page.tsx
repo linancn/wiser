@@ -1,3 +1,5 @@
+import type { ExplorationResult } from '@wiser/data-contracts';
+import { DataResourceContent } from '@/components/data-resource-content';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -60,6 +62,7 @@ export default async function DataItemPage({
   const route = `/${locale}/data-foundation/catalog/${rawDataItemId}`;
   let detail: DataItemDetailDto | undefined;
   let versions: DataItemVersionPageDto | undefined;
+  let content: ExplorationResult | null = null;
   let failure: ReturnType<typeof handleDataPageError> | undefined;
   try {
     if (dataItemId === null || versionId === null) {
@@ -78,6 +81,32 @@ export default async function DataItemPage({
     }
   } catch (error) {
     failure = handleDataPageError(error, locale, route);
+  }
+
+  if (detail?.selectedVersion && failure === undefined) {
+    try {
+      const dal = await getDataFoundationDal();
+      const query = await dal.explore({
+        spec: {
+          versions: [
+            {
+              dataItemId: detail.item.dataItemId,
+              versionId: detail.selectedVersion.versionId,
+            },
+          ],
+        },
+        view: 'resources',
+        first: 1,
+      });
+      content = await dal.explore({
+        queryId: query.queryId,
+        view: 'records',
+        versionId: detail.selectedVersion.versionId,
+        first: 25,
+      });
+    } catch {
+      /* File downloads still authorize independently when analysis is unavailable. */
+    }
   }
 
   const item = detail?.item;
@@ -101,7 +130,7 @@ export default async function DataItemPage({
       <DataPageHeader
         eyebrow={copy.itemPage.eyebrow}
         title={item?.name ?? copy.itemPage.titleFallback}
-        lede={copy.catalogPage.lede}
+        lede={copy.content.scope}
         aside={<AuthorityFlag locale={locale} />}
       />
       {failure === undefined ? null : (
@@ -109,136 +138,150 @@ export default async function DataItemPage({
       )}
       {item === undefined || versions === undefined ? null : (
         <>
-          <DataSection>
-            <SectionHeading title={copy.itemPage.authorityTitle} />
-            <p>{copy.presentation.checkHint}</p>
-            <FieldGrid
-              fields={[
-                {
-                  label: copy.common.source,
-                  value: item.sourceOrganization,
-                },
-
-                {
-                  label: copy.common.security,
-                  value: (
-                    <StatusBadge
-                      code={(selectedVersion ?? item).securityLevel}
-                      label={
-                        copy.status.security[
-                          (selectedVersion ?? item).securityLevel
-                        ]
-                      }
-                    />
-                  ),
-                },
-                {
-                  label: copy.common.quality,
-                  value: (
-                    <StatusBadge
-                      code={(selectedVersion ?? item).qualityGrade}
-                      label={`${copy.common.quality} ${(selectedVersion ?? item).qualityGrade}`}
-                    />
-                  ),
-                },
-                {
-                  label: copy.common.acceptance,
-                  value: (
-                    <StatusBadge
-                      code={(selectedVersion ?? item).acceptanceStatus}
-                      label={
-                        copy.status.acceptance[
-                          (selectedVersion ?? item).acceptanceStatus
-                        ]
-                      }
-                    />
-                  ),
-                },
-                {
-                  label: copy.common.publication,
-                  value: (
-                    <StatusBadge
-                      code={(selectedVersion ?? item).publicationStatus}
-                      label={
-                        copy.status.publication[
-                          (selectedVersion ?? item).publicationStatus
-                        ]
-                      }
-                    />
-                  ),
-                },
-                {
-                  label: copy.common.processing,
-                  value:
-                    copy.status.processing[
-                      (selectedVersion ?? item).processingStage
-                    ],
-                },
-                {
-                  label: copy.common.coordinates,
-                  value:
-                    item.sourceCrs ??
-                    item.canonicalCrs ??
-                    copy.common.notProvided,
-                },
-                ...(selectedVersion === undefined
-                  ? []
-                  : [
-                      {
-                        label: copy.itemPage.selectedVersion,
-                        value: (
-                          <ProtocolValue>
-                            v{selectedVersion.version}
-                          </ProtocolValue>
-                        ),
-                      },
-                    ]),
-              ]}
+          {selectedVersion ? (
+            <DataResourceContent
+              key={selectedVersion.versionId}
+              locale={locale}
+              dataItemId={item.dataItemId}
+              versionId={selectedVersion.versionId}
+              assetIds={selectedVersion.assetIds}
+              initialResult={content}
             />
-            <DataDisclosure title={copy.presentation.technical}>
+          ) : null}
+          <DataDisclosure title={copy.itemPage.authorityTitle}>
+            <DataSection>
+              <SectionHeading title={copy.itemPage.authorityTitle} />
+              <p>{copy.presentation.checkHint}</p>
               <FieldGrid
                 fields={[
                   {
-                    label: copy.common.dataItemId,
-                    value: <ProtocolValue>{item.dataItemId}</ProtocolValue>,
+                    label: copy.common.source,
+                    value: item.sourceOrganization,
                   },
+
                   {
-                    label: copy.common.authorization,
+                    label: copy.common.security,
                     value: (
-                      <ProtocolValue>{item.authorizationScope}</ProtocolValue>
+                      <StatusBadge
+                        code={(selectedVersion ?? item).securityLevel}
+                        label={
+                          copy.status.security[
+                            (selectedVersion ?? item).securityLevel
+                          ]
+                        }
+                      />
                     ),
                   },
                   {
-                    label: copy.common.ownerProject,
-                    value: <ProtocolValue>{item.ownerProjectId}</ProtocolValue>,
+                    label: copy.common.quality,
+                    value: (
+                      <StatusBadge
+                        code={(selectedVersion ?? item).qualityGrade}
+                        label={`${copy.common.quality} ${(selectedVersion ?? item).qualityGrade}`}
+                      />
+                    ),
                   },
+                  {
+                    label: copy.common.acceptance,
+                    value: (
+                      <StatusBadge
+                        code={(selectedVersion ?? item).acceptanceStatus}
+                        label={
+                          copy.status.acceptance[
+                            (selectedVersion ?? item).acceptanceStatus
+                          ]
+                        }
+                      />
+                    ),
+                  },
+                  {
+                    label: copy.common.publication,
+                    value: (
+                      <StatusBadge
+                        code={(selectedVersion ?? item).publicationStatus}
+                        label={
+                          copy.status.publication[
+                            (selectedVersion ?? item).publicationStatus
+                          ]
+                        }
+                      />
+                    ),
+                  },
+                  {
+                    label: copy.common.processing,
+                    value:
+                      copy.status.processing[
+                        (selectedVersion ?? item).processingStage
+                      ],
+                  },
+                  {
+                    label: copy.common.coordinates,
+                    value:
+                      item.sourceCrs ??
+                      item.canonicalCrs ??
+                      copy.common.notProvided,
+                  },
+                  ...(selectedVersion === undefined
+                    ? []
+                    : [
+                        {
+                          label: copy.itemPage.selectedVersion,
+                          value: (
+                            <ProtocolValue>
+                              v{selectedVersion.version}
+                            </ProtocolValue>
+                          ),
+                        },
+                      ]),
                 ]}
               />
-            </DataDisclosure>
-            {selectedVersion === undefined ? null : (
-              <Link
-                href={`/${locale}/data-foundation/explore?dataItem=${item.dataItemId}&version=${selectedVersion.versionId}`}
-              >
-                {copy.common.openResource}
-              </Link>
-            )}
-          </DataSection>
-          <DataSection>
-            <SectionHeading title={copy.itemPage.versionsTitle} />
-            <VersionList
-              hrefBase={route}
-              locale={locale}
-              selectedVersionId={selectedVersion?.versionId}
-              versions={versions.items}
-            />
-            {selectedVersion === undefined ? null : (
-              <Link
-                href={`/${locale}/data-foundation/map?${mapSearch.toString()}`}
-              >
-                {copy.itemPage.openOnMap}
-              </Link>
-            )}
-          </DataSection>
+              <DataDisclosure title={copy.presentation.technical}>
+                <FieldGrid
+                  fields={[
+                    {
+                      label: copy.common.dataItemId,
+                      value: <ProtocolValue>{item.dataItemId}</ProtocolValue>,
+                    },
+                    {
+                      label: copy.common.authorization,
+                      value: (
+                        <ProtocolValue>{item.authorizationScope}</ProtocolValue>
+                      ),
+                    },
+                    {
+                      label: copy.common.ownerProject,
+                      value: (
+                        <ProtocolValue>{item.ownerProjectId}</ProtocolValue>
+                      ),
+                    },
+                  ]}
+                />
+              </DataDisclosure>
+              {selectedVersion === undefined ? null : (
+                <Link
+                  href={`/${locale}/data-foundation/explore?dataItem=${item.dataItemId}&version=${selectedVersion.versionId}`}
+                >
+                  {copy.common.openResource}
+                </Link>
+              )}
+            </DataSection>
+            <DataSection>
+              <SectionHeading title={copy.itemPage.versionsTitle} />
+              <VersionList
+                hrefBase={route}
+                locale={locale}
+                selectedVersionId={selectedVersion?.versionId}
+                versions={versions.items}
+              />
+              {selectedVersion === undefined ? null : (
+                <Link
+                  href={`/${locale}/data-foundation/map?${mapSearch.toString()}`}
+                >
+                  {copy.itemPage.openOnMap}
+                </Link>
+              )}
+            </DataSection>
+          </DataDisclosure>
           {selectedVersion === undefined ? null : (
             <Link
               href={`/${locale}/data-foundation/explore?dataItem=${item.dataItemId}&version=${selectedVersion.versionId}&view=graph`}

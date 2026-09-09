@@ -101,6 +101,7 @@ export class PostgresDataAssetDownloadPort {
 
   async createDownload(input: {
     readonly context: PlatformRequestContext;
+    readonly internal?: boolean;
     readonly versionId: string;
     readonly assetId?: string;
   }): Promise<{ readonly url: string; readonly expiresAt: string }> {
@@ -145,6 +146,7 @@ export class PostgresDataAssetDownloadPort {
         versionId: input.versionId,
         sha256: contentHash,
         ttlSeconds: this.#ttlSeconds,
+        ...(input.internal ? { internal: true } : {}),
       });
       await client.query(AUDIT_SQL, [
         input.context.authorization.tenantId,
