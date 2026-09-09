@@ -133,3 +133,5 @@ On screens up to 900 px, a selected source can be inspected in a non-modal botto
 Overview task cards open the shared exploration workspace, including its map view. They describe intake and review in user-facing language. Documentation presents Data Foundation before Agent EXCON, matching the Portal.
 
 Graph selection and path updates send only changed node/edge states to G6. Unchanged elements are not redrawn through a full-state submission; removing a path clears its previous highlights while preserving selection. Large graphs still incur bounded initial rendering work; layout computation remains in a cancellable worker.
+
+The Portal derives its primary action from a verified session: authenticated users enter the Data workspace; anonymous users sign in. Catalog browsing uses 25-row cursor pages and a keyboard-focusable, internally scrolling table, preserving the name query on continuation and return to the first page. Source, publication, quality and security remain visible; the details explain check scope and content readiness.

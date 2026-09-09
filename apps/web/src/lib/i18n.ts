@@ -64,6 +64,7 @@ const zhCN = {
     heading: '让可信数据与智能体协作服务于每一次水系统决策',
     lede: 'WISER 目前包含数据基座和智能体演练场。你可以先了解两个工作区，再使用同一个组织账户开始工作。',
     signInAction: '登录 WISER',
+    continueAction: '进入数据工作区',
     workspacesTitle: '选择工作区',
     workspacesLede:
       '两个工作区共享身份、界面和项目上下文，各自承担清晰的业务职责。',
@@ -586,6 +587,11 @@ const zhCN = {
       queryLabel: '按名称查询',
       queryPlaceholder: '输入数据资源名称',
       tableLabel: '数据资源列表',
+      nextPage: '下一页',
+      firstPage: '返回第一页',
+      pagination: '目录分页',
+      governanceHint:
+        '质量与验收状态需结合详情中的检查范围、来源限制及内容就绪情况判断。',
       resultCount: '当前结果',
     },
     itemPage: {
@@ -1304,6 +1310,7 @@ const en: typeof zhCN = {
       'Trusted data and agent collaboration for every water-system decision',
     lede: 'WISER currently includes Data Foundation and Agent EXCON. Explore both workspaces, then use one organization account to begin.',
     signInAction: 'Sign in to WISER',
+    continueAction: 'Enter the data workspace',
     workspacesTitle: 'Choose a workspace',
     workspacesLede:
       'Both workspaces share identity, interface, and project context while retaining clear business responsibilities.',
@@ -1853,6 +1860,11 @@ const en: typeof zhCN = {
       queryLabel: 'Search by name',
       queryPlaceholder: 'Enter a data resource name',
       tableLabel: 'Data resource list',
+      nextPage: 'Next page',
+      firstPage: 'Return to first page',
+      pagination: 'Catalog pagination',
+      governanceHint:
+        'Interpret quality and acceptance alongside the check scope, source limitations, and content readiness in the details.',
       resultCount: 'Current results',
     },
     itemPage: {

@@ -1,0 +1,64 @@
+.frame {
+  overflow: auto;
+  max-height: 65dvh;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.frame table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.875rem;
+  text-align: start;
+}
+.frame th,
+.frame td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  min-width: 80px;
+}
+.frame th:first-child {
+  width: 40%;
+  min-width: 220px;
+}
+.frame td:nth-child(2) {
+  min-width: 160px;
+}
+.frame thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+}
+.frame a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent-strong);
+}
+.hint {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 12px;
+}
+.pagination a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--accent-strong);
+  background: var(--surface);
+}

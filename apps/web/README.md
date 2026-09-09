@@ -93,3 +93,5 @@ Graph exploration includes bounded neighbor pages and current-page directed path
 Exploration groups specialist tools without breaking deep links, preserves aggregate units on narrow screens, and offers responsive graph layouts and viewport controls. / 数据探索集中专业工具入口并保留深链接，窄屏统计保留单位，图谱提供响应式布局及视角控件。
 
 Mobile exploration details use a non-modal bottom drawer with explicit focus return and persistent selection. / 手机探索详情使用非模态底部抽屉，明确返回键盘焦点并保留所选数据。
+
+Portal actions use verified sessions; catalog pages preserve name filters across bounded 25-row cursors in a compact scrollable table. / Portal 主操作使用已验证会话；目录以每页 25 行的紧凑可滚动表格呈现，游标翻页保留名称条件。

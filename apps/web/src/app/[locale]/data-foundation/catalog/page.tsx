@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
+import { DataCatalogTable } from '@/components/data-catalog-table';
+import styles from '@/components/data-catalog-table.module.css';
 
 import {
   AuthorityFlag,
   DataFailureState,
-  DataItemList,
   DataPageHeader,
   DataPageMain,
   DataSection,
@@ -22,7 +24,10 @@ import { getDictionary, isLocale } from '@/lib/i18n';
 
 interface CatalogPageProps {
   readonly params: Promise<{ locale: string }>;
-  readonly searchParams: Promise<{ q?: string | string[] }>;
+  readonly searchParams: Promise<{
+    q?: string | string[];
+    after?: string | string[];
+  }>;
 }
 
 export async function generateMetadata({ params }: CatalogPageProps) {
@@ -43,6 +48,13 @@ export default async function CatalogPage({
   const copy = getDictionary(locale).dataFoundation;
   const route = `/${locale}/data-foundation/catalog`;
   const query = parseSearchQuery(rawSearch.q);
+  const after = rawSearch.after;
+  const pageHref = (cursor?: string) => {
+    const search = new URLSearchParams();
+    if (query) search.set('q', query);
+    if (cursor) search.set('after', cursor);
+    return `${route}${search.size ? `?${search.toString()}` : ''}`;
+  };
   let page:
     | Awaited<
         ReturnType<Awaited<ReturnType<typeof getDataFoundationDal>>['catalog']>
@@ -51,9 +63,15 @@ export default async function CatalogPage({
   let failure: ReturnType<typeof handleDataPageError> | undefined;
   try {
     if (query === null || query.length > 512) throw invalidDataPageRequest();
+    if (
+      after !== undefined &&
+      (typeof after !== 'string' || after.length < 1 || after.length > 8192)
+    )
+      throw invalidDataPageRequest();
     const dal = await getDataFoundationDal();
     page = await dal.catalog({
-      first: 50,
+      first: 25,
+      ...(after === undefined ? {} : { after }),
       ...(query.length === 0 ? {} : { query }),
     });
   } catch (error) {
@@ -92,7 +110,20 @@ export default async function CatalogPage({
               },
             ]}
           />
-          <DataItemList locale={locale} items={page.items} />
+          <DataCatalogTable locale={locale} items={page.items} />
+          <nav
+            className={styles.pagination}
+            aria-label={copy.catalogPage.pagination}
+          >
+            {after === undefined ? null : (
+              <Link href={pageHref()}>{copy.catalogPage.firstPage}</Link>
+            )}
+            {page.nextCursor === undefined ? null : (
+              <Link href={pageHref(page.nextCursor)}>
+                {copy.catalogPage.nextPage}
+              </Link>
+            )}
+          </nav>
         </DataSection>
       )}
     </DataPageMain>

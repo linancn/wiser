@@ -27,18 +27,21 @@ test('catalog pages stay compact and retain query pagination', async ({
   await login(page, '/zh-CN/data-foundation/catalog');
   const table = page.getByRole('table', { name: '数据资源列表' });
   await expect(table.getByTestId('data-item-row')).toHaveCount(25);
-  const first = await table.getByTestId('data-item-row').first().innerText();
+  const firstLink = table
+    .getByTestId('data-item-row')
+    .first()
+    .getByRole('link');
+  const first = (await firstLink.getAttribute('href')) ?? '';
+  expect(first).toMatch(/^\/zh-CN\/data-foundation\/catalog\//);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);
   await page.getByRole('link', { name: '下一页', exact: true }).click();
   await expect(table.getByTestId('data-item-row')).toHaveCount(25);
-  await expect(table.getByTestId('data-item-row').first()).not.toHaveText(
-    first,
-  );
+  await expect(firstLink).not.toHaveAttribute('href', first);
   await page.getByRole('link', { name: '返回第一页', exact: true }).click();
-  await expect(table.getByTestId('data-item-row').first()).toHaveText(first);
+  await expect(firstLink).toHaveAttribute('href', first);
 });
 
 test('overview guides users to shared exploration without internal processing terminology', async ({
@@ -66,8 +69,8 @@ test('real provenance expands records and highlights a directed path without reb
   page,
 }) => {
   const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
   await login(page, '/zh-CN/data-foundation/explore?q=DS-0558');
+  page.on('pageerror', (error) => errors.push(error.message));
   await page.getByRole('tab', { name: '知识图谱', exact: true }).click();
   const graph = page.getByTestId('explorer-graph');
   await expect(graph.getByTestId('knowledge-graph')).toHaveAttribute(

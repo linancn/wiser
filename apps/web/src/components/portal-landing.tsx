@@ -31,8 +31,16 @@ function ConfluenceMark() {
   );
 }
 
-export function PortalLanding({ locale }: { readonly locale: Locale }) {
+export function PortalLanding({
+  locale,
+  signedIn = false,
+}: {
+  readonly locale: Locale;
+  readonly signedIn?: boolean;
+}) {
   const copy = getDictionary(locale).portal;
+  const actionHref = `/${locale}/${signedIn ? 'data-foundation' : 'login'}`;
+  const actionLabel = signedIn ? copy.continueAction : copy.signInAction;
   const systems = [
     {
       ...copy.dataFoundation,
@@ -60,8 +68,8 @@ export function PortalLanding({ locale }: { readonly locale: Locale }) {
               'http://127.0.0.1:3101/agent-setup/prompt.md'
             }
           />
-          <Link className={styles.primaryAction} href={`/${locale}/login`}>
-            {copy.signInAction}
+          <Link className={styles.primaryAction} href={actionHref}>
+            {actionLabel}
             <span aria-hidden="true">→</span>
           </Link>
         </div>
@@ -129,8 +137,8 @@ export function PortalLanding({ locale }: { readonly locale: Locale }) {
             <li key={point}>{point}</li>
           ))}
         </ul>
-        <Link href={`/${locale}/login`}>
-          {copy.signInAction}
+        <Link href={actionHref}>
+          {actionLabel}
           <span aria-hidden="true">→</span>
         </Link>
       </section>
