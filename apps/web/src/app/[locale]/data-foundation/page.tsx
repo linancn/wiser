@@ -7,6 +7,8 @@ import {
   DataPageMain,
   DataSection,
   MetricStrip,
+  DataDisclosure,
+  QueryForm,
   SectionHeading,
   WorkspaceLinks,
 } from '@/components/data-foundation-workspace';
@@ -66,13 +68,52 @@ export default async function DataFoundationPage({
         lede={copy.overviewPage.lede}
         aside={<AuthorityFlag locale={locale} />}
       />
+      <QueryForm
+        action={`/${locale}/data-foundation/explore`}
+        name="q"
+        label={copy.presentation.startQuery}
+        placeholder={copy.presentation.startQueryHint}
+        defaultValue=""
+        submitLabel={copy.common.searchAction}
+        resetHref={`/${locale}/data-foundation/explore`}
+        resetLabel={copy.common.browseAll}
+      />
       {failure === undefined ? null : (
         <DataFailureState locale={locale} error={failure} />
       )}
       {result === undefined ? null : (
         <>
           <DataSection>
-            <SectionHeading title={copy.overviewPage.healthTitle} />
+            <SectionHeading title={copy.overviewPage.operatingTitle} />
+            <WorkspaceLinks
+              links={[
+                {
+                  href: `/${locale}/data-foundation/catalog`,
+                  label: copy.overviewPage.catalogAction,
+                  detail: copy.domains[0]?.copy ?? copy.common.notProvided,
+                },
+                {
+                  href: `/${locale}/data-foundation/ingestions`,
+                  label: copy.overviewPage.ingestionAction,
+                  detail: copy.domains[1]?.copy ?? copy.common.notProvided,
+                },
+                {
+                  href: `/${locale}/data-foundation/explore`,
+                  label: copy.overviewPage.searchAction,
+                  detail: copy.domains[2]?.copy ?? copy.common.notProvided,
+                },
+                {
+                  href: `/${locale}/data-foundation/explore?view=map`,
+                  label: copy.overviewPage.mapAction,
+                  detail: copy.mapPage.lede,
+                },
+              ]}
+            />
+          </DataSection>
+          <DataDisclosure
+            title={copy.overviewPage.healthTitle}
+            open={result.health.status !== 'ready'}
+          >
             <MetricStrip
               metrics={[
                 {
@@ -115,34 +156,7 @@ export default async function DataFoundationPage({
                 },
               ]}
             />
-          </DataSection>
-          <DataSection>
-            <SectionHeading title={copy.overviewPage.operatingTitle} />
-            <WorkspaceLinks
-              links={[
-                {
-                  href: `/${locale}/data-foundation/catalog`,
-                  label: copy.overviewPage.catalogAction,
-                  detail: copy.domains[0]?.copy ?? copy.common.notProvided,
-                },
-                {
-                  href: `/${locale}/data-foundation/ingestions`,
-                  label: copy.overviewPage.ingestionAction,
-                  detail: copy.domains[1]?.copy ?? copy.common.notProvided,
-                },
-                {
-                  href: `/${locale}/data-foundation/explore`,
-                  label: copy.overviewPage.searchAction,
-                  detail: copy.domains[2]?.copy ?? copy.common.notProvided,
-                },
-                {
-                  href: `/${locale}/data-foundation/explore?view=map`,
-                  label: copy.overviewPage.mapAction,
-                  detail: copy.mapPage.lede,
-                },
-              ]}
-            />
-          </DataSection>
+          </DataDisclosure>
         </>
       )}
     </DataPageMain>

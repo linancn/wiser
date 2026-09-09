@@ -16,6 +16,38 @@ const USER_ID = '33333333-3333-4333-8333-333333333333';
 const SESSION_ID = '44444444-4444-4444-8444-444444444444';
 const GEO_VERSION_ID = '55555555-5555-4555-8555-555555555555';
 
+it.each(['search', 'knowledge'] as const)(
+  'continues %s with the same query and bounded cursor page',
+  async (method) => {
+    const fetch = vi.fn<typeof globalThis.fetch>(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ items: [], nextCursor: 'next' }), {
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    const dal = createDataFoundationDal({
+      config: {
+        apiOrigin: 'http://api:3001',
+        tenantId: TENANT_ID,
+        projectId: PROJECT_ID,
+        purpose: 'data-steward-console',
+        requestTimeoutMs: 5000,
+        responseLimitBytes: 32768,
+      },
+      createAuthClient: () => Promise.resolve(authClient([])),
+      fetch,
+    });
+    await expect(dal[method]('HydroATLAS', 'cursor-1')).resolves.toEqual({
+      items: [],
+      nextCursor: 'next',
+    });
+    expect(fetch.mock.calls[0]?.[1]?.body).toBe(
+      JSON.stringify({ query: 'HydroATLAS', first: 10, after: 'cursor-1' }),
+    );
+  },
+);
+
 function accessToken(): string {
   const encode = (value: object) =>
     Buffer.from(JSON.stringify(value)).toString('base64url');

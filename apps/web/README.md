@@ -95,3 +95,5 @@ Exploration groups specialist tools without breaking deep links, preserves aggre
 Mobile exploration details use a non-modal bottom drawer with explicit focus return and persistent selection. / 手机探索详情使用非模态底部抽屉，明确返回键盘焦点并保留所选数据。
 
 Portal actions use verified sessions; catalog pages preserve name filters across bounded 25-row cursors in a compact scrollable table. / Portal 主操作使用已验证会话；目录以每页 25 行的紧凑可滚动表格呈现，游标翻页保留名称条件。
+
+Data discovery uses 25-row catalog/quality pages and 10-row search/knowledge pages. Search result names are loaded through authorized exact-version HTTP reads; source conditions and protocol details remain inspectable. Resource links preserve versions across shared exploration. Intake and Agent access reuse the public setup-copy action. The product review browser suite uses the admitted research case and checks both locales, themes and viewport sizes.

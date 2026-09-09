@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { DataAgentEntry } from '@/components/data-foundation-agent-entry';
 
 import {
   AuthorityFlag,
@@ -7,7 +8,6 @@ import {
   DataPageHeader,
   DataPageMain,
   DataSection,
-  MetricStrip,
   SectionHeading,
 } from '@/components/data-foundation-workspace';
 import type { CapabilityRegistryDto } from '@/lib/data-foundation';
@@ -54,24 +54,13 @@ export default async function CapabilitiesPage({
         lede={copy.capabilitiesPage.lede}
         aside={<AuthorityFlag locale={locale} />}
       />
+      <DataAgentEntry locale={locale} />
       {failure === undefined ? null : (
         <DataFailureState locale={locale} error={failure} />
       )}
       {registry === undefined ? null : (
         <DataSection>
-          <SectionHeading title={copy.capabilitiesPage.title} />
-          <MetricStrip
-            metrics={[
-              {
-                label: copy.capabilitiesPage.registryVersion,
-                value: registry.registryVersion,
-              },
-              {
-                label: copy.overviewPage.capabilityCount,
-                value: registry.capabilities.length,
-              },
-            ]}
-          />
+          <SectionHeading title={copy.presentation.functionsTitle} />
           <CapabilityList locale={locale} registry={registry} />
         </DataSection>
       )}

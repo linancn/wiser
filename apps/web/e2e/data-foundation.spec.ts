@@ -47,12 +47,14 @@ test('exposes every Data Foundation workspace route without static data fallback
     ['graph', '知识图谱'],
     ['geo', '空间查询'],
     ['map', '地图预览'],
-    ['capabilities', '服务能力'],
+    ['capabilities', '智能体接入'],
   ] as const;
 
   for (const [route, heading] of routes) {
     await page.goto(`/zh-CN/data-foundation/${route}`);
-    await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: heading, exact: true }),
+    ).toBeVisible();
     await expect(page.getByText('按权限显示')).toBeVisible();
     await expect(page.locator('main')).not.toContainText(/fixture|mock/i);
   }

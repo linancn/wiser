@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { namedCapability } from '@/lib/data-foundation-presentation';
 
 import {
   AuthorityFlag,
@@ -82,8 +83,10 @@ export default async function OperationPage({ params }: OperationPageProps) {
                 },
                 {
                   label: copy.common.capability,
-                  value: (
-                    <ProtocolValue>{operation.capabilityId}</ProtocolValue>
+                  value: namedCapability(
+                    operation.capabilityId,
+                    copy.presentation.capabilityNames,
+                    copy.presentation.capabilityFallback,
                   ),
                 },
                 {
@@ -112,13 +115,12 @@ export default async function OperationPage({ params }: OperationPageProps) {
                   value: formatDataDate(operation.updatedAt, locale),
                 },
                 {
-                  label: copy.common.notAvailable,
+                  label: copy.presentation.operationIssue,
                   value:
                     operation.error === undefined ? (
-                      copy.common.notProvided
+                      copy.presentation.noOperationIssue
                     ) : (
                       <>
-                        <ProtocolValue>{operation.error.code}</ProtocolValue>{' '}
                         {operation.error.retryable
                           ? copy.operationPage.retryable
                           : copy.operationPage.notRetryable}

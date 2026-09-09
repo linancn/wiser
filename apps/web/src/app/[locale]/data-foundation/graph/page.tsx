@@ -7,7 +7,9 @@ import {
   DataPageMain,
   DataSection,
   GraphResultView,
-  Notice,
+  DataEmpty,
+  DataDisclosure,
+  ExplorationEntry,
   QueryForm,
 } from '@/components/data-foundation-workspace';
 import { parseGraphEntity, type GraphResultDto } from '@/lib/data-foundation';
@@ -69,24 +71,27 @@ export default async function GraphPage({
         lede={copy.graphPage.lede}
         aside={<AuthorityFlag locale={locale} />}
       />
-      <QueryForm
-        action={route}
-        name="entity"
-        label={copy.graphPage.entityLabel}
-        placeholder={copy.graphPage.entityPlaceholder}
-        defaultValue={entity ?? ''}
-        submitLabel={copy.common.searchAction}
-        resetHref={route}
-        resetLabel={copy.common.resetAction}
-      />
+      <ExplorationEntry locale={locale} view="graph" />
+      <DataDisclosure
+        title={copy.presentation.advanced}
+        open={entity !== null && entity.length > 0}
+      >
+        <QueryForm
+          action={route}
+          name="entity"
+          label={copy.graphPage.entityLabel}
+          placeholder={copy.graphPage.entityPlaceholder}
+          defaultValue={entity ?? ''}
+          submitLabel={copy.common.searchAction}
+          resetHref={route}
+          resetLabel={copy.common.resetAction}
+        />
+      </DataDisclosure>
       {failure === undefined ? null : (
         <DataFailureState locale={locale} error={failure} />
       )}
       {!capabilityAvailable ? null : (
-        <Notice
-          title={copy.common.capabilityAvailable}
-          copy={copy.graphPage.prompt}
-        />
+        <DataEmpty title={copy.graphPage.title} copy={copy.graphPage.prompt} />
       )}
       {result === undefined ? null : (
         <DataSection>

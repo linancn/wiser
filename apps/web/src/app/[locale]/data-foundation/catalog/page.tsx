@@ -9,7 +9,6 @@ import {
   DataPageHeader,
   DataPageMain,
   DataSection,
-  MetricStrip,
   QueryForm,
   SectionHeading,
 } from '@/components/data-foundation-workspace';
@@ -101,14 +100,9 @@ export default async function CatalogPage({
       )}
       {page === undefined ? null : (
         <DataSection>
-          <SectionHeading title={copy.catalogPage.tableLabel} />
-          <MetricStrip
-            metrics={[
-              {
-                label: copy.catalogPage.resultCount,
-                value: page.items.length,
-              },
-            ]}
+          <SectionHeading
+            title={copy.catalogPage.tableLabel}
+            lede={`${copy.catalogPage.resultCount} · ${page.items.length}`}
           />
           <DataCatalogTable locale={locale} items={page.items} />
           <nav

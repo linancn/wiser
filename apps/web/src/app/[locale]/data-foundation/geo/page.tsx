@@ -7,7 +7,9 @@ import {
   DataPageMain,
   DataSection,
   GeoFeatureList,
-  Notice,
+  DataEmpty,
+  DataDisclosure,
+  ExplorationEntry,
   QueryForm,
   SectionHeading,
 } from '@/components/data-foundation-workspace';
@@ -71,25 +73,28 @@ export default async function GeoPage({ params, searchParams }: GeoPageProps) {
         lede={copy.geoPage.lede}
         aside={<AuthorityFlag locale={locale} />}
       />
-      <QueryForm
-        action={route}
-        name="bbox"
-        label={copy.geoPage.bboxLabel}
-        placeholder={copy.geoPage.bboxPlaceholder}
-        defaultValue={typeof search.bbox === 'string' ? search.bbox : ''}
-        hint={copy.geoPage.bboxHint}
-        submitLabel={copy.common.searchAction}
-        resetHref={route}
-        resetLabel={copy.common.resetAction}
-      />
+      <ExplorationEntry locale={locale} view="map" />
+      <DataDisclosure
+        title={copy.presentation.advanced}
+        open={search.bbox !== undefined}
+      >
+        <QueryForm
+          action={route}
+          name="bbox"
+          label={copy.geoPage.bboxLabel}
+          placeholder={copy.geoPage.bboxPlaceholder}
+          defaultValue={typeof search.bbox === 'string' ? search.bbox : ''}
+          hint={copy.geoPage.bboxHint}
+          submitLabel={copy.common.searchAction}
+          resetHref={route}
+          resetLabel={copy.common.resetAction}
+        />
+      </DataDisclosure>
       {failure === undefined ? null : (
         <DataFailureState locale={locale} error={failure} />
       )}
       {!capabilityAvailable ? null : (
-        <Notice
-          title={copy.common.capabilityAvailable}
-          copy={copy.geoPage.prompt}
-        />
+        <DataEmpty title={copy.geoPage.title} copy={copy.geoPage.prompt} />
       )}
       {result === undefined ? null : (
         <DataSection>

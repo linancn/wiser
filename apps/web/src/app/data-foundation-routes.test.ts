@@ -44,7 +44,7 @@ describe('Data Foundation management routes', () => {
       graph: '图谱',
       geo: '空间查询',
       map: '地图',
-      capabilities: '能力',
+      capabilities: '智能体接入',
     });
     expect(dictionaries.en.dataFoundation.navigation).toEqual({
       label: 'Data Foundation workspace',
@@ -58,7 +58,7 @@ describe('Data Foundation management routes', () => {
       graph: 'Graph',
       geo: 'Geo query',
       map: 'Map',
-      capabilities: 'Capabilities',
+      capabilities: 'Agent access',
     });
     expect(Object.keys(dictionaries.en.dataFoundation.failures).sort()).toEqual(
       Object.keys(dictionaries['zh-CN'].dataFoundation.failures).sort(),

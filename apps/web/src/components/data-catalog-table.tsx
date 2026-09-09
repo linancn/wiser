@@ -7,9 +7,11 @@ import styles from './data-catalog-table.module.css';
 export function DataCatalogTable({
   items,
   locale,
+  qualityReview = false,
 }: {
   readonly items: readonly DataCatalogItemDto[];
   readonly locale: Locale;
+  readonly qualityReview?: boolean;
 }) {
   const copy = getDictionary(locale).dataFoundation;
   if (items.length === 0)
@@ -18,7 +20,7 @@ export function DataCatalogTable({
     );
   return (
     <>
-      <p className={styles.hint}>{copy.catalogPage.governanceHint}</p>
+      <p className={styles.hint}>{copy.presentation.checkHint}</p>
       <div
         className={styles.frame}
         tabIndex={0}
@@ -32,6 +34,9 @@ export function DataCatalogTable({
               <th scope="col">{copy.common.source}</th>
               <th scope="col">{copy.common.publication}</th>
               <th scope="col">{copy.common.quality}</th>
+              {qualityReview ? (
+                <th scope="col">{copy.common.acceptance}</th>
+              ) : null}
               <th scope="col">{copy.common.security}</th>
             </tr>
           </thead>
@@ -53,6 +58,14 @@ export function DataCatalogTable({
                   />
                 </td>
                 <td>{item.qualityGrade}</td>
+                {qualityReview ? (
+                  <td>
+                    <StatusBadge
+                      code={item.acceptanceStatus}
+                      label={copy.status.acceptance[item.acceptanceStatus]}
+                    />
+                  </td>
+                ) : null}
                 <td>{copy.status.security[item.securityLevel]}</td>
               </tr>
             ))}
