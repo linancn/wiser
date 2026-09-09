@@ -8,6 +8,22 @@ import { loadLiveCredentials } from './support/live-fixture';
 const credentials = loadLiveCredentials();
 const hydroAtlasId = 'e90d54eb-4740-4f21-a85e-1d497cc2cc57';
 
+test('overview guides users to shared exploration without internal processing terminology', async ({
+  page,
+}) => {
+  await login(page, '/zh-CN/data-foundation');
+  const main = page.locator('main');
+  await expect(main).not.toContainText(/Outbox|事务提交|投影/);
+  await expect(main.getByRole('link', { name: /探索数据/ })).toHaveAttribute(
+    'href',
+    '/zh-CN/data-foundation/explore',
+  );
+  await expect(main.getByRole('link', { name: /打开地图/ })).toHaveAttribute(
+    'href',
+    '/zh-CN/data-foundation/explore?view=map',
+  );
+});
+
 test.skip(
   process.env['WISER_DATA_REAL_CASE'] !== '1',
   'Requires the admitted private water research case.',
