@@ -211,4 +211,104 @@ describe('non-destructive business observation reconciliation', () => {
       relation: 'DISJOINT',
     });
   });
+  it('normalizes affine conversions and numeric keys without losing signs, exponent scale or text identity', () => {
+    const normalizedPlan = {
+      ...plan,
+      keys: [{ ...plan.keys[0]!, type: 'decimal' as const, trim: true }],
+      unitConversions: [{ from: 'C', to: 'K', factor: '1', offset: '273.15' }],
+    };
+    const output = reconcileObservations(
+      normalizedPlan,
+      [row('a1', ' 01e2 ', '273.05', { unit: 'K' })],
+      [row('b1', '100.00', '-0.1', { unit: 'C' })],
+    );
+    expect(output.summary.candidateObservationCount).toBe(1);
+    expect(output.groups[0]?.value).toBe('273.05');
+    const unicode = { ...plan, keys: [{ ...plan.keys[0]!, trim: true }] };
+    expect(
+      reconcileObservations(
+        unicode,
+        [row('a1', ' e\u0301 ', '-2.0')],
+        [row('b1', 'é', '-2')],
+      ).summary.duplicateRecordCount,
+    ).toBe(1);
+    expect(
+      reconcileObservations(
+        plan,
+        [row('a1', 'a', 1), row('a2', 'b', 2)],
+        [row('b1', 'a', 1)],
+      ).summary.relation,
+    ).toBe('OVERLAP');
+  });
+  it.each([
+    null,
+    {},
+    true,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    9007199254740992,
+    '1e101',
+    '1e-101',
+    'x',
+    '1'.repeat(129),
+  ])('preserves unsupported observation values as incomplete: %s', (value) => {
+    expect(
+      reconcileObservations(plan, [row('a1', 'a', value)], []).summary,
+    ).toMatchObject({
+      incompleteRecordCount: 1,
+      candidateObservationCount: null,
+    });
+  });
+  it('uses explicit timestamp offsets and rejects invalid calendar components', () => {
+    const timePlan = {
+      ...plan,
+      keys: [{ ...plan.keys[0]!, type: 'iso-time' as const }],
+    };
+    const invalid = [
+      '0000-01-01T00:00:00Z',
+      '2026-00-01T00:00:00Z',
+      '2026-13-01T00:00:00Z',
+      '2026-01-00T00:00:00Z',
+      '2026-01-01T24:00:00Z',
+      '2026-01-01T00:60:00Z',
+      '2026-01-01T00:00:60Z',
+      '2026-01-01T00:00:00+15:00',
+      '2026-01-01T00:00:00+14:01',
+      '2026-01-01T00:00:00+01:60',
+    ];
+    expect(
+      reconcileObservations(
+        timePlan,
+        invalid.map((t, i) => row('a' + i, t, 1)),
+        [],
+      ).summary.incompleteRecordCount,
+    ).toBe(invalid.length);
+    expect(
+      reconcileObservations(
+        timePlan,
+        [row('a1', '2024-02-29T23:00:00.123-01:00', 1)],
+        [row('b1', '2024-03-01T00:00:00.123000Z', 1)],
+      ).summary.duplicateRecordCount,
+    ).toBe(1);
+  });
+  it('rejects limits and invalid conversion coefficients without producing partial evidence', () => {
+    expect(() =>
+      reconcileObservations(
+        plan,
+        Array.from({ length: 50001 }, () => row('a1', 'a', 1)),
+        [],
+      ),
+    ).toThrow('RECONCILIATION_LIMIT');
+    for (const factor of ['0', '-1', 'invalid'])
+      expect(() =>
+        reconcileObservations(
+          {
+            ...plan,
+            unitConversions: [{ from: 'm', to: 'cm', factor, offset: '0' }],
+          },
+          [row('a1', 'a', 1)],
+          [],
+        ),
+      ).toThrow('INVALID_CONVERSION');
+  });
 });

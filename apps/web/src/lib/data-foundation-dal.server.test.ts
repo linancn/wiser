@@ -707,3 +707,105 @@ it('forwards saved-view mutations with a stable command key and rejects malforme
   ).toThrow(DataFoundationApiError);
   expect(fetch).toHaveBeenCalledTimes(1);
 });
+
+it('binds reconciliation reads to the requested batch and sends review preconditions with the verified session', async () => {
+  const order: string[] = [];
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockResolvedValue(Response.json({ items: [] }));
+  const dal = createDataFoundationDal({
+    config: {
+      apiOrigin: 'http://api:3001',
+      tenantId: TENANT_ID,
+      projectId: PROJECT_ID,
+      purpose: 'data-steward-console',
+      requestTimeoutMs: 5000,
+      responseLimitBytes: 32768,
+    },
+    createAuthClient: () => Promise.resolve(authClient(order)),
+    fetch,
+    now: () => new Date('2026-08-22T00:00:00Z'),
+  });
+  await expect(
+    dal.reconcile('list', { versionId: GEO_VERSION_ID }),
+  ).resolves.toEqual({ items: [] });
+  expect(fetch.mock.calls[0]?.[0]).toBe(
+    `http://api:3001/api/data/v1/reconciliations?versionId=${GEO_VERSION_ID}`,
+  );
+  expect(order).toEqual(['claims', 'session']);
+  fetch.mockResolvedValue(
+    Response.json({ private: 'diagnostic' }, { status: 409 }),
+  );
+  await expect(
+    dal.reconcile(
+      'review',
+      {
+        batchId: GEO_VERSION_ID,
+        expectedVersion: 1,
+        decision: 'verify',
+        note: 'Checked source evidence',
+      },
+      SESSION_ID,
+    ),
+  ).rejects.toMatchObject({ status: 409 });
+  const request = fetch.mock.calls[1];
+  expect(request?.[0]).toBe(
+    `http://api:3001/api/data/v1/reconciliations/${GEO_VERSION_ID}/review`,
+  );
+  const headers = new Headers(request?.[1]?.headers);
+  expect(headers.get('If-Match')).toBe('"v1"');
+  expect(headers.get('Idempotency-Key')).toBe(SESSION_ID);
+  expect(headers.get('Authorization')).toMatch(/^Bearer /);
+  const reviewBody = request?.[1]?.body;
+  if (typeof reviewBody !== 'string')
+    throw new Error('Expected a JSON review body');
+  expect(JSON.parse(reviewBody)).toEqual({
+    expectedVersion: 1,
+    decision: 'verify',
+    note: 'Checked source evidence',
+  });
+  await expect(
+    dal.reconcile('get', {
+      batchId: GEO_VERSION_ID,
+      groupIndex: 0,
+      first: 10,
+      after: 'cursor',
+    }),
+  ).rejects.toMatchObject({ status: 409 });
+  const memberRequest = fetch.mock.calls[2]?.[0];
+  if (typeof memberRequest !== 'string')
+    throw new Error('Expected a serialized URL');
+  const memberUrl = new URL(memberRequest);
+  expect(memberUrl.pathname).toBe(
+    `/api/data/v1/reconciliations/${GEO_VERSION_ID}`,
+  );
+  expect(Object.fromEntries(memberUrl.searchParams)).toEqual({
+    first: '10',
+    after: 'cursor',
+    groupIndex: '0',
+  });
+  expect(() => dal.reconcile('get', { batchId: '../secrets' })).toThrow(
+    DataFoundationApiError,
+  );
+  expect(() =>
+    dal.reconcile('review', {
+      batchId: GEO_VERSION_ID,
+      expectedVersion: 1,
+      decision: 'verify',
+      note: 'Checked',
+    }),
+  ).toThrow(DataFoundationApiError);
+  expect(() =>
+    dal.reconcile(
+      'review',
+      {
+        batchId: GEO_VERSION_ID,
+        expectedVersion: 1,
+        decision: 'verify',
+        note: 'Checked',
+      },
+      'invalid',
+    ),
+  ).toThrow(DataFoundationApiError);
+  expect(fetch).toHaveBeenCalledTimes(3);
+});
