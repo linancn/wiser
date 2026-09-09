@@ -62,4 +62,4 @@ lastReviewedCommit: 398e6e8408b7dcaf9f703113b5d4c4928207b3b8
 - Before each Red/Green commit, run `pnpm docpact:check`; update required documents or record an explicit Docpact review. Before handoff, also lint the full branch with `docpact lint --root . --merge-base <base-ref> --mode enforce --fail-on-uncovered-change --fail-on-stale-docs` so committed slices remain visible.
 - Validate governance changes with `pnpm docpact:validate`. Do not use baselines or waivers as routine suppressions.
 
-Run `pnpm verify` before each green milestone. Database and browser changes require their focused integration and Playwright checks as well.
+Run `pnpm verify` before each green milestone; it includes the complete unit suite with coverage exactly once. All six CI verification lanes and the `CI complete` aggregate must pass before delivery. Database and browser changes require their focused integration and Playwright checks as well.

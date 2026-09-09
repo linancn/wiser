@@ -108,7 +108,7 @@ These modes do not enable unified Auth, the EXCON PostgreSQL journal, or Data Fo
 pnpm verify
 ```
 
-It covers formatting, type-aware lint, every workspace's types/unit tests/build, and default Compose configuration. It does not include database reset/integration, Playwright, Data/observability smoke, or Docpact.
+It covers formatting, type-aware lint, every workspace's types/unit tests with coverage/build, and default Compose configuration. It does not include database reset/integration, Playwright, Data/observability smoke, or Docpact.
 
 Add database gates according to authority. `supabase:verify` performs real reset/pgTAP/RLS verification and erases local Supabase. `data:verify` is only the Data script/workspace/Compose static gate; real Data schema/storage/projection changes also run `stack:full:up` in disposable state or the development guide's migrate/seed/smoke sequence:
 

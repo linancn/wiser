@@ -18,7 +18,7 @@ const required = [
 ];
 
 function job(id: string): string {
-  return workflow.split(`\n  ${id}:\n`)[1]?.split(/\n  [\w-]+:\n/)[0] ?? '';
+  return workflow.split(`\n  ${id}:\n`)[1]?.split(/\n {2}[\w-]+:\n/)[0] ?? '';
 }
 
 function runGate(results: Record<string, { result: string }>): number | null {
@@ -38,7 +38,7 @@ describe('CI scheduling and completion', () => {
   it('starts every existing verification lane independently without soft failure', () => {
     for (const id of required) {
       expect(job(id), id).not.toBe('');
-      expect(job(id), id).not.toMatch(/\n    (?:needs|if):/);
+      expect(job(id), id).not.toMatch(/\n {4}(?:needs|if):/);
       expect(job(id), id).not.toContain('continue-on-error:');
     }
   });

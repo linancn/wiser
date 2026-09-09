@@ -23,7 +23,7 @@ checkPaths:
   - skills/**
   - examples/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: a67f905d4afbb2008494f5ebd7a50fd21953bd99
+lastReviewedCommit: 0c5ad72b2c4e95ca22ffe00a837a51210fb2f12e
 ---
 
 ## Start with the mental model

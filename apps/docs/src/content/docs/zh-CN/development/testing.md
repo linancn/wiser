@@ -65,12 +65,18 @@ pnpm verify
 1. `prettier --check .`，检查整个仓库的格式；
 2. 生成 Fumadocs 内容后运行 type-aware Oxlint；
 3. 对所有声明了 `typecheck` 的 workspace 运行 TypeScript 检查；
-4. `pnpm test:unit` 使用一次 Vitest projects 运行：各 app project 可并行执行，名为 `repository` 的根 project 串行运行 `packages/**/*.spec.ts` 与 `tests/**/*.spec.ts`；
+4. `pnpm test:coverage` 在一次 Vitest projects 运行中执行完整单元测试并检查覆盖率：各 app project 可并行执行，名为 `repository` 的根 project 串行运行 `packages/**/*.spec.ts` 与 `tests/**/*.spec.ts`；
 5. `pnpm test:ops` 用 Node test runner 运行 `scripts/data-foundation/*.test.mjs`，验证运维编排、runtime role、Supabase 状态解析和纵向 smoke 合同；
 6. 对所有声明了 `build` 的 workspace 构建；
 7. 运行 `docker compose config --quiet` 验证默认 Compose 配置。
 
 `pnpm verify` 不会启动 Docker 服务，不会 reset 或测试 Supabase，不会应用 Data migration，不会运行 `data:smoke`，也不包含 Web/Docs Playwright、observability smoke、cookbook、showcase 或任何真实 AI 调用。相关变化必须追加下面的聚焦门禁。
+
+## CI 调度与完成判定
+
+文档治理、workspace 验证、reference 浏览器、Supabase、Data Foundation 和可观测性在隔离 runner 上独立启动，不消费 workspace 作业的构建产物。交付合同仍要求每项现有检查通过；`CI complete` 等待全部六个作业，并拒绝失败、取消、跳过或缺失结果。配置分支保护时保留现有必需检查名称；汇总检查是追加检查，不能用来省略任何验证作业。
+
+push 前运行 `pnpm verify`，本地便会执行与 CI 相同的单元覆盖率棘轮。集成数据库继续使用可丢弃状态并从迁移创建；各集成作业内保留环境准备、断言和无条件清理顺序。并行调度只改变开始时间，不改变通过条件。
 
 ## Vitest 与 workspace 聚焦命令
 
@@ -105,7 +111,7 @@ pnpm test:coverage
 
 该命令在同一次 Vitest projects 运行中合并 packages 与具有 unit suite 的 apps，显式纳入尚未被测试 import 的 TypeScript/TSX 源文件，并生成文本、`coverage/lcov.info` 与 `coverage/coverage-summary.json`。Docs 仍由 build/Playwright 验证，不进入 unit coverage。长运行进程的 bootstrap 文件显式排除；CLI、barrel 和 Web 页面保留在报告中。
 
-经过实测的覆盖率棘轮设置全局下限：statement 73%、branch 67%、function 75%、line 76%。纯 Core v2、共享确定性 helper、OTLP Collector forwarder，以及 Graph/STAC/PostGIS 输入校验使用更高的分层下限。CI 在 `pnpm verify` 后运行该命令，并保留 LCOV 与 JSON summary 7 天。阈值禁止自动更新；后续上调必须基于新的 Green 报告显式评审。
+经过实测的覆盖率棘轮设置全局下限：statement 73%、branch 67%、function 75%、line 76%。纯 Core v2、共享确定性 helper、OTLP Collector forwarder，以及 Graph/STAC/PostGIS 输入校验使用更高的分层下限。本地和 CI 的 `pnpm verify` 都恰好运行一次该命令；CI 保留 LCOV 与 JSON summary 7 天。阈值禁止自动更新；后续上调必须基于新的 Green 报告显式评审。
 
 这些数字只衡量 Vitest manifest。Playwright、pgTAP、真实 PostgreSQL integration、运维 smoke 与浏览器可见的 Next.js 页面仍是独立证明层，不会合并进 unit 百分比。不得为了容纳未测试代码而下调阈值，也不能把全局数字解释成产品级覆盖率。
 
@@ -176,7 +182,7 @@ pnpm --filter @wiser/web test:e2e
 pnpm --filter @wiser/docs test:e2e
 ```
 
-两个 Playwright 配置都会启动自己的隔离开发服务器：Web 使用 `127.0.0.1:3200`，Docs 使用 `127.0.0.1:4322`。Web 在这一隔离套件中显式配置 reference/Auth-off 模式，生产环境继续禁止关闭认证。CI 的 Web 使用一个浏览器 worker，每个测试上限 60 秒，避免并发首次路由编译，并允许多视口导航用例在 runner 上完成；本地 Web 使用四个 worker。CI 的 browser job 在 `pnpm verify` 通过后运行同一根命令，只在失败时保留 screenshot、trace 和 HTML report。这些套件证明浏览器中的路由、语言、主题和交互；它不能替代统一 Auth 或数据库纵向 smoke，包含编译的耗时也不作为生产延迟预算。
+两个 Playwright 配置都会启动自己的隔离开发服务器：Web 使用 `127.0.0.1:3200`，Docs 使用 `127.0.0.1:4322`。Web 在这一隔离套件中显式配置 reference/Auth-off 模式，生产环境继续禁止关闭认证。CI 的 Web 使用一个浏览器 worker，每个测试上限 60 秒，避免并发首次路由编译，并允许多视口导航用例在 runner 上完成；本地 Web 使用四个 worker。CI 的 browser job 独立于 `pnpm verify` 运行同一根命令，只在失败时保留 screenshot、trace 和 HTML report。这些套件证明浏览器中的路由、语言、主题和交互；它不能替代统一 Auth 或数据库纵向 smoke，包含编译的耗时也不作为生产延迟预算。
 
 ### 登录态 Data live 套件
 

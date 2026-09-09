@@ -34,7 +34,7 @@ lastReviewedCommit: 398e6e8408b7dcaf9f703113b5d4c4928207b3b8
 2. **Green**：实现满足该测试的最小改动，同时保持已有测试通过。
 3. **Refactor**：在全绿前提下消除重复、收紧命名和边界。
 4. **Docs**：编码前使用实际路径或 glob 运行 `pnpm docpact:route --paths 'packages/core/src/**'`；每个提交前运行 `pnpm docpact:check`，更新或显式审查命中的文档；交接前再用 `docpact lint --root . --merge-base <base-ref> --mode enforce --fail-on-uncovered-change --fail-on-stale-docs` 检查完整分支。
-5. **Verify**：提交前运行 `pnpm verify`；数据库变更还要运行数据库重置和 RLS 测试。
+5. **Verify**：提交前运行 `pnpm verify`（含完整单元测试及覆盖率门槛）；数据库变更还要运行数据库重置和 RLS 测试。
 
 测试应优先验证可观察行为，而不是内部调用次数。生产缺陷必须先由回归测试复现。确定性规则和隐藏 outcome 不得由 LLM mock 代替。
 
