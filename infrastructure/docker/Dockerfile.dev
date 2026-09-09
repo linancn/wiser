@@ -8,9 +8,15 @@ RUN corepack enable \
 
 WORKDIR /workspace
 RUN chown node:node /workspace
-COPY --chown=node:node . .
-
 USER node
-RUN pnpm install --frozen-lockfile
+
+# Fetch only from the frozen dependency graph so source edits retain this layer.
+# Keep the store in an image layer: GitHub's BuildKit cache does not persist
+# RUN cache mounts by default.
+COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm fetch --frozen-lockfile
+
+COPY --chown=node:node . .
+RUN pnpm install --offline --frozen-lockfile
 
 ENV NODE_ENV=development

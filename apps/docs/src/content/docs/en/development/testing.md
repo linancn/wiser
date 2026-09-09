@@ -78,6 +78,14 @@ Documentation governance, workspace verification, reference browsers, Supabase, 
 
 Use `pnpm verify` before pushing so local validation includes the same unit coverage ratchet as CI. Integration databases remain disposable and freshly migrated. Within each integration job, preserve setup, assertions, and unconditional cleanup order. Parallel scheduling changes when checks start, never what passing means.
 
+### CI image and environment preparation
+
+CI builds and loads the shared application and isolated parser images from the checked-out revision with pinned Buildx/BuildKit. BuildKit's GitHub Actions v2 cache stores image layers only, with separate application scopes per job and a parser scope. Cache export is bounded to two minutes and may fail without failing tests; a cache miss still performs the build. Runtime credentials, database volumes, and smoke state are never cached. Build records are not uploaded.
+
+The application Dockerfile copies the root package manifest (including the pnpm pin), workspace configuration, and lockfile before `pnpm fetch`; source files follow, then `pnpm install --offline --frozen-lockfile` validates all workspace manifests. Source-only changes can reuse dependency downloads without relaxing the frozen graph.
+
+After image loading, `scripts/data-foundation/prepare-ci.mjs` validates the merged Compose configuration and overlaps `supabase:start → supabase:reset` with missing remote-image pulls. It is restricted to disposable GitHub-hosted runners, waits for both branches to settle, and propagates any failure before runtime startup. CI then uses `pnpm data:up --no-build`; all migration, seed, service-health, parser, smoke, authenticated-browser, and PostgreSQL checks still run. Ordinary local `pnpm data:up` continues to build images and load the local Compose override.
+
 ## Focused Vitest and workspace commands
 
 Use the narrowest command during development, then return to root verification before completion.

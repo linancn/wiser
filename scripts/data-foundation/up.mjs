@@ -100,7 +100,10 @@ async function provisionExconRuntime(password, environment) {
   );
 }
 
-export async function startDataFoundation(environment = process.env) {
+export async function startDataFoundation(
+  environment = process.env,
+  { build = true } = {},
+) {
   const statusOutput = await runCommand(
     'pnpm',
     ['exec', 'supabase', 'status', '-o', 'env'],
@@ -124,7 +127,7 @@ export async function startDataFoundation(environment = process.env) {
     environment['DATA_TENANT_ID'] ?? 'b1000000-0000-4000-8000-000000000001';
   const projectId =
     environment['DATA_PROJECT_ID'] ?? 'b2000000-0000-4000-8000-000000000001';
-  await runCompose(['up', '-d', '--build', '--wait'], {
+  await runCompose(['up', '-d', build ? '--build' : '--no-build', '--wait'], {
     capture: false,
     environment: {
       ...environment,
@@ -149,5 +152,7 @@ export async function startDataFoundation(environment = process.env) {
 }
 
 if (isDirectExecution(import.meta.url)) {
-  await startDataFoundation();
+  await startDataFoundation(process.env, {
+    build: !process.argv.includes('--no-build'),
+  });
 }

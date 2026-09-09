@@ -78,6 +78,14 @@ pnpm verify
 
 push 前运行 `pnpm verify`，本地便会执行与 CI 相同的单元覆盖率棘轮。集成数据库继续使用可丢弃状态并从迁移创建；各集成作业内保留环境准备、断言和无条件清理顺序。并行调度只改变开始时间，不改变通过条件。
 
+### CI 镜像与环境准备
+
+CI 使用固定版本的 Buildx/BuildKit，从当前 checkout 构建并加载共享应用及隔离解析器镜像。BuildKit 的 GitHub Actions v2 缓存只保存镜像层，应用按作业使用独立 scope，解析器使用自己的 scope。缓存导出最多等待两分钟，导出失败不改变测试结果；缓存未命中仍执行完整构建。运行凭据、数据库卷和 smoke 状态不进入缓存，也不上传 build record。
+
+应用 Dockerfile 先复制根 package manifest（含 pnpm 版本）、workspace 配置和 lockfile，再执行 `pnpm fetch`；随后复制源码，用 `pnpm install --offline --frozen-lockfile` 校验全部 workspace manifest。仅修改源码时可复用依赖下载，同时保留冻结依赖图检查。
+
+镜像加载后，`scripts/data-foundation/prepare-ci.mjs` 先校验合并后的 Compose 配置，再并行执行 `supabase:start → supabase:reset` 与缺失远程镜像拉取。该入口只允许可丢弃的 GitHub-hosted runner，等待两个分支都结束，任一失败都会阻止运行时启动。CI 随后使用 `pnpm data:up --no-build`；迁移、seed、服务健康、解析器、smoke、登录浏览器和 PostgreSQL 检查仍全部运行。本机普通 `pnpm data:up` 继续构建镜像并加载本机 Compose override。
+
 ## Vitest 与 workspace 聚焦命令
 
 开发循环先运行最窄命令，再在完成前回到根验证。
