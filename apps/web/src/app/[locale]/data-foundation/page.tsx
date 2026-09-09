@@ -131,12 +131,12 @@ export default async function DataFoundationPage({
                   detail: copy.domains[1]?.copy ?? copy.common.notProvided,
                 },
                 {
-                  href: `/${locale}/data-foundation/search`,
+                  href: `/${locale}/data-foundation/explore`,
                   label: copy.overviewPage.searchAction,
                   detail: copy.domains[2]?.copy ?? copy.common.notProvided,
                 },
                 {
-                  href: `/${locale}/data-foundation/map`,
+                  href: `/${locale}/data-foundation/explore?view=map`,
                   label: copy.overviewPage.mapAction,
                   detail: copy.mapPage.lede,
                 },

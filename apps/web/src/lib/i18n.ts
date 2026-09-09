@@ -374,15 +374,15 @@ const zhCN = {
     domains: [
       {
         title: '目录与版本',
-        copy: '以 DataItem 为治理粒度，固化来源、授权、质量、安全等级和不可变版本。',
+        copy: '查看数据来源、使用权限、质量状态和已发布版本。',
       },
       {
         title: '入库与操作',
-        copy: '从隔离、扫描、画像和审核，到事务提交、Outbox、投影与发布。',
+        copy: '跟踪文件接入、内容检查与审核进度，处理问题并确认数据发布。',
       },
       {
         title: '综合检索与 GIS',
-        copy: '统一全文、向量、图谱、时空资产和地图服务，同时下推权限并返回证据。',
+        copy: '使用同一查询联动查看资源、记录、地图、知识图谱与统计，追溯每条结果的来源。',
       },
     ],
     navigation: {
@@ -575,7 +575,7 @@ const zhCN = {
       operatingTitle: '常用操作',
       catalogAction: '打开数据目录',
       ingestionAction: '查看接入任务',
-      searchAction: '搜索数据',
+      searchAction: '探索数据',
       mapAction: '打开地图',
     },
     catalogPage: {
@@ -1641,15 +1641,15 @@ const en: typeof zhCN = {
     domains: [
       {
         title: 'Catalog and versions',
-        copy: 'Govern DataItems with provenance, authorization, quality, security level, and immutable versions.',
+        copy: 'Review data sources, usage permissions, quality states, and published versions.',
       },
       {
         title: 'Ingestion and operations',
-        copy: 'Move from quarantine, scanning, profiling, and review through transactional commit, Outbox, projection, and publication.',
+        copy: 'Track file intake, content checks, and review; resolve issues and confirm publication.',
       },
       {
         title: 'Federated search and GIS',
-        copy: 'Unify full-text, vector, graph, spatiotemporal assets, and map services while pushing down authorization and returning evidence.',
+        copy: 'Use one query across resources, records, maps, knowledge graphs, and statistics, with source evidence for each result.',
       },
     ],
     navigation: {
@@ -1842,7 +1842,7 @@ const en: typeof zhCN = {
       operatingTitle: 'Common tasks',
       catalogAction: 'Open data catalog',
       ingestionAction: 'View ingestion tasks',
-      searchAction: 'Search data',
+      searchAction: 'Explore data',
       mapAction: 'Open map',
     },
     catalogPage: {
