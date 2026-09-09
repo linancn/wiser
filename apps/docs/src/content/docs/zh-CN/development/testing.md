@@ -80,7 +80,7 @@ push 前运行 `pnpm verify`，本地便会执行与 CI 相同的单元覆盖率
 
 ### CI 镜像与环境准备
 
-CI 使用固定版本的 Buildx/BuildKit，从当前 checkout 构建并加载共享应用及隔离解析器镜像。BuildKit 的 GitHub Actions v2 缓存只保存镜像层，应用按作业使用独立 scope，解析器使用自己的 scope。缓存导出最多等待两分钟，导出失败不改变测试结果；缓存未命中仍执行完整构建。运行凭据、数据库卷和 smoke 状态不进入缓存，也不上传 build record。
+CI 使用固定版本的 Buildx 和 Docker daemon 自带的 BuildKit，从当前 checkout 构建并加载共享应用及隔离解析器镜像。在可丢弃 runner 拉取镜像或启动容器前，CI 启用 Docker 的 containerd 镜像存储，以支持外部缓存并避免构建器到 daemon 的第二次镜像导入。BuildKit 的 GitHub Actions v2 缓存只保存镜像层，应用按作业使用独立 scope，解析器使用自己的 scope。缓存导出最多等待两分钟，导出失败不改变测试结果；缓存未命中仍执行完整构建。运行凭据、数据库卷和 smoke 状态不进入缓存，也不上传 build record。
 
 应用 Dockerfile 先复制根 package manifest（含 pnpm 版本）、workspace 配置和 lockfile，再执行 `pnpm fetch`；随后复制源码，用 `pnpm install --offline --frozen-lockfile` 校验全部 workspace manifest。仅修改源码时可复用依赖下载，同时保留冻结依赖图检查。
 

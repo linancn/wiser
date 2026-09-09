@@ -80,7 +80,7 @@ Use `pnpm verify` before pushing so local validation includes the same unit cove
 
 ### CI image and environment preparation
 
-CI builds and loads the shared application and isolated parser images from the checked-out revision with pinned Buildx/BuildKit. BuildKit's GitHub Actions v2 cache stores image layers only, with separate application scopes per job and a parser scope. Cache export is bounded to two minutes and may fail without failing tests; a cache miss still performs the build. Runtime credentials, database volumes, and smoke state are never cached. Build records are not uploaded.
+CI builds and loads the shared application and isolated parser images from the checked-out revision with pinned Buildx and the Docker daemon's native BuildKit. On the disposable runner, CI enables Docker's containerd image store before pulling or starting containers; this supports external cache while avoiding a second builder-to-daemon image import. BuildKit's GitHub Actions v2 cache stores image layers only, with separate application scopes per job and a parser scope. Cache export is bounded to two minutes and may fail without failing tests; a cache miss still performs the build. Runtime credentials, database volumes, and smoke state are never cached. Build records are not uploaded.
 
 The application Dockerfile copies the root package manifest (including the pnpm pin), workspace configuration, and lockfile before `pnpm fetch`; source files follow, then `pnpm install --offline --frozen-lockfile` validates all workspace manifests. Source-only changes can reuse dependency downloads without relaxing the frozen graph.
 
