@@ -42,9 +42,13 @@ afterEach(async () => {
 
 describe('governed version asset download', () => {
   function downloadApp() {
-    const assetContentFetch = vi.fn(async () => new Response('source bytes', {
-      headers: {'content-type': 'text/plain', 'content-length': '12'},
-    }));
+    const assetContentFetch = vi.fn(() =>
+      Promise.resolve(
+        new Response('source bytes', {
+          headers: { 'content-type': 'text/plain', 'content-length': '12' },
+        }),
+      ),
+    );
     const assetDownload = {
       createDownload: vi.fn(() =>
         Promise.resolve({
@@ -69,19 +73,71 @@ describe('governed version asset download', () => {
   }
 
   it('streams exact authorized source bytes without disclosing a signed storage URL', async () => {
-    const {app, assetDownload, assetContentFetch} = downloadApp();
-    const response = await app.inject({method:'GET',url:`/api/data/v1/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/assets/${ASSET_ID}/content`,headers:{authorization:'Bearer verified-token','x-wiser-tenant-id':TENANT_ID,'x-wiser-project-id':PROJECT_ID,'x-wiser-purpose':'operate'}});
+    const { app, assetDownload, assetContentFetch } = downloadApp();
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/data/v1/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/assets/${ASSET_ID}/content`,
+      headers: {
+        authorization: 'Bearer verified-token',
+        'x-wiser-tenant-id': TENANT_ID,
+        'x-wiser-project-id': PROJECT_ID,
+        'x-wiser-purpose': 'operate',
+      },
+    });
     expect(response.statusCode).toBe(200);
     expect(response.body).toBe('source bytes');
     expect(response.headers.location).toBeUndefined();
     expect(response.headers['cache-control']).toContain('no-store');
-    expect(assetDownload.createDownload).toHaveBeenCalledWith({context,versionId:VERSION_ID,assetId:ASSET_ID,internal:true});
+    expect(assetDownload.createDownload).toHaveBeenCalledWith({
+      context,
+      versionId: VERSION_ID,
+      assetId: ASSET_ID,
+      internal: true,
+    });
     expect(assetContentFetch).toHaveBeenCalledOnce();
   });
 
+  it('returns an empty unsatisfiable range response with a truthful content length', async () => {
+    const { app, assetContentFetch } = downloadApp();
+    assetContentFetch.mockResolvedValueOnce(
+      new Response('error', {
+        status: 416,
+        headers: {
+          'content-type': 'text/plain',
+          'content-length': '5',
+          'content-range': 'bytes */12',
+        },
+      }),
+    );
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/data/v1/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/assets/${ASSET_ID}/content`,
+      headers: {
+        authorization: 'Bearer verified-token',
+        'x-wiser-tenant-id': TENANT_ID,
+        'x-wiser-project-id': PROJECT_ID,
+        'x-wiser-purpose': 'operate',
+        range: 'bytes=20-30',
+      },
+    });
+    expect(response.statusCode).toBe(416);
+    expect(response.body).toBe('');
+    expect(response.headers['content-length']).toBe('0');
+    expect(response.headers['content-range']).toBe('bytes */12');
+  });
+
   it('rejects a cross-project content request before accessing storage', async () => {
-    const {app, assetContentFetch} = downloadApp();
-    const response = await app.inject({method:'GET',url:`/api/data/v1/tenants/${TENANT_ID}/projects/${ACTOR_ID}/versions/${VERSION_ID}/assets/${ASSET_ID}/content`,headers:{authorization:'Bearer verified-token','x-wiser-tenant-id':TENANT_ID,'x-wiser-project-id':PROJECT_ID,'x-wiser-purpose':'operate'}});
+    const { app, assetContentFetch } = downloadApp();
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/data/v1/tenants/${TENANT_ID}/projects/${ACTOR_ID}/versions/${VERSION_ID}/assets/${ASSET_ID}/content`,
+      headers: {
+        authorization: 'Bearer verified-token',
+        'x-wiser-tenant-id': TENANT_ID,
+        'x-wiser-project-id': PROJECT_ID,
+        'x-wiser-purpose': 'operate',
+      },
+    });
     expect(response.statusCode).toBe(403);
     expect(assetContentFetch).not.toHaveBeenCalled();
   });

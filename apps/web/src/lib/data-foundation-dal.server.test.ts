@@ -7,6 +7,7 @@ import {
   DataFoundationApiError,
   loadDataFoundationWebConfig,
   proxyDataFoundationGeoRequest,
+  proxyDataFoundationAssetRequest,
   type DataFoundationAuthClient,
 } from './data-foundation-dal.server';
 
@@ -15,6 +16,82 @@ const PROJECT_ID = '22222222-2222-4222-8222-222222222222';
 const USER_ID = '33333333-3333-4333-8333-333333333333';
 const SESSION_ID = '44444444-4444-4444-8444-444444444444';
 const GEO_VERSION_ID = '55555555-5555-4555-8555-555555555555';
+
+it('streams a source preview with verified identity, range support and an inert document policy', async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>(() =>
+    Promise.resolve(
+      new Response('<h1>Source</h1>', {
+        status: 206,
+        headers: {
+          'content-type': 'text/html',
+          'content-range': 'bytes 0-14/30',
+          'set-cookie': 'private=secret',
+        },
+      }),
+    ),
+  );
+  const response = await proxyDataFoundationAssetRequest({
+    request: new Request(
+      'http://web.local/api/data-foundation/assets/source?mode=preview&filename=report.html',
+      { headers: { range: 'bytes=0-14' } },
+    ),
+    versionId: GEO_VERSION_ID,
+    assetId: PROJECT_ID,
+    config: {
+      apiOrigin: 'http://api:3001',
+      tenantId: TENANT_ID,
+      projectId: PROJECT_ID,
+      purpose: 'read',
+      requestTimeoutMs: 5000,
+      responseLimitBytes: 32768,
+    },
+    createAuthClient: () => Promise.resolve(authClient([])),
+    fetch,
+  });
+  expect(response.status).toBe(206);
+  expect(await response.text()).toBe('<h1>Source</h1>');
+  expect(response.headers.get('content-security-policy')).toContain('sandbox');
+  expect(response.headers.get('set-cookie')).toBeNull();
+  expect(response.headers.get('content-disposition')).toContain('inline');
+  expect(new Headers(fetch.mock.calls[0]?.[1]?.headers).get('range')).toBe(
+    'bytes=0-14',
+  );
+  expect(
+    new Headers(fetch.mock.calls[0]?.[1]?.headers).get('authorization'),
+  ).toBe(`Bearer ${accessToken()}`);
+  expect((fetch.mock.calls[0][0] as URL).href).toContain(
+    `/versions/${GEO_VERSION_ID}/assets/${PROJECT_ID}/content`,
+  );
+});
+
+it('does not advertise discarded upstream bytes on an unsatisfiable source range', async () => {
+  const response = await proxyDataFoundationAssetRequest({
+    request: new Request(
+      'http://web.local/api/data-foundation/assets/source?mode=download',
+      { headers: { range: 'bytes=20-30' } },
+    ),
+    versionId: GEO_VERSION_ID,
+    assetId: PROJECT_ID,
+    config: {
+      apiOrigin: 'http://api:3001',
+      tenantId: TENANT_ID,
+      projectId: PROJECT_ID,
+      purpose: 'read',
+      requestTimeoutMs: 5000,
+      responseLimitBytes: 32768,
+    },
+    createAuthClient: () => Promise.resolve(authClient([])),
+    fetch: () =>
+      Promise.resolve(
+        new Response('error', {
+          status: 416,
+          headers: { 'content-length': '5', 'content-range': 'bytes */12' },
+        }),
+      ),
+  });
+  expect(await response.text()).toBe('');
+  expect(response.headers.get('content-length')).toBe('0');
+});
 
 it.each(['search', 'knowledge'] as const)(
   'continues %s with the same query and bounded cursor page',
