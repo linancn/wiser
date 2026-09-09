@@ -64,6 +64,55 @@ it('streams a source preview with verified identity, range support and an inert 
   );
 });
 
+it('allows the native PDF viewer while preserving strict MIME and document restrictions', async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>(() =>
+    Promise.resolve(
+      new Response('<h1>Source</h1>', {
+        status: 206,
+        headers: {
+          'content-type': 'application/pdf',
+          'content-range': 'bytes 0-14/30',
+          'set-cookie': 'private=secret',
+        },
+      }),
+    ),
+  );
+  const response = await proxyDataFoundationAssetRequest({
+    request: new Request(
+      'http://web.local/api/data-foundation/assets/source?mode=preview&filename=report.pdf',
+      { headers: { range: 'bytes=0-14' } },
+    ),
+    versionId: GEO_VERSION_ID,
+    assetId: PROJECT_ID,
+    config: {
+      apiOrigin: 'http://api:3001',
+      tenantId: TENANT_ID,
+      projectId: PROJECT_ID,
+      purpose: 'read',
+      requestTimeoutMs: 5000,
+      responseLimitBytes: 32768,
+    },
+    createAuthClient: () => Promise.resolve(authClient([])),
+    fetch,
+  });
+  expect(response.status).toBe(206);
+  expect(await response.text()).toBe('<h1>Source</h1>');
+  expect(response.headers.get('content-security-policy')).not.toContain(
+    'sandbox',
+  );
+  expect(response.headers.get('set-cookie')).toBeNull();
+  expect(response.headers.get('content-disposition')).toContain('inline');
+  expect(new Headers(fetch.mock.calls[0]?.[1]?.headers).get('range')).toBe(
+    'bytes=0-14',
+  );
+  expect(
+    new Headers(fetch.mock.calls[0]?.[1]?.headers).get('authorization'),
+  ).toBe(`Bearer ${accessToken()}`);
+  expect((fetch.mock.calls[0][0] as URL).href).toContain(
+    `/versions/${GEO_VERSION_ID}/assets/${PROJECT_ID}/content`,
+  );
+});
+
 it('does not advertise discarded upstream bytes on an unsatisfiable source range', async () => {
   const response = await proxyDataFoundationAssetRequest({
     request: new Request(
