@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: 79f99bf4651c55cc19d076a3f11ae5488dcff363
+lastReviewedCommit: 16dcdcd418fd8e109ee83cc35121584bf2602f0a
 ---
 
 ## Runtime modes

@@ -9,8 +9,10 @@ compose.override.yaml
 **/dist
 **/node_modules
 **/out
-**/playwright-report*
-**/test-results*
+**/playwright-report
+**/playwright-report-live
+**/test-results
+**/test-results-live
 supabase/.branches
 supabase/.temp
 **/*.log

@@ -18,7 +18,7 @@ checkPaths:
   - supabase/**
   - package.json
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: 0c5ad72b2c4e95ca22ffe00a837a51210fb2f12e
+lastReviewedCommit: 16dcdcd418fd8e109ee83cc35121584bf2602f0a
 ---
 
 ## Before you start
