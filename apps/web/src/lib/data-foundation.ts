@@ -3,6 +3,7 @@ export const DATA_FOUNDATION_ROUTES = Object.freeze([
   { path: '/catalog', key: 'catalog' },
   { path: '/ingestions', key: 'ingestions' },
   { path: '/quality', key: 'quality' },
+  { path: '/explore', key: 'explore' },
   { path: '/search', key: 'search' },
   { path: '/knowledge', key: 'knowledge' },
   { path: '/graph', key: 'graph' },
@@ -194,6 +195,7 @@ export interface DataCatalogItemDto {
 
 export interface DataCatalogPageDto {
   readonly items: readonly DataCatalogItemDto[];
+  readonly totalCount?: number;
   readonly nextCursor?: string;
 }
 
@@ -696,6 +698,9 @@ export function parseDataCatalogPage(value: unknown): DataCatalogPageDto {
   const nextCursor = optionalCursor(row.nextCursor, contract);
   return {
     items: row.items.map((item) => parseDataCatalogItem(item, contract)),
+    ...(row.totalCount === undefined
+      ? {}
+      : { totalCount: integer(row.totalCount, contract) }),
     ...(nextCursor === undefined ? {} : { nextCursor }),
   };
 }

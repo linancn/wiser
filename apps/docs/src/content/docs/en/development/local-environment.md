@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-09-08
-lastReviewedCommit: 7ab2bd8be45955cbf1c7e7c58dde27bccc145c50
+lastReviewedCommit: 4d8a440d12ab9e554934b531bb3c781134966e6c
 ---
 
 ## Runtime modes
@@ -79,7 +79,7 @@ Use `pnpm dev` to run all three in parallel: Web is fixed to `3100`, API default
 
 ## Identity boundary
 
-Data Foundation Web uses the Supabase SSR session, and the complete stack injects a local operator JWT for Data smoke and Data MCP. Agent EXCON live Web still reads its operator credential from server-side `WISER_WEB_OPERATOR_TOKEN`; EXCON MCP still needs `AGENT_EXCON_API_KEY` bound to one concrete RunAgent. A healthy process therefore does not prove these two EXCON clients have valid identity. Preserve explicit unavailable/authentication errors.
+Data Foundation Web uses the Supabase SSR session, and the complete stack injects a local operator JWT for Data smoke and Data MCP. Agent EXCON live Web forwards the verified current Supabase user session; `WISER_WEB_OPERATOR_TOKEN` is limited to local Auth-off preview. EXCON MCP still needs `AGENT_EXCON_API_KEY` bound to one concrete RunAgent. A healthy process therefore does not prove these two EXCON clients have valid identity. Preserve explicit unavailable/authentication errors.
 
 The shared MCP process always initializes its EXCON HTTP client. Even Data-only MCP work configures a non-empty `AGENT_EXCON_API_KEY` plus complete `DATA_*`. Data Tools never send that EXCON key, so a local placeholder can satisfy Data-only process configuration; it is not unified identity and cannot call `excon_*`.
 
@@ -88,7 +88,7 @@ The shared MCP process always initializes its EXCON HTTP client. Even Data-only 
 - A human developer signs in at `/en/login` with the seeded operator from Quick start. Web uses the Supabase session for Platform and Data pages.
 - A Supabase human with `platform.delegation.manage` creates, issues, rotates, and revokes Agent/service delegated credentials through `/api/platform/v1/delegations`; plaintext is returned once.
 - EXCON MCP `AGENT_EXCON_API_KEY` comes from a trusted Run staffing/bootstrap flow and is bound to one concrete RunAgent. No CLI turns the seeded password into a general EXCON token. Use the versioned Cookbook/Showcase for a bounded local collaboration session.
-- `stack:full:up` does not automatically issue the EXCON live Web operator credential either. Its source depends on the selected operator workflow; preserve the unavailable state when no real credential exists.
+- EXCON live Web reuses the signed-in user session and requires that user to have operator authorization. It does not need a separately issued Web operator token in Supabase mode.
 
 See [Platform Auth](/en/architecture/unified-auth/), [Agent EXCON HTTP](/en/protocols/http/), and [MCP](/en/protocols/mcp/) for headers, scopes, and invocation order.
 
@@ -128,3 +128,5 @@ Narrow `docker compose logs` to only the failed services; use `docker compose ps
 There is no “delete every local state” command. `.wiser/local/runtime-secrets.json` retains historical HMAC keys required to replay the EXCON journal. Never remove it or generate only a new key while that journal exists. Handle the file through the team's key-rotation process only after every service is stopped, the Supabase/EXCON journal is intentionally reset, and old records no longer need recovery. Data reset alone does not require its removal.
 
 When the complete stack fails, check Docker resources, port conflicts, and failed-service logs before rerunning the convergent `pnpm stack:full:up`.
+
+The Data profile builds `source-parser` and connects it only to the worker on the internal `data-parser` network. It has no host port, database credentials or outbound network access; the filesystem is read-only and temporary files live in bounded memory storage. `DATA_ANALYSIS_PARSER_URL` is optional for a host-only worker; without it, external formats remain explicitly unavailable. The profile configures it automatically. CI runs parser tests in the pinned GDAL image.

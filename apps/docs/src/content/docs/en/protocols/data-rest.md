@@ -1,6 +1,6 @@
 ---
 title: Data REST API
-description: Data Foundation's 22 Capabilities, OpenAPI, governed Resources, idempotency, SSE, and asset-download protocol.
+description: Data Foundation's 29 Capabilities, OpenAPI, governed Resources, idempotency, SSE, and asset-download protocol.
 docType: protocol-reference
 scope: data-rest-api
 status: active
@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/**
   - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-09-08
-lastReviewedCommit: b6dc97b67860a37f5230518743dca84d2cb25fa1
+lastReviewedCommit: ed4a009b6cd0d97e0c865148549a7405912864c4
 ---
 
 ## Protocol boundary
@@ -32,7 +32,7 @@ These non-cacheable reads require no identity:
 | Method | Path                                               | Result                                                                             |
 | ------ | -------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `GET`  | `/api/data/v1/health`                              | data-postgres, object-store, Worker readiness; any missing authority returns `503` |
-| `GET`  | `/api/data/v1/capabilities`                        | ordered 22-item Registry, draft-7 I/O Schemas, and four mappings                   |
+| `GET`  | `/api/data/v1/capabilities`                        | ordered 29-item Registry, draft-7 I/O Schemas, and four mappings                   |
 | `GET`  | `/api/data/v1/capabilities/:capabilityId/:version` | one fixed Capability version; unknown version returns `404`                        |
 
 A ready response has this core shape:
@@ -51,7 +51,7 @@ A ready response has this core shape:
 
 ## OpenAPI contract projection
 
-Shared `GET /openapi.json` returns OpenAPI 3.1 with the fixed title **WISER Platform API**, covering Platform, Agent EXCON, and Data Foundation. The 22 Data Capabilities do not maintain another handwritten schema. At route registration, Fastify converts Registry Zod 4 input/output into draft-7 JSON Schema and projects it into path, query, body, and required-header OpenAPI operations.
+Shared `GET /openapi.json` returns OpenAPI 3.1 with the fixed title **WISER Platform API**, covering Platform, Agent EXCON, and Data Foundation. The 29 Data Capabilities do not maintain another handwritten schema. At route registration, Fastify converts Registry Zod 4 input/output into draft-7 JSON Schema and projects it into path, query, body, and required-header OpenAPI operations.
 
 Every Data operation has the `data-foundation` tag, a stable `operationId`, `bearerAuth`, its successful response Schema, plus `Idempotency-Key` for commands and `If-Match` for versioned commands. Fastify schema compilers serve the OpenAPI projection here; the single runtime behavior gate remains strict Zod input/output validation in the shared `DataCapabilityHandler`. Generated documentation never becomes a second behavior source.
 
@@ -85,7 +85,7 @@ If-Match: "v3"
 
 This applies to upload Session completion, ingestion submit/approve/reject, and Operation cancel. The header must equal an `expectedVersion` already present in the body. Successful responses include `ETag: "vN"` when an aggregate version is present. Identity, business, and error responses are all `private, no-store`.
 
-## The 22 Capability routes
+## The 29 Capability routes
 
 | Capability                    | Method and path                                           | Success            |
 | ----------------------------- | --------------------------------------------------------- | ------------------ |
@@ -116,6 +116,8 @@ Paths in the table are relative to `/api/data/v1`. Obtain exact inputs, outputs,
 
 ## Cursors, queries, and bounds
 
+Catalog search 1.1 accepts `includeTotal=true` and returns optional `totalCount`: the full caller-visible filtered count before pagination. Count and page share one short PostgreSQL repeatable-read transaction and identical RLS context and filters. Later pages are fresh requests, not a cross-request snapshot. Omit the flag when no count is needed; version 1.0 discovery schemas remain immutable in the archive.
+
 Lists use `first` and opaque `after`. GET arrays are comma-separated, for example `qualityGrades=A,B`. API rejects colliding path/query/body fields, prototype keys, unbounded numbers, and invalid arrays. Cursors bind to Tenant/Project, scope/filter, and authorization version and cannot cross contexts.
 
 Structured query accepts only allowlisted fields and operators:
@@ -132,6 +134,8 @@ Current catalog get/version responses require `tileAvailability: { vector, raste
 
 SearchOrchestrator pushes authorization and publication filters into backends, applies fixed `RRF k=60`, deduplicates by DataItem+Version, and reauthorizes every hit.
 
+Graph expansion includes a visible isolated seed. A valid graph query with no visible match returns an empty `nodes`/`edges` result, not a dependency failure. The adapter merges all bounded path rows by entity/edge identity, rejects conflicting duplicates, and filters both nodes and relationships by tenant, project, security, policy, acceptance and publication. This does not create relationships absent from the projection.
+
 ## Governed GIS proxy
 
 GeoServer, STAC API, TiTiler, and Martin publish no host ports. Browsers, Agents, and external clients use only these Fastify GET/HEAD surfaces:
@@ -145,7 +149,7 @@ GeoServer, STAC API, TiTiler, and Martin publish no host ports. Browsers, Agents
 
 Every call requires the unified Bearer, Tenant, Project, Purpose, and `data.geo.read`; every other HTTP method returns `405`. OGC accepts only each service's read request/query allowlist. Except for GetCapabilities, callers supply an authorized `versionId`, while API fixes layer/type and Tenant/Project/Version filters. STAC `current` becomes the current Tenant/Project's deterministic collection; a cross-scope collection returns safe `404`.
 
-Vector tiles first verify an RLS-visible Version with a spatial extent, then call Martin's sole `service.wiser_spatial_extent_mvt` source with server-injected Tenant, Project, Version, security ceiling, and policy version. Raster tiles select only a visible TIFF/GeoTIFF COG from authoritative RAW assets, validate its content-addressed key, and generate a constrained `s3://` source server-side for TiTiler. A client-supplied `url`/source fails with `422` before upstream I/O.
+Vector tiles first verify an RLS-visible Version with a spatial extent, then call Martin's version-scoped `service.wiser_spatial_extent_mvt` source with server-injected Tenant, Project, Version, security ceiling, and policy version. Raster tiles select only a visible TIFF/GeoTIFF COG from authoritative RAW assets, validate its content-addressed key, and generate a constrained `s3://` source server-side for TiTiler. A client-supplied `url`/source fails with `422` before upstream I/O.
 
 All four upstream origins come from startup-validated internal configuration; userinfo/query/fragment, redirects, and dynamic hosts are forbidden. Query, coordinates, TMS, format, and response content type use strict allowlists. Default timeout is 5 seconds, response cap is 8 MiB, and only safe ETag/Last-Modified pass through. Every contextual ALLOWED/DENIED/FAILED request records `data.geo.read`, target, and route hash. An unauthenticated denial emits only a redacted platform log because no actor audit may be fabricated.
 
@@ -179,7 +183,7 @@ Publication consumer respects terminal Operations. Even after all five completio
 
 ## Evidence and STAC Resource reads
 
-These governed GETs are not part of the 22 business Capabilities. They specifically back MCP Resources while still using unified Auth, data-postgres RLS, post-authorization audit, and no-store:
+These governed GETs are not part of the 29 business Capabilities. They specifically back MCP Resources while still using unified Auth, data-postgres RLS, post-authorization audit, and no-store:
 
 | Path                                                        | Scope                 | Authority and output boundary                                                                                                                                       |
 | ----------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -250,3 +254,51 @@ Data REST uses a flat safe envelope:
 | `500` | Server contract/configuration failure with no internal detail exposed |
 
 After an ambiguous failure, retry only the identical actor, Tenant, Project, Purpose, method, path, body, `Idempotency-Key`, and `If-Match`. The same key/canonical hash returns the original result; a different hash conflicts. Then reconcile with the smallest GET or Operation event query.
+
+## Shared exploration result sets
+
+`POST /api/data/v1/explore/query` calls `data.explore.query` and requires both `data.query.execute` and `data.catalog.read`. Start with `{"spec":{"text":"water"},"view":"resources","first":20}`. Continue with `{"queryId":"<returned UUID>","view":"resources","first":20,"after":"<returned cursor>"}`. Supply exactly one of `spec` or `queryId`; continuation requires the latter. The response carries `queryId`, `spec`, creation/expiry times, authorized `totalCount`, versioned `resources`, readiness and optional `nextCursor`.
+
+Manifests expire after 30 minutes. Foreign owners, changed Purpose/security/policy and expired IDs return `404`; changed authority membership returns `409`; malformed criteria/cursors and more than 10,000 matching versions return `422`. At most 32 recent manifests are retained per matching owner/context; creating another can evict an older query. Re-run the original specification when a result set expires. Projection readiness may advance independently. No raw SQL, Cypher, tenant or actor override is accepted.
+
+`data.analysis.create` accepts an existing published `dataItemId` / `versionId` and an idempotency key. It creates an audited operation and a durable analysis job atomically; source registration and its quality declaration remain unchanged. REST: `POST /api/data/v1/analyses`; GraphQL: `createDataAnalysis(input: JSON!)`; MCP: `data_analysis_create`. Required scopes are `data.ingestion.write` and `data.catalog.read`. Poll the returned operation for completion.
+
+Exploration 1.1 pins the completed analysis batch together with each published version. `view: "records"` requires `queryId` and `versionId` and returns per-asset columns, stable record/feature IDs and a bounded page. `view: "map"` reuses the same result set with an optional WGS84 `[west,south,east,north]` bounding box. Cursors are bound to their view and filters. Re-run the specification to include an analysis completed after the original query. Counts describe indexed records, while resource readiness and coverage disclose unparsed sources.
+
+Exploration 1.2 adds `view: "graph"` on the same authorized manifest. Optional `versionId` narrows the resource graph; `recordId` additionally requires that version and a record in its pinned analysis. Typed resource/version/asset/evidence nodes express authoritative containment, with a focused record sharing its table/map identity. Asset nodes retain source hashes. This provenance view does not infer scientific relationships. Pages include at most 100 versions, 200 assets and 100 evidence fragments; `truncated` discloses omitted nodes and `nextCursor` pages remaining versions. Graph cursors cannot be reused across focus changes. Earlier 1.0 and 1.1 schema definitions remain archived.
+
+Exploration 1.3 adds exact provider names, registration kinds, and content/spatial readiness filters to `QuerySpec`. The result summary counts the entire authorized pinned set, separately from the current resource page. Completed analysis with no content assets is `METADATA_ONLY`; parsed empty content is `EMPTY`; parsed content without verified geometry is `NO_SPATIAL_DATA`, while unknown or untransformable source coordinates are `CRS_UNVERIFIED`. Invalid, restricted and unsupported unparsed content retains unknown counts. Physical format companions do not establish analytical availability. Indexed content records include source representations and document/archive records, not deduplicated scientific observations. The 1.0–1.2 schemas remain immutable in the contract archive.
+
+Exploration 1.4 permits `recordId` in `view: "records"`, together with `queryId` and `versionId`, to retrieve one exact record from the pinned analysis. The API resolves its source asset; an explicitly different asset or a record outside the query returns not found. Exact-record lookups cannot use continuation cursors. Existing resource, record-page, map and graph semantics remain version-scoped, and the 1.3 schemas remain archived.
+
+The query-result vector endpoint `GET/HEAD /api/data/v1/geo/tiles/vector/queries/{queryId}/{z}/{x}/{y}.pbf` additionally requires `data.query.execute` and `data.catalog.read`. Each request reauthorizes the owner-bound manifest and all pinned versions/analyses under RLS before calling Martin. Caller query parameters are forbidden; all seven scope values come from the verified context and path. Responses use the `exploration` source layer and `Cache-Control: no-store`; expired, revoked or foreign result sets cannot reach the upstream. Existing version-based tiles retain their route and layer.
+
+Exploration 1.5 adds optional map-wide `spatial.bounds` (WGS84 or null for an empty result) and `mercatorFeatureCount`, computed over the same authorized record set independently of pagination. The browser requests one initial record and this summary, fits the full result bounds, and loads same-origin query MVT by viewport. Clicking an individual feature performs a 1.4 exact-record lookup; a cluster click zooms in. The map distinguishes viewport feature/cluster counts from map-ready record totals. Tile-boundary ownership is corrected by append-only migration `0015_exploration_tile_boundaries.sql`, so points at tile seams contribute once. The 1.4 contract remains archived.
+
+An authorized Martin `204 No Content` response is normalized to an empty `200` MVT response so empty viewports remain usable. This applies only after authorization and only to Martin; other missing content types still fail validation.
+
+Exploration 1.6 adds optional `spec.recordQuery` bound to exactly one explicit immutable `versions` entry and a source `assetId`. Up to eight typed text/number/presence predicates, one ascending/descending field sort and up to 32 unique selected columns are checked against the pinned analysis asset schema before creating the query. Numeric conversion accepts finite decimal/scientific values without rewriting source identifiers or original JSON. Null/missing values require explicit presence predicates. Record pages, map summaries, query MVT and focused graph records use the same predicates; exact lookup cannot bypass them. Sorting uses source record index as a stable tie-breaker. Column projection affects returned record values; catalog readiness totals still describe indexed source content. No cross-asset unit conversion or scientific aggregation is implied. Migration `0016_exploration_record_queries.sql` supplies shared predicates and updates the tile function; 1.5 remains immutable in discovery.
+
+Migration `0017_exploration_predicate_compilation.sql` preserves typed comparison semantics while exposing the maximum-eight-predicate expression tree to PostgreSQL planning. Numeric conversion uses guarded exact SQL/JSON numeric parsing. Record queries evaluate each distinct typed field once in a bounded source-asset scan, materialize only identities and comparison values, count and select the ordered page from that relation, and fetch original content only for page identities. Null placement and source-index tie-breaking remain stable. Integration compares 187 legacy/new scalar-predicate combinations before exercising RLS, pages and filtered MVT.
+
+Exploration 1.7 adds `view: "aggregate"` with an existing `queryId`, `versionId` and `aggregate` source specification. Text groups or positive-width numeric bins combine with count/sum/mean/min/max. Every grouping, value and optional unit field is checked against the pinned source schema; units are partitioned without conversion. The existing record predicates and authorization apply before grouping. Counts reconcile valid, missing and invalid measure values; count includes every matching record. Decimal results remain strings, numeric bins carry an exact upper bound, and the response contains at most 200 groups with full group/record counts and explicit truncation. Null group/unit labels include missing, non-scalar or over-4096-character labels; invalid numeric group values also enter the null bucket. Unknown units remain unspecified. The Web statistics tab supplies the fields form, a chart and exact-value table; selecting a representable group creates shared record conditions. Numeric charts approximate finite decimal values while the table retains exact source arithmetic. The 1.6 discovery schemas remain immutable.
+
+Record pages treat `first` as a maximum and also enforce a conservative 3 MiB response budget. PostgreSQL measures the ordered candidate prefix before returning original content; selected columns are projected before measuring. The cursor advances by the records actually returned, so byte-limited pages neither skip nor duplicate records. Metadata/specification overhead is reserved, and a single record that cannot fit fails explicitly instead of truncating its fields. Record views return geometry presence for identity; complete map geometry remains in the map representation.
+
+Exploration 1.8 adds typed time predicates and sorting, and hour/day/month/year aggregation. Source formats are `iso-offset`, `dmy-local` or `ymd-local`; `utcOffsetMinutes` is an explicit fixed offset from −840 to 840, not an inferred time zone or daylight-saving rule. ISO source values retain their own offset. Naive source times require the configured offset, which also defines calendar buckets. Invalid dates become ungroupable rather than normalized. Boundaries are UTC strings with up to six fractional digits, and ranges use inclusive `gte` plus exclusive `lt`. Source strings remain unchanged. The browser supports calendar lines, complete-bucket brushing and equivalent keyboard range controls; unit series remain separate. All views and MVT use the same conditions. The 1.7 discovery schemas remain immutable.
+
+Exploration 1.9 accepts `baseQueryId` alongside a new `spec`. It reauthorizes the entire owner-scoped base before creating a fresh query, limits matching to its pinned version members and preserves each completed analysis ID (including an unparsed null). Explicit versions cannot expand beyond the base. Expired, inaccessible or revoked bases fail rather than silently refreshing to newer analyses. Web record controls and chart selections use this refinement path; ordinary new searches continue to resolve current authorized versions. The 1.8 discovery schema remains immutable.
+
+Exploration 1.10 adds immutable `spec.spatialBounds` in WGS84 west/south/east/north order. It uses verified geometry intersections across records, aggregates, graph record lookups and query MVT before clustering. Resource and provenance overviews contain matching versions; source-readiness metrics retain their documented indexed-content meaning. The manifest keeps the underlying authorized pins so clearing or changing the area via `baseQueryId` does not refresh analyses or lose the original population. Every pinned member is reauthorized even when outside the current area. The map offers point/line/polygon visibility, a legend, local-font cluster counts and viewport filtering; layer visibility is presentation only and never changes query authorization or counts. Unverified coordinates are excluded explicitly. The 1.9 discovery schemas remain immutable.
+
+Exploration 1.11 adds `graph.detail` (`assets`, `evidence`, `records`) for version-bound neighbor pages; record expansion also requires a source asset. `graph.grain` identifies the unit of `totalCount`. Continuation binds focus, detail and relation filters; records retain shared predicates, pinned analyses and the byte budget. `graph.relations` selects containment/provenance edge types. Optional `graph.path` finds a directed shortest path of at most eight edges within this returned page only, after relation filtering; missing endpoints fail without disclosing outside nodes. No path means no path in this page, not in the complete knowledge base. The 1.10 schemas remain immutable.
+
+Saved exploration views use `data.explore.view.create`, `.list`, `.open` and `.revoke`; `data.explore.export` exports one bounded query representation. They require `data.query.execute` and `data.catalog.read`. Create/revoke are synchronous commands with UUID `Idempotency-Key`, atomic audit and command ledger. A saved view keeps the original QuerySpec, version/analysis pins and typed ViewSpec (view requests, page history, selection IDs, map camera/layers), not copied record content. At most 100 active views are kept per owner and project. Private is the default; explicit project sharing still requires authenticated project scope, purpose/security checks and authorization of every pinned member when opening. Listing returns only the caller's saved configurations. Opening reissues an owner-bound 30-minute query and continuation bindings without resolving newer versions or analyses; expiry of the original query does not expire the saved configuration. Revocation is one-way and owner-only. Export reauthorizes the request and returns original values, provenance and explicit returned/total counts with a coverage unit; a later page or truncated representation is never marked complete. No transport drains all pages into SSR/BFF memory.
+
+| Capability                 | HTTP path (under `/api/data/v1`)     |
+| -------------------------- | ------------------------------------ |
+| `data.explore.view.create` | `POST /explore/views`                |
+| `data.explore.view.list`   | `GET /explore/views`                 |
+| `data.explore.view.open`   | `POST /explore/views/:viewId/open`   |
+| `data.explore.view.revoke` | `POST /explore/views/:viewId/revoke` |
+| `data.explore.export`      | `POST /explore/export`               |

@@ -154,6 +154,23 @@ for (const serverOwnedField of [
 }
 
 const validCapabilityInputs = {
+  'data.explore.view.create': {
+    queryId: OPERATION_ID,
+    title: 'View',
+    viewSpec: {
+      activeView: 'resources',
+      requests: { resources: { queryId: OPERATION_ID, view: 'resources' } },
+    },
+  },
+  'data.explore.view.list': {},
+  'data.explore.view.open': { viewId: OPERATION_ID },
+  'data.explore.view.revoke': { viewId: OPERATION_ID },
+  'data.explore.export': {
+    request: { queryId: OPERATION_ID, view: 'resources' },
+  },
+
+  'data.analysis.create': { dataItemId: DATA_ITEM_ID, versionId: VERSION_ID },
+  'data.explore.query': { spec: {}, view: 'resources', first: 20 },
   'data.catalog.search': { query: 'monitoring station', first: 20 },
   'data.catalog.get': { dataItemId: DATA_ITEM_ID },
   'data.query': {
@@ -246,6 +263,83 @@ const validCapabilityInputs = {
 } satisfies Record<DataCapabilityId, Readonly<Record<string, unknown>>>;
 
 const expectedCapabilityMappings = {
+  'data.explore.view.create': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/views',
+      successStatus: 200,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'createDataExploreView',
+    },
+    mcpMapping: { toolName: 'data_explore_view_create' },
+    skillMapping: { operation: 'data.explore.view.create' },
+  },
+  'data.explore.view.list': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/explore/views',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataExploreViews' },
+    mcpMapping: { toolName: 'data_explore_view_list' },
+    skillMapping: { operation: 'data.explore.view.list' },
+  },
+  'data.explore.view.open': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/views/:viewId/open',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataExploreView' },
+    mcpMapping: { toolName: 'data_explore_view_open' },
+    skillMapping: { operation: 'data.explore.view.open' },
+  },
+  'data.explore.view.revoke': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/views/:viewId/revoke',
+      successStatus: 200,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'revokeDataExploreView',
+    },
+    mcpMapping: { toolName: 'data_explore_view_revoke' },
+    skillMapping: { operation: 'data.explore.view.revoke' },
+  },
+  'data.explore.export': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/export',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'exportDataExplore' },
+    mcpMapping: { toolName: 'data_explore_export' },
+    skillMapping: { operation: 'data.explore.export' },
+  },
+
+  'data.analysis.create': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/analyses',
+      successStatus: 202,
+    },
+    graphqlMapping: { operationType: 'mutation', field: 'createDataAnalysis' },
+    mcpMapping: { toolName: 'data_analysis_create' },
+    skillMapping: { operation: 'data.analysis.create' },
+  },
+  'data.explore.query': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/query',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataExplore' },
+    mcpMapping: { toolName: 'data_explore_query' },
+    skillMapping: { operation: 'data.explore.query' },
+  },
   'data.catalog.search': {
     restMapping: {
       method: 'GET',
@@ -491,6 +585,14 @@ const expectedCapabilityMappings = {
 } satisfies Record<DataCapabilityId, unknown>;
 
 const expectedCapabilityScopes = {
+  'data.explore.view.create': ['data.query.execute', 'data.catalog.read'],
+  'data.explore.view.list': ['data.query.execute', 'data.catalog.read'],
+  'data.explore.view.open': ['data.query.execute', 'data.catalog.read'],
+  'data.explore.view.revoke': ['data.query.execute', 'data.catalog.read'],
+  'data.explore.export': ['data.query.execute', 'data.catalog.read'],
+
+  'data.analysis.create': ['data.ingestion.write', 'data.catalog.read'],
+  'data.explore.query': ['data.query.execute', 'data.catalog.read'],
   'data.catalog.search': ['data.catalog.read'],
   'data.catalog.get': ['data.catalog.read'],
   'data.query': ['data.query.execute'],
@@ -516,15 +618,45 @@ const expectedCapabilityScopes = {
 } satisfies Record<DataCapabilityId, readonly string[]>;
 
 const asynchronousCapabilityIds = new Set<DataCapabilityId>([
+  'data.analysis.create',
   'data.ingestion.create',
   'data.ingestion.submit',
   'data.ingestion.approve',
 ]);
 
 const expectedJsonSchemaHashes = {
+  'data.explore.view.create': {
+    input: 'b87e4f4b326ae62836ddd3a4411c5537a17fa2444fc73adf9e88dff049829fb4',
+    output: 'ae6e18d80bf0a0aa54c402a6a791d4e73ddc7e447ba7863539aab549efe12179',
+  },
+  'data.explore.view.list': {
+    input: 'f973399805c1c233633f5196cf8e2ad40ee100b94996d711dcd030813b671bc5',
+    output: '381e7efeb915aab342a66d9c8531f8135e7d84f666ab6d69e56aa5a68e359afc',
+  },
+  'data.explore.view.open': {
+    input: '79984f7329c030d9ebe5f8aed58146dee3e374936de3c0bbcbba95045b127cb3',
+    output: 'c92fba950266c2a830ad0a3da08bfc712dc5606ebc6568c333542ff5303a2509',
+  },
+  'data.explore.view.revoke': {
+    input: '79984f7329c030d9ebe5f8aed58146dee3e374936de3c0bbcbba95045b127cb3',
+    output: 'b64d20829012c71b47f3aedbab16def427e4962c0033cefb806309ae0db1f7a0',
+  },
+  'data.explore.export': {
+    input: '92f275799d61c10cdccc829dab89b48229380d5ee27d49277b44eb70f726ec32',
+    output: '3830a39891bc7b6b547d04c6c89242cdcf75d56f59a3ae900396a4c4e601ba4b',
+  },
+
+  'data.analysis.create': {
+    input: 'e506474b6ef13975dec248cd0e32b68a09754d04f420a710355c0d15b105aa6a',
+    output: '157a58322075047c67537707e26c0307eb80090d55e7bf3443b704345d9e3d16',
+  },
+  'data.explore.query': {
+    input: '2e3fc03a051f845ff148ca8ec3e9924c24a0d2ca4d9044cc97627c875ee570b4',
+    output: 'dc13256f63d17168c940bf71dd6d185f1f20d94ced335fd3166648e9a8d792bc',
+  },
   'data.catalog.search': {
-    input: '0200fec39a66bcfc428b442a5302a5171ec3d3d19fd98e937e1b85f60257ed49',
-    output: 'dd965149834a8f23f11449b6988ca7acee74fa394e4964d4e4fb610f5fd434d1',
+    input: '9fa0f09f57dc5063f42406cdaefd0e19b0ab8e019a3a4ba9824a3445c24139be',
+    output: '35a4dfc5c6f6d983c58ad3d209f6177979bd17cdbd96fe3f4109b149956ec02c',
   },
   'data.catalog.get': {
     input: '59f8155f67dd96336971960f7143c640e2fd75643846ab1b4c835a1602857078',
@@ -945,6 +1077,13 @@ describe('Data Foundation capability registry', () => {
       'data.ingestion.reject',
       'data.operation.cancel',
       'data.operation.events',
+      'data.explore.view.create',
+      'data.explore.view.list',
+      'data.explore.view.open',
+      'data.explore.view.revoke',
+      'data.explore.export',
+      'data.explore.query',
+      'data.analysis.create',
     ]);
     expect(Object.keys(DATA_CAPABILITY_REGISTRY)).toEqual(DATA_CAPABILITY_IDS);
 
@@ -975,6 +1114,116 @@ describe('Data Foundation capability registry', () => {
   });
 
   it('retains immutable historical Capability definitions and schema hashes', () => {
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![0]!.inputSchema,
+      ),
+    ).toBe('89b9b8cf3785125f4639df7306663edb8d2a17becfeb72aaa2c1c623bc3a0622');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![0]!.outputSchema,
+      ),
+    ).toBe('da354e008d49bba639f7fd9b518d9c6dc3c38c9d67975bf6bf8f66bcca149f09');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![1]!.inputSchema,
+      ),
+    ).toBe('e937845dbee3cdefae3e4adb4c93b76ab9ec2e697226dd1875ea38704c5113b7');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![1]!.outputSchema,
+      ),
+    ).toBe('6f67ef521d89a0ef797cbc5463d5076018727665324633342867a49eb58bd9b6');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![2]!.inputSchema,
+      ),
+    ).toBe('115afb83f23b37dd0d3f07ad2e9c97a6c4cccdce1f595a0f878f4ea8b42372cc');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![2]!.outputSchema,
+      ),
+    ).toBe('bdf7c731359d5fc7d6c6aee9dd8babcc51e02796730513bc34d9d4db58e509d5');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![3]!.inputSchema,
+      ),
+    ).toBe('a0d0cc79e8ee7b6ea0a1722821e5083efe96effa6c8f9e4a86e5206e31d81c85');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![3]!.outputSchema,
+      ),
+    ).toBe('528740b10bf048d8284e604b5335d6c5b80cd142413e0e8b7d05f729af38da43');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![4]!.inputSchema,
+      ),
+    ).toBe('a0d0cc79e8ee7b6ea0a1722821e5083efe96effa6c8f9e4a86e5206e31d81c85');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![4]!.outputSchema,
+      ),
+    ).toBe('528740b10bf048d8284e604b5335d6c5b80cd142413e0e8b7d05f729af38da43');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![5]!.inputSchema,
+      ),
+    ).toBe('a0d0cc79e8ee7b6ea0a1722821e5083efe96effa6c8f9e4a86e5206e31d81c85');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![5]!.outputSchema,
+      ),
+    ).toBe('f890ee2ede73bb68e0f8178ec96bd41b28beb4e585c2f433af5349125de0d940');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![6]!.inputSchema,
+      ),
+    ).toBe('1b63c6299372914790fc26657f3450cfd733631b3efc8085187b244357cc6d89');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![6]!.outputSchema,
+      ),
+    ).toBe('8cd03199a55c91de493db23ae0225488920ad99b046d805256b6c26bb9826edc');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![7]!.inputSchema,
+      ),
+    ).toBe('5a2cd702d8b1a9e857e1dcfb9b96ce500b6d42bc1f1a22eb2fdade61b08450cb');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![7]!.outputSchema,
+      ),
+    ).toBe('4f3defbc36354bd10541641ebce68e53d7da3aea8640a6f392b675f21e4b9848');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![8]!.inputSchema,
+      ),
+    ).toBe('e445c3a83daed621ef9d135e67bec1ad3a5bcc6084c311311bc78d2339336117');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![8]!.outputSchema,
+      ),
+    ).toBe('ef407b87f33600305e58ee01f8027ef1fbf7c5ce67bac04fa49d730dfbb1f0f5');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![9]!.inputSchema,
+      ),
+    ).toBe('488b98dc67e106937c3448a6ef3da659e3b93ccbe27e69c3cb8b58e1bbafef00');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![9]!.outputSchema,
+      ),
+    ).toBe('ef407b87f33600305e58ee01f8027ef1fbf7c5ce67bac04fa49d730dfbb1f0f5');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![10]!.inputSchema,
+      ),
+    ).toBe('859f7165f21d306db8d484cc7acee5d9cb6d18372fafba830139383465c732a6');
+    expect(
+      jsonSchemaHash(
+        DATA_CAPABILITY_ARCHIVE['data.explore.query']![10]!.outputSchema,
+      ),
+    ).toBe('b8151cae02b5ca13492e5c1e3b410abec4bedc73cb68b5b306e59da95cf5b461');
     const historical = DATA_CAPABILITY_ARCHIVE['data.geo.query'];
     expect(historical).toHaveLength(1);
     const definition = historical?.[0];
@@ -1061,7 +1310,7 @@ describe('Data Foundation capability registry', () => {
       }
     }
 
-    expect(checkedCapabilities).toBe(DATA_CAPABILITY_IDS.length - 1);
+    expect(checkedCapabilities).toBe(DATA_CAPABILITY_IDS.length - 2);
   });
 
   it('rejects raw database and projection-store languages', () => {

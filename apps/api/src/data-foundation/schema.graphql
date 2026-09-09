@@ -23,6 +23,7 @@ type DataItem {
   selectedVersion: DataItemVersion
 }
 type DataItemConnection {
+  totalCount: Float
   nodes: [DataItem!]!
   pageInfo: PageInfo!
 }
@@ -52,6 +53,7 @@ type Operation {
 }
 
 input DataCatalogFilter {
+  includeTotal: Boolean
   query: String
   businessDomains: [String!]
 }
@@ -100,6 +102,10 @@ type Query {
   ): DataItemConnection!
   dataItem(id: ID!, version: ID): DataItem
   dataQuery(input: JSON!): JSON!
+  dataExplore(input: JSON!): JSON!
+  dataExploreViews(input: JSON!): JSON!
+  dataExploreView(input: JSON!): JSON!
+  exportDataExplore(input: JSON!): JSON!
   dataSearch(input: DataSearchInput!): SearchResultConnection!
   knowledgeSearch(input: KnowledgeSearchInput!): SearchResultConnection!
   graphExpand(input: GraphExpandInput!): GraphResult!
@@ -118,6 +124,9 @@ type Query {
 }
 
 type Mutation {
+  createDataExploreView(input: JSON!): JSON!
+  revokeDataExploreView(input: JSON!): JSON!
+  createDataAnalysis(input: JSON!): JSON!
   createDataIngestion(input: CreateIngestionInput!): Operation!
   createDataItem(input: JSON!): DataItem!
   createDataUploadSession(input: JSON!): JSON!

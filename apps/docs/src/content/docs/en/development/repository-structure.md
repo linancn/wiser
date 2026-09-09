@@ -150,3 +150,5 @@ pnpm --filter @wiser/web test
 After changing a public contract, also verify every direct consumer. Passing only the contract package's tests does not establish compatibility. Run `pnpm verify` before handoff.
 
 See [backend development](/en/development/backend/) for backend processes and health entrypoints, and [adding a WISER system](/en/development/adding-a-system/) for a new business boundary.
+
+Shared Data contracts use explicit `.ts` relative source imports so Turbopack can consume the same schema as Node services. The base TypeScript configuration enables `rewriteRelativeImportExtensions` to emit `.js` imports for runnable builds. Web has `allowImportingTsExtensions` with `noEmit`. Keep package imports on public exports, and verify both browser rendering and emitted Node imports when changing this boundary.

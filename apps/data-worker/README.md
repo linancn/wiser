@@ -15,8 +15,8 @@ checkPaths:
   - packages/data-core/**
   - packages/data-infra/**
   - infrastructure/data-foundation/**
-lastReviewedAt: 2026-08-26
-lastReviewedCommit: e048ff2ee4cc0f3c5065ca36947094463e3b1841
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: 3647dfc6a0976129e1c69663a6d66b4f9c05e0bc
 ---
 
 # WISER Data Worker / 数据基座 Worker
@@ -98,3 +98,13 @@ pnpm data:smoke
 - [Data Foundation 架构](../docs/src/content/docs/zh-CN/architecture/data-foundation.md) / [Data Foundation architecture](../docs/src/content/docs/en/architecture/data-foundation.md)
 - [数据库开发](../docs/src/content/docs/zh-CN/development/databases.md) / [Database development](../docs/src/content/docs/en/development/databases.md)
 - [测试与验证](../docs/src/content/docs/zh-CN/development/testing.md) / [Testing and verification](../docs/src/content/docs/en/development/testing.md)
+
+Version analysis jobs (`data.analysis.process`) read already admitted objects using their immutable version and content hash. CSV and GeoJSON parsing writes bounded batches into scoped analysis tables. Each asset retains a parse outcome independently of source completeness and registration quality. The worker checks its current job lease before committing; a lost lease rolls back the analysis. Unsupported formats retain unknown counts. The original assets are never replaced.
+
+CSV/JSON analysis is bounded at 64 MiB and 2,000,000 records per asset. Capacity and unknown-CRS failures retain unknown counts with an `UNSUPPORTED` reason; malformed content and hash mismatches remain `INVALID`. / CSV/JSON 分析按资产限制为 64 MiB、2,000,000 条记录。容量或未知坐标系问题保留未知计数与 `UNSUPPORTED` 原因，格式错误或哈希不符仍为 `INVALID`。
+
+独立解析适配器校验来源哈希、流式字段与完成总数，在本地绑定记录 ID；不完整结果必须回滚。 / The isolated parser adapter verifies source hashes, streamed schemas and completion totals, binds record IDs locally, and rejects incomplete results.
+
+`DATA_ANALYSIS_PARSER_URL` 配置内部解析器根地址，完整 Data profile 自动连接。XLSX/XLS、文档与压缩包逐资产解析，部分结果保留原因，容量失败回滚记录。 / `DATA_ANALYSIS_PARSER_URL` configures the private parser origin and is supplied by the complete Data profile. Workbook, document and archive analysis retains partial reasons and rolls back records on capacity failure.
+
+地理分析只读取同版本清单里的格式伴随文件，并逐文件核验哈希；ADF 头文件产生覆盖记录，其余成员保留为格式组附件。 / Geospatial analysis reads only same-version manifest companions and verifies each hash; the ADF header produces coverage records while other members remain accounted-for format companions.

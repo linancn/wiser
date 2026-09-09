@@ -25,12 +25,12 @@ async function loadOverview() {
   const dal = await getDataFoundationDal();
   const [health, catalog, capabilities] = await Promise.all([
     dal.health(),
-    dal.catalog({ first: 6 }),
+    dal.catalog({ first: 1, includeTotal: true }),
     dal.capabilities(),
   ]);
   return {
     health,
-    catalogCount: catalog.items.length,
+    catalogCount: catalog.totalCount ?? '—',
     capabilityCount: capabilities.capabilities.length,
   };
 }
@@ -131,12 +131,12 @@ export default async function DataFoundationPage({
                   detail: copy.domains[1]?.copy ?? copy.common.notProvided,
                 },
                 {
-                  href: `/${locale}/data-foundation/search`,
+                  href: `/${locale}/data-foundation/explore`,
                   label: copy.overviewPage.searchAction,
                   detail: copy.domains[2]?.copy ?? copy.common.notProvided,
                 },
                 {
-                  href: `/${locale}/data-foundation/map`,
+                  href: `/${locale}/data-foundation/explore?view=map`,
                   label: copy.overviewPage.mapAction,
                   detail: copy.mapPage.lede,
                 },

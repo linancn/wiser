@@ -63,6 +63,10 @@ export interface DataFoundationGeoRequestContextResolver {
 }
 
 export interface DataFoundationGeoAuthorityPort {
+  authorizeExplorationQuery?(input: {
+    readonly context: PlatformRequestContext;
+    readonly queryId: string;
+  }): Promise<void>;
   authorizeVectorVersion(input: {
     readonly context: PlatformRequestContext;
     readonly versionId: string;
@@ -340,6 +344,30 @@ const VectorTileRouteSchema = {
   },
   response: geoResponses({
     description: 'Mapbox Vector Tile with source-layer authority.',
+    type: 'string',
+    contentEncoding: 'binary',
+    contentMediaType: 'application/vnd.mapbox-vector-tile',
+  }),
+} as const satisfies FastifySchema;
+
+const QueryVectorTileRouteSchema = {
+  ...VectorTileRouteSchema,
+  summary: 'Governed query-result vector tile',
+  description:
+    'Reauthorizes every pinned query member before fetching scoped clusters and record identities.',
+  operationId: 'data_geo_query_vector_tile',
+  params: {
+    ...VectorTileRouteSchema.params,
+    required: ['queryId', 'z', 'x', 'tile'],
+    properties: {
+      queryId: { type: 'string', format: 'uuid' },
+      z: VectorTileRouteSchema.params.properties.z,
+      x: VectorTileRouteSchema.params.properties.x,
+      tile: VectorTileRouteSchema.params.properties.tile,
+    },
+  },
+  response: geoResponses({
+    description: 'Mapbox Vector Tile with source-layer exploration.',
     type: 'string',
     contentEncoding: 'binary',
     contentMediaType: 'application/vnd.mapbox-vector-tile',
@@ -1027,9 +1055,12 @@ export function createDataFoundationGeoProxyModule(
     build: (
       context: PlatformRequestContext,
     ) =>
-      | Promise<DataFoundationGeoProxyRequest | 'NOT_FOUND' | null>
+      | Promise<
+          DataFoundationGeoProxyRequest | 'NOT_FOUND' | 'FORBIDDEN' | null
+        >
       | DataFoundationGeoProxyRequest
       | 'NOT_FOUND'
+      | 'FORBIDDEN'
       | null,
   ) {
     setNoStore(reply);
@@ -1040,13 +1071,18 @@ export function createDataFoundationGeoProxyModule(
     if ('error' in resolved) {
       return deny(request, reply, resolved.error);
     }
-    let proxyRequest: DataFoundationGeoProxyRequest | 'NOT_FOUND' | null;
+    let proxyRequest:
+      DataFoundationGeoProxyRequest | 'NOT_FOUND' | 'FORBIDDEN' | null;
     try {
       proxyRequest = await build(resolved.context);
     } catch (error) {
       const mapping = mapProxyError(error);
       return deny(request, reply, mapping, { context: resolved.context });
     }
+    if (proxyRequest === 'FORBIDDEN')
+      return deny(request, reply, errors.forbidden, {
+        context: resolved.context,
+      });
     if (proxyRequest === 'NOT_FOUND') {
       return deny(request, reply, errors.notFound, {
         context: resolved.context,
@@ -1229,6 +1265,51 @@ export function createDataFoundationGeoProxyModule(
         '/api/data/v1/geo/tiles/vector/versions/:versionId/:z/:x/:tile',
         VectorTileRouteSchema,
         vectorHandler,
+      );
+
+      const queryVectorHandler: RouteHandlerMethod = (request, reply) =>
+        execute(request, reply, async (context) => {
+          if (
+            !['data.query.execute', 'data.catalog.read'].every((scope) =>
+              context.authorization.scopes.includes(scope),
+            )
+          )
+            return 'FORBIDDEN';
+          const params = request.params as Record<string, unknown>;
+          const tile = tileCoordinates({
+            ...params,
+            versionId: params['queryId'],
+          });
+          if (tile === null || tile.format !== 'pbf') return null;
+          const query = strictQuery(request, new Set());
+          if (query === null || query.length !== 0) return null;
+          if (!options.authority.authorizeExplorationQuery) return 'NOT_FOUND';
+          await options.authority.authorizeExplorationQuery({
+            context,
+            queryId: tile.versionId,
+          });
+          return {
+            target: 'MARTIN',
+            path: `/wiser_exploration_mvt/${tile.z}/${tile.x}/${tile.y}`,
+            method: request.method as 'GET' | 'HEAD',
+            query: sortedQuery({
+              tenantId: context.authorization.tenantId,
+              projectId: context.authorization.projectId,
+              actorId: context.principal.actorId,
+              queryId: tile.versionId,
+              purpose: context.authorization.purpose,
+              maxSecurityLevel: context.authorization.maxSecurityLevel,
+              policyVersion: String(context.authorization.authzVersion),
+            }),
+            context,
+            signal: AbortSignal.timeout(timeoutMs),
+          };
+        });
+      registerReadOnlyRoute(
+        app,
+        '/api/data/v1/geo/tiles/vector/queries/:queryId/:z/:x/:tile',
+        QueryVectorTileRouteSchema,
+        queryVectorHandler,
       );
 
       const rasterHandler: RouteHandlerMethod = (request, reply) =>

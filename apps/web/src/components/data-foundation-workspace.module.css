@@ -1,11 +1,14 @@
 .page {
   display: grid;
-  gap: clamp(2rem, 5vw, 4.5rem);
+  gap: clamp(1rem, 2vw, 1.75rem);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .section {
   display: grid;
   gap: 1.25rem;
+  min-width: 0;
 }
 
 .panelGrid {
@@ -213,9 +216,9 @@
 .pageHeader {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(230px, 0.5fr);
-  gap: clamp(2rem, 6vw, 6rem);
+  gap: 1.5rem;
   align-items: end;
-  padding: clamp(2.8rem, 7vw, 6.5rem) 0 clamp(1.8rem, 4vw, 3rem);
+  padding: 1.5rem 0 1rem;
   border-bottom: 1px solid var(--border);
 }
 
@@ -235,17 +238,17 @@
   margin: 0;
   color: var(--text-strong);
   font-family: var(--display);
-  font-size: clamp(2.8rem, 7vw, 6.6rem);
+  font-size: clamp(1.65rem, 3vw, 2.5rem);
   font-weight: 600;
   letter-spacing: -0.052em;
-  line-height: 0.94;
+  line-height: 1.18;
 }
 
 .lede {
   max-width: 820px;
-  margin: 1.2rem 0 0;
+  margin: 0.75rem 0 0;
   color: var(--text-secondary);
-  font-size: clamp(1rem, 1.5vw, 1.18rem);
+  font-size: 0.95rem;
   line-height: 1.72;
 }
 
@@ -423,7 +426,7 @@
   margin: 0;
   color: var(--text-strong);
   font-family: var(--display);
-  font-size: clamp(1.65rem, 3.5vw, 3.1rem);
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
   font-weight: 600;
   letter-spacing: -0.03em;
 }
@@ -768,6 +771,7 @@ a.versionIndex:focus-visible {
 
 .searchResults > article > p {
   color: var(--text-secondary);
+  overflow-wrap: anywhere;
 }
 
 .score {

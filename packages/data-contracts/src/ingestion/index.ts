@@ -1,14 +1,14 @@
 import { z } from 'zod';
 
-import { SecurityLevelSchema } from '../catalog/index.js';
+import { SecurityLevelSchema } from '../catalog/index.ts';
 import {
   DataKeySchema,
   OffsetDateTimeSchema,
   Sha256Schema,
-} from '../common.js';
+} from '../common.ts';
 import { PlatformUuidSchema } from '@wiser/platform-contracts';
-import { SourceRegistrationSchema } from './source-registration.js';
-export * from './source-registration.js';
+import { SourceRegistrationSchema } from './source-registration.ts';
+export * from './source-registration.ts';
 
 export const IngestionStateSchema = z.enum([
   'RECEIVED',

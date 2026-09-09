@@ -18,8 +18,8 @@ checkPaths:
   - apps/docs/package.json
   - apps/docs/src/**
   - apps/docs/e2e/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: c4092d9f961841f89cdf9ed383360c41f809bd17
+lastReviewedAt: 2026-09-09
+lastReviewedCommit: bf9076880c57e7249cb8018142d2c5a851ed7165
 ---
 
 ## Two frontend applications
@@ -77,7 +77,7 @@ Agent EXCON pages support two explicit data modes:
 | `reference` | Default deterministic design reference, build, and end-to-end test data      | The page is clearly labeled as a design preview                                 |
 | `live`      | Server Components read operator projections from the Agent EXCON v2 HTTP API | An actionable unavailable/error state appears; reference data is never mixed in |
 
-The server-side `AGENT_EXCON_WEB_DATA_MODE` selects the mode. `live` requests use `cache: no-store`, and the API origin and `WISER_WEB_OPERATOR_TOKEN` remain server-only. When a current DTO does not provide the required fact, show a coverage gap or empty state. Never fill it from the reference sample or infer Agent, span, replay-perspective, or verdict facts in the frontend.
+The server-side `AGENT_EXCON_WEB_DATA_MODE` selects the mode. `live` requests use `cache: no-store`, and the API origin and verified current user access token remain server-only. In Supabase mode, EXCON and Data use the same server-only session verifier; a static `WISER_WEB_OPERATOR_TOKEN` is limited to local Auth-off development. When a current DTO does not provide the required fact, show a coverage gap or empty state. Never fill it from the reference sample or infer Agent, span, replay-perspective, or verdict facts in the frontend.
 
 ## Data Foundation data and identity
 
@@ -91,6 +91,8 @@ The access sequence is:
 4. The browser receives only the Supabase URL and publishable key. Database credentials, service-role keys, internal API origins, operator tokens, and raw upstream errors never enter Client Components or serialized props.
 
 Map tiles also use a same-origin Web route whose server proxy adds identity and scope. Never put an internal GIS origin or access token in a map URL.
+
+The graph page uses client-only lazy loading of G6 5.1.1, bounded governed data, shared theme tokens and a keyboard entity list with exact version/evidence links. `e2e-live/query-visualization.spec.ts` checks the real HydroATLAS graph and long search excerpts at desktop/mobile widths. It requires the admitted research case and explicit loopback test credentials.
 
 ## Implement a new page
 
@@ -123,7 +125,7 @@ pnpm --filter @wiser/docs test:e2e
 
 These standard Playwright configurations start isolated development servers and primarily verify reference/fixture-driven routes, locales, themes, and interactions. They do not prove unified Auth, the Data database, or an EXCON live credential. `pnpm stack:full:up` / `pnpm data:smoke` covers the authenticated Data vertical slice.
 
-The repository does not currently have a full-stack Playwright command that issues an EXCON operator credential. To verify EXCON live, obtain a real `WISER_WEB_OPERATOR_TOKEN` through a trusted operator flow, then run an isolated Web instance or dedicated test with `AGENT_EXCON_WEB_DATA_MODE=live` and server-side `AGENT_EXCON_API_INTERNAL_URL`. Without that step, report the result as reference-UI verification rather than live/Auth E2E.
+To verify EXCON live in the complete stack, sign in through Supabase as a user with the EXCON operator role, with `AGENT_EXCON_WEB_DATA_MODE=live` and the server-side API origin configured. The read model forwards that verified session; authentication failures never fall back to a service token. Reference-only tests do not prove live/Auth E2E.
 
 The reproducible model-free EXCON live Web path is the scripted Showcase. It starts an isolated Lab/API/Web, configures the `live` read model with a host-only operator token, and returns the `/collaboration` URL from status:
 
@@ -146,3 +148,27 @@ Playwright locators use user-visible roles, labels, text, or stable test IDs. Ap
 - Tests protect the EXCON reference/live boundary and Data Foundation's live-API-only boundary.
 - New routes, dictionary keys, data contracts, and authorization failures have focused coverage; screenshots support visual comparison but do not replace semantic assertions.
 - Related architecture, protocol, or development documentation is updated and passes Docpact plus root `pnpm verify`.
+
+The `/[locale]/data-foundation/explore` workspace shares the strict exploration contracts with the API. A compact query bar, resource table and selection inspector keep the result area near the top of the viewport. Server rendering starts or resumes an authorized result set; subsequent queries pass through the session-verified Next.js endpoint `/api/data-foundation/explore`. Filters start a new version manifest; paging keeps the same `queryId`. Keyboard-operable resource names expose exact versions, readiness and source limitations. Unknown analytical counts remain explicit instead of becoming zero.
+
+The explorer uses MapLibre GL JS 6.8.0 with react-map-gl 8.1.3, loaded only when opening the map. `apps/web/scripts/prepare-maplibre.mjs` runs before dev/build and copies the exact matching worker and shared module into a versioned same-origin public directory. Generated vendor files are ignored by Git. A pinned public-domain Natural Earth 1:110m land layer supplies a small self-hosted overview basemap; `public/basemap/source.json` records its source commit and SHA-256. This overview layer does not imply street-level detail.
+
+The exploration statistics tab uses [Apache ECharts 6.1.0](https://github.com/apache/echarts/releases/tag/6.1.0), loaded on demand with the SVG renderer and only the required chart components. It charts server-computed readiness counts for the full authorized query. Selecting a bar or its keyboard-accessible text equivalent applies the same readiness filter to resource exploration. Chart colors follow semantic tokens; resize/theme observers and the chart instance are disposed on unmount. Resource counts must not be presented as record counts or scientific observations.
+
+Exploration clears the current query, selection, asset details and rendered views when a response invalidates its authorization or immutable membership, or when the advertised result deadline is reached. Background/page restoration checks the same deadline. Late failures from an older query cannot clear a newer result, and aborted requests cannot restore stale data. Query form conditions remain available for a fresh authorized query. Temporary map failures unload the canvas and offer reload without exposing upstream diagnostics.
+
+Record exploration includes an expandable conditions form with up to eight typed comparisons, scalar sorting and an optional 1–32 column selection. Text identifiers retain leading zeros; blank or non-finite numeric input is rejected. Applying conditions creates a new authorized single-version/file query, clears selection, adds a history entry and opens its records view. The same predicates govern records, map tiles and record provenance. Reload restores the configuration from the authorized query; clearing it restores the selected version without record conditions. Numeric comparisons use source values without inferring or converting units.
+
+The statistics view includes source-record aggregation after selecting a resource. Its field controls remain distinct from resource-readiness counts. Charts have an exact-value table and keyboard-operable group selection. Units remain explicit and unknown groups cannot silently become an incorrect null-only filter.
+
+Exploration 1.8 adds typed time predicates and sorting, and hour/day/month/year aggregation. Source formats are `iso-offset`, `dmy-local` or `ymd-local`; `utcOffsetMinutes` is an explicit fixed offset from −840 to 840, not an inferred time zone or daylight-saving rule. ISO source values retain their own offset. Naive source times require the configured offset, which also defines calendar buckets. Invalid dates become ungroupable rather than normalized. Boundaries are UTC strings with up to six fractional digits, and ranges use inclusive `gte` plus exclusive `lt`. Source strings remain unchanged. The browser supports calendar lines, complete-bucket brushing and equivalent keyboard range controls; unit series remain separate. All views and MVT use the same conditions. The 1.7 discovery schemas remain immutable.
+
+Exploration 1.10 adds immutable `spec.spatialBounds` in WGS84 west/south/east/north order. It uses verified geometry intersections across records, aggregates, graph record lookups and query MVT before clustering. Resource and provenance overviews contain matching versions; source-readiness metrics retain their documented indexed-content meaning. The manifest keeps the underlying authorized pins so clearing or changing the area via `baseQueryId` does not refresh analyses or lose the original population. Every pinned member is reauthorized even when outside the current area. The map offers point/line/polygon visibility, a legend, local-font cluster counts and viewport filtering; layer visibility is presentation only and never changes query authorization or counts. Unverified coordinates are excluded explicitly. The 1.9 discovery schemas remain immutable.
+
+Graph exploration provides keyboard-operated file, evidence and record expansion, bounded neighbor pagination, labeled relation toggles and directed path controls scoped to the current page. Path highlighting updates G6 node/edge state without replacing its canvas. Both languages show the count grain, truncation and recovery action; switching focus clears path endpoints and cursors.
+
+The Data workspace navigation groups search, knowledge and specialist GIS/graph tools under the exploration workspace while preserving their existing deep links. Exploration offers these specialist routes in its toolbar. Resource tables alone may hide the provider column on narrow screens; record and aggregate tables retain every selected field and unit in an internal scroll area. Source statistics keep whole-resource readiness in a separate disclosure that mounts its chart only when open. Graph canvases use vertical worker layouts below 560 px of canvas width and expose keyboard-operated zoom, fit and selected-node focus controls. Viewport changes use no animation.
+
+On screens up to 900 px, a selected source can be inspected in a non-modal bottom drawer. Opening moves keyboard focus into its labeled region; collapse or Escape returns focus to the toggle without clearing selection. Clearing the selection returns focus to the active view tab when needed. Desktop inspection remains inline and scrollable. G6 internal canvas layers are removed from the tab order; named viewport controls and the source node list provide the keyboard interaction.
+
+The Portal derives its primary action from a verified session: authenticated users enter the Data workspace; anonymous users sign in. Catalog browsing uses 25-row cursor pages and a keyboard-focusable, internally scrolling table, preserving the name query on continuation and return to the first page. Source, publication, quality and security remain visible; the details explain check scope and content readiness.

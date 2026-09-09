@@ -64,6 +64,25 @@ const canonicalEnvironment = {
 } as const;
 
 describe('Data Worker environment contract', () => {
+  it('accepts only a configured parser origin without credentials or request paths', () => {
+    expect(
+      loadDataWorkerConfig({
+        ...canonicalEnvironment,
+        DATA_ANALYSIS_PARSER_URL: 'http://source-parser:3005',
+      }),
+    ).toMatchObject({ analysisParserUrl: 'http://source-parser:3005' });
+    for (const url of [
+      'file:///tmp/source',
+      'http://user:password@source-parser:3005',
+      'http://source-parser:3005/parse',
+    ])
+      expect(() =>
+        loadDataWorkerConfig({
+          ...canonicalEnvironment,
+          DATA_ANALYSIS_PARSER_URL: url,
+        }),
+      ).toThrow();
+  });
   it('loads canonical DATA_* names and converts durations explicitly', () => {
     expect(loadDataWorkerConfig(canonicalEnvironment)).toEqual({
       databaseUrl: 'postgresql://data_app:local@data-postgres:5432/wiser_data',

@@ -18,8 +18,8 @@ checkPaths:
   - packages/data-infra/src/migrations/**
   - scripts/data-foundation/**
   - compose.yaml
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: 3cef59b9346fb4b348c8713f6965e88b7e2f1dc3
 ---
 
 ## Start with the two PostgreSQL boundaries
@@ -115,12 +115,12 @@ The Supabase EXCON journal is accessed by the non-superuser, `NOBYPASSRLS` `wise
 
 Data Foundation provisioning creates four explicit roles:
 
-| Role                 | Purpose and constraints                                                                                    |
-| -------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `wiser_data_runtime` | Non-login common privilege group with only the required schema, table, sequence, and function privileges   |
-| `wiser_data_api`     | API login that inherits runtime privileges; non-superuser and unable to bypass RLS                         |
-| `wiser_data_worker`  | Worker login that inherits runtime privileges with a separate password and timeouts                        |
-| `wiser_data_gis`     | Isolated GIS login that does not inherit the common runtime and can execute only the governed MVT function |
+| Role                 | Purpose and constraints                                                                                     |
+| -------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `wiser_data_runtime` | Non-login common privilege group with only the required schema, table, sequence, and function privileges    |
+| `wiser_data_api`     | API login that inherits runtime privileges; non-superuser and unable to bypass RLS                          |
+| `wiser_data_worker`  | Worker login that inherits runtime privileges with a separate password and timeouts                         |
+| `wiser_data_gis`     | Isolated GIS login that does not inherit the common runtime and can execute only the governed MVT functions |
 
 Every Data database transaction sets and validates transaction-local `wiser.tenant_id`, `wiser.project_id`, `wiser.max_security_level`, and `wiser.policy_version` values with `set_config`. Missing or mismatched context returns no rows or fails; it must never degrade into an unscoped query. All roles remain `NOSUPERUSER` and `NOBYPASSRLS`, and applications never connect as the migration owner at runtime.
 
@@ -156,3 +156,23 @@ WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
 `data:reset` continues only with the exact confirmation value and removes only resolved and validated WISER Data Foundation named volumes. That data is still unrecoverable. Confirm that no local uploads, versions, objects, or projections need to be retained. After a reset, use `pnpm stack:full:up` to rebuild, migrate, seed, and smoke the stack.
 
 The repository does not currently provide a standard command that creates a temporary Data database while retaining existing named volumes. Prove “replay from empty” in CI or disposable local state with confirmation-gated `data:reset → stack:full:up`. If local data must be retained, stop rather than treating a destructive reset as an ordinary test step.
+
+## Exploration manifests
+
+`0011_exploration_queries.sql` adds the private `service.exploration_snapshot` cache with forced owner RLS, immutable manifests, a 30-minute maximum lifetime, bounded version references and owner/expiry indexes. Query transactions additionally set `wiser.actor_id` and `wiser.purpose`; policy version and security ceiling must match exactly. Runtime provisioning grants deletion only for this cache and removes update permission. It does not relax append-only history tables. Creation prunes expired and excess manifests visible to the same owner/context. Expired manifests belonging to inactive contexts can be removed by a privileged operator using the expiry index; expiry alone does not imply physical deletion.
+
+Run `apps/api/test/data-exploration.integration.spec.ts` with `WISER_DATA_PG_INTEGRATION=1` and `DATA_TEST_DATABASE_URL` against a migrated database. Its synthetic rows and temporary non-bypass role are contained in a rolled-back transaction; it verifies stable pagination, new versus pinned versions, exact historical queries, empty results, actor/project/tenant/purpose/policy/security isolation and expiry.
+
+Migration `0012_analysis.sql` adds scoped, version-bound analysis runs, per-asset outcomes and PostGIS-backed records in the independent Data Foundation database. Re-run the checksum migration runner; do not reset registered source data.
+
+Migration `0013_analysis_query_scope.sql` keeps forced analytical-record RLS and the same tenant, project, security-level and policy predicates, while evaluating request-constant helpers once per statement. Record pages use the selected analysis/asset index order; totals still count authorized rows rather than trusting broader asset metadata. The real 361,379-row reservoir source is covered by a bounded-page browser performance test.
+
+The internal query-tile source `service.wiser_exploration_mvt` (migration `0014_exploration_tiles.sql`) binds seven trusted parameters: tenant, project, actor, query, purpose, security ceiling and policy version. Its execute-only GIS role cannot read tables. The function reauthorizes every pinned member and rejects expired or unavailable queries before spatial selection. Each tile aggregates points into at most 4,096 cells; cluster counts cover only scoped records. Single features carry record/asset/analysis/version/item identities for exact lookup, while original values stay in record queries. Lines and polygons are clipped to the tile. The Web Mercator representation excludes polar regions outside its latitude domain, and tiles over 3 MiB fail rather than silently dropping features. A rolled-back PostgreSQL integration fixture decodes MVT and checks 100,000 point counts, bounded bytes, foreign scopes, expiry and missing membership.
+
+Exploration 1.5 adds optional map-wide `spatial.bounds` (WGS84 or null for an empty result) and `mercatorFeatureCount`, computed over the same authorized record set independently of pagination. The browser requests one initial record and this summary, fits the full result bounds, and loads same-origin query MVT by viewport. Clicking an individual feature performs a 1.4 exact-record lookup; a cluster click zooms in. The map distinguishes viewport feature/cluster counts from map-ready record totals. Tile-boundary ownership is corrected by append-only migration `0015_exploration_tile_boundaries.sql`, so points at tile seams contribute once. The 1.4 contract remains archived.
+
+Migration `0016_exploration_record_queries.sql` adds deterministic numeric parsing and shared record predicates, then replaces the query MVT function to apply the immutable source asset and predicates before clustering. Earlier migrations remain unchanged. Rolled-back integration checks typed conversion, ordering/pagination, projected fields, exact-row and graph lookup, and decoded filtered MVT counts.
+
+Migration `0017_exploration_predicate_compilation.sql` preserves typed comparison semantics while exposing the maximum-eight-predicate expression tree to PostgreSQL planning. Numeric conversion uses guarded exact SQL/JSON numeric parsing. Record queries evaluate each distinct typed field once in a bounded source-asset scan, materialize only identities and comparison values, count and select the ordered page from that relation, and fetch original content only for page identities. Null placement and source-index tie-breaking remain stable. Integration compares 187 legacy/new scalar-predicate combinations before exercising RLS, pages and filtered MVT.
+
+Migration `0020_exploration_saved_views.sql` creates forced-RLS saved configurations with owner/private or explicit project visibility. Content is immutable; the only allowed update is one-way `revoked_at`. Runtime provisioning restores column-only revocation privileges after general grants. The existing command transaction writes idempotency, audit and outbox records atomically. Saved rows are not identity or membership authority.

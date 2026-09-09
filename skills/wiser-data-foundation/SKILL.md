@@ -18,6 +18,9 @@ Read [capability-protocol.md](references/capability-protocol.md) before the firs
 ## Choose the narrowest workflow
 
 - Use `data.catalog.search` and `data.catalog.get` to identify an immutable DataItem version before analysis.
+- Use `data.analysis.create` to parse an already published data item/version through the HTTP API. Supply a UUID idempotency key, preserve the returned `analysisId` and operation, and poll the operation until terminal. Never read the object store or database directly. Parsing outcomes and source completeness are separate; unsupported/invalid assets have unknown counts.
+- Use `data.explore.query` for a shared result set of published resources. Filter `spec` by exact `providers`, registration `kinds`, or `readiness.records` / `readiness.spatial` when needed; the `summary` covers the complete authorized result set rather than just its current page. Distinguish `METADATA_ONLY`, `EMPTY`, `NO_SPATIAL_DATA`, and `CRS_UNVERIFIED`. Start with `spec` and `view: "resources"`; preserve `queryId` and follow `nextCursor` in `after`. For indexed records use the same `queryId` with `view: "records"` and a member `versionId`; preserve the returned per-asset columns and record/feature IDs. Supply `recordId` with the same query and version for an exact record lookup; the API locates its asset, and this lookup does not take a continuation cursor. For spatial features use `view: "map"` with an optional WGS84 bounding box. For a typed provenance graph use `view: "graph"`; optionally focus a member `versionId` and its `recordId`. Keep node kinds, source hashes, record identity and truncation explicit; containment does not establish a scientific relationship. Cursors are view/filter-bound. The API pins versions and completed analysis batches, expires the manifest after 30 minutes and reauthorizes every continuation. Re-run the specification after expiry. Keep `NOT_PARSED` and null analytical counts distinct from zero observations.
+- Use `data.explore.view.create/list/open/revoke` for durable private views and explicitly requested project sharing. Opening reauthorizes the pinned versions and analysis batches and returns a fresh query ID; sharing never widens Tenant/Project/Purpose or resource permissions. Use `data.explore.export` to export one bounded current-view result with explicit coverage, not an unbounded full dataset. See the complete examples for transport-specific path arguments and command keys.
 - Use `data.query` for structured, bounded fields and filters. It never accepts SQL.
 - Use `data.search.federated` for governed full-text/semantic/graph/geo/STAC retrieval; use `data.knowledge.search` when evidence fragments and confidence are the goal.
 - Use `data.graph.expand` or `data.graph.findPath` for bounded graph traversal. They never accept Cypher.
@@ -48,6 +51,8 @@ For a local research bundle, read [water-bundle.md](references/water-bundle.md) 
 
 Use its companion `water_import.py` for the resumable HTTP workflow. Preserve the same private checkpoint directory and trusted actor across retries. It keeps a source manifest per registration and verifies every published asset by download. Registration review requires an explicitly authorized reviewer; do not enable its approval option merely because the credential happens to have a publish scope.
 
+After publication, use `analyze_bundle.py` as described in [water-bundle.md](references/water-bundle.md) to submit and resume bounded content analyses through HTTP, then reconcile every admitted path against the published manifest and analytical asset states. Keep empty paths, aliases, unsupported content and unknown CRS explicit.
+
 ## Keep governance dimensions separate
 
 Read [governance-and-security.md](references/governance-and-security.md) whenever deciding whether data can be used, cited, shared, or published.
@@ -71,3 +76,11 @@ Read [governance-and-security.md](references/governance-and-security.md) wheneve
 Call only the WISER REST API or registered Data Foundation MCP tools/resources. Do not connect to PostgreSQL/PostGIS, object storage, Weaviate, OpenSearch, Neo4j, GeoServer, pgSTAC, TiTiler, Martin, Tika, or ClamAV. Do not invent arbitrary query, shell, filesystem, or administration tools. Do not expose tokens, signed upload URLs, internal endpoints, raw backend errors, hidden rows, or another Tenant/Project's identifiers.
 
 At handoff, report the trusted context identifiers (never the credential), exact Capability, immutable resource/version IDs, current cursor or Operation version, idempotency status, observed governance dimensions, limitations, and the next safe action.
+
+Map results may include `spatial.bounds` and `mercatorFeatureCount` for the complete authorized result, independent of the bounded feature page. Query MVT uses the governed HTTP `/geo/tiles/vector/queries/{queryId}/{z}/{x}/{y}.pbf` route with the same authorization; do not connect to Martin directly.
+
+- For temporal source queries, explicitly set `format` (`iso-offset`, `dmy-local`, `ymd-local`) and `utcOffsetMinutes` (fixed offset, −840…840). Use offset-bearing absolute values for time predicates; calendar aggregates accept `bucket: "hour" | "day" | "month" | "year"`. Apply returned lower/upper boundaries with `gte`/`lt`; never infer a time zone from a file name or silently normalize invalid dates.
+
+- When refining an existing exploration, send its `queryId` as `baseQueryId` alongside the new `spec`. This preserves authorized version and analysis pins. It cannot broaden beyond the base result; create an ordinary new query when broader discovery is intended. An unavailable base must be refreshed explicitly.
+
+- Use `spec.spatialBounds: [west, south, east, north]` for one verified-geometry condition across records, aggregates, graph record lookups and tiles. Keep it distinct from map-only `bbox`. Refine with `baseQueryId` to change or clear the area while retaining analysis pins. Unlocated and unverified coordinates do not match an area.

@@ -68,6 +68,12 @@ const commandIds = DATA_CAPABILITY_IDS.filter(
     !readIds.includes(id as (typeof readIds)[number]) &&
     ![
       'data.query',
+      'data.explore.view.create',
+      'data.explore.view.list',
+      'data.explore.view.open',
+      'data.explore.view.revoke',
+      'data.explore.export',
+      'data.explore.query',
       'data.search.federated',
       'data.knowledge.search',
       'data.graph.expand',
@@ -78,6 +84,12 @@ const commandIds = DATA_CAPABILITY_IDS.filter(
 );
 const specialIds = [
   'data.query',
+  'data.explore.view.create',
+  'data.explore.view.list',
+  'data.explore.view.open',
+  'data.explore.view.revoke',
+  'data.explore.export',
+  'data.explore.query',
   'data.search.federated',
   'data.knowledge.search',
   'data.graph.expand',
@@ -177,7 +189,7 @@ describe('Data Foundation production runtime composition', () => {
     ]);
   });
 
-  it('merges exactly 7 read + 8 command + 7 special executors in static module order', async () => {
+  it('merges exactly 7 read + 9 command + 8 special executors in static module order', async () => {
     const injected = factories();
     const runtime = createDataFoundationRuntimeFromEnvironment(
       enabledEnvironment,
@@ -222,7 +234,7 @@ describe('Data Foundation production runtime composition', () => {
         authRuntime,
         incomplete.value,
       ),
-    ).toThrow('22');
+    ).toThrow('29');
   });
 
   it('reports degraded readiness without leaking probe failures', async () => {

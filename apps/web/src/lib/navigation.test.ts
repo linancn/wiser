@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   activeSystemForPath,
+  isContextRouteActive,
+  EXPLORATION_TOOLS,
   contextRoutesForPath,
   PRIMARY_SYSTEMS,
 } from './navigation';
@@ -30,15 +32,38 @@ describe('WISER product navigation hierarchy', () => {
       'catalog',
       'ingestions',
       'quality',
-      'search',
-      'knowledge',
-      'graph',
-      'geo',
-      'map',
+      'explore',
       'capabilities',
     ]);
     expect(
       contextRoutesForPath('/en/scenarios').map((route) => route.key),
     ).toEqual(['scenarios', 'runs']);
   });
+});
+
+it('keeps specialist deep links inside one exploration workspace', () => {
+  const exploration = contextRoutesForPath('/en/data-foundation/explore').find(
+    (route) => route.key === 'explore',
+  )!;
+  expect(EXPLORATION_TOOLS.map((route) => route.key)).toEqual([
+    'search',
+    'knowledge',
+    'graph',
+    'geo',
+    'map',
+  ]);
+  for (const path of [
+    '/search',
+    '/knowledge',
+    '/graph',
+    '/geo',
+    '/map',
+    '/explore',
+  ])
+    expect(
+      isContextRouteActive(`/zh-CN/data-foundation${path}`, exploration),
+    ).toBe(true);
+  expect(isContextRouteActive('/en/data-foundation/catalog', exploration)).toBe(
+    false,
+  );
 });

@@ -54,6 +54,7 @@ type DataItem {
   selectedVersion: DataItemVersion
 }
 type DataItemConnection {
+  totalCount: Float
   nodes: [DataItem!]!
   pageInfo: PageInfo!
 }
@@ -83,6 +84,7 @@ type Operation {
 }
 
 input DataCatalogFilter {
+  includeTotal: Boolean
   query: String
   businessDomains: [String!]
 }
@@ -131,6 +133,10 @@ type Query {
   ): DataItemConnection!
   dataItem(id: ID!, version: ID): DataItem
   dataQuery(input: JSON!): JSON!
+  dataExplore(input: JSON!): JSON!
+  dataExploreViews(input: JSON!): JSON!
+  dataExploreView(input: JSON!): JSON!
+  exportDataExplore(input: JSON!): JSON!
   dataSearch(input: DataSearchInput!): SearchResultConnection!
   knowledgeSearch(input: KnowledgeSearchInput!): SearchResultConnection!
   graphExpand(input: GraphExpandInput!): GraphResult!
@@ -149,6 +155,9 @@ type Query {
 }
 
 type Mutation {
+  createDataExploreView(input: JSON!): JSON!
+  revokeDataExploreView(input: JSON!): JSON!
+  createDataAnalysis(input: JSON!): JSON!
   createDataIngestion(input: CreateIngestionInput!): Operation!
   createDataItem(input: JSON!): DataItem!
   createDataUploadSession(input: JSON!): JSON!
@@ -165,6 +174,12 @@ export const GRAPHQL_CAPABILITY_BY_FIELD: Readonly<
   dataCatalog: 'data.catalog.search',
   dataItem: 'data.catalog.get',
   dataQuery: 'data.query',
+  dataExploreViews: 'data.explore.view.list',
+  dataExploreView: 'data.explore.view.open',
+  exportDataExplore: 'data.explore.export',
+  createDataExploreView: 'data.explore.view.create',
+  revokeDataExploreView: 'data.explore.view.revoke',
+  dataExplore: 'data.explore.query',
   dataSearch: 'data.search.federated',
   knowledgeSearch: 'data.knowledge.search',
   graphExpand: 'data.graph.expand',
@@ -176,6 +191,7 @@ export const GRAPHQL_CAPABILITY_BY_FIELD: Readonly<
   dataItemVersion: 'data.catalog.versions.get',
   dataIngestion: 'data.ingestion.get',
   dataOperationEvents: 'data.operation.events',
+  createDataAnalysis: 'data.analysis.create',
   createDataIngestion: 'data.ingestion.create',
   createDataItem: 'data.catalog.create',
   createDataUploadSession: 'data.uploadSession.create',
@@ -288,6 +304,12 @@ function complexityRule(maximum: number): ValidationRule {
       Field(node: FieldNode) {
         const weight = [
           'dataQuery',
+          'dataExploreViews',
+          'dataExploreView',
+          'exportDataExplore',
+          'createDataExploreView',
+          'revokeDataExploreView',
+          'dataExplore',
           'dataSearch',
           'knowledgeSearch',
           'graphExpand',
@@ -499,6 +521,7 @@ const resolvers = {
         typeof output['nextCursor'] === 'string' ? output['nextCursor'] : null;
       return {
         nodes: items,
+        totalCount: output['totalCount'] ?? null,
         pageInfo: { endCursor: nextCursor, hasNextPage: nextCursor !== null },
       };
     },
@@ -524,6 +547,26 @@ const resolvers = {
       args: { input: unknown },
       context: GraphqlContext,
     ) => executeQuery(context, 'data.query', args.input),
+    dataExploreViews: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeQuery(context, 'data.explore.view.list', args.input),
+    dataExploreView: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeQuery(context, 'data.explore.view.open', args.input),
+    exportDataExplore: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeQuery(context, 'data.explore.export', args.input),
+    dataExplore: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeQuery(context, 'data.explore.query', args.input),
     dataSearch: (
       _: unknown,
       args: { input: unknown },
@@ -609,6 +652,21 @@ const resolvers = {
       ),
   },
   Mutation: {
+    createDataExploreView: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeCommand(context, 'data.explore.view.create', args.input),
+    revokeDataExploreView: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeCommand(context, 'data.explore.view.revoke', args.input),
+    createDataAnalysis: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeCommand(context, 'data.analysis.create', args.input),
     createDataIngestion: async (
       _: unknown,
       args: { input: unknown },

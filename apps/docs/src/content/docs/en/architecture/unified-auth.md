@@ -120,7 +120,7 @@ The public Portal shows platform and system descriptions only; it reads no proje
 
 The Shell derives its user indicator only from a freshly verified authenticated claim set. It never renders user-editable metadata as a trusted role or administrator label. Invalid, expired, privileged, unavailable, or malformed claims produce the same anonymous/fail-closed state.
 
-`WISER_WEB_OPERATOR_TOKEN` is a server-side operator/service identity, not an interactive user session. Platform-diagnostic service identities need explicit scopes and remain server-side.
+Data and EXCON interactive reads share one server-only session verifier. It verifies authenticated, unexpired claims first, obtains the current access token, and requires its subject, session, role and expiry to match those verified claims. A failed or mismatched session never falls back to `WISER_WEB_OPERATOR_TOKEN`. That operator/service identity remains available only for explicit local Auth-off development; production EXCON reads use the signed-in user and API authorization.
 
 ## Agent and MCP delegation
 

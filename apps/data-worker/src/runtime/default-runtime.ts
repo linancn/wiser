@@ -11,6 +11,7 @@ import {
   WeaviateEvidenceProjection,
   createDataPostgresPool,
   createS3AuthorityObjectReader,
+  createS3VersionObjectReader,
   createS3AuthorityObjectStore,
   createS3AuthorityPresigner,
   createSeaweedFsS3Client,
@@ -19,6 +20,8 @@ import {
 import { PostgresIngestionAuthority } from '../adapters/ingestion-runtime.js';
 import type { DataWorkerRuntimeConfig } from '../config.js';
 import { createIngestionPipelineHandler } from '../handlers/ingestion-pipeline.js';
+import { createExternalAnalysisParser } from '../adapters/analysis-parser.js';
+import { createAnalysisHandler } from '../handlers/analysis.js';
 import { DataWorkerScheduler, type DataWorkerLogger } from '../scheduler.js';
 import {
   DataWorkerRuntime,
@@ -90,7 +93,23 @@ export function createDefaultDataWorkerRuntime(
     timeoutMs: config.projection.publicationWaitTimeoutMs,
     pollIntervalMs: config.projection.publicationWaitPollMs,
   });
-  const handlers = createDefaultHandlerRegistry(ingestionHandler);
+  const handlers = createDefaultHandlerRegistry(
+    ingestionHandler,
+    createAnalysisHandler({
+      ...(config.analysisParserUrl
+        ? {
+            parseExternal: createExternalAnalysisParser({
+              endpoint: config.analysisParserUrl,
+            }),
+          }
+        : {}),
+      pool: ingestionPool,
+      read: createS3VersionObjectReader({
+        bucket: config.objectStore.bucket,
+        client: s3Client,
+      }),
+    }),
+  );
   const scheduler = new DataWorkerScheduler({
     repository: PostgresDataJobRepository.connect(config.databaseUrl),
     handlers,

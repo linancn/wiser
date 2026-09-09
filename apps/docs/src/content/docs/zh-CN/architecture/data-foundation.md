@@ -19,8 +19,8 @@ checkPaths:
   - apps/mcp/src/data-foundation/**
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
-lastReviewedAt: 2026-09-08
-lastReviewedCommit: b6dc97b67860a37f5230518743dca84d2cb25fa1
+lastReviewedAt: 2026-09-09
+lastReviewedCommit: c707fa20715254db0b0e46d1534d7741535a6532
 ---
 
 ## 权威边界
@@ -32,7 +32,7 @@ Data Foundation 是与 Agent EXCON 平级的 WISER 业务系统。它拥有 Data
 ```text
 Supabase principal + Tenant/Project/Purpose
   → Fastify REST / schema-first GraphQL
-  → 同一 DataCapabilityHandler（22 项静态 executor）
+  → 同一 DataCapabilityHandler（29 项静态 executor）
   → data-postgres RLS transaction / SeaweedFS S3
   → PostgreSQL durable job + Transactional Outbox
   → Data Worker
@@ -47,7 +47,7 @@ GeoServer、TiTiler 和 Martin 作为 Compose-internal GIS 服务存在于同一
 
 | 模块                                        | 职责                                                                        |
 | ------------------------------------------- | --------------------------------------------------------------------------- |
-| `@wiser/data-contracts`                     | 严格 Zod DTO、22 项 Capability、四种 transport mapping                      |
+| `@wiser/data-contracts`                     | 严格 Zod DTO、29 项 Capability、四种 transport mapping                      |
 | `@wiser/data-core`                          | 纯确定性的入库/Operation 状态机、质量、安全继承和发布门禁                   |
 | `@wiser/data-infra`                         | checksum migration、PostgreSQL/S3、任务/Outbox、投影、检索和 fake embedding |
 | `@wiser/data-worker`                        | 具体入库 Handler、Scheduler、投影 consumer、健康与指标                      |
@@ -173,9 +173,13 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 
 ## 协议与产品面
 
-- REST：`/api/data/v1` 的 discovery、22 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；22 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
-- GraphQL：`POST /graphql`，22 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
-- MCP：stdio/无状态 Streamable HTTP，22 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
+图谱工作区在客户端按需加载 G6 5.1.1，只绘制受治理 HTTP 返回的有界结果。可用键盘操作的实体列表与选择详情保留精确 Version/Evidence 来源，画布不可用时仍可查看。等待在途绘制结束后释放画布资源，主题变化复用语义 token；初始布局是确定性的，不表示空间关系。
+
+数据总览使用 `includeTotal=true` 取得受授权的目录总数，指标不再取预览页大小。目录计数和当前页使用同一个短 repeatable-read 权威事务。该数量表示登记对象，不表示已经通过分析验证的记录。
+
+- REST：`/api/data/v1` 的 discovery、29 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；29 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
+- GraphQL：`POST /graphql`，29 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
+- MCP：stdio/无状态 Streamable HTTP，29 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
 - Skill：`skills/wiser-data-foundation` 定义发现、查询、上传、入库、Operation 与安全解释流程。
 - Web：现有 Next.js 应用中的 14 个 Data route，server-only DAL、真实 Supabase Session、双语/主题、不可变版本选择，以及 MapLibre 的 PostGIS authority GeoJSON、STAC extent、受控 vector MVT 与 raster 四图层。
 
@@ -190,3 +194,89 @@ Web 负责治理与查询，不在 Server Action 或 Route Handler 执行文件�
 npm 的精确版本由对应 `package.json` 与根 `pnpm-lock.yaml` 定义；Data 容器的稳定 tag、digest 与兼容注记由 `compose.yaml` 和 `infrastructure/data-foundation/versions.env` 定义。架构文档不复制这些会频繁变化的清单。
 
 `pnpm data:smoke` 从上传、扫描、解析、受控 Agent 计划、确定性转换、质量/人工门禁、权威提交与 Outbox 一直验证到全部投影，并通过 REST、GraphQL、MCP 和登录后的 Web 回读；重复消费同一 Outbox event 不得创建重复权威或投影对象。完整命令矩阵见[测试与验证](/development/testing/)，数据库重置与迁移纪律见[数据库与迁移](/development/databases/)。
+
+## 固定版本的统一探索
+
+`data.explore.query` 从调用者可见的已发布版本建立有效期 30 分钟的结果集。声明式 `QuerySpec` 支持文本、数据项 ID、明确的版本对、业务领域和质量等级；未指定版本时选择每个数据项最新可访问的已发布版本。服务端清单固定最多 10,000 个版本引用，资源页最多 200 条；超过上限需要缩小查询范围。
+
+每次续查都绑定 Actor、Tenant、Project、Purpose、精确授权版本和安全上限。PostgreSQL 强制 RLS 保护清单，各视图还会重新核查引用的数据项及版本是否仍可访问且已发布。授权或发布变化使续查失效，不会静默改变结果集；新发布的版本也不会替换已固定版本。这固定的是版本成员，不是跨投影存储的分布式快照。就绪状态与分析数量独立：只有登记的资源返回 `NOT_PARSED`，未知记录数为 `null`。
+
+Web 的 `/zh-CN/data-foundation/explore` 工作区复用这些契约，通过 Next.js API adapter 使用当前 Supabase Session，提供紧凑资源表格、查询、固定结果集分页与精确版本详情。
+
+`@wiser/data-infra` 的分析解析器核验来源 SHA-256，以流式方式读取严格 CSV，并生成固定版本范围内的稳定记录 ID。源字符串、前导零、中文字段和空值均被保留，字段键与显示名称独立。JSON/GeoJSON 解析保留属性并验证格式声明的 WGS84 几何；普通经纬度属性不能证明 CRS 或几何有效。格式错误、不支持的 CRS 和明确的大小/记录上限返回分类失败。解析不会改变质量、验收、发布、来源完整性或单位。设置 `WISER_DATA_REAL_CASE=1` 的可选测试核对已准入 NLDI 样本哈希和坐标，不提交源内容。
+
+分析契约将请求绑定到已入库的数据项与版本。成功解析的空数据源具有明确的零记录数；不支持、无效或受限的数据源保留未知数量与原因代码；部分解析必须说明原因。
+
+`data.analysis.create` 接收已发布的 `dataItemId` / `versionId` 和幂等键，原子创建带审计的操作与持久化分析任务，不改变来源登记与质量声明。REST：`POST /api/data/v1/analyses`；GraphQL：`createDataAnalysis(input: JSON!)`；MCP：`data_analysis_create`。需要 `data.ingestion.write` 与 `data.catalog.read` 权限；通过返回的操作 ID 查询进度。
+
+探索契约 1.1 将已完成的分析批次与已发布版本共同固定。`view: "records"` 必须提供 `queryId` 和 `versionId`，返回逐资产字段定义、稳定的记录/要素 ID 及有界分页。`view: "map"` 复用同一结果集，支持可选的 WGS84 `[west,south,east,north]` 范围。游标绑定视图与过滤条件。要纳入原查询之后完成的分析，需要重新运行查询条件。数量表示已索引记录，资源就绪状态与覆盖信息同时披露未解析来源。
+
+探索契约 1.2 在同一授权清单上增加 `view: "graph"`。可选 `versionId` 缩小资源图范围；`recordId` 还要求该版本及其固定分析批次中的记录。资源、版本、文件和证据节点具有明确类型，关系表示权威包含关系；聚焦记录与表格、地图共用身份，文件节点保留来源哈希。这一溯源视图不推断科学关系。每页最多包含 100 个版本、200 个文件和 100 个证据片段；`truncated` 披露省略节点，`nextCursor` 翻阅后续版本，改变聚焦条件不能复用游标。此前 1.0 与 1.1 的契约定义保留在归档中。
+
+有界 CSV/JSON 分析器允许每个不超过 64 MiB 的来源最多 2,000,000 条记录。真实北京城市河湖 CSV 包含 1,048,575 行，验证时不把全部解析记录累积在内存中。容量限制与未知坐标系标记为分析暂不支持并保留具体原因，不判定源内容无效；资产回滚后不发布部分计数。
+
+迁移 `0013_analysis_query_scope.sql` 保留分析记录的强制 RLS 及相同的租户、项目、安全等级、策略版本条件，将请求内恒定的辅助函数改为每条语句计算一次。记录分页按选定分析批次和文件的索引顺序读取；总数仍统计获授权的记录，不以更宽范围的资产元数据代替。真实 361,379 行水库来源纳入有界分页的浏览器性能测试。
+
+`infrastructure/data-foundation/parser` 来源解析组件固定使用 openpyxl 3.1.5 的只读工作簿、xlrd 2.0.2 的旧版 XLS 读取与 pypdf 6.18.0。它保留工作表/原始行位置、公式文本和日期语义，将文档内容作为普通文本提取，并校验压缩包路径、加密、展开预算与成员哈希。压缩包保留成员路径、哈希、解析内容和逐成员完成摘要；不支持或失败的成员使整个压缩包明确保持部分可用。Python 依赖使用版本和哈希锁定。
+
+解析器镜像固定 GDAL 3.13.3 与经过哈希锁定的 Python 环境。内部 `/parse` 协议仅接受具名文件字节与 SHA-256，写入临时目录前校验主文件和伴随文件，并流式返回有界 NDJSON。每个请求使用独立进程，限制 CPU、内存、时长和输出；解析器不具有数据库或身份权威，客户端断开时终止解析。
+
+Worker 解析适配器在传输前核验已准入文件字节，验证 UTF-8 NDJSON 字段、行序与完成总数，并在本地将稳定 ID 绑定到来源版本。流中断会回滚，部分结果必须保留具体原因。
+
+分析任务将 XLSX/XLS、HTML/Markdown/文本、PDF 和 ZIP 资产交给隔离解析器。Worker 在现有逐资产保存点与租约校验下分批保存记录；容量失败会丢弃暂存记录并保留未知数量，加密内容标记受限。部分解析保留逐资产原因，并使完成的分析批次保持部分可用。
+
+解析 NDJSON 使用 HTTP/1.1 分块传输与明确的终止块，避免以关闭连接作为 Node Worker 唯一的完成信号；应用层完成摘要与数量校验仍然必需。
+
+GDAL 组件要求 Shapefile 的 SHX/DBF 伴随文件，保留属性、原始几何与 CRS，并禁用近似基准转换；无法确认坐标系时不产生地图几何。栅格以有界条带核验全部源像元，保留波段、缺测值、掩码、单位、比例与仿射元数据，未索引像元值时明确说明。NetCDF 保留变量维度、单位、日历属性、掩码和有界值，包括带前导零的字符串坐标。截断内容标记无效，不作为成功的空数据集。
+
+Worker 只从同一已准入版本与目录中查找地理伴随文件。Shapefile 格式组不包含无关脚本或相邻目录；ArcInfo 覆盖通过头文件解析一次。物理伴随文件以 `FORMAT_COMPANION` 和零条独立记录保留在对账中，不对每个 ADF 成员重复生成整组记录。传输的每个成员均核验哈希。
+
+解析帧最多 4 MiB，完整输出仍限制为 1 GiB，因而能保留真实案例中六个超过 1 MiB 的多边形（最大约 2.3 MB）的完整坐标。RESDC 主 Shapefile 组的三个文件共核对 8,628 条记录、零个已验证 WGS84 要素，并保留具体坐标系原因。私有案例浏览器检查需设置 `WISER_DATA_REAL_CASE=1`，与 CI 的可丢弃测试数据分别运行。
+
+Word 提取依据实际 OOXML 内容识别格式，即使后缀为 `.doc`；禁用外部 XML 实体，读取正文、表格及页眉页脚的普通文本，二进制 Word 使用 Ubuntu antiword 0.37-17。压缩包内脚本与不支持的格式仅登记，不执行；成员失败时保留已提取内容和明确结果。暂不展开嵌套 ZIP。记录总数包含内容记录和成员摘要，不表示去重后的科学观测数。
+
+探索查询对序列化冲突或死锁最多执行三次完整数据库事务，始终保留调用者范围并重新授权；其他错误不自动重试。记录视图默认优先选择已有索引内容的文件，再考虑零记录的格式伴随文件；用户明确选择的文件仍然优先。
+
+探索契约 1.3 在 `QuerySpec` 中增加提供机构完整名称、登记类型以及内容/空间就绪状态筛选。汇总统计整个已授权且固定版本的结果集，与当前资源页分别显示。分析完成但没有内容资产时为 `METADATA_ONLY`；已解析的空内容为 `EMPTY`；已解析内容没有验证几何时为 `NO_SPATIAL_DATA`，坐标系未知或无法可靠转换时为 `CRS_UNVERIFIED`。无效、受限或不支持的未解析内容保留未知数量；物理格式伴随文件不能证明分析内容可用。已索引内容记录包括来源的多种表示、文档和压缩包记录，不表示已去重的科学观测。契约归档中的 1.0–1.2 定义保持不变。
+
+截断 PDF 流与无效 PDF 页面结构归类为 `INVALID_CONTENT`，保留未知数量和来源完整性，不再将其报告为解析服务失败。
+
+探索契约 1.4 允许在 `view: "records"` 中同时提供 `queryId`、`versionId` 和 `recordId`，从固定分析批次回查一条明确记录。API 自动定位所属文件；若明确指定的文件不匹配，或记录不属于该查询，则返回未找到。单记录回查不能附带续页游标。资源、记录分页、地图和图谱仍绑定版本范围，1.3 契约保留在归档中。
+
+内部查询瓦片源 `service.wiser_exploration_mvt`（迁移 `0014_exploration_tiles.sql`）绑定租户、项目、用户、查询、用途、安全上限及授权版本七项服务端参数。GIS 角色只能执行函数，不能读取业务表。函数先重新检查全部固定成员，拒绝过期或失效查询，再按空间范围选取记录。每张瓦片将点聚合到最多 4,096 个网格，计数只包含授权范围内记录；单要素携带记录、文件、分析批次、版本和资源身份，原始字段通过记录查询回查。线面按瓦片裁切。Web Mercator 表示不覆盖其纬度范围外的极区；超过 3 MiB 的瓦片明确失败，不静默丢弃要素。可回滚的真实 PostgreSQL 集成测试解码 MVT，核对十万个点的聚类计数、响应大小、跨范围拒绝、过期和成员失效。
+
+查询结果矢量入口为 `GET/HEAD /api/data/v1/geo/tiles/vector/queries/{queryId}/{z}/{x}/{y}.pbf`，额外要求 `data.query.execute` 与 `data.catalog.read`。每次请求均在 RLS 下重新校验当前用户的查询清单及全部固定版本和分析批次，然后才调用 Martin。调用方不得提交查询参数，七项范围值全部来自已验证上下文和路径。响应使用 `exploration` 图层及 `Cache-Control: no-store`；过期、撤权或属于其他用户的查询不会访问上游。现有按版本瓦片保留原路径和图层。
+
+探索契约 1.5 增加可选的地图整体 `spatial.bounds`（WGS84；空结果为 null）及 `mercatorFeatureCount`，由同一授权记录集合计算，不受分页影响。浏览器只请求一条初始记录与范围摘要，定位整个结果范围，再按视口加载同源查询瓦片。点选单要素通过 1.4 的精确记录回查获取详情，点选聚合点继续放大。地图分别标明视口要素／聚合点数与可上图记录总数。追加迁移 `0015_exploration_tile_boundaries.sql` 明确接缝点的唯一瓦片归属，防止重复计数。1.4 契约仍保留在归档中。
+
+通过授权后的 Martin `204 No Content` 规范化为内容为空的 `200` MVT 响应，使无数据视口正常显示。这一处理仅适用于已授权的 Martin 请求；其他缺失内容类型的响应仍拒绝通过校验。
+
+当响应表明授权或固定成员范围失效，或结果到达声明的过期时间时，探索工作区一并清除当前查询、选择、文件详情及已渲染视图；从后台或历史页面恢复时再次检查同一截止时间。旧查询的迟到失败不能清除新查询，被中止的请求也不能恢复旧数据。查询表单条件保留，便于重新获取当前有权查看的结果。临时地图故障卸载画布并提供重新加载，不展示上游诊断。
+
+G6 5.1.1 的分层画布在 Next.js 打包的显式同源模块 Worker 中调用固定版本 @antv/layout 2.0.0 计算 Dagre 位置。布局只接收有界节点和边的标识。客户端校验位置有限且完整，并在成功、错误、取消或十秒截止时终止 Worker，不把失败布局悄悄转回主线程。布局完成后再渲染，选择更新保留现有画布。引擎边界最多接收 5,000 个节点和 10,000 条边用于有界压力验证；HTTP 图响应仍执行更严格的契约上限。
+
+探索契约 1.6 增加可选的 `spec.recordQuery`，必须绑定一个显式不可变 `versions` 条目和来源 `assetId`。创建查询前，最多八条文本／数值／空值条件、一项字段升降序排序和最多 32 个不重复的选择列均按固定分析文件的字段模式校验。数值转换接受有限十进制及科学计数值，不改写来源标识或原始 JSON；空值和缺失需使用显式存在性条件。记录页、地图摘要、查询瓦片与图谱记录回查执行相同条件，精确回查不能绕过筛选。排序以原始记录序号稳定打破并列。列选择约束返回的记录字段；目录就绪总数仍表示已索引的来源内容，不暗示跨文件单位换算或科学聚合。追加迁移 `0016_exploration_record_queries.sql` 提供共享条件函数并更新瓦片函数，发现服务仍保留不可变的 1.5 契约。
+
+迁移 `0017_exploration_predicate_compilation.sql` 保持类型化比较语义，并将最多八条条件的表达式交给 PostgreSQL 规划。数值转换采用带格式边界的精确 SQL/JSON 数值解析。记录查询在限定文件范围内只计算一次每个类型化字段，物化记录标识与比较值，在同一关系上完成计数和排序分页，最后仅按当前页标识读取原始内容。空值排序及来源序号的稳定并列顺序保持不变。集成测试先对比 187 组旧、新标量条件结果，再验证 RLS、分页和筛选后的瓦片。
+
+探索 1.7 增加 `view: "aggregate"`，使用已有 `queryId`、`versionId` 和 `aggregate` 来源配置。文本分组或正数宽度的数值分桶支持计数、求和、均值、最小值与最大值。分组、数值及可选单位字段均校验固定来源模式；不同单位分别统计且不换算。聚合前应用既有记录条件与授权。有效、缺失和无效数值数量可以对账；计数包含所有匹配记录。十进制结果保留为字符串，数值桶返回精确上界；最多返回 200 个分组，并明确完整分组／记录数量及截断状态。空分组／单位标签包含缺失、非标量及超过 4096 字符的标签，无效数值分组也归入空桶；未知单位仍标为未注明。Web 统计页提供字段表单、图表和精确值表格，点击可表达为条件的分组生成共享记录查询。数值图表近似显示有限十进制值，表格保留精确计算值。1.6 发现模式保持不可变。
+
+记录页将 `first` 视为条数上限，同时实施保守的 3 MiB 响应预算。PostgreSQL 先计算有序候选前缀的大小，再返回完整原始内容；选择列时先投影再计量。游标按实际返回条数推进，因字节预算缩小的页不会跳过或重复记录。预算预留元数据与查询配置开销，单条记录仍无法容纳时明确失败，不截断字段。记录视图仅返回用于身份判断的几何存在状态，完整地图几何仍由地图表示提供。
+
+探索协议 1.8 增加时间条件、时间排序，以及小时、日、月、年聚合。源格式为 `iso-offset`、`dmy-local` 或 `ymd-local`；`utcOffsetMinutes` 必须明确填写 −840 至 840 的固定偏移，不推断时区或夏令时。ISO 源值使用自身偏移；无偏移的源时间使用配置偏移，该偏移同时定义日历分组。无效日期归入无法分组，不自动修正。边界使用最多六位小数的 UTC 字符串，范围采用包含起点的 `gte` 和不包含终点的 `lt`，源字符串保持不变。浏览器支持时间折线、完整时间段刷选和等价的键盘范围控件，不同单位使用独立序列。所有视图及 MVT 复用相同条件。1.7 发现协议保持不可变。
+
+探索协议 1.9 支持新 `spec` 同时携带 `baseQueryId`。服务端先重新授权当前用户的完整基础查询，再创建新查询；匹配范围限定为基础查询已固定的版本，并保留各版本的解析批次 ID（含未解析的空值）。显式版本不能扩展到基础范围外。基础查询过期、无权访问或权限撤销时明确失败，不静默切换至新解析批次。Web 记录条件与图表选择使用此细化路径；普通新搜索仍解析当前可访问版本。1.8 发现协议保持不变。
+
+探索协议 1.10 增加不可变的 `spec.spatialBounds`，按 WGS84 西、南、东、北排列。记录、聚合、图谱记录回查和查询 MVT 在聚合前使用相同的已验证几何相交条件。资源及来源图概览显示匹配版本；来源就绪统计仍表示已索引内容。查询清单保留底层授权范围的版本与批次，使通过 `baseQueryId` 清除或改变范围时不刷新解析结果、不丢失原始范围。即使位于地图范围外，所有固定成员仍需重新授权。地图提供点、线、面显隐、图例、本地字体聚合数量与视口筛选；图层显隐只改变呈现，不改变查询授权或计数。未验证坐标的数据明确排除。1.9 发现协议保持不可变。
+
+探索协议 1.11 增加 `graph.detail`（`assets`、`evidence`、`records`），按固定版本分页展开邻居；记录展开还需指定来源文件。`graph.grain` 标明 `totalCount` 的计数单位。游标绑定焦点、展开类型与关系筛选；记录复用共享条件、固定解析批次及字节预算。`graph.relations` 筛选包含／来源关系。可选 `graph.path` 在关系筛选后的当前返回页内查找最多八条边的有向最短路径；端点不在本页时明确失败，不泄露外部节点。未找到路径只说明本页中没有路径，不代表完整知识库中不存在。1.10 契约保持不可变。
+
+保存视图使用 `data.explore.view.create`、`.list`、`.open` 和 `.revoke`；`data.explore.export` 导出一次有界查询表示。均要求 `data.query.execute` 与 `data.catalog.read`。创建／撤销为同步命令，必须携带 UUID `Idempotency-Key`，并原子写入审计与命令账本。视图保存原 QuerySpec、版本／解析批次，以及类型化 ViewSpec（视图请求、分页历史、选择身份、地图视角与图层），不复制记录正文。每位用户在项目内最多保留 100 个有效视图。默认私人可见；显式项目分享仍需当前登录用户的项目范围、用途与安全级别检查，打开时重新授权每个固定成员。列表仅返回当前用户自己的保存配置。打开时重新签发本人绑定的 30 分钟查询和游标，不解析更新版本或批次；原临时查询到期不影响持久配置。仅创建者可以单向撤销。导出重新授权请求，返回原始值、来源、明确的返回／总量和计数单位；后续页或截断结果不会标成完整。各传输入口不会在 SSR/BFF 内排空所有分页。
+
+探索工作区默认保存有名称的私人视图，支持明确选择项目分享、持久链接和创建者撤销。保存链接恢复经授权的固定查询、记录／图谱分页、所选来源、地图图层／视角及已应用的聚合配置；每次打开都会重新授权并建立新查询。导出下载一次有界 JSON 结果页，保留来源原值、准确返回／总量及完整／部分标记；地图初始记录页不代表全部已加载瓦片。尚未应用的草稿条件不会保存。
+
+数据工作区导航将检索、知识和专业空间／图谱工具归入数据探索，原有深链接继续有效，探索工具栏提供专业入口。窄屏下只有资源表可以隐藏提供机构列；记录与聚合表在自身滚动区域内保留全部所选字段和单位。来源统计将资源就绪概况放入独立折叠区，仅在展开时挂载图表。图谱画布宽度小于 560 像素时由 Worker 计算纵向布局，并提供键盘可用的缩放、全图及所选节点定位控件；视角操作不使用动画。
+
+宽度不超过 900 像素时，可通过底部按钮在非模态抽屉中查看所选来源。展开后键盘焦点进入带名称的详情区域；收起或 Escape 将焦点返回按钮，保留当前选择。取消选择时按需将焦点返回当前视图页签。桌面详情仍在侧栏中滚动。G6 内部画布图层不参与 Tab 顺序，键盘交互由有名称的视角控件和来源节点列表提供。
+
+Portal 根据已验证会话选择主操作：已登录用户进入数据工作区，匿名用户进入登录页。数据目录使用每页 25 行的游标分页及可键盘聚焦的内部滚动表格，后续页和返回第一页均保留名称条件。列表保留来源、发布、质量和安全信息，并引导结合详情中的检查范围与内容就绪状态判断。

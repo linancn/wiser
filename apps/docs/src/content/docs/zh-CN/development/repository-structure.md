@@ -150,3 +150,5 @@ pnpm --filter @wiser/web test
 修改公开 contract 后，继续验证所有直接消费者；仅通过 contract 包自己的测试不足以证明兼容。交接前仍需运行 `pnpm verify`。
 
 后端进程和健康入口见[后端开发](/development/backend/)，建立新业务边界见[新增 WISER 系统](/development/adding-a-system/)。
+
+共享 Data contracts 使用明确的 `.ts` 相对源码导入，让 Turbopack 与 Node 服务消费同一 schema。基础 TypeScript 配置启用 `rewriteRelativeImportExtensions`，运行构建会输出 `.js` 导入；Web 在 `noEmit` 下启用 `allowImportingTsExtensions`。包间依赖仍使用公开导出，修改此边界时同时验证浏览器渲染和编译后的 Node 导入。

@@ -1,6 +1,6 @@
 ---
 title: Data MCP 接入
-description: 通过共享 WISER MCP Gateway 调用 22 项 Data Capability 与 5 类受控 Resource。
+description: 通过共享 WISER MCP Gateway 调用 29 项 Data Capability 与 5 类受控 Resource。
 docType: protocol-reference
 scope: data-mcp-adapter
 status: active
@@ -18,14 +18,14 @@ checkPaths:
   - packages/data-contracts/src/capability/**
   - skills/wiser-data-foundation/**
 lastReviewedAt: 2026-09-08
-lastReviewedCommit: cf0c285878bbaa7811b03198ba51b733b252588a
+lastReviewedCommit: d88b0f5a3a4f451e8bbcb98d06d73a49a96eec58
 ---
 
 ## 只做 HTTP 适配
 
 Data MCP 是现有 WISER MCP Gateway 的静态 `WiserMcpModule`，不是第二套业务实现。stdio 与无状态 Streamable HTTP 都调用 `/api/data/v1`，从不连接 data-postgres、SeaweedFS 或任一投影，也不持有 Supabase service-role key。
 
-模块从 `@wiser/data-contracts` 的有序 Registry 注册 22 个 strict Zod Tool。Tool name、输入 schema、query/command 注解和 REST mapping 在运行时来自同一 Capability definition；不存在 AST 扫描、通用 SQL/Cypher/DSL Tool 或自动发现的数据库命令。
+模块从 `@wiser/data-contracts` 的有序 Registry 注册 29 个 strict Zod Tool。Tool name、输入 schema、query/command 注解和 REST mapping 在运行时来自同一 Capability definition；不存在 AST 扫描、通用 SQL/Cypher/DSL Tool 或自动发现的数据库命令。
 
 ## Data API 配置
 
@@ -88,7 +88,7 @@ pnpm --filter @wiser/mcp start:http
 
 禁止把任一 token 放进 query、Tool 参数、Resource URI、日志、Telemetry 或 Git。`GET /health/live` 与 `/health/ready` 无需认证且禁止缓存；优雅关闭先让 ready 变为 false，再排空在途请求。每个 `/mcp` 请求创建新 server/transport，当前入口不签发或恢复 MCP session。
 
-## 22 个 Tools
+## 29 个 Tools
 
 | MCP Tool                       | Capability                    | 类型    |
 | ------------------------------ | ----------------------------- | ------- |
@@ -122,6 +122,8 @@ GET Tool 只编码 boolean、number、string 或 string array query；path param
 ## 推荐调用流程
 
 ### 查询
+
+`data_catalog_search` 支持 `includeTotal: true`，取得不受 `first` 和当前页游标影响的已授权筛选总数 `totalCount`。覆盖统计和结果摘要应使用它，不能把一页大小当成总数，也不需要遍历全部分页。Discovery 保留不可变的 1.0 schema，并公布 1.1。
 
 1. 用 `data_catalog_search` 获取已授权 DataItem 和 cursor；
 2. 用 `data_catalog_get`/`data_catalog_version_get` 固定不可变 `versionId`；
@@ -199,3 +201,37 @@ URI segment 只接受安全字母数字与 `._:-`，不允许斜线、遍历、q
 Query 用相同 cursor/filters 重试。Command 只能用相同 principal、Tenant、Project、Purpose、Tool、arguments 与 `idempotencyKey` 重试；版本化 command 的 `expectedVersion` 也必须不变。模糊失败后用 `data_operation_get` 或最小 catalog/ingestion GET 对账，不生成新 key 盲目重复。
 
 MCP 不替调用方保存 bearer、upload id、multipart ETag 或 Operation cursor。调用方负责把这些状态保存在受保护、可恢复且不会进入 Agent 可见正文的位置。
+
+## 共享探索
+
+`data_explore_query` 通过 `POST /api/data/v1/explore/query` 调用 `data.explore.query`。首次使用 `{"spec":{"text":"water"},"view":"resources","first":20}`，续查引用返回的 `queryId`，将 `nextCursor` 传入 `after`。API 固定已发布版本，清单有效期最长 30 分钟，每次调用重新授权所属用户和上下文。MCP Gateway 不访问结果集数据库。`NOT_PARSED` 和空分析数量表示登记就绪情况，不能用来推断没有观测数据。
+
+`data.analysis.create` 接收已发布的 `dataItemId` / `versionId` 和幂等键，原子创建带审计的操作与持久化分析任务，不改变来源登记与质量声明。REST：`POST /api/data/v1/analyses`；GraphQL：`createDataAnalysis(input: JSON!)`；MCP：`data_analysis_create`。需要 `data.ingestion.write` 与 `data.catalog.read` 权限；通过返回的操作 ID 查询进度。
+
+探索契约 1.1 将已完成的分析批次与已发布版本共同固定。`view: "records"` 必须提供 `queryId` 和 `versionId`，返回逐资产字段定义、稳定的记录/要素 ID 及有界分页。`view: "map"` 复用同一结果集，支持可选的 WGS84 `[west,south,east,north]` 范围。游标绑定视图与过滤条件。要纳入原查询之后完成的分析，需要重新运行查询条件。数量表示已索引记录，资源就绪状态与覆盖信息同时披露未解析来源。
+
+探索契约 1.2 在同一授权清单上增加 `view: "graph"`。可选 `versionId` 缩小资源图范围；`recordId` 还要求该版本及其固定分析批次中的记录。资源、版本、文件和证据节点具有明确类型，关系表示权威包含关系；聚焦记录与表格、地图共用身份，文件节点保留来源哈希。这一溯源视图不推断科学关系。每页最多包含 100 个版本、200 个文件和 100 个证据片段；`truncated` 披露省略节点，`nextCursor` 翻阅后续版本，改变聚焦条件不能复用游标。此前 1.0 与 1.1 的契约定义保留在归档中。
+
+探索契约 1.3 在 `QuerySpec` 中增加提供机构完整名称、登记类型以及内容/空间就绪状态筛选。汇总统计整个已授权且固定版本的结果集，与当前资源页分别显示。分析完成但没有内容资产时为 `METADATA_ONLY`；已解析的空内容为 `EMPTY`；已解析内容没有验证几何时为 `NO_SPATIAL_DATA`，坐标系未知或无法可靠转换时为 `CRS_UNVERIFIED`。无效、受限或不支持的未解析内容保留未知数量；物理格式伴随文件不能证明分析内容可用。已索引内容记录包括来源的多种表示、文档和压缩包记录，不表示已去重的科学观测。契约归档中的 1.0–1.2 定义保持不变。
+
+探索契约 1.4 允许在 `view: "records"` 中同时提供 `queryId`、`versionId` 和 `recordId`，从固定分析批次回查一条明确记录。API 自动定位所属文件；若明确指定的文件不匹配，或记录不属于该查询，则返回未找到。单记录回查不能附带续页游标。资源、记录分页、地图和图谱仍绑定版本范围，1.3 契约保留在归档中。
+
+探索契约 1.5 增加可选的地图整体 `spatial.bounds`（WGS84；空结果为 null）及 `mercatorFeatureCount`，由同一授权记录集合计算，不受分页影响。浏览器只请求一条初始记录与范围摘要，定位整个结果范围，再按视口加载同源查询瓦片。点选单要素通过 1.4 的精确记录回查获取详情，点选聚合点继续放大。地图分别标明视口要素／聚合点数与可上图记录总数。追加迁移 `0015_exploration_tile_boundaries.sql` 明确接缝点的唯一瓦片归属，防止重复计数。1.4 契约仍保留在归档中。
+
+探索 1.6 通过同一能力传递严格文件级 `recordQuery`：一个显式版本、经来源字段模式校验的类型化条件、稳定字段排序和列选择。记录、地图瓦片与图谱记录回查共享不可变条件；边界及空值／数值语义见 Data REST。
+
+探索 1.7 增加 `view: "aggregate"`，使用已有 `queryId`、`versionId` 和 `aggregate` 来源配置。文本分组或正数宽度的数值分桶支持计数、求和、均值、最小值与最大值。分组、数值及可选单位字段均校验固定来源模式；不同单位分别统计且不换算。聚合前应用既有记录条件与授权。有效、缺失和无效数值数量可以对账；计数包含所有匹配记录。十进制结果保留为字符串，数值桶返回精确上界；最多返回 200 个分组，并明确完整分组／记录数量及截断状态。空分组／单位标签包含缺失、非标量及超过 4096 字符的标签，无效数值分组也归入空桶；未知单位仍标为未注明。Web 统计页提供字段表单、图表和精确值表格，点击可表达为条件的分组生成共享记录查询。数值图表近似显示有限十进制值，表格保留精确计算值。1.6 发现模式保持不可变。
+
+记录页将 `first` 视为条数上限，同时实施保守的 3 MiB 响应预算。PostgreSQL 先计算有序候选前缀的大小，再返回完整原始内容；选择列时先投影再计量。游标按实际返回条数推进，因字节预算缩小的页不会跳过或重复记录。预算预留元数据与查询配置开销，单条记录仍无法容纳时明确失败，不截断字段。记录视图仅返回用于身份判断的几何存在状态，完整地图几何仍由地图表示提供。
+
+探索协议 1.8 增加时间条件、时间排序，以及小时、日、月、年聚合。源格式为 `iso-offset`、`dmy-local` 或 `ymd-local`；`utcOffsetMinutes` 必须明确填写 −840 至 840 的固定偏移，不推断时区或夏令时。ISO 源值使用自身偏移；无偏移的源时间使用配置偏移，该偏移同时定义日历分组。无效日期归入无法分组，不自动修正。边界使用最多六位小数的 UTC 字符串，范围采用包含起点的 `gte` 和不包含终点的 `lt`，源字符串保持不变。浏览器支持时间折线、完整时间段刷选和等价的键盘范围控件，不同单位使用独立序列。所有视图及 MVT 复用相同条件。1.7 发现协议保持不可变。
+
+探索协议 1.9 支持新 `spec` 同时携带 `baseQueryId`。服务端先重新授权当前用户的完整基础查询，再创建新查询；匹配范围限定为基础查询已固定的版本，并保留各版本的解析批次 ID（含未解析的空值）。显式版本不能扩展到基础范围外。基础查询过期、无权访问或权限撤销时明确失败，不静默切换至新解析批次。Web 记录条件与图表选择使用此细化路径；普通新搜索仍解析当前可访问版本。1.8 发现协议保持不变。
+
+探索协议 1.10 增加不可变的 `spec.spatialBounds`，按 WGS84 西、南、东、北排列。记录、聚合、图谱记录回查和查询 MVT 在聚合前使用相同的已验证几何相交条件。资源及来源图概览显示匹配版本；来源就绪统计仍表示已索引内容。查询清单保留底层授权范围的版本与批次，使通过 `baseQueryId` 清除或改变范围时不刷新解析结果、不丢失原始范围。即使位于地图范围外，所有固定成员仍需重新授权。地图提供点、线、面显隐、图例、本地字体聚合数量与视口筛选；图层显隐只改变呈现，不改变查询授权或计数。未验证坐标的数据明确排除。1.9 发现协议保持不可变。
+
+探索协议 1.11 增加 `graph.detail`（`assets`、`evidence`、`records`），按固定版本分页展开邻居；记录展开还需指定来源文件。`graph.grain` 标明 `totalCount` 的计数单位。游标绑定焦点、展开类型与关系筛选；记录复用共享条件、固定解析批次及字节预算。`graph.relations` 筛选包含／来源关系。可选 `graph.path` 在关系筛选后的当前返回页内查找最多八条边的有向最短路径；端点不在本页时明确失败，不泄露外部节点。未找到路径只说明本页中没有路径，不代表完整知识库中不存在。1.10 契约保持不可变。
+
+保存视图使用 `data.explore.view.create`、`.list`、`.open` 和 `.revoke`；`data.explore.export` 导出一次有界查询表示。均要求 `data.query.execute` 与 `data.catalog.read`。创建／撤销为同步命令，必须携带 UUID `Idempotency-Key`，并原子写入审计与命令账本。视图保存原 QuerySpec、版本／解析批次，以及类型化 ViewSpec（视图请求、分页历史、选择身份、地图视角与图层），不复制记录正文。每位用户在项目内最多保留 100 个有效视图。默认私人可见；显式项目分享仍需当前登录用户的项目范围、用途与安全级别检查，打开时重新授权每个固定成员。列表仅返回当前用户自己的保存配置。打开时重新签发本人绑定的 30 分钟查询和游标，不解析更新版本或批次；原临时查询到期不影响持久配置。仅创建者可以单向撤销。导出重新授权请求，返回原始值、来源、明确的返回／总量和计数单位；后续页或截断结果不会标成完整。各传输入口不会在 SSR/BFF 内排空所有分页。
+
+`data_explore_view_create`, `data_explore_view_list`, `data_explore_view_open`, `data_explore_view_revoke`, `data_explore_export` 以相同已验证范围转发对应 HTTP 能力。命令需携带 `idempotencyKey`。

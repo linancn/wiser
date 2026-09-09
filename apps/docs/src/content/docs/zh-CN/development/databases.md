@@ -18,8 +18,8 @@ checkPaths:
   - packages/data-infra/src/migrations/**
   - scripts/data-foundation/**
   - compose.yaml
-lastReviewedAt: 2026-08-22
-lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
+lastReviewedAt: 2026-09-08
+lastReviewedCommit: 3cef59b9346fb4b348c8713f6965e88b7e2f1dc3
 ---
 
 ## 先区分两个 PostgreSQL 边界
@@ -156,3 +156,23 @@ WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
 `data:reset` 只有在确认值正确时才会继续，并只删除脚本解析和校验过的 WISER Data Foundation named volumes；这些数据仍不可恢复。执行前先确认没有需要保留的本机上传、版本、对象或投影。重置后使用 `pnpm stack:full:up` 重建、迁移、seed 并 smoke。
 
 仓库当前没有保留现有命名卷同时创建临时 Data 数据库的标准命令。“从空库重放”应在 CI 或可丢弃的本机环境中，以确认式 `data:reset → stack:full:up` 证明；需要保留本机数据时停止，不要把破坏性 reset 当普通测试步骤。
+
+## 探索清单
+
+`0011_exploration_queries.sql` 增加私有 `service.exploration_snapshot` 缓存，具有强制所属用户 RLS、不可变清单、最长 30 分钟有效期、有界版本引用，以及用户和过期索引。查询事务额外设置 `wiser.actor_id`、`wiser.purpose`；授权版本与安全上限必须精确匹配。Runtime provisioning 仅为此缓存授予删除并撤销更新权限，不放宽历史表的只追加约束。建立新查询会清理同一可见用户与上下文的过期或超额清单。不活跃上下文留下的过期清单可由特权运维通过过期索引清理；过期不代表已经物理删除。
+
+设置 `WISER_DATA_PG_INTEGRATION=1` 和指向已迁移数据库的 `DATA_TEST_DATABASE_URL`，运行 `apps/api/test/data-exploration.integration.spec.ts`。合成数据和临时不可绕过 RLS 的角色均处于最终回滚的事务内，验证稳定分页、新旧固定版本、历史版本查询、空结果、用户/项目/租户/Purpose/授权版本/安全上限隔离及过期处理。
+
+迁移 `0012_analysis.sql` 在独立数据底座数据库中增加按作用域与版本绑定的分析批次、逐资产结果及 PostGIS 记录。使用校验和迁移工具升级，不重置已登记的源数据。
+
+迁移 `0013_analysis_query_scope.sql` 保留分析记录的强制 RLS 及相同的租户、项目、安全等级、策略版本条件，将请求内恒定的辅助函数改为每条语句计算一次。记录分页按选定分析批次和文件的索引顺序读取；总数仍统计获授权的记录，不以更宽范围的资产元数据代替。真实 361,379 行水库来源纳入有界分页的浏览器性能测试。
+
+内部查询瓦片源 `service.wiser_exploration_mvt`（迁移 `0014_exploration_tiles.sql`）绑定租户、项目、用户、查询、用途、安全上限及授权版本七项服务端参数。GIS 角色只能执行函数，不能读取业务表。函数先重新检查全部固定成员，拒绝过期或失效查询，再按空间范围选取记录。每张瓦片将点聚合到最多 4,096 个网格，计数只包含授权范围内记录；单要素携带记录、文件、分析批次、版本和资源身份，原始字段通过记录查询回查。线面按瓦片裁切。Web Mercator 表示不覆盖其纬度范围外的极区；超过 3 MiB 的瓦片明确失败，不静默丢弃要素。可回滚的真实 PostgreSQL 集成测试解码 MVT，核对十万个点的聚类计数、响应大小、跨范围拒绝、过期和成员失效。
+
+探索契约 1.5 增加可选的地图整体 `spatial.bounds`（WGS84；空结果为 null）及 `mercatorFeatureCount`，由同一授权记录集合计算，不受分页影响。浏览器只请求一条初始记录与范围摘要，定位整个结果范围，再按视口加载同源查询瓦片。点选单要素通过 1.4 的精确记录回查获取详情，点选聚合点继续放大。地图分别标明视口要素／聚合点数与可上图记录总数。追加迁移 `0015_exploration_tile_boundaries.sql` 明确接缝点的唯一瓦片归属，防止重复计数。1.4 契约仍保留在归档中。
+
+迁移 `0016_exploration_record_queries.sql` 增加确定性数值转换和共享记录条件，并更新查询瓦片函数，在聚合前应用不可变文件范围与条件。既有迁移保持不变。可回滚集成验证覆盖类型转换、排序分页、列选择、精确记录与图谱回查，以及解码后的筛选瓦片计数。
+
+迁移 `0017_exploration_predicate_compilation.sql` 保持类型化比较语义，并将最多八条条件的表达式交给 PostgreSQL 规划。数值转换采用带格式边界的精确 SQL/JSON 数值解析。记录查询在限定文件范围内只计算一次每个类型化字段，物化记录标识与比较值，在同一关系上完成计数和排序分页，最后仅按当前页标识读取原始内容。空值排序及来源序号的稳定并列顺序保持不变。集成测试先对比 187 组旧、新标量条件结果，再验证 RLS、分页和筛选后的瓦片。
+
+迁移 `0020_exploration_saved_views.sql` 创建强制 RLS 的保存配置，支持本人私有或显式项目可见。内容不可变，仅允许单向设置 `revoked_at`；运行角色配置在通用授权后恢复仅撤销列的更新权限。复用现有命令事务，原子写入幂等、审计与 Outbox。保存表不承担身份或成员权限权威。

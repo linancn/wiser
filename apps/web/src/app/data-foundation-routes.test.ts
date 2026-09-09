@@ -11,6 +11,7 @@ const routePages = [
   '[locale]/data-foundation/ingestions/page.tsx',
   '[locale]/data-foundation/ingestions/[ingestionId]/page.tsx',
   '[locale]/data-foundation/operations/[operationId]/page.tsx',
+  '[locale]/data-foundation/explore/page.tsx',
   '[locale]/data-foundation/search/page.tsx',
   '[locale]/data-foundation/knowledge/page.tsx',
   '[locale]/data-foundation/graph/page.tsx',
@@ -34,6 +35,7 @@ describe('Data Foundation management routes', () => {
     expect(dictionaries['zh-CN'].dataFoundation.navigation).toEqual({
       label: '数据基座工作区',
       overview: '总览',
+      explore: '数据探索',
       catalog: '目录',
       ingestions: '入库',
       quality: '质量',
@@ -47,6 +49,7 @@ describe('Data Foundation management routes', () => {
     expect(dictionaries.en.dataFoundation.navigation).toEqual({
       label: 'Data Foundation workspace',
       overview: 'Overview',
+      explore: 'Explore',
       catalog: 'Catalog',
       ingestions: 'Ingestions',
       quality: 'Quality',

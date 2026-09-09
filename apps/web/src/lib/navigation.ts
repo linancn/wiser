@@ -25,6 +25,7 @@ const DATA_ROUTE_GROUPS = {
   catalog: 'manage',
   ingestions: 'manage',
   quality: 'manage',
+  explore: 'explore',
   search: 'explore',
   knowledge: 'explore',
   graph: 'explore',
@@ -33,11 +34,17 @@ const DATA_ROUTE_GROUPS = {
   capabilities: 'services',
 } as const;
 
+const specialistKeys = new Set(['search', 'knowledge', 'graph', 'geo', 'map']);
+export const EXPLORATION_TOOLS = Object.freeze(
+  DATA_FOUNDATION_ROUTES.filter((route) => specialistKeys.has(route.key)),
+);
 const DATA_CONTEXT_ROUTES = Object.freeze(
-  DATA_FOUNDATION_ROUTES.map((route) => ({
-    ...route,
-    group: DATA_ROUTE_GROUPS[route.key],
-  })),
+  DATA_FOUNDATION_ROUTES.filter((route) => !specialistKeys.has(route.key)).map(
+    (route) => ({
+      ...route,
+      group: DATA_ROUTE_GROUPS[route.key],
+    }),
+  ),
 );
 
 export type ContextRoute =
@@ -89,6 +96,11 @@ export function isContextRouteActive(
 ): boolean {
   const path = localeFreePath(pathname);
   if (route.key === 'overview') return path === '/data-foundation';
+  if (route.key === 'explore')
+    return (
+      path === '/data-foundation/explore' ||
+      EXPLORATION_TOOLS.some((tool) => path === `/data-foundation${tool.path}`)
+    );
   if (route.key === 'catalog') {
     return (
       path.startsWith('/data-foundation/catalog') ||

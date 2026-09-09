@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createS3AuthorityObjectReader,
+  createS3VersionObjectReader,
   type S3AuthorityCommandClient,
 } from '../../src/object-store/index.js';
 
@@ -41,6 +42,31 @@ class FakeClient implements S3AuthorityCommandClient {
 }
 
 describe('bounded S3 authority reader', () => {
+  it('reads only the canonical version hash key and bounds the full body', async () => {
+    const client = new FakeClient();
+    const read = createS3VersionObjectReader({
+      bucket: 'wiser-authority',
+      client,
+    });
+    const ref = {
+      tenantId,
+      projectId,
+      versionId: uploadId,
+      sha256: 'a'.repeat(64),
+      maximumBytes: 6,
+    };
+    expect(await read(ref)).toEqual(new Uint8Array([1, 2, 3, 4, 5, 6]));
+    expect(client.commands[0]?.input['Key']).toBe(
+      `tenants/${tenantId}/projects/${projectId}/versions/${uploadId}/sha256/${'a'.repeat(64)}`,
+    );
+    await expect(read({ ...ref, versionId: '../other' })).rejects.toMatchObject(
+      { code: 'INVALID_OBJECT_REFERENCE' },
+    );
+    client.oversized = true;
+    await expect(read(ref)).rejects.toMatchObject({
+      code: 'OBJECT_INTEGRITY_MISMATCH',
+    });
+  });
   it('derives the quarantine key and returns a bounded stream without arbitrary paths', async () => {
     const client = new FakeClient();
     const reader = createS3AuthorityObjectReader({

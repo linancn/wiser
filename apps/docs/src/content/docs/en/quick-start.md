@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-09-08
-lastReviewedCommit: 7ab2bd8be45955cbf1c7e7c58dde27bccc145c50
+lastReviewedCommit: 4d8a440d12ab9e554934b531bb3c781134966e6c
 ---
 
 This page covers the first complete run only. See the [local development environment](/en/development/local-environment/) for standalone frontend/backend commands, every port, environment variables, and troubleshooting.
@@ -83,7 +83,7 @@ WiserLocalOperator-2026!
 
 This account and password are only for local seed data. Never copy them into a shared or production environment.
 
-The complete stack injects a real local Supabase identity for Data Foundation Web and Data MCP. The shared MCP process also receives a local placeholder that is sufficient only to configure the EXCON client. Data Tools do not use it, but every `excon_*` call fails authentication until a real RunAgent-bound credential is supplied. Agent EXCON live Web still needs a server-side operator credential; missing or invalid identity produces an explicit unavailable state and never falls back to fabricated data.
+The complete stack injects a real local Supabase identity for Data Foundation Web and Data MCP. The shared MCP process also receives a local placeholder that is sufficient only to configure the EXCON client. Data Tools do not use it, but every `excon_*` call fails authentication until a real RunAgent-bound credential is supplied. Agent EXCON live Web uses the verified signed-in Supabase user session and checks operator authorization. Missing or invalid identity produces an explicit failure and never falls back to fabricated data.
 
 ## Verify the Agent EXCON protocol loop
 
@@ -93,7 +93,7 @@ Use an isolated local lab and four deterministic scripted RunAgents to verify EX
 pnpm cookbook:scripted
 ```
 
-This proves the Agent EXCON system but does not upgrade the complete-stack Web placeholder into a live operator/RunAgent identity. Real EXCON live clients still obtain dedicated credentials from a trusted Run staffing or operator workflow.
+This proves the Agent EXCON system. EXCON MCP clients obtain RunAgent credentials from trusted Run staffing; live Web uses the verified signed-in Supabase user with operator authorization.
 
 ## 4. Stop
 

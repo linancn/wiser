@@ -1,6 +1,20 @@
 import 'server-only';
 
 import { connection } from 'next/server';
+import {
+  CreateExplorationViewInputSchema,
+  CreateExplorationViewOutputSchema,
+  ListExplorationViewsInputSchema,
+  ListExplorationViewsOutputSchema,
+  OpenExplorationViewInputSchema,
+  OpenExplorationViewOutputSchema,
+  RevokeExplorationViewOutputSchema,
+  ExportExplorationInputSchema,
+  ExportExplorationOutputSchema,
+  ExplorationQueryInputSchema,
+  ExplorationResultSchema,
+  type ExplorationResult,
+} from '@wiser/data-contracts';
 
 import {
   parseCapabilityRegistry,
@@ -30,11 +44,15 @@ import {
   type StacFeatureCollectionDto,
 } from './data-foundation';
 import { createWiserServerSupabaseClient } from './supabase/server';
+import {
+  verifiedSessionAccessToken,
+  VerifiedSessionError,
+  type VerifiedSessionClient,
+} from './supabase/verified-session';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PURPOSE_PATTERN = /^[a-z][a-z0-9-]{0,95}$/;
-const MAX_ACCESS_TOKEN_BYTES = 16_384;
 const DEFAULT_TIMEOUT_MS = 8_000;
 const DEFAULT_RESPONSE_LIMIT_BYTES = 4_194_304;
 const GEO_PAGE_SIZE = 100;
@@ -57,20 +75,7 @@ export interface DataFoundationWebConfig {
   readonly responseLimitBytes: number;
 }
 
-export interface DataFoundationAuthClient {
-  readonly auth: {
-    getClaims(): Promise<{
-      readonly data: { readonly claims?: unknown } | null;
-      readonly error: unknown;
-    }>;
-    getSession(): Promise<{
-      readonly data: {
-        readonly session: { readonly access_token?: unknown } | null;
-      } | null;
-      readonly error: unknown;
-    }>;
-  };
-}
+export type DataFoundationAuthClient = VerifiedSessionClient;
 
 export type DataFoundationApiErrorKind =
   | 'authentication'
@@ -92,9 +97,16 @@ export class DataFoundationApiError extends Error {
 }
 
 export interface DataFoundationDal {
+  explorationView(
+    action: 'create' | 'list' | 'open' | 'revoke' | 'export',
+    input: unknown,
+    idempotencyKey?: string,
+  ): Promise<unknown>;
+  explore(input: unknown): Promise<ExplorationResult>;
   health(): Promise<DataHealthDto>;
   capabilities(): Promise<CapabilityRegistryDto>;
   catalog(input: {
+    readonly includeTotal?: boolean;
     readonly query?: string;
     readonly qualityGrades?: readonly string[];
     readonly first: number;
@@ -122,12 +134,6 @@ interface DataFoundationDalOptions {
   readonly createAuthClient: () => Promise<DataFoundationAuthClient | null>;
   readonly fetch?: typeof globalThis.fetch;
   readonly now?: () => Date;
-}
-
-interface VerifiedClaims {
-  readonly sub: string;
-  readonly sessionId: string;
-  readonly exp: number;
 }
 
 function positiveInteger(
@@ -203,104 +209,18 @@ export function loadDataFoundationWebConfig(
   };
 }
 
-function record(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function verifiedClaims(value: unknown, now: Date): VerifiedClaims | null {
-  const claims = record(value);
-  if (
-    claims === null ||
-    claims.role !== 'authenticated' ||
-    typeof claims.sub !== 'string' ||
-    !UUID_PATTERN.test(claims.sub) ||
-    typeof claims.session_id !== 'string' ||
-    !UUID_PATTERN.test(claims.session_id) ||
-    typeof claims.exp !== 'number' ||
-    !Number.isSafeInteger(claims.exp) ||
-    claims.exp * 1_000 <= now.valueOf()
-  ) {
-    return null;
-  }
-  return {
-    sub: claims.sub,
-    sessionId: claims.session_id,
-    exp: claims.exp,
-  };
-}
-
-function decodeAccessTokenClaims(
-  token: string,
-): Record<string, unknown> | null {
-  const parts = token.split('.');
-  const payload = parts[1];
-  if (parts.length !== 3 || payload === undefined) return null;
-  try {
-    const decoded = Buffer.from(payload, 'base64url').toString('utf8');
-    if (Buffer.from(decoded).toString('base64url') !== payload) return null;
-    return record(JSON.parse(decoded) as unknown);
-  } catch {
-    return null;
-  }
-}
-
 async function verifiedAccessToken(
   createAuthClient: DataFoundationDalOptions['createAuthClient'],
   now: () => Date,
 ): Promise<string> {
-  let client: DataFoundationAuthClient | null;
   try {
-    client = await createAuthClient();
-  } catch {
-    throw new DataFoundationApiError('configuration', 503);
-  }
-  if (client === null) {
-    throw new DataFoundationApiError('configuration', 503);
-  }
-  let claimsResult: Awaited<
-    ReturnType<DataFoundationAuthClient['auth']['getClaims']>
-  >;
-  try {
-    claimsResult = await client.auth.getClaims();
-  } catch {
+    return await verifiedSessionAccessToken(createAuthClient, now);
+  } catch (error) {
+    if (error instanceof VerifiedSessionError) {
+      throw new DataFoundationApiError(error.kind, error.status);
+    }
     throw new DataFoundationApiError('authentication', 401);
   }
-  const claims =
-    claimsResult.error === null
-      ? verifiedClaims(claimsResult.data?.claims, now())
-      : null;
-  if (claims === null) {
-    throw new DataFoundationApiError('authentication', 401);
-  }
-  let sessionResult: Awaited<
-    ReturnType<DataFoundationAuthClient['auth']['getSession']>
-  >;
-  try {
-    sessionResult = await client.auth.getSession();
-  } catch {
-    throw new DataFoundationApiError('authentication', 401);
-  }
-  const token = sessionResult.data?.session?.access_token;
-  if (
-    sessionResult.error !== null ||
-    typeof token !== 'string' ||
-    token.length === 0 ||
-    Buffer.byteLength(token) > MAX_ACCESS_TOKEN_BYTES
-  ) {
-    throw new DataFoundationApiError('authentication', 401);
-  }
-  const payload = decodeAccessTokenClaims(token);
-  if (
-    payload?.sub !== claims.sub ||
-    payload.session_id !== claims.sessionId ||
-    payload.exp !== claims.exp ||
-    payload.role !== 'authenticated'
-  ) {
-    throw new DataFoundationApiError('authentication', 401);
-  }
-  return token;
 }
 
 function classifyStatus(status: number): DataFoundationApiError {
@@ -385,6 +305,7 @@ export function createDataFoundationDal(
   async function call(
     path: string,
     init: {
+      readonly idempotencyKey?: string;
       readonly method?: 'GET' | 'POST';
       readonly body?: unknown;
       readonly acceptedStatuses?: readonly number[];
@@ -402,6 +323,8 @@ export function createDataFoundationDal(
       'X-WISER-Project-ID': options.config.projectId,
       'X-WISER-Purpose': options.config.purpose,
     });
+    if (init.idempotencyKey)
+      headers.set('Idempotency-Key', init.idempotencyKey);
     if (init.body !== undefined) {
       headers.set('Content-Type', 'application/json; charset=utf-8');
     }
@@ -457,6 +380,68 @@ export function createDataFoundationDal(
   }
 
   const dal: DataFoundationDal = {
+    explorationView: (action, input, idempotencyKey) => {
+      if (
+        (action === 'create' || action === 'revoke') &&
+        (!idempotencyKey || !UUID_PATTERN.test(idempotencyKey))
+      )
+        throw new DataFoundationApiError('invalid-request', 422);
+      const schemas = {
+        create: [
+          CreateExplorationViewInputSchema,
+          CreateExplorationViewOutputSchema,
+        ],
+        list: [
+          ListExplorationViewsInputSchema,
+          ListExplorationViewsOutputSchema,
+        ],
+        open: [OpenExplorationViewInputSchema, OpenExplorationViewOutputSchema],
+        revoke: [
+          OpenExplorationViewInputSchema,
+          RevokeExplorationViewOutputSchema,
+        ],
+        export: [ExportExplorationInputSchema, ExportExplorationOutputSchema],
+      } as const;
+      const [inputSchema, outputSchema] = schemas[action];
+      const checked = inputSchema.safeParse(input);
+      if (!checked.success)
+        throw new DataFoundationApiError('invalid-request', 422);
+      const path =
+        action === 'export'
+          ? '/api/data/v1/explore/export'
+          : action === 'open' || action === 'revoke'
+            ? `/api/data/v1/explore/views/${OpenExplorationViewInputSchema.parse(checked.data).viewId}/${action}`
+            : '/api/data/v1/explore/views';
+      return parsed(
+        () =>
+          call(path, {
+            method: action === 'list' ? 'GET' : 'POST',
+            ...(action === 'list'
+              ? {}
+              : {
+                  body:
+                    action === 'open' || action === 'revoke'
+                      ? {}
+                      : checked.data,
+                }),
+            ...(idempotencyKey ? { idempotencyKey } : {}),
+          }),
+        (value) => outputSchema.parse(value),
+      );
+    },
+    explore: (input) => {
+      const criteria = ExplorationQueryInputSchema.safeParse(input);
+      if (!criteria.success)
+        throw new DataFoundationApiError('invalid-request', 422);
+      return parsed(
+        () =>
+          call('/api/data/v1/explore/query', {
+            method: 'POST',
+            body: criteria.data,
+          }),
+        (value) => ExplorationResultSchema.parse(value),
+      );
+    },
     health: () =>
       parsed(
         () =>
@@ -476,6 +461,8 @@ export function createDataFoundationDal(
         throw new DataFoundationApiError('invalid-request', 422);
       }
       const search = new URLSearchParams({ first: String(input.first) });
+      if (input.includeTotal !== undefined)
+        search.set('includeTotal', String(input.includeTotal));
       if (input.query !== undefined) {
         validateQuery(input.query, 512);
         search.set('query', input.query);
@@ -666,7 +653,7 @@ function governedGeoPath(path: readonly string[]): string | null {
   }
   const joined = path.join('/');
   if (
-    /^(?:ogc\/(?:wms|wfs|wcs|wmts)|stac\/(?:conformance|search|collections\/(?:current|wiser-[a-f0-9]{32})(?:\/items(?:\/wiser-[a-f0-9]{48})?)?)|tiles\/vector\/versions\/[0-9a-f-]{36}\/\d{1,2}\/\d+\/\d+\.pbf|tiles\/raster\/versions\/[0-9a-f-]{36}\/WebMercatorQuad\/\d{1,2}\/\d+\/\d+\.(?:png|jpg|webp))$/i.test(
+    /^(?:ogc\/(?:wms|wfs|wcs|wmts)|stac\/(?:conformance|search|collections\/(?:current|wiser-[a-f0-9]{32})(?:\/items(?:\/wiser-[a-f0-9]{48})?)?)|tiles\/vector\/(?:versions|queries)\/[0-9a-f-]{36}\/\d{1,2}\/\d+\/\d+\.pbf|tiles\/raster\/versions\/[0-9a-f-]{36}\/WebMercatorQuad\/\d{1,2}\/\d+\/\d+\.(?:png|jpg|webp))$/i.test(
       joined,
     )
   ) {

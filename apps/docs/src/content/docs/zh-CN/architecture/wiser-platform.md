@@ -17,8 +17,8 @@ checkPaths:
   - packages/**
   - infrastructure/**
   - supabase/**
-lastReviewedAt: 2026-09-08
-lastReviewedCommit: cd004c35cd46719da2abb2bd013800af348eeff3
+lastReviewedAt: 2026-09-09
+lastReviewedCommit: c707fa20715254db0b0e46d1534d7741535a6532
 ---
 
 ## 决策摘要
@@ -29,7 +29,7 @@ WISER 是产品与平台总上下文。Agent EXCON 与 Data Foundation 是平级
 
 Portal 和 Docs 共用可复制的[智能体接入流程](/protocols/agent-setup/)。API 分发按内容固定的 Skill 发行包与公开协议元数据，这些公开资源不授予身份或数据访问权限；安装后的 Skill 仍通过统一 HTTP/MCP 边界及单独验证的项目上下文工作。
 
-“统一身份”表示同一 Supabase/Platform 权威和授权上下文，不表示所有客户端复用一枚交互式 credential。Data Web 使用用户的 Supabase SSR Session；EXCON live Web 使用服务端 operator credential；MCP transport bearer、EXCON RunAgent credential 与 Data API identity 各自承担不同边界，不能互换。
+“统一身份”表示同一 Supabase/Platform 权威和授权上下文。Data Web 与 EXCON live Web 都先验证 claims，再匹配 Token 的主体、Session 和到期时间，随后转发当前用户的 Supabase SSR Session。MCP transport bearer 与 EXCON RunAgent credential 承担不同边界，不能与该 Session 互换；静态 Web operator credential 仅限显式关闭 Auth 的本机开发模式。
 
 ## 系统边界
 

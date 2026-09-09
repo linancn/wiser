@@ -15,8 +15,8 @@ checkPaths:
   - apps/api/src/platform/**
   - apps/api/src/v2-*
   - apps/api/src/data-foundation/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: c4092d9f961841f89cdf9ed383360c41f809bd17
+lastReviewedAt: 2026-09-09
+lastReviewedCommit: bf9076880c57e7249cb8018142d2c5a851ed7165
 ---
 
 # WISER Web / 产品前端
@@ -42,8 +42,8 @@ Run pages include overview, collaboration, replay, trace, and diagnostics. Data 
 - Supabase SSR handles login, cookie refresh, sign-out, and Data Foundation's authenticated server-only DAL.
 - In Supabase mode, Portal and Auth routes are public. Other localized product routes require verified authenticated claims and preserve the requested destination through sign-in. Auth-off is local preview only.
 - Data pages forward the current short-lived Session token from the Next.js server; browsers never receive database, S3, projection, or internal GIS credentials.
-- Agent EXCON `reference` mode renders the committed regression preview. `live` mode reads safe v2 operator DTOs server-side with `WISER_WEB_OPERATOR_TOKEN` and `cache: no-store`.
-- The complete stack's local Data operator Session does not automatically become the EXCON live operator credential. Missing/invalid EXCON identity produces an explicit unavailable state and never falls back to reference data.
+- Agent EXCON `reference` mode renders the committed regression preview. `live` mode reads safe v2 operator DTOs with the verified current Supabase user session and `cache: no-store`.
+- The API rechecks EXCON operator authorization for that user. An invalid session never falls back to a service identity or reference data. Static operator tokens remain limited to local Auth-off development.
 
 ## Run / 运行
 
@@ -59,7 +59,9 @@ Standalone EXCON preview needs no API:
 AGENT_EXCON_WEB_DATA_MODE=reference pnpm --filter @wiser/web dev
 ```
 
-Use `pnpm stack:full:up` for unified Auth and Data Foundation integration. Use the server-only `AGENT_EXCON_API_INTERNAL_URL` plus a real least-scope `WISER_WEB_OPERATOR_TOKEN` when testing EXCON `live` mode.
+Use `pnpm stack:full:up` for unified Auth and Data Foundation integration. Configure the server-only `AGENT_EXCON_API_INTERNAL_URL` and sign in as an authorized operator when testing EXCON `live` mode with Supabase.
+
+The graph workspace uses G6 5.1.1 with client-only loading, bounded HTTP results and accessible entity selection. / 图谱工作区按需加载 G6 5.1.1，并以有界 HTTP 结果提供画布和键盘实体选择。
 
 ## UI contract / 界面合同
 
@@ -75,3 +77,21 @@ pnpm --filter @wiser/web test:e2e
 ```
 
 See [Frontend development](../docs/src/content/docs/en/development/frontend.md) / [前端开发](../docs/src/content/docs/zh-CN/development/frontend.md) for route, Auth, i18n, theme, and Playwright details.
+
+Data exploration at `/[locale]/data-foundation/explore` uses shared `@wiser/data-contracts` schemas and the verified-session `/api/data-foundation/explore` endpoint for version-pinned resource queries, pagination and selection details. / 数据探索页面通过共享契约与当前登录会话完成固定版本查询、分页和详情选择。
+
+Data Explorer links resource, record and MapLibre views through one authorized query and shared selection. Dev/build automatically prepares matching MapLibre 6.8.0 worker modules. The checked-in Natural Earth overview basemap is public-domain and has a source/hash manifest in `public/basemap/source.json`. Business records and geometries continue to come exclusively from the authenticated HTTP API.
+
+Exploration invalidation and expiry clear all rendered views and selection together while retaining editable form conditions for retry. / 探索授权失效或到期时，各视图与选择一起清除，表单条件保留以便重新查询。
+
+Record conditions, sorting and column selection create one authorized file query reused by record, map and provenance views. / 记录条件、排序和列配置创建同一授权文件查询，并在记录、地图和溯源视图间复用。
+
+The statistics view aggregates a selected source through the shared HTTP query and offers keyboard group selection alongside its chart. / 统计视图通过共享 HTTP 查询聚合所选来源，图表配有键盘可用的分组选择。
+
+Graph exploration includes bounded neighbor pages and current-page directed path highlighting, with keyboard controls and shared identity. / 图谱探索支持有界邻居分页和当前页有向路径高亮，复用键盘控件与共享身份。
+
+Exploration groups specialist tools without breaking deep links, preserves aggregate units on narrow screens, and offers responsive graph layouts and viewport controls. / 数据探索集中专业工具入口并保留深链接，窄屏统计保留单位，图谱提供响应式布局及视角控件。
+
+Mobile exploration details use a non-modal bottom drawer with explicit focus return and persistent selection. / 手机探索详情使用非模态底部抽屉，明确返回键盘焦点并保留所选数据。
+
+Portal actions use verified sessions; catalog pages preserve name filters across bounded 25-row cursors in a compact scrollable table. / Portal 主操作使用已验证会话；目录以每页 25 行的紧凑可滚动表格呈现，游标翻页保留名称条件。

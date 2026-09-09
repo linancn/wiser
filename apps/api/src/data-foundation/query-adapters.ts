@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 
 import type {
   DataStructuredQueryPort,
@@ -689,18 +690,22 @@ function graphTemplate(depth: number, path: boolean): string {
     : 'MATCH (start:WiserEntity {entityId: $entityId})';
   const match = path
     ? `MATCH graph = shortestPath((start)-[*1..${depth}]-(target))`
-    : `MATCH graph = (start)-[*1..${depth}]-(related:WiserEntity)`;
+    : `MATCH graph = (start)-[*0..${depth}]-(related:WiserEntity)`;
   return `${start}
 WHERE start.tenantId = $tenantId AND start.projectId = $projectId
 ${match}
 WHERE all(node IN nodes(graph) WHERE node.tenantId = $tenantId
   AND node.projectId = $projectId
   AND node.securityLevel IN $allowedSecurityLevels
-  AND node.policyVersion <= $maximumPolicyVersion)
+  AND node.policyVersion <= $maximumPolicyVersion
+  AND node.publicationStatus = 'PUBLISHED'
+  AND node.acceptanceStatus IN ['PASSED', 'CONDITIONALLY_PASSED'])
   AND all(edge IN relationships(graph) WHERE edge.tenantId = $tenantId
     AND edge.projectId = $projectId
     AND edge.securityLevel IN $allowedSecurityLevels
     AND edge.policyVersion <= $maximumPolicyVersion
+    AND edge.publicationStatus = 'PUBLISHED'
+    AND edge.acceptanceStatus IN ['PASSED', 'CONDITIONALLY_PASSED']
     AND (size($relationTypes) = 0 OR type(edge) IN $relationTypes))
 RETURN {nodes: [node IN nodes(graph) | {
     entityId: node.entityId, label: coalesce(node.label, node.name),
@@ -831,25 +836,67 @@ export class Neo4jGraphQueryPort implements GraphQueryPort {
       throw adapterError('INVALID_BACKEND_RESULT');
     }
     const values = data['values'];
-    const graph =
-      Array.isArray(values) && Array.isArray(values[0])
-        ? record(values[0][0])
-        : null;
-    if (
-      graph === null ||
-      !Array.isArray(graph['nodes']) ||
-      !Array.isArray(graph['edges']) ||
-      graph['nodes'].length > this.#maximumNodes ||
-      graph['edges'].length > this.#maximumEdges
-    ) {
+    if (!Array.isArray(values) || values.length > this.#maximumNodes) {
       throw adapterError('INVALID_BACKEND_RESULT');
     }
+    const nodes = new Map<string, Readonly<Record<string, unknown>>>();
+    const edges = new Map<string, Readonly<Record<string, unknown>>>();
+    let nextCursor: string | undefined;
+    for (const row of values as readonly unknown[]) {
+      const graph =
+        Array.isArray(row) && row.length === 1 ? record(row[0]) : null;
+      if (
+        graph === null ||
+        !Array.isArray(graph['nodes']) ||
+        !Array.isArray(graph['edges'])
+      ) {
+        throw adapterError('INVALID_BACKEND_RESULT');
+      }
+      const merge = (
+        items: readonly unknown[],
+        target: Map<string, Readonly<Record<string, unknown>>>,
+        key: string,
+        maximum: number,
+      ) => {
+        if (items.length > maximum)
+          throw adapterError('INVALID_BACKEND_RESULT');
+        for (const item of items) {
+          const value = record(item);
+          const id = value?.[key];
+          if (
+            value === null ||
+            typeof id !== 'string' ||
+            id.length === 0 ||
+            id.length > 256
+          ) {
+            throw adapterError('INVALID_BACKEND_RESULT');
+          }
+          const existing = target.get(id);
+          if (existing !== undefined && !isDeepStrictEqual(existing, value)) {
+            throw adapterError('INVALID_BACKEND_RESULT');
+          }
+          target.set(id, value);
+          if (target.size > maximum)
+            throw adapterError('INVALID_BACKEND_RESULT');
+        }
+      };
+      merge(graph['nodes'], nodes, 'entityId', this.#maximumNodes);
+      merge(graph['edges'], edges, 'edgeId', this.#maximumEdges);
+      const cursor = graph['nextCursor'];
+      if (cursor !== undefined) {
+        if (
+          typeof cursor !== 'string' ||
+          (nextCursor !== undefined && nextCursor !== cursor)
+        ) {
+          throw adapterError('INVALID_BACKEND_RESULT');
+        }
+        nextCursor = cursor;
+      }
+    }
     return {
-      nodes: graph['nodes'],
-      edges: graph['edges'],
-      ...(typeof graph['nextCursor'] === 'string'
-        ? { nextCursor: graph['nextCursor'] }
-        : {}),
+      nodes: [...nodes.values()],
+      edges: [...edges.values()],
+      ...(nextCursor === undefined ? {} : { nextCursor }),
     };
   }
 }

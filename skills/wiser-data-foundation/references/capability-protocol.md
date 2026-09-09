@@ -2,7 +2,7 @@
 
 ## Request context
 
-REST requests carry the bearer credential plus `X-Wiser-Tenant-Id`, `X-Wiser-Project-Id`, and `X-Wiser-Purpose`. The MCP gateway receives those values from trusted runtime configuration and keeps them out of tool arguments. Start discovery at `GET /api/data/v1/capabilities`.
+REST requests carry the bearer credential plus `X-Wiser-Tenant-Id`, `X-Wiser-Project-Id`, and `X-Wiser-Purpose`. The MCP gateway receives those values from the verified connection (OAuth mode) or trusted runtime configuration (static mode) and keeps them out of tool arguments. Start discovery at `GET /api/data/v1/capabilities`.
 
 Commands require a UUID `Idempotency-Key`. Versioned commands also require a strong `If-Match: "vN"`; the corresponding MCP argument is `expectedVersion`. Read current state after any timeout or conflict.
 
@@ -33,6 +33,16 @@ Commands require a UUID `Idempotency-Key`. Versioned commands also require a str
 | `data.operation.cancel`       | `POST /operations/{operationId}/cancel`                     | `data_operation_cancel`        |
 | `data.operation.events`       | `GET /operations/{operationId}/events` (SSE snapshot)       | `data_operation_events`        |
 
+| Capability                 | REST relative to `/api/data/v1`       | MCP tool                   |
+| -------------------------- | ------------------------------------- | -------------------------- |
+| `data.analysis.create`     | `POST /analyses`                      | `data_analysis_create`     |
+| `data.explore.query`       | `POST /explore/query`                 | `data_explore_query`       |
+| `data.explore.view.create` | `POST /explore/views`                 | `data_explore_view_create` |
+| `data.explore.view.list`   | `GET /explore/views`                  | `data_explore_view_list`   |
+| `data.explore.view.open`   | `POST /explore/views/{viewId}/open`   | `data_explore_view_open`   |
+| `data.explore.view.revoke` | `POST /explore/views/{viewId}/revoke` | `data_explore_view_revoke` |
+| `data.explore.export`      | `POST /explore/export`                | `data_explore_export`      |
+
 The Registry schema is authoritative if this table ever differs from a running server.
 
 ## Operations
@@ -54,3 +64,5 @@ stac://collections/{collectionId}/items/{itemId}
 ```
 
 Resources never grant additional access; the API reauthorizes every read.
+
+Saved-view create/revoke are commands with UUID idempotency keys; they do not use an optimistic version precondition. REST open/revoke have an empty JSON body because the view ID is in the path. MCP uses a `viewId` argument. Saved links do not widen Purpose or resource permissions, and opening always reauthorizes all pinned versions and analyses. Export is a bounded read, not a bulk download job.

@@ -72,6 +72,7 @@ grant execute on function service.wiser_spatial_extent_mvt(
   integer,
   json
 ) to wiser_data_gis;
+grant execute on function service.wiser_exploration_mvt(integer, integer, integer, json) to wiser_data_gis;
 revoke all on all tables in schema
   catalog,
   ingestion,
@@ -155,5 +156,18 @@ grant usage, select on sequences to wiser_data_runtime;
 
 alter default privileges in schema ingestion, security
 grant execute on functions to wiser_data_runtime;
+
+-- Query manifests are immutable, expiring caches owned by the verified caller.
+do $$ begin
+  if to_regclass('service.exploration_saved_view') is not null then
+    grant select,insert on service.exploration_saved_view to wiser_data_runtime;
+    revoke update,delete on service.exploration_saved_view from wiser_data_runtime;
+    grant update(revoked_at) on service.exploration_saved_view to wiser_data_runtime;
+  end if;
+  if to_regclass('service.exploration_snapshot') is not null then
+    grant select, insert, delete on service.exploration_snapshot to wiser_data_runtime;
+    revoke update on service.exploration_snapshot from wiser_data_runtime;
+  end if;
+end $$;
 
 commit;

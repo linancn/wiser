@@ -18,8 +18,8 @@ checkPaths:
   - apps/docs/package.json
   - apps/docs/src/**
   - apps/docs/e2e/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: c4092d9f961841f89cdf9ed383360c41f809bd17
+lastReviewedAt: 2026-09-09
+lastReviewedCommit: bf9076880c57e7249cb8018142d2c5a851ed7165
 ---
 
 ## 两个前端应用
@@ -77,7 +77,7 @@ Agent EXCON 页面支持两个明确的数据模式：
 | `reference` | 默认的确定性设计参考、构建和端到端测试数据                 | 页面明确标记为设计预览                                |
 | `live`      | Server Component 从 Agent EXCON v2 HTTP API 读取操作员投影 | 显示可操作的 unavailable/error 状态，绝不混入参考数据 |
 
-模式由服务端的 `AGENT_EXCON_WEB_DATA_MODE` 选择。`live` 请求使用 `cache: no-store`，API origin 和 `WISER_WEB_OPERATOR_TOKEN` 只能留在服务端。现有 DTO 没有提供的信息应显示覆盖缺口或空态，不能从参考样例补齐，也不能在前端推断 Agent、Span、回放视角或裁决事实。
+模式由服务端的 `AGENT_EXCON_WEB_DATA_MODE` 选择。`live` 请求使用 `cache: no-store`，API origin 和刚验证的当前用户 Access Token 只能留在服务端。Supabase 模式中 EXCON 与 Data 共用 Session verifier；静态 `WISER_WEB_OPERATOR_TOKEN` 仅用于本机 Auth-off 开发。现有 DTO 没有提供的信息应显示覆盖缺口或空态，不能从参考样例补齐，也不能在前端推断 Agent、Span、回放视角或裁决事实。
 
 ## Data Foundation 数据与身份
 
@@ -91,6 +91,8 @@ Data Foundation 没有 reference 模式。所有页面通过 `src/lib/data-found
 4. 浏览器只接收 Supabase URL 与 publishable key。数据库凭据、service-role、内部 API origin、operator token 和原始上游错误永不进入 Client Component 或序列化 props。
 
 地图瓦片也使用同源 Web 路由，由服务端代理附加身份和范围；不要把内部 GIS 地址或 access token 写进地图 URL。
+
+图谱页在客户端按需加载 G6 5.1.1，使用有界受控数据、共享主题 Token，以及带精确版本/证据链接的键盘实体列表。`e2e-live/query-visualization.spec.ts` 在桌面和手机宽度验证真实 HydroATLAS 图谱与长搜索摘要；需要已准入的研究案例和明确的本机测试登录信息。
 
 ## 实现一个新页面
 
@@ -123,7 +125,7 @@ pnpm --filter @wiser/docs test:e2e
 
 这两个标准 Playwright 配置自启隔离的开发服务器，主要验证 reference/fixture 驱动的路由、语言、主题和交互；它们不证明统一 Auth、Data 数据库或 EXCON live credential。Data 的登录与真实 API 纵切由 `pnpm stack:full:up` / `pnpm data:smoke` 覆盖。
 
-仓库当前没有自动签发 EXCON operator credential 的 full-stack Playwright 命令。验证 EXCON live 时，先通过受信任 operator 流程取得真实 `WISER_WEB_OPERATOR_TOKEN`，再以 `AGENT_EXCON_WEB_DATA_MODE=live` 和服务端 `AGENT_EXCON_API_INTERNAL_URL` 运行一个隔离 Web 实例或专用测试；没有这一步就必须把结果表述为 reference UI 验证，而不是 live/Auth E2E。
+在完整栈验证 EXCON live 时，通过 Supabase 登录具备 EXCON operator Role 的用户，并配置 `AGENT_EXCON_WEB_DATA_MODE=live` 和服务端 API origin。读模型转发经过验证的当前 Session；认证失败时不回退服务令牌。仅 reference 测试不能证明 live/Auth E2E。
 
 可复现的无模型 EXCON live Web 路径是 scripted Showcase。它启动隔离 Lab/API/Web，以 host-only operator token 配置 `live` read model，并在 status 中返回 `/collaboration` URL：
 
@@ -146,3 +148,27 @@ Playwright 使用用户可感知的 role、label、可见文本或稳定 test id
 - EXCON 的 reference/live 边界和 Data Foundation 的“只用实时 API”边界有测试保护。
 - 新路由、字典键、数据契约和权限失败都具有聚焦测试；截图用于视觉比较，不代替语义断言。
 - 相关架构、协议或开发文档同步更新，并通过 Docpact 和根目录 `pnpm verify`。
+
+`/[locale]/data-foundation/explore` 工作区与 API 共享严格探索契约。紧凑查询栏、资源表格与选择详情面板将结果区置于页面上方。服务端渲染建立或恢复授权结果集，后续请求经过验证当前 Session 的 Next.js 入口 `/api/data-foundation/explore`。调整筛选建立新版本清单，分页沿用同一 `queryId`。数据名称支持键盘操作，详情显示精确版本、就绪状态及来源限制；未知分析数量不会显示为零。
+
+探索地图按需加载 MapLibre GL JS 6.8.0 与 react-map-gl 8.1.3。`apps/web/scripts/prepare-maplibre.mjs` 在开发和构建前运行，将精确匹配的 Worker 与共享模块复制到同源、带版本号的公共目录；生成的供应商文件不提交 Git。固定版本的公有领域 Natural Earth 1:110m 陆地数据提供本地概览底图，`public/basemap/source.json` 记录源提交和 SHA-256；概览底图不表示具备街道级细节。
+
+探索工作区的统计页签按需加载 [Apache ECharts 6.1.0](https://github.com/apache/echarts/releases/tag/6.1.0)，使用 SVG 渲染和所需图表组件，展示服务端计算的完整授权查询就绪状态数量。选择图柱或对应的键盘可用文字按钮，将同一状态条件应用到资源探索。图表颜色遵循语义变量；卸载时释放尺寸/主题观察器和图表实例。资源数量不能表述为记录数或科学观测数。
+
+当响应表明授权或固定成员范围失效，或结果到达声明的过期时间时，探索工作区一并清除当前查询、选择、文件详情及已渲染视图；从后台或历史页面恢复时再次检查同一截止时间。旧查询的迟到失败不能清除新查询，被中止的请求也不能恢复旧数据。查询表单条件保留，便于重新获取当前有权查看的结果。临时地图故障卸载画布并提供重新加载，不展示上游诊断。
+
+记录探索提供可展开的条件表单，支持最多八个类型明确的比较条件、标量排序及可选的 1–32 列配置。文本编号保留前导零；空白或非有限数值不能作为数值条件提交。应用条件会创建新的单版本／文件授权查询、清除选择、新增历史记录并打开记录视图；记录、地图瓦片和记录溯源使用同一谓词。刷新后从授权查询恢复配置，清除条件则恢复该版本的记录浏览。数值比较使用来源值，不推断或换算单位。
+
+选择资源后，统计视图提供来源记录聚合，字段控件与资源就绪状态计数分开表达。图表配有精确值表格及可通过键盘操作的分组选择。单位明确显示，未知分组不会被悄悄替换成不完整的空值条件。
+
+探索协议 1.8 增加时间条件、时间排序，以及小时、日、月、年聚合。源格式为 `iso-offset`、`dmy-local` 或 `ymd-local`；`utcOffsetMinutes` 必须明确填写 −840 至 840 的固定偏移，不推断时区或夏令时。ISO 源值使用自身偏移；无偏移的源时间使用配置偏移，该偏移同时定义日历分组。无效日期归入无法分组，不自动修正。边界使用最多六位小数的 UTC 字符串，范围采用包含起点的 `gte` 和不包含终点的 `lt`，源字符串保持不变。浏览器支持时间折线、完整时间段刷选和等价的键盘范围控件，不同单位使用独立序列。所有视图及 MVT 复用相同条件。1.7 发现协议保持不可变。
+
+探索协议 1.10 增加不可变的 `spec.spatialBounds`，按 WGS84 西、南、东、北排列。记录、聚合、图谱记录回查和查询 MVT 在聚合前使用相同的已验证几何相交条件。资源及来源图概览显示匹配版本；来源就绪统计仍表示已索引内容。查询清单保留底层授权范围的版本与批次，使通过 `baseQueryId` 清除或改变范围时不刷新解析结果、不丢失原始范围。即使位于地图范围外，所有固定成员仍需重新授权。地图提供点、线、面显隐、图例、本地字体聚合数量与视口筛选；图层显隐只改变呈现，不改变查询授权或计数。未验证坐标的数据明确排除。1.9 发现协议保持不可变。
+
+图谱探索提供键盘可用的文件、证据和记录展开、邻居分页、带文字的关系开关，以及限定当前页的有向路径控件。路径高亮更新 G6 节点／边状态，不替换画布。两种语言均显示计数单位、截断状态与恢复操作；切换焦点会清除路径端点和游标。
+
+数据工作区导航将检索、知识和专业空间／图谱工具归入数据探索，原有深链接继续有效，探索工具栏提供专业入口。窄屏下只有资源表可以隐藏提供机构列；记录与聚合表在自身滚动区域内保留全部所选字段和单位。来源统计将资源就绪概况放入独立折叠区，仅在展开时挂载图表。图谱画布宽度小于 560 像素时由 Worker 计算纵向布局，并提供键盘可用的缩放、全图及所选节点定位控件；视角操作不使用动画。
+
+宽度不超过 900 像素时，可通过底部按钮在非模态抽屉中查看所选来源。展开后键盘焦点进入带名称的详情区域；收起或 Escape 将焦点返回按钮，保留当前选择。取消选择时按需将焦点返回当前视图页签。桌面详情仍在侧栏中滚动。G6 内部画布图层不参与 Tab 顺序，键盘交互由有名称的视角控件和来源节点列表提供。
+
+Portal 根据已验证会话选择主操作：已登录用户进入数据工作区，匿名用户进入登录页。数据目录使用每页 25 行的游标分页及可键盘聚焦的内部滚动表格，后续页和返回第一页均保留名称条件。列表保留来源、发布、质量和安全信息，并引导结合详情中的检查范围与内容就绪状态判断。

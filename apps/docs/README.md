@@ -18,8 +18,8 @@ checkPaths:
   - apps/docs/src/content/**
   - apps/docs/src/lib/**
   - apps/docs/e2e/**
-lastReviewedAt: 2026-09-08
-lastReviewedCommit: 61d5e49e9668c622c9fb01958a7716b1f95a9dac
+lastReviewedAt: 2026-09-09
+lastReviewedCommit: bf9076880c57e7249cb8018142d2c5a851ed7165
 ---
 
 # WISER Docs / 文档应用

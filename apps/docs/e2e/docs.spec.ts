@@ -1,5 +1,23 @@
 import { expect, test } from '@playwright/test';
 
+test('orders Data Foundation before Agent EXCON in the system map for both languages', async ({
+  page,
+}) => {
+  for (const prefix of ['', '/en']) {
+    await page.goto(`${prefix}/`);
+    const systems = page.locator('main a').filter({ has: page.locator('h3') });
+    const labels = await systems.allTextContents();
+    const data = labels.findIndex((text) =>
+      /Data Foundation|数据基座/.test(text),
+    );
+    const excon = labels.findIndex((text) =>
+      /Agent EXCON|智能体演练场/.test(text),
+    );
+    expect(data).toBeGreaterThanOrEqual(0);
+    expect(excon).toBeGreaterThan(data);
+  }
+});
+
 test('serves Chinese by default and preserves the English corpus', async ({
   page,
 }) => {

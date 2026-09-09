@@ -68,3 +68,5 @@ pnpm install --frozen-lockfile
 - 提交前运行 `pnpm verify`；数据库和浏览器改动追加对应集成测试。
 
 提交规则见仓库 `CONTRIBUTING.md`；面向 Agent 的不可变交付合同见根 `AGENTS.md`。
+
+共享 Data contracts 使用明确的 `.ts` 相对源码导入，让 Turbopack 与 Node 服务消费同一 schema。基础 TypeScript 配置启用 `rewriteRelativeImportExtensions`，运行构建会输出 `.js` 导入；Web 在 `noEmit` 下启用 `allowImportingTsExtensions`。包间依赖仍使用公开导出，修改此边界时同时验证浏览器渲染和编译后的 Node 导入。

@@ -10,6 +10,8 @@ import {
   type QueryAdapterPgPool,
 } from '../src/data-foundation/query-adapters.js';
 import type { ScopedSpecialQueryRequest } from '../src/data-foundation/special-query-executors.js';
+import { createPostgresDataReadRuntime } from '../src/data-foundation/postgres-read-executors.js';
+import type { DataCapabilityExecutionContext } from '../src/data-foundation/capability-handler.js';
 
 const realPostgresTest =
   process.env['WISER_DATA_PG_INTEGRATION'] === '1' ? it : it.skip;
@@ -51,7 +53,11 @@ class SavepointQueryPool implements QueryAdapterPgPool {
     return {
       async query(text, values = []) {
         const command = text.trim().toLowerCase();
-        if (command === 'begin') {
+        if (
+          command === 'begin' ||
+          command === 'begin read only' ||
+          command === 'begin isolation level repeatable read read only'
+        ) {
           if (savepointOpen) {
             throw new Error('the query adapter opened a nested transaction');
           }
@@ -498,6 +504,51 @@ describe('Data authority query PostgreSQL integration', () => {
             ],
           );
         }
+        const catalogPool = new SavepointQueryPool(fixtureClient, roleName);
+        const catalogRuntime = createPostgresDataReadRuntime({
+          connect: () => catalogPool.connect(),
+          end: () => Promise.resolve(),
+        });
+        const catalog = catalogRuntime.executors.find(
+          ({ id }) => id === 'data.catalog.search',
+        )!;
+        const catalogContext: DataCapabilityExecutionContext = {
+          auditLevel: 'STANDARD',
+          timeoutMs: 30_000,
+          signal: new AbortController().signal,
+          principal: {
+            actorId: randomUUID(),
+            actorType: 'human',
+            authenticationMethod: 'supabase_jwt',
+            authUserId: randomUUID(),
+            sessionId: randomUUID(),
+          },
+          authorization: {
+            ...visibleScope,
+            roles: ['data-steward'],
+            scopes: ['data.catalog.read'],
+            purpose: 'integration',
+            maxSecurityLevel: 'L1_INTERNAL',
+            authzVersion: 1,
+          },
+          effectiveMaxSecurityLevel: 'L1_INTERNAL',
+          traceId: 'c'.repeat(32),
+        };
+        for (const [query, expectedTotal] of [
+          ['Geo integration', 3],
+          ['primary', 1],
+          ['cross tenant', 0],
+          ['high security', 0],
+          ['future policy', 0],
+          ['absent catalog item', 0],
+        ] as const) {
+          const page = await catalog.execute(
+            { query, first: 1, includeTotal: true },
+            catalogContext,
+          );
+          expect(page).toMatchObject({ totalCount: expectedTotal });
+        }
+
         const structured = new PostgresStructuredDataQueryPort({
           pool: new SavepointQueryPool(fixtureClient, roleName),
         });

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { PlatformUuidSchema } from '@wiser/platform-contracts';
-import { Sha256Schema } from '../common.js';
+import { Sha256Schema } from '../common.ts';
 
 const SourceKeySchema = z
   .string()

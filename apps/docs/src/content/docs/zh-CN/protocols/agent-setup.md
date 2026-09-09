@@ -16,8 +16,8 @@ checkPaths:
   - skills/wiser-data-foundation/**
   - apps/web/src/components/agent-setup*
   - apps/docs/src/components/agent-setup*
-lastReviewedAt: 2026-09-08
-lastReviewedCommit: cee9c51ac26e77bd078edc3af41cfb6ca0de611d
+lastReviewedAt: 2026-09-09
+lastReviewedCommit: c707fa20715254db0b0e46d1534d7741535a6532
 ---
 
 Portal 和文档页面提供**让智能体接入 WISER**。点击后，把复制的指令发送给 AI 助手。按钮只复制公开的接入地址，不授予账户或项目权限。浏览器不允许自动复制时，会显示可选择的同一段指令。
@@ -32,7 +32,7 @@ Portal 和文档页面提供**让智能体接入 WISER**。点击后，把复制
 | `/agent-setup/manifest.json`             | `wiser.agent-setup.v1`，包含 API、可选 MCP 地址、按内容固定的发行标识和文件清单 |
 | `/agent-setup/releases/{release}/{path}` | 精确发行版本中的允许文件                                                        |
 
-清单包含 `SKILL.md`、智能体元数据、协议/治理/示例/数据包参考文档，以及两个 Python 数据包辅助脚本。每个文件包含相对路径、公开地址、字节数和 SHA-256；发行标识由有序文件描述计算。版本地址只返回对应的精确内容并允许不可变缓存，未知版本或清单外文件返回 `404`。来源数据包、环境文件、凭据和测试材料不在发行包内。安装全部清单文件时应保留相对目录，并逐一校验大小和哈希。
+清单包含 `SKILL.md`、智能体元数据、协议/治理/示例/数据包参考文档，以及三个 Python 数据包辅助脚本。每个文件包含相对路径、公开地址、字节数和 SHA-256；发行标识由有序文件描述计算。版本地址只返回对应的精确内容并允许不可变缓存，未知版本或清单外文件返回 `404`。来源数据包、环境文件、凭据和测试材料不在发行包内。安装全部清单文件时应保留相对目录，并逐一校验大小和哈希。
 
 运行中的进程只声明当前发行版本，不承诺部署更新后仍保留旧版本。若安装过程中部署发生变化、旧文件返回 `404`，重新取得当前清单并从头校验，不能混装不同版本的文件。
 

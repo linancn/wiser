@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-09-08
-lastReviewedCommit: 7ab2bd8be45955cbf1c7e7c58dde27bccc145c50
+lastReviewedCommit: 4d8a440d12ab9e554934b531bb3c781134966e6c
 ---
 
 ## 运行模式
@@ -79,7 +79,7 @@ pnpm --filter @wiser/docs dev
 
 ## 身份边界
 
-Data Foundation Web 使用 Supabase SSR Session，完整栈会为 Data smoke 和 Data MCP 注入本机 operator JWT。Agent EXCON live Web 仍从服务端 `WISER_WEB_OPERATOR_TOKEN` 读取 operator credential；EXCON MCP 仍需要绑定具体 RunAgent 的 `AGENT_EXCON_API_KEY`。因此“进程健康”不等于这两个 EXCON 客户端已经获得有效身份，失败时必须保留显式 unavailable/鉴权错误。
+Data Foundation Web 使用 Supabase SSR Session，完整栈会为 Data smoke 和 Data MCP 注入本机 operator JWT。Agent EXCON live Web 转发已验证的当前 Supabase 用户 Session，`WISER_WEB_OPERATOR_TOKEN` 仅用于本机 Auth-off 预览；EXCON MCP 仍需要绑定具体 RunAgent 的 `AGENT_EXCON_API_KEY`。因此“进程健康”不等于这两个 EXCON 客户端已经获得有效身份，失败时必须保留显式 unavailable/鉴权错误。
 
 共享 MCP 进程总会初始化 EXCON HTTP client；即使只开发 Data MCP，也必须配置非空 `AGENT_EXCON_API_KEY` 和完整 `DATA_*`。Data Tool 不会发送该 EXCON key，因此本机占位值可以用于 Data-only 进程配置；它不是统一 Auth 身份，也不能调用 `excon_*`。
 
@@ -88,7 +88,7 @@ Data Foundation Web 使用 Supabase SSR Session，完整栈会为 Data smoke 和
 - 人类开发者在 `/zh-CN/login` 使用 quick-start 的 seed operator 登录，Web 通过 Supabase Session 访问 Platform 与 Data 页面。
 - Agent/服务 delegated credential 由有 `platform.delegation.manage` 的 Supabase 人类通过 `/api/platform/v1/delegations` 创建、签发、轮换和撤销；明文只返回一次。
 - EXCON MCP 的 `AGENT_EXCON_API_KEY` 必须来自受信任的 Run 编组/bootstrap，并绑定一个具体 RunAgent。仓库没有把 seed 密码自动换成通用 EXCON token 的 CLI；本机完整协作可使用版本化 Cookbook/Showcase 创建受限会话。
-- EXCON live Web operator credential 同样不由 `stack:full:up` 自动签发。取得方式与所选 operator workflow 相关；没有真实 credential 时保留 unavailable 状态。
+- EXCON live Web 复用当前登录用户 Session，并要求该用户具有 operator 授权；Supabase 模式不需要单独签发 Web operator token。
 
 具体 header、scope 与调用顺序见 [Platform Auth](/architecture/unified-auth/)、[Agent EXCON HTTP](/protocols/http/) 和 [MCP](/protocols/mcp/)。
 
@@ -128,3 +128,5 @@ pnpm stack:down
 仓库没有“一键删除所有本机状态”的命令。`.wiser/local/runtime-secrets.json` 保存 EXCON journal 重放所需的历史 HMAC key，现有 journal 仍在时不得删除或只生成新 key。只有在所有服务停止、Supabase/EXCON journal 已明确重置且不需要恢复旧记录时，才可以按团队密钥轮换流程处理该文件；Data reset 本身不需要删除它。
 
 若完整栈失败，先检查 Docker 资源、端口占用和失败服务日志，再重新运行可幂等收敛的 `pnpm stack:full:up`。
+
+Data profile 构建 `source-parser`，它仅通过内部 `data-parser` 网络连接 Worker，不开放主机端口，不持有数据库凭据，也不能访问外网。文件系统只读，临时文件保存在有界内存中。本机单独运行 Worker 时可选配置 `DATA_ANALYSIS_PARSER_URL`；未配置时外部格式明确保持不可解析，完整 profile 自动配置。CI 在固定的 GDAL 镜像中运行解析测试。

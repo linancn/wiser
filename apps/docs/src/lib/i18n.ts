@@ -5,6 +5,30 @@ export const locales = ['zh-CN', 'en'] as const;
 export type DocsLocale = (typeof locales)[number];
 export const defaultLocale: DocsLocale = 'zh-CN';
 
+const homeZh = {
+  description:
+    'WISER 以统一身份、界面和协议连接水系统智能能力：数据基座支持可信数据的接入、查询与联动探索，智能体演练场支持可追溯的多智能体协作与演练。',
+  start: '运行第一个闭环',
+  architecture: '查看平台边界',
+  summary: 'WISER 平台能力摘要',
+  systems: '业务系统',
+  systemsValue: '数据基座 · 智能体演练场',
+  protocols: '接入协议',
+  authority: '权威边界',
+};
+const homeEn: typeof homeZh = {
+  description:
+    'WISER connects water intelligence through one identity, interface, and protocol surface: Data Foundation supports trusted ingestion, queries, and linked exploration; Agent EXCON supports traceable multi-agent collaboration and exercises.',
+  start: 'Run the first loop',
+  architecture: 'Explore platform boundaries',
+  summary: 'WISER platform summary',
+  systems: 'Systems',
+  systemsValue: 'Data Foundation · Agent EXCON',
+  protocols: 'Integration protocols',
+  authority: 'Authority',
+};
+export const homeCopy = { 'zh-CN': homeZh, en: homeEn };
+
 const agentSetupZh = {
   action: '让智能体接入 WISER',
   hint: '复制指令，发送给你的 AI 助手，开始连接项目数据。',

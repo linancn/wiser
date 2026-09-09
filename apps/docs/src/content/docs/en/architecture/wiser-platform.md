@@ -17,8 +17,8 @@ checkPaths:
   - packages/**
   - infrastructure/**
   - supabase/**
-lastReviewedAt: 2026-09-08
-lastReviewedCommit: cd004c35cd46719da2abb2bd013800af348eeff3
+lastReviewedAt: 2026-09-09
+lastReviewedCommit: c707fa20715254db0b0e46d1534d7741535a6532
 ---
 
 ## Decision summary
@@ -29,7 +29,7 @@ The composition roots wire unified Supabase Auth, platform identity/delegation, 
 
 Portal and Docs share a copyable [Agent setup workflow](/en/protocols/agent-setup/). The API distributes a content-pinned Skill release and public transport metadata; these public resources grant no identity or data access. Installed Skills continue to call the unified HTTP/MCP boundary with a separately verified project assignment.
 
-“Unified identity” means one Supabase/Platform authority and authorization context, not one interactive credential reused by every client. Data Web uses the human Supabase SSR session; EXCON live Web uses a server-side operator credential; the MCP transport bearer, EXCON RunAgent credential, and Data API identity protect different boundaries and are not interchangeable.
+“Unified identity” means one Supabase/Platform authority and authorization context. Data Web and EXCON live Web both forward the current human Supabase SSR session after verifying claims and matching the token's subject, session and expiry. The MCP transport bearer and EXCON RunAgent credential protect different boundaries and are not interchangeable with that session. The static Web operator credential is limited to explicit local Auth-off development.
 
 ## System boundaries
 

@@ -769,6 +769,41 @@ services:
           memory: 1G
     logging: *data-logging
 
+  source-parser:
+    <<: *data-service
+    profiles: [data-foundation]
+    image: wiser-source-parser:local
+    build:
+      context: ./infrastructure/data-foundation/parser
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,noexec,size=1g,uid=65532,gid=65532
+    pids_limit: 64
+    networks:
+      - data-parser
+    healthcheck:
+      test:
+        [
+          CMD,
+          python,
+          -c,
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3005/health', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 5G
+          pids: 64
+        reservations:
+          cpus: '0.10'
+          memory: 128M
+    logging: *data-logging
+
   data-worker:
     <<: *app
     profiles: [data-foundation]
@@ -776,6 +811,7 @@ services:
     restart: unless-stopped
     stop_grace_period: 45s
     environment:
+      DATA_ANALYSIS_PARSER_URL: http://source-parser:3005
       DATA_DATABASE_URL: postgresql://wiser_data_worker:${DATA_WORKER_DATABASE_PASSWORD:-wiser-local-worker-runtime-35b90c72}@data-postgres:5432/wiser_data
       DATA_TENANT_ID: ${DATA_TENANT_ID:-b1000000-0000-4000-8000-000000000001}
       DATA_PROJECT_ID: ${DATA_PROJECT_ID:-b2000000-0000-4000-8000-000000000001}
@@ -830,6 +866,8 @@ services:
     ports:
       - 127.0.0.1:13003:3003
     depends_on:
+      source-parser:
+        condition: service_healthy
       data-runtime-provision:
         condition: service_completed_successfully
       data-object-store-init:
@@ -838,6 +876,7 @@ services:
         condition: service_healthy
     networks:
       - data-foundation
+      - data-parser
     volumes:
       - type: volume
         source: opensearch-ca
@@ -1034,6 +1073,9 @@ services:
       - excon
 
 networks:
+  data-parser:
+    driver: bridge
+    internal: true
   data-foundation:
     driver: bridge
   excon:

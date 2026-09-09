@@ -41,16 +41,27 @@ const ITEM_COLUMNS = `
   update_mode, created_at, updated_at
 `;
 
-const SEARCH_SQL = `
-/* data.catalog.search */
-select ${ITEM_COLUMNS}
-from catalog.data_item
+const CATALOG_FILTER_SQL = `
 where ($1::text is null or name ilike '%' || $1 || '%')
   and ($2::text[] is null or business_domains && $2)
   and ($3::text[] is null or processing_stage = any($3))
   and ($4::text[] is null or security_level = any($4))
   and ($5::text[] is null or quality_grade = any($5))
   and ($6::text[] is null or acceptance_status = any($6))
+`;
+
+const COUNT_SQL = `
+/* data.catalog.count */
+select count(*)::text as total_count
+from catalog.data_item
+${CATALOG_FILTER_SQL}
+`;
+
+const SEARCH_SQL = `
+/* data.catalog.search */
+select ${ITEM_COLUMNS}
+from catalog.data_item
+${CATALOG_FILTER_SQL}
   and ($7::timestamptz is null or (updated_at, data_item_id) < ($7, $8::uuid))
 order by updated_at desc, data_item_id desc
 limit $9::integer
@@ -803,6 +814,7 @@ class ReadTransactions {
   async run<Result>(
     context: DataCapabilityExecutionContext,
     work: (client: PostgresDataReadClient) => Promise<Result>,
+    consistentSnapshot = false,
   ): Promise<Result> {
     let client: PostgresDataReadClient;
     try {
@@ -815,7 +827,11 @@ class ReadTransactions {
       );
     }
     try {
-      await client.query('BEGIN READ ONLY');
+      await client.query(
+        consistentSnapshot
+          ? 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY'
+          : 'BEGIN READ ONLY',
+      );
       await client.query(SET_SCOPE_SQL, [
         context.authorization.tenantId,
         context.authorization.projectId,
@@ -965,32 +981,47 @@ export function createPostgresDataReadRuntime(
       const scope = cursorScope('data.catalog.search', context, input);
       const cursor = decodeCursor(input.after, scope);
       const first = input.first as number;
-      return transactions.run(context, async (client) => {
-        const result = await client.query(SEARCH_SQL, [
-          input.query ?? null,
-          input.businessDomains ?? null,
-          input.processingStages ?? null,
-          input.securityLevels ?? null,
-          input.qualityGrades ?? null,
-          input.acceptanceStatuses ?? null,
-          cursor?.[0] ?? null,
-          cursor?.[1] ?? null,
-          first + 1,
-        ]);
-        const rows = result.rows.slice(0, first);
-        const last = rows.at(-1);
-        return {
-          items: rows.map(dataItem),
-          ...(result.rows.length > first && last !== undefined
-            ? {
-                nextCursor: encodeCursor(scope, [
-                  text(last, 'updated_at'),
-                  text(last, 'data_item_id'),
-                ]),
-              }
-            : {}),
-        };
-      });
+      return transactions.run(
+        context,
+        async (client) => {
+          const filters = [
+            input.query ?? null,
+            input.businessDomains ?? null,
+            input.processingStages ?? null,
+            input.securityLevels ?? null,
+            input.qualityGrades ?? null,
+            input.acceptanceStatuses ?? null,
+          ];
+          const totalCount =
+            input.includeTotal === true
+              ? integer(
+                  requireRow((await client.query(COUNT_SQL, filters)).rows),
+                  'total_count',
+                )
+              : undefined;
+          const result = await client.query(SEARCH_SQL, [
+            ...filters,
+            cursor?.[0] ?? null,
+            cursor?.[1] ?? null,
+            first + 1,
+          ]);
+          const rows = result.rows.slice(0, first);
+          const last = rows.at(-1);
+          return {
+            items: rows.map(dataItem),
+            ...(totalCount === undefined ? {} : { totalCount }),
+            ...(result.rows.length > first && last !== undefined
+              ? {
+                  nextCursor: encodeCursor(scope, [
+                    text(last, 'updated_at'),
+                    text(last, 'data_item_id'),
+                  ]),
+                }
+              : {}),
+          };
+        },
+        input.includeTotal === true,
+      );
     }),
     define('data.catalog.get', async (raw, context) => {
       const input = parsedInput('data.catalog.get', raw);

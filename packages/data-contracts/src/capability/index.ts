@@ -1,4 +1,46 @@
+import {
+  CreateExplorationViewInputSchema,
+  CreateExplorationViewOutputSchema,
+  ListExplorationViewsInputSchema,
+  ListExplorationViewsOutputSchema,
+  OpenExplorationViewInputSchema,
+  OpenExplorationViewOutputSchema,
+  RevokeExplorationViewInputSchema,
+  RevokeExplorationViewOutputSchema,
+  ExportExplorationInputSchema,
+  ExportExplorationOutputSchema,
+} from '../exploration/saved.ts';
 import { z } from 'zod';
+import {
+  CreateAnalysisInputSchema,
+  CreateAnalysisOutputSchema,
+} from '../analysis/index.ts';
+import {
+  ExplorationQueryInputSchema,
+  ExplorationQueryInputV1Schema,
+  ExplorationQueryInputV11Schema,
+  ExplorationQueryInputV12Schema,
+  ExplorationQueryInputV13Schema,
+  ExplorationQueryInputV14Schema,
+  ExplorationQueryInputV15Schema,
+  ExplorationQueryInputV16Schema,
+  ExplorationQueryInputV17Schema,
+  ExplorationQueryInputV18Schema,
+  ExplorationQueryInputV19Schema,
+  ExplorationQueryInputV110Schema,
+  ExplorationResultSchema,
+  ExplorationResultV1Schema,
+  ExplorationResultV11Schema,
+  ExplorationResultV12Schema,
+  ExplorationResultV13Schema,
+  ExplorationResultV14Schema,
+  ExplorationResultV15Schema,
+  ExplorationResultV16Schema,
+  ExplorationResultV17Schema,
+  ExplorationResultV18Schema,
+  ExplorationResultV19Schema,
+  ExplorationResultV110Schema,
+} from '../exploration/index.ts';
 
 import {
   AcceptanceStatusSchema,
@@ -16,14 +58,14 @@ import {
   ProcessingStageSchema,
   QualityGradeSchema,
   SecurityLevelSchema,
-} from '../catalog/index.js';
+} from '../catalog/index.ts';
 import {
   CursorSchema,
   DataFieldNameSchema,
   DataKeySchema,
   OffsetDateTimeSchema,
   PageRequestFields,
-} from '../common.js';
+} from '../common.ts';
 import {
   ApproveIngestionInputSchema,
   GetIngestionInputSchema,
@@ -31,19 +73,19 @@ import {
   IngestionOutputV1Schema,
   RejectIngestionInputSchema,
   SourceRegistrationSchema,
-} from '../ingestion/index.js';
+} from '../ingestion/index.ts';
 import {
   CancelOperationInputSchema,
   GetOperationEventsInputSchema,
   OperationEventPageSchema,
   OperationSchema,
-} from '../operation/index.js';
+} from '../operation/index.ts';
 import {
   CompleteUploadSessionInputSchema,
   CompleteUploadSessionOutputSchema,
   CreateUploadSessionInputSchema,
   CreateUploadSessionOutputSchema,
-} from '../upload/index.js';
+} from '../upload/index.ts';
 import {
   PlatformScopeSchema,
   PlatformUuidSchema,
@@ -72,17 +114,27 @@ export const DATA_CAPABILITY_IDS = [
   'data.ingestion.reject',
   'data.operation.cancel',
   'data.operation.events',
+  'data.explore.view.create',
+  'data.explore.view.list',
+  'data.explore.view.open',
+  'data.explore.view.revoke',
+  'data.explore.export',
+  'data.explore.query',
+  'data.analysis.create',
 ] as const;
 
 export const DataCapabilityIdSchema = z.enum(DATA_CAPABILITY_IDS);
 export type DataCapabilityId = z.infer<typeof DataCapabilityIdSchema>;
 
-export const DataItemPageSchema = z.strictObject({
+export const DataItemPageV1Schema = z.strictObject({
   items: z.array(DataItemSchema),
   nextCursor: CursorSchema.optional(),
 });
+export const DataItemPageSchema = DataItemPageV1Schema.extend({
+  totalCount: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+});
 
-export const DataCatalogSearchInputSchema = z.strictObject({
+export const DataCatalogSearchInputV1Schema = z.strictObject({
   query: z.string().min(1).max(512).optional(),
   businessDomains: z.array(DataKeySchema).max(64).optional(),
   processingStages: z.array(ProcessingStageSchema).max(6).optional(),
@@ -91,6 +143,10 @@ export const DataCatalogSearchInputSchema = z.strictObject({
   acceptanceStatuses: z.array(AcceptanceStatusSchema).max(6).optional(),
   ...PageRequestFields,
 });
+export const DataCatalogSearchInputSchema =
+  DataCatalogSearchInputV1Schema.extend({
+    includeTotal: z.boolean().optional(),
+  });
 
 export const DataCatalogGetInputSchema = z.strictObject({
   dataItemId: PlatformUuidSchema,
@@ -380,7 +436,7 @@ function defineCapability(
 const capabilityRegistry = {
   'data.catalog.search': defineCapability({
     id: 'data.catalog.search',
-    version: '1.0.0',
+    version: '1.1.0',
     kind: 'query',
     inputSchema: DataCatalogSearchInputSchema,
     outputSchema: DataItemPageSchema,
@@ -862,6 +918,159 @@ const capabilityRegistry = {
     mcpMapping: { toolName: 'data_operation_events' },
     skillMapping: { operation: 'data.operation.events' },
   }),
+  'data.explore.view.create': defineCapability({
+    id: 'data.explore.view.create',
+    version: '1.0.0',
+    kind: 'command',
+    inputSchema: CreateExplorationViewInputSchema,
+    outputSchema: CreateExplorationViewOutputSchema,
+    requiredScopes: ['data.query.execute', 'data.catalog.read'],
+    maxSecurityLevel: 'L3_CONFIDENTIAL',
+    executionMode: 'SYNCHRONOUS',
+    timeout: 30000,
+    idempotent: true,
+    auditLevel: 'DETAILED',
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/views',
+      successStatus: 200,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'createDataExploreView',
+    },
+    mcpMapping: { toolName: 'data_explore_view_create' },
+    skillMapping: { operation: 'data.explore.view.create' },
+  }),
+  'data.explore.view.list': defineCapability({
+    id: 'data.explore.view.list',
+    version: '1.0.0',
+    kind: 'query',
+    inputSchema: ListExplorationViewsInputSchema,
+    outputSchema: ListExplorationViewsOutputSchema,
+    requiredScopes: ['data.query.execute', 'data.catalog.read'],
+    maxSecurityLevel: 'L3_CONFIDENTIAL',
+    executionMode: 'SYNCHRONOUS',
+    timeout: 30000,
+    idempotent: true,
+    auditLevel: 'DETAILED',
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/explore/views',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataExploreViews' },
+    mcpMapping: { toolName: 'data_explore_view_list' },
+    skillMapping: { operation: 'data.explore.view.list' },
+  }),
+  'data.explore.view.open': defineCapability({
+    id: 'data.explore.view.open',
+    version: '1.0.0',
+    kind: 'query',
+    inputSchema: OpenExplorationViewInputSchema,
+    outputSchema: OpenExplorationViewOutputSchema,
+    requiredScopes: ['data.query.execute', 'data.catalog.read'],
+    maxSecurityLevel: 'L3_CONFIDENTIAL',
+    executionMode: 'SYNCHRONOUS',
+    timeout: 30000,
+    idempotent: true,
+    auditLevel: 'DETAILED',
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/views/:viewId/open',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataExploreView' },
+    mcpMapping: { toolName: 'data_explore_view_open' },
+    skillMapping: { operation: 'data.explore.view.open' },
+  }),
+  'data.explore.view.revoke': defineCapability({
+    id: 'data.explore.view.revoke',
+    version: '1.0.0',
+    kind: 'command',
+    inputSchema: RevokeExplorationViewInputSchema,
+    outputSchema: RevokeExplorationViewOutputSchema,
+    requiredScopes: ['data.query.execute', 'data.catalog.read'],
+    maxSecurityLevel: 'L3_CONFIDENTIAL',
+    executionMode: 'SYNCHRONOUS',
+    timeout: 30000,
+    idempotent: true,
+    auditLevel: 'DETAILED',
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/views/:viewId/revoke',
+      successStatus: 200,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'revokeDataExploreView',
+    },
+    mcpMapping: { toolName: 'data_explore_view_revoke' },
+    skillMapping: { operation: 'data.explore.view.revoke' },
+  }),
+  'data.explore.export': defineCapability({
+    id: 'data.explore.export',
+    version: '1.0.0',
+    kind: 'query',
+    inputSchema: ExportExplorationInputSchema,
+    outputSchema: ExportExplorationOutputSchema,
+    requiredScopes: ['data.query.execute', 'data.catalog.read'],
+    maxSecurityLevel: 'L3_CONFIDENTIAL',
+    executionMode: 'SYNCHRONOUS',
+    timeout: 30000,
+    idempotent: true,
+    auditLevel: 'DETAILED',
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/export',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'exportDataExplore' },
+    mcpMapping: { toolName: 'data_explore_export' },
+    skillMapping: { operation: 'data.explore.export' },
+  }),
+  'data.explore.query': defineCapability({
+    id: 'data.explore.query',
+    version: '1.11.0',
+    kind: 'query',
+    inputSchema: ExplorationQueryInputSchema,
+    outputSchema: ExplorationResultSchema,
+    requiredScopes: ['data.query.execute', 'data.catalog.read'],
+    maxSecurityLevel: 'L3_CONFIDENTIAL',
+    executionMode: 'SYNCHRONOUS',
+    timeout: 30000,
+    idempotent: true,
+    auditLevel: 'DETAILED',
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/explore/query',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataExplore' },
+    mcpMapping: { toolName: 'data_explore_query' },
+    skillMapping: { operation: 'data.explore.query' },
+  }),
+  'data.analysis.create': defineCapability({
+    id: 'data.analysis.create',
+    version: '1.0.0',
+    kind: 'command',
+    inputSchema: CreateAnalysisInputSchema,
+    outputSchema: CreateAnalysisOutputSchema,
+    requiredScopes: ['data.ingestion.write', 'data.catalog.read'],
+    maxSecurityLevel: 'L3_CONFIDENTIAL',
+    executionMode: 'ASYNCHRONOUS',
+    timeout: 30_000,
+    idempotent: true,
+    auditLevel: 'FULL',
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/analyses',
+      successStatus: 202,
+    },
+    graphqlMapping: { operationType: 'mutation', field: 'createDataAnalysis' },
+    mcpMapping: { toolName: 'data_analysis_create' },
+    skillMapping: { operation: 'data.analysis.create' },
+  }),
 } satisfies Record<DataCapabilityId, Readonly<CapabilityDefinition>>;
 
 export const DATA_CAPABILITY_REGISTRY: Readonly<
@@ -869,6 +1078,82 @@ export const DATA_CAPABILITY_REGISTRY: Readonly<
 > = Object.freeze(capabilityRegistry);
 
 const capabilityArchive = {
+  'data.explore.query': Object.freeze([
+    defineCapability({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.0.0',
+      inputSchema: ExplorationQueryInputV1Schema,
+      outputSchema: ExplorationResultV1Schema,
+    }),
+    defineCapability({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.1.0',
+      inputSchema: ExplorationQueryInputV11Schema,
+      outputSchema: ExplorationResultV11Schema,
+    }),
+    defineCapability({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.2.0',
+      inputSchema: ExplorationQueryInputV12Schema,
+      outputSchema: ExplorationResultV12Schema,
+    }),
+    defineCapability({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.3.0',
+      inputSchema: ExplorationQueryInputV13Schema,
+      outputSchema: ExplorationResultV13Schema,
+    }),
+    defineCapability({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.4.0',
+      inputSchema: ExplorationQueryInputV14Schema,
+      outputSchema: ExplorationResultV14Schema,
+    }),
+    defineCapability({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.5.0',
+      inputSchema: ExplorationQueryInputV15Schema,
+      outputSchema: ExplorationResultV15Schema,
+    }),
+    defineCapability({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.6.0',
+      inputSchema: ExplorationQueryInputV16Schema,
+      outputSchema: ExplorationResultV16Schema,
+    }),
+    defineCapability({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.7.0',
+      inputSchema: ExplorationQueryInputV17Schema,
+      outputSchema: ExplorationResultV17Schema,
+    }),
+    Object.freeze({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.8.0',
+      inputSchema: ExplorationQueryInputV18Schema,
+      outputSchema: ExplorationResultV18Schema,
+    }),
+    Object.freeze({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.9.0',
+      inputSchema: ExplorationQueryInputV19Schema,
+      outputSchema: ExplorationResultV19Schema,
+    }),
+    Object.freeze({
+      ...capabilityRegistry['data.explore.query'],
+      version: '1.10.0',
+      inputSchema: ExplorationQueryInputV110Schema,
+      outputSchema: ExplorationResultV110Schema,
+    }),
+  ]),
+  'data.catalog.search': Object.freeze([
+    defineCapability({
+      ...capabilityRegistry['data.catalog.search'],
+      version: '1.0.0',
+      inputSchema: DataCatalogSearchInputV1Schema,
+      outputSchema: DataItemPageV1Schema,
+    }),
+  ]),
   'data.ingestion.reject': Object.freeze([
     defineCapability({
       ...capabilityRegistry['data.ingestion.reject'],
