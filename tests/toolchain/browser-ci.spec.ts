@@ -20,7 +20,7 @@ describe('reference browser CI', () => {
     const scripts = manifest.scripts as Record<string, string>;
 
     expect(scripts['test:e2e:reference']).toBe(
-      'pnpm --workspace-concurrency=1 --no-bail --filter @wiser/web --filter @wiser/docs run test:e2e',
+      'pnpm --workspace-concurrency=2 --no-bail --filter @wiser/web --filter @wiser/docs run test:e2e',
     );
   });
 
@@ -46,7 +46,7 @@ describe('reference browser CI', () => {
     );
   });
 
-  it('runs the reference suites after verify and retains only failed-run artifacts', () => {
+  it('runs the reference suites independently and retains only failed-run artifacts', () => {
     const workflow = read('.github/workflows/ci.yml');
     const start = workflow.indexOf('\n  browser:');
     const end = workflow.indexOf('\n  database:', start);
@@ -54,7 +54,7 @@ describe('reference browser CI', () => {
     expect(start).toBeGreaterThan(-1);
     expect(end).toBeGreaterThan(start);
     const browser = workflow.slice(start, end);
-    expect(browser).toContain('needs: verify');
+    expect(browser).not.toContain('needs:');
     expect(browser).toContain(
       'pnpm --filter @wiser/web exec playwright install --with-deps chromium',
     );

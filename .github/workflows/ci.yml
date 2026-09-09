@@ -72,9 +72,6 @@ jobs:
       - name: Verify
         run: pnpm verify
 
-      - name: Verify unit coverage ratchet
-        run: pnpm test:coverage
-
       - name: Upload unit coverage report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -90,7 +87,6 @@ jobs:
     name: Verify reference browser flows
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    needs: verify
 
     steps:
       - name: Check out repository
@@ -134,7 +130,6 @@ jobs:
     name: Verify Supabase schema
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    needs: verify
 
     steps:
       - name: Check out repository
@@ -174,7 +169,6 @@ jobs:
     name: Verify Data Foundation vertical slice
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    needs: verify
 
     steps:
       - name: Check out repository
@@ -295,7 +289,6 @@ jobs:
     name: Verify local observability profile
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    needs: verify
 
     steps:
       - name: Check out repository
@@ -322,3 +315,24 @@ jobs:
       - name: Stop observability profile
         if: always()
         run: docker compose --profile observability down --volumes --remove-orphans || true
+
+  complete:
+    name: CI complete
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    needs: [docpact, verify, browser, database, data-foundation, observability]
+    if: always()
+    steps:
+      - name: Require every verification lane to succeed
+        env:
+          CI_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node --input-type=module <<'NODE'
+          const results = JSON.parse(process.env.CI_RESULTS);
+          const required = ['docpact', 'verify', 'browser', 'database', 'data-foundation', 'observability'];
+          const failed = required.filter(name => results[name]?.result !== 'success');
+          if (failed.length) {
+            console.error(`Required CI lanes did not succeed: ${failed.join(', ')}`);
+            process.exit(1);
+          }
+          NODE

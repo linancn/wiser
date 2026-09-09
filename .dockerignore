@@ -1,6 +1,8 @@
 .git
 .codebuddy
 .wiser
+.docpact/runs
+compose.override.yaml
 **/.next
 **/.source
 **/coverage
@@ -8,7 +10,9 @@
 **/node_modules
 **/out
 **/playwright-report
+**/playwright-report-live
 **/test-results
+**/test-results-live
 supabase/.branches
 supabase/.temp
 **/*.log

@@ -65,12 +65,22 @@ It performs, in order:
 1. `prettier --check .` across the repository;
 2. Fumadocs content generation followed by type-aware Oxlint;
 3. TypeScript checks for every workspace that declares `typecheck`;
-4. `pnpm test:unit`, which uses one Vitest projects run: app projects may run in parallel, while the root project named `repository` serializes `packages/**/*.spec.ts` and `tests/**/*.spec.ts`;
+4. `pnpm test:coverage`, which executes the complete unit suite and enforces coverage in one Vitest projects run: app projects may run in parallel, while the root project named `repository` serializes `packages/**/*.spec.ts` and `tests/**/*.spec.ts`;
 5. `pnpm test:ops`, which uses the Node test runner over `scripts/data-foundation/*.test.mjs` to verify operations orchestration, runtime roles, Supabase status parsing, and the vertical-smoke contract;
 6. builds for every workspace that declares `build`;
 7. `docker compose config --quiet` for the default Compose configuration.
 
 `pnpm verify` does not start Docker services, reset or test Supabase, apply Data migrations, run `data:smoke`, or include Web/Docs Playwright, observability smoke, cookbooks, showcases, or any real AI call. Add the focused gates below whenever the change requires them.
+
+## CI scheduling and completion
+
+Documentation governance, workspace verification, reference browsers, Supabase, Data Foundation, and observability start independently on isolated runners. They consume no build artifact from the workspace job. Every existing check remains required by the delivery contract; `CI complete` waits for all six and fails on failure, cancellation, a skipped lane, or a missing result. Keep the existing required-check names when configuring branch protection; the aggregate is an additional check, not permission to omit a lane.
+
+Use `pnpm verify` before pushing so local validation includes the same unit coverage ratchet as CI. Integration databases remain disposable and freshly migrated. Within each integration job, preserve setup, assertions, and unconditional cleanup order. Parallel scheduling changes when checks start, never what passing means.
+
+### CI image and environment preparation
+
+Data preparation preserves the sequential Chromium, fresh Supabase start/reset, and `pnpm data:up` flow. All migration, seed, service-health, parser, smoke, authenticated-browser, and PostgreSQL checks still run. Each job uses fresh databases and native Docker storage. Runtime credentials, database volumes, and smoke state are never cached.
 
 ## Focused Vitest and workspace commands
 
@@ -105,7 +115,7 @@ pnpm test:coverage
 
 This command merges packages and every app with a unit suite in one Vitest projects run, explicitly includes TypeScript/TSX source files that no test imported, and emits text, `coverage/lcov.info`, and `coverage/coverage-summary.json`. Docs remains build/Playwright-gated and is outside unit coverage. Long-running process bootstrap files are explicitly excluded; CLIs, barrels, and Web pages remain visible in the report.
 
-The verified coverage ratchet enforces global floors of 73% statements, 67% branches, 75% functions, and 76% lines. Higher scoped floors protect pure Core v2, its shared deterministic helpers, the OTLP Collector forwarder, and Graph/STAC/PostGIS input validation. CI runs this command after `pnpm verify` and retains LCOV plus the JSON summary for seven days. Thresholds never auto-update: a future increase is an explicit reviewed change based on a fresh Green report.
+The verified coverage ratchet enforces global floors of 73% statements, 67% branches, 75% functions, and 76% lines. Higher scoped floors protect pure Core v2, its shared deterministic helpers, the OTLP Collector forwarder, and Graph/STAC/PostGIS input validation. Local and CI `pnpm verify` include this command exactly once; CI retains LCOV plus the JSON summary for seven days. Thresholds never auto-update: a future increase is an explicit reviewed change based on a fresh Green report.
 
 These figures measure only the Vitest manifest. Playwright, pgTAP, real PostgreSQL integration, operations smoke, and browser-visible Next.js pages remain separate proof layers and are not merged into the unit percentage. Do not lower a threshold merely to accommodate untested code or interpret the global number as product-level coverage.
 
@@ -176,7 +186,7 @@ pnpm --filter @wiser/web test:e2e
 pnpm --filter @wiser/docs test:e2e
 ```
 
-Both Playwright configurations start isolated development servers: Web uses `127.0.0.1:3200`, while Docs uses `127.0.0.1:4322`. Web explicitly configures reference/Auth-off mode in this isolated suite; production continues to forbid Auth-off mode. CI runs Web with one browser worker and a 60-second per-test limit to avoid concurrent cold-route compilation and allow the multi-viewport navigation cases to finish on the runner. Local Web runs use four workers. The CI browser job runs the same root command after `pnpm verify` and retains screenshots, traces, and the HTML report only on failure. These suites prove browser routing, language, theme, and interaction; they do not replace unified-Auth or database vertical smoke, and their compilation-inclusive timing is not a production latency budget.
+The root command runs Web and Docs concurrently with workspace concurrency two and `--no-bail`: either suite failing still fails the command, while the other suite finishes and retains its own diagnostics. Their ports and output directories are separate. Both Playwright configurations start isolated development servers: Web uses `127.0.0.1:3200`, while Docs uses `127.0.0.1:4322`. Web explicitly configures reference/Auth-off mode in this isolated suite; production continues to forbid Auth-off mode. CI runs Web with one browser worker and a 60-second per-test limit to avoid concurrent cold-route compilation and allow the multi-viewport navigation cases to finish on the runner. Local Web runs use four workers. The CI browser job runs the same root command independently of `pnpm verify` and retains screenshots, traces, and the HTML report only on failure. These suites prove browser routing, language, theme, and interaction; they do not replace unified-Auth or database vertical smoke, and their compilation-inclusive timing is not a production latency budget.
 
 ### Authenticated Data live suite
 

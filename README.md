@@ -17,7 +17,7 @@ checkPaths:
   - compose.yaml
   - package.json
 lastReviewedAt: 2026-09-09
-lastReviewedCommit: 5eeead372664c3ae7ada5a4d94e4901343e27565
+lastReviewedCommit: d96eb8c5a16778cf0ea51b604fc346b833a4e2fb
 ---
 
 # WISER · 水地图
@@ -108,7 +108,7 @@ pnpm --filter @wiser/docs dev
 pnpm verify
 ```
 
-它覆盖格式、type-aware lint、全部 workspace 类型/单元测试/build 与默认 Compose config；不包含数据库 reset/集成、Playwright、Data/observability smoke 或 Docpact。
+它覆盖格式、type-aware lint、全部 workspace 类型/单元测试及覆盖率/build 与默认 Compose config；不包含数据库 reset/集成、Playwright、Data/observability smoke 或 Docpact。
 
 数据库改动按权威边界追加门禁。`supabase:verify` 是真实 reset/pgTAP/RLS 验证并会清空本机 Supabase；`data:verify` 只做 Data 脚本/workspace/Compose 静态验证，真实 Data schema/存储/投影改动还要在可丢弃环境运行 `stack:full:up` 或开发手册中的 migrate/seed/smoke 顺序：
 
