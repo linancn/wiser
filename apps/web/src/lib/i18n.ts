@@ -95,7 +95,9 @@ const zhCN = {
       loading: '正在加载高德底图…',
       failed: '暂时无法加载底图。数据内容仍可查看。',
       retry: '重试底图',
-      aligned: '已按高德底图对齐',
+      aligned: '显示坐标已转换；位置尚待独立核对',
+      positionLimit:
+        '可上图只说明几何可显示，位置尚待独立核对。精细分析前请核对来源、生成方式、时间与适用尺度；放大地图不会提高原始数据精度。',
       coordinateLabel: '地图位置',
       sourceDetails: '坐标与版本信息',
     },
@@ -1099,7 +1101,10 @@ const zhCN = {
       authorityLayer: '数据要素',
       stacLayer: '资产范围',
       vectorLayer: '矢量图层',
-      rasterLayer: '栅格图层',
+      rasterLayer: '栅格像元',
+      rasterOpacity: '栅格不透明度',
+      rasterMeaning:
+        '像元影像与范围框分开显示。透明处不代表数值为零；数值含义、单位与范围请回查来源说明。',
       selectedVersion: '地图版本',
       noSelectedVersion: '未固定版本',
       displayCrs: '显示坐标系',
@@ -1716,7 +1721,10 @@ const en: typeof zhCN = {
       failed:
         'The basemap is temporarily unavailable. You can still inspect the data.',
       retry: 'Retry basemap',
-      aligned: 'Aligned with the AMap basemap',
+      aligned:
+        'Display coordinates converted; Position still needs independent verification',
+      positionLimit:
+        'Renderable geometry alone does not establish accuracy. Position still needs independent verification. Check the source, derivation, time and reference scale before detailed analysis; zooming does not increase source precision.',
       coordinateLabel: 'Map alignment',
       sourceDetails: 'Coordinates and version',
     },
@@ -2757,7 +2765,10 @@ const en: typeof zhCN = {
       authorityLayer: 'Data features',
       stacLayer: 'Asset extents',
       vectorLayer: 'Vector layer',
-      rasterLayer: 'Raster layer',
+      rasterLayer: 'Raster pixels',
+      rasterOpacity: 'Raster opacity',
+      rasterMeaning:
+        'Image pixels are separate from extent outlines. Transparent areas do not mean zero; check the source for value meanings, units and ranges.',
       selectedVersion: 'Map version',
       noSelectedVersion: 'No version pinned',
       displayCrs: 'Display coordinate system',

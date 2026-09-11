@@ -998,6 +998,11 @@ export function DataExplorer({
                 >
                   {copy.openData}
                 </Link>
+                <Link
+                  href={`/${locale}/data-foundation/map?dataItem=${selectedRecord.dataItemId}&version=${selectedRecord.versionId}`}
+                >
+                  {getDictionary(locale).dataFoundation.itemPage.openOnMap}
+                </Link>
               </>
             ) : selectedNode !== null ? (
               <>
@@ -1079,6 +1084,11 @@ export function DataExplorer({
                   href={`/${locale}/data-foundation/catalog/${selected.dataItemId}?version=${selected.versionId}`}
                 >
                   {copy.openData}
+                </Link>
+                <Link
+                  href={`/${locale}/data-foundation/map?dataItem=${selected.dataItemId}&version=${selected.versionId}`}
+                >
+                  {getDictionary(locale).dataFoundation.itemPage.openOnMap}
                 </Link>
                 <details>
                   <summary>{copy.limitations}</summary>

@@ -170,6 +170,7 @@ export default function DataExplorerMap({
       onSelect(record);
     } catch {
       if (!controller.signal.aborted) {
+        setRenderedCount(0);
         setFailed(true);
         setReady(false);
       }
@@ -299,6 +300,7 @@ export default function DataExplorerMap({
               invalidatesExploration(error.status)
             )
               onInvalidated(result.queryId, error.status);
+            setRenderedCount(0);
             setFailed(true);
             setReady(false);
           }}
@@ -430,6 +432,9 @@ export default function DataExplorerMap({
           ).toLocaleString(locale)}
         </span>
       </div>
+      <p role="note" className={styles.mapPositionNote}>
+        {getDictionary(locale).dataFoundation.amap.positionLimit}
+      </p>
       {!failed ? (
         <details className={styles.mapLegend}>
           <summary>{copy.mapLayers.title}</summary>

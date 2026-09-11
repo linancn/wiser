@@ -19,9 +19,12 @@ export async function amapService(
   if (request.method !== 'GET') return unavailable(405);
   const name = path.join('/');
   if (
-    !['config', 'v4/map/styles', 'v3/assistant/coordinate/convert'].includes(
-      name,
-    )
+    ![
+      'config',
+      'v4/map/styles',
+      'v3/assistant/coordinate/convert',
+      'v3/log/init',
+    ].includes(name)
   )
     return unavailable(404);
   try {
@@ -32,7 +35,7 @@ export async function amapService(
   if (!options.key || !options.securityCode) return unavailable(503);
   if (name === 'config')
     return Response.json(
-      { key: options.key, serviceHost: '/api/maps/amap', version: '2.0' },
+      { key: options.key, serviceHost: '/_AMapService', version: '2.0' },
       { headers: { 'cache-control': cacheControl } },
     );
   const url = new URL(request.url);

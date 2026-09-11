@@ -155,6 +155,8 @@ All four upstream origins come from startup-validated internal configuration; us
 
 MapLibre never embeds the API Bearer in a tile URL. An authenticated browser requests only same-origin `/api/data-foundation/geo/...`; the Next Route Handler revalidates the Supabase Session and forwards to these Fastify routes with a server-only access token and fixed Tenant/Project/Purpose while bounding path, query, content, and response size again. This Web path is not another GIS business implementation.
 
+After authority checks, an exact TiTiler PNG coverage miss (`404` JSON containing only `detail: Tile(x=…, y=…, z=…) is outside bounds`, with coordinates matching the request) becomes a transparent 256-pixel PNG. Missing assets, authorization failures, malformed or other error responses remain failures. A successful HEAD stays HEAD; only a PNG HEAD coverage candidate is retried once as GET within the same timeout and body limit. Responses remain audited and `no-store`.
+
 ## Upload and ingestion
 
 `data.ingestion.create` 1.1 accepts optional `sourceRegistration`; ingestion get/reject 1.1 preserve that descriptor. Their 1.0 schemas remain in the immutable discovery archive. Obtain the full strict schema from discovery. The descriptor contains source/bundle identity, kind, name, provider, access state, explicit completeness, limitations, and `manifestAssetId` / `manifestSha256`. The manifest asset must be among the completed upload assets supplied to ingestion.

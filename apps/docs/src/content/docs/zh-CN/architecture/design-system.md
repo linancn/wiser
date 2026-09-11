@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - apps/web/src/**
   - apps/docs/src/**
-lastReviewedAt: 2026-09-09
-lastReviewedCommit: 2e98d90315eae4e86b3fb20219d5fb2a94f650f4
+lastReviewedAt: 2026-09-11
+lastReviewedCommit: 8b6970cd9f73a68ed83ce92fc55d8bec0c1c5401
 ---
 
 ## 设计方向
@@ -94,7 +94,9 @@ WISER 面向水系统专家、导调人员和数据治理人员。界面的单�
 - 两者共享 Shell、Token 和组件，但不伪装领域术语：同一种视觉状态可以承载不同领域对象。
 - 地图、Trace、血缘图等高复杂度视图可以拥有专用画布，但主题、焦点、面板、图例和状态语义仍来自共享系统。
 
-Data 地图把这一合同落实为可访问控件，而不是只靠画布颜色：DataItem 版本链接使用 `aria-current`，地图表单同时固定 bbox、不可变 Version 与 EPSG:4326/4490 source CRS；PostGIS authority、STAC extent、vector MVT、raster 四图层都用带文字的 checkbox，缺失图层保持 disabled。控制区持续显示 selectedVersion 与 高德显示校准状态，图层颜色从当前主题 token 读取，深浅色切换不改变权威层级。浏览器瓦片使用同源 Web 路径，服务器身份与内部 GIS origin 不出现在 UI。
+Data 地图把这一合同落实为可访问控件，而不是只靠画布颜色：DataItem 版本链接使用 `aria-current`，地图表单同时固定 bbox、不可变 Version 与 EPSG:4326/4490 source CRS；PostGIS authority、STAC extent、vector MVT、raster 四图层都用带文字的 checkbox，缺失图层保持 disabled。控制区持续显示 selectedVersion 与 显示坐标转换及位置尚待独立核对状态，图层颜色从当前主题 token 读取，深浅色切换不改变权威层级。浏览器瓦片使用同源 Web 路径，服务器身份与内部 GIS origin 不出现在 UI。
+
+只有栅格的专业地图在缺少已验证要素和 STAC 范围时，按查询区域设置初始视角。缺失图层的提示仍然保留，不将视角位置展示为新增、已验证的空间要素。
 
 ## 验收
 
@@ -141,3 +143,5 @@ Portal 根据已验证会话选择主操作：已登录用户进入数据工作�
 知识图谱画布默认使用使用确定性初始位置、最多 160 次迭代的 ForceAtlas2 关系网络，由现有可取消 Worker 计算。键盘可操作的布局切换提供 Dagre 来源层级；只有层级布局在窄屏改变方向。两种布局均保留有界身份、选择、路径高亮和文字替代视图，独立资源的关联组在二维平面分区排布。初始概览每页显示八项资源，聚焦后的邻居页保留独立条数上限。关系文字与语义节点颜色辅助表达节点类型。
 
 资源页先展示内容工作区，治理信息位于可展开区域。版本内文件列表、原文件下载与内容页签共用精确资源身份。表格保留来源标量值，并为已知字段提供易读标签；文档与结构化视图按需展开嵌套内容。文件预览不执行来源脚本，暂不支持的格式保留明确下载操作。探索中的资源名称直接打开内容，另设选择控件以保留当前查询内的分析操作。
+
+有可路由栅格源时，进入地图即显示像元，并与资产范围框分别标注。可用键盘操作的不透明度滑块只更新现有图层，不重建来源、不重置相机。透明区域不能解释为数值零；单位与数值范围仍需回查来源说明。

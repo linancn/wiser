@@ -97,6 +97,12 @@ export async function verifyExplorationTiles(
     expect(converted.rows[0]!.lng).toBeCloseTo(116.39754, 5);
     expect(converted.rows[0]!.lat).toBeCloseTo(39.908901, 5);
   }
+  await client.query(
+    await readFile(
+      'infrastructure/data-foundation/postgres/migrations/0023_exploration_point_guard.sql',
+      'utf8',
+    ),
+  );
   const tileRole = `wiser_tile_test_${randomUUID().replaceAll('-', '')}`;
   await client.query(`create role ${tileRole} nologin nosuperuser nobypassrls`);
   await client.query(`grant usage on schema service to ${tileRole}`);
@@ -260,12 +266,20 @@ export async function verifyExplorationTiles(
     [analysis, scope.tenant, scope.project, scope.version, operation],
   );
   await client.query(
-    `insert into service.analysis_asset(analysis_id,asset_id,tenant_id,project_id,source_hash,status,record_count,feature_count,columns,security_level,policy_version) select $1,asset_id,tenant_id,project_id,source_hash,'READY',100000,100000,columns,security_level,policy_version from service.analysis_asset where analysis_id=$2 and asset_id=$3`,
+    `insert into service.analysis_asset(analysis_id,asset_id,tenant_id,project_id,source_hash,status,record_count,feature_count,columns,security_level,policy_version) select $1,asset_id,tenant_id,project_id,source_hash,'READY',100002,100002,columns,security_level,policy_version from service.analysis_asset where analysis_id=$2 and asset_id=$3`,
     [analysis, scope.analysis, scope.asset],
   );
   await client.query(
     `insert into catalog.analysis_record(analysis_id,record_id,asset_id,tenant_id,project_id,record_index,record_values,geom,security_level,policy_version) select $1,gen_random_uuid(),$2,$3,$4,n,jsonb_build_object('time',case when n%2=0 then '29/2/2024 23:59:59' else '1/3/2024 00:00:00' end),st_setsrid(st_makepoint(-170+(n%1000)*0.34,-70+(n/1000)*1.4),4326),'L1_INTERNAL',1 from generate_series(1,100000) n`,
     [analysis, scope.asset, scope.tenant, scope.project],
+  );
+  const line = randomUUID(),
+    polygon = randomUUID();
+  await client.query(
+    `insert into catalog.analysis_record(analysis_id,record_id,asset_id,tenant_id,project_id,record_index,record_values,geom,security_level,policy_version)
+     values($1,$5,$2,$3,$4,100001,'{}',st_geomfromtext('LINESTRING(116.3 39.9,116.5 39.9)',4326),'L1_INTERNAL',1),
+           ($1,$6,$2,$3,$4,100002,'{}',st_geomfromtext('POLYGON((116.2 39.8,116.6 39.8,116.6 40,116.2 40,116.2 39.8))',4326),'L1_INTERNAL',1)`,
+    [analysis, scope.asset, scope.tenant, scope.project, line, polygon],
   );
   await client.query(
     `update service.analysis_run set status='READY',completed_at=clock_timestamp() where analysis_id=$1`,
@@ -291,9 +305,33 @@ export async function verifyExplorationTiles(
   const counts = Array.from({ length: stress.length }, (_, i) =>
     Number(stress.feature(i).properties['count']),
   );
-  expect(counts.reduce((a, b) => a + b, 0)).toBe(100000);
-  expect(stress.length).toBeLessThanOrEqual(4096);
+  expect(counts.reduce((a, b) => a + b, 0)).toBe(100002);
+  expect(stress.length).toBeLessThanOrEqual(4098);
   expect(bytes.byteLength).toBeLessThan(1024 * 1024);
+  // WHERE order is not guaranteed: exercise a legal plan that delays type checks.
+  // Both the planner cost and all fixture records are restored by rollback.
+  await client.query('savepoint mixed_geometry_plan');
+  try {
+    await client.query(
+      'alter function public.geometrytype(geometry) cost 10000',
+    );
+    const mixed = new VectorTile(
+      new PbfReader(await tile({ ...params, queryId: query }, 6, 52, 24)),
+    ).layers['exploration']!;
+    const mixedRecords = Array.from({ length: mixed.length }, (_, index) => ({
+      recordId: mixed.feature(index).properties['recordId'],
+      type: mixed.feature(index).type,
+    }));
+    expect(mixedRecords).toEqual(
+      expect.arrayContaining([
+        { recordId: line, type: 2 },
+        { recordId: polygon, type: 3 },
+      ]),
+    );
+  } finally {
+    await client.query('rollback to savepoint mixed_geometry_plan');
+    await client.query('release savepoint mixed_geometry_plan');
+  }
   const temporalQuery = randomUUID();
   await client.query(
     `insert into service.exploration_snapshot select $1,tenant_id,project_id,actor_id,purpose,security_level,policy_version,jsonb_set(spec,'{recordQuery}',$3::jsonb),version_refs,created_at,expires_at from service.exploration_snapshot where query_id=$2`,
@@ -340,7 +378,7 @@ export async function verifyExplorationTiles(
     'Authorized MVT stress',
     JSON.stringify({
       display,
-      records: 100000,
+      records: 100002,
       features: stress.length,
       bytes: bytes.byteLength,
       milliseconds: Math.round(performance.now() - started),

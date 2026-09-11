@@ -61,6 +61,22 @@
   border-top: 1px solid var(--border-on-strong);
 }
 
+.rasterControls label {
+  display: flex;
+  flex-direction: column;
+  font-size: 1rem;
+}
+
+.rasterControls input[type='range'] {
+  width: 100%;
+  height: 32px;
+}
+
+.rasterControls p {
+  color: var(--text-on-strong-muted);
+  font-size: 0.875rem;
+}
+
 .layerControls dt {
   color: var(--text-on-strong-muted);
   font-size: 0.68rem;

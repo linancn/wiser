@@ -97,12 +97,12 @@ async function initialize(): Promise<AmapSdk> {
     typeof config.key !== 'string' ||
     config.key.length === 0 ||
     !('serviceHost' in config) ||
-    config.serviceHost !== '/api/maps/amap'
+    config.serviceHost !== '/_AMapService'
   )
     throw new Error('Invalid map configuration');
   const key = config.key;
   window._AMapSecurityConfig = {
-    serviceHost: `${window.location.origin}/api/maps/amap`,
+    serviceHost: `${window.location.origin}/_AMapService`,
   };
   if (window.AMap) return window.AMap;
   return new Promise((resolve, reject) => {
