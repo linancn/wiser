@@ -1,6 +1,6 @@
 ---
 title: Data REST API
-description: Data Foundation's 36 Capabilities, OpenAPI, governed Resources, idempotency, SSE, and asset-download protocol.
+description: Data Foundation's 37 Capabilities, OpenAPI, governed Resources, idempotency, SSE, and asset-download protocol.
 docType: protocol-reference
 scope: data-rest-api
 status: active
@@ -32,7 +32,7 @@ These non-cacheable reads require no identity:
 | Method | Path                                               | Result                                                                             |
 | ------ | -------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `GET`  | `/api/data/v1/health`                              | data-postgres, object-store, Worker readiness; any missing authority returns `503` |
-| `GET`  | `/api/data/v1/capabilities`                        | ordered 36-item Registry, draft-7 I/O Schemas, and four mappings                   |
+| `GET`  | `/api/data/v1/capabilities`                        | ordered 37-item Registry, draft-7 I/O Schemas, and four mappings                   |
 | `GET`  | `/api/data/v1/capabilities/:capabilityId/:version` | one fixed Capability version; unknown version returns `404`                        |
 
 A ready response has this core shape:
@@ -51,7 +51,7 @@ A ready response has this core shape:
 
 ## OpenAPI contract projection
 
-Shared `GET /openapi.json` returns OpenAPI 3.1 with the fixed title **WISER Platform API**, covering Platform, Agent EXCON, and Data Foundation. The 36 Data Capabilities do not maintain another handwritten schema. At route registration, Fastify converts Registry Zod 4 input/output into draft-7 JSON Schema and projects it into path, query, body, and required-header OpenAPI operations.
+Shared `GET /openapi.json` returns OpenAPI 3.1 with the fixed title **WISER Platform API**, covering Platform, Agent EXCON, and Data Foundation. The 37 Data Capabilities do not maintain another handwritten schema. At route registration, Fastify converts Registry Zod 4 input/output into draft-7 JSON Schema and projects it into path, query, body, and required-header OpenAPI operations.
 
 Every Data operation has the `data-foundation` tag, a stable `operationId`, `bearerAuth`, its successful response Schema, plus `Idempotency-Key` for commands and `If-Match` for versioned commands. Fastify schema compilers serve the OpenAPI projection here; the single runtime behavior gate remains strict Zod input/output validation in the shared `DataCapabilityHandler`. Generated documentation never becomes a second behavior source.
 
@@ -85,7 +85,7 @@ If-Match: "v3"
 
 This applies to upload Session completion, ingestion submit/approve/reject, and Operation cancel. The header must equal an `expectedVersion` already present in the body. Successful responses include `ETag: "vN"` when an aggregate version is present. Identity, business, and error responses are all `private, no-store`.
 
-## The 36 Capability routes
+## The 37 Capability routes
 
 | Capability                    | Method and path                                           | Success            |
 | ----------------------------- | --------------------------------------------------------- | ------------------ |
@@ -320,3 +320,5 @@ AMap vector display routes add `/geo/tiles/vector/amap/queries/{queryId}/{z}/{x}
 `POST /api/data/v1/assessments` (`data.assessment.create`) requires `data.catalog.read`, `data.ingestion.write` and a UUID `Idempotency-Key`. Supply `dataItemId`, immutable `versionId`, `assetId` and the strict `declaration` including expected file hash, material type, target object, access/acquisition/coverage, evidence and optional typed metadata. The selected original must already be a visible committed RAW asset. The response is `{ assessment }`, including server-read hash, parser version, analysis identity, check time, declarations and deterministic rule findings. A stale self-check never replaces the server computation.
 
 `GET /api/data/v1/assessments/:assessmentId` and `GET /api/data/v1/assessments?dataItemId=…&versionId=…&first=25` require `data.catalog.read`; continue using `after=nextCursor`, up to 100 per page. Both reads and identical command retries reauthorize the exact source; withdrawal makes it unavailable. Reports do not grant access, approve publication or certify position. `REMOTE_QUERY_REPORTED` deliberately remains unverified; declared complete coverage is not an independently measured whole-dataset count.
+
+`GET /api/data/v1/assessments/overview` (`data.assessment.overview`, `data.catalog.read`) requires the target object and optionally accepts `query`, `action`, `first` (1–100) and an opaque `after` resource cursor. `totalCount`, `checkedCount`, `uncheckedCount`, and next-action counts share the whole authorized filtered resource denominator; `selectedCount` describes the selected action, independently of the bounded page. Each item pins a resource/version and its latest applicable report time. No check means `UNCHECKED`, not inaccessible.

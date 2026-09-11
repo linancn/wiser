@@ -154,6 +154,7 @@ for (const serverOwnedField of [
 }
 
 const validCapabilityInputs = {
+  'data.assessment.overview': { target: 'DATASET', first: 25 },
   'data.assessment.create': {
     dataItemId: DATA_ITEM_ID,
     versionId: VERSION_ID,
@@ -333,6 +334,16 @@ const validCapabilityInputs = {
 } satisfies Record<DataCapabilityId, Readonly<Record<string, unknown>>>;
 
 const expectedCapabilityMappings = {
+  'data.assessment.overview': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/assessments/overview',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataAssessmentOverview' },
+    mcpMapping: { toolName: 'data_assessment_overview' },
+    skillMapping: { operation: 'data.assessment.overview' },
+  },
   'data.assessment.create': {
     restMapping: {
       method: 'POST',
@@ -735,6 +746,7 @@ const expectedCapabilityMappings = {
 } satisfies Record<DataCapabilityId, unknown>;
 
 const expectedCapabilityScopes = {
+  'data.assessment.overview': ['data.catalog.read'],
   'data.assessment.create': ['data.catalog.read', 'data.ingestion.write'],
   'data.assessment.get': ['data.catalog.read'],
   'data.assessment.list': ['data.catalog.read'],
@@ -793,15 +805,19 @@ const asynchronousCapabilityIds = new Set<DataCapabilityId>([
 const expectedJsonSchemaHashes = {
   'data.assessment.create': {
     input: '634c3fce7ac37a8921dfe8d84c412b7dde655c583dc2c5854974aaf0b939d5a4',
-    output: '59ad258fe60870d31f30934c83f872fc5911b7d65624bdeca3be994e4547e1aa',
+    output: '07ec50caea5d37f4bb6a2281b617d97641aae55774693fa6b4f8b586e7d36d8a',
   },
   'data.assessment.get': {
     input: '634b8c46936a7ee7574ff70aa88e41178267e7ef4c7756f6930686c9ec1221a4',
-    output: '59ad258fe60870d31f30934c83f872fc5911b7d65624bdeca3be994e4547e1aa',
+    output: '07ec50caea5d37f4bb6a2281b617d97641aae55774693fa6b4f8b586e7d36d8a',
   },
   'data.assessment.list': {
     input: '06cc8b27e6444c6b8c6620927d9cc8d1b555346bf00a2151d6e93a6c8a2389e8',
-    output: '530fac3758aa798459fc933c5ddec530defe41f8faf19988a19b647b3a1940c0',
+    output: '02a35b5600df4df19ea4fd4ced1a7bee1bce2b32b6ae6c6802cf822a1a546f92',
+  },
+  'data.assessment.overview': {
+    input: '1bb3c9324d8ec0db270c602e27751e5ff81c135bb5368f9ee706e256cf9e5e43',
+    output: 'a55c23fac7153dd80e16632176244d82dfaac80229a4fe92e7c5cb673b90b867',
   },
   'data.reconciliation.create': {
     input: '174f36b476aadd5f390397981c199625802d4318ae22bf05fc0cf05a335104f8',
@@ -1286,6 +1302,7 @@ describe('Data Foundation capability registry', () => {
       'data.assessment.create',
       'data.assessment.get',
       'data.assessment.list',
+      'data.assessment.overview',
     ]);
     expect(Object.keys(DATA_CAPABILITY_REGISTRY)).toEqual(DATA_CAPABILITY_IDS);
 

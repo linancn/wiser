@@ -95,6 +95,7 @@ input ApprovalInput {
 }
 
 type Query {
+  dataAssessmentOverview(input: JSON!): JSON!
   dataAssessment(input: JSON!): JSON!
   dataAssessments(input: JSON!): JSON!
   dataReconciliation(input: JSON!): JSON!

@@ -28,7 +28,7 @@ POST /graphql
 Content-Type: application/json
 ```
 
-It uses Mercurius with schema-first SDL and no decorator or TypeScript AST scanning. GraphQL fields are projections of the 36 Capabilities. Resolvers and REST call the same `DataCapabilityHandler`, preserving Zod input/output validation, scopes, security ceiling, purpose, timeout, idempotency, and audit semantics.
+It uses Mercurius with schema-first SDL and no decorator or TypeScript AST scanning. GraphQL fields are projections of the 37 Capabilities. Resolvers and REST call the same `DataCapabilityHandler`, preserving Zod input/output validation, scopes, security ceiling, purpose, timeout, idempotency, and audit semantics.
 
 `apps/api/package.json` and the root lockfile define the exact compatible GraphQL and Mercurius versions, and API typecheck/build verifies that combination. Protocol prose does not duplicate a version inventory that changes during dependency upgrades.
 
@@ -221,3 +221,5 @@ Saved-view queries are `dataExploreViews(input: JSON!)`, `dataExploreView(input:
 ## Intake assessment fields
 
 `createDataAssessment(input: JSON!)`, `dataAssessment(input: JSON!)` and `dataAssessments(input: JSON!)` map to `data.assessment.create/get/list`. The JSON scalar preserves the strict shared schemas, source reauthorization and command idempotency. Reports distinguish saved originals, declared coverage, typed check findings and unverified position; they do not modify publication.
+
+`dataAssessmentOverview(input: JSON!)` maps to `data.assessment.overview`, retaining the exact target, authorization, count grain and paging semantics.

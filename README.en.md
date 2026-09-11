@@ -16,8 +16,8 @@ checkPaths:
   - examples/**
   - compose.yaml
   - package.json
-lastReviewedAt: 2026-09-09
-lastReviewedCommit: d96eb8c5a16778cf0ea51b604fc346b833a4e2fb
+lastReviewedAt: 2026-09-11
+lastReviewedCommit: c1e834629353d112b49540a83ca8432ce820b27d
 ---
 
 # WISER · Water Intelligence System & Engine for Reconfiguration

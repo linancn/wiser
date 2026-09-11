@@ -231,6 +231,28 @@ it.skipIf(process.env['WISER_DATA_PG_INTEGRATION'] !== '1')(
       expect(second.assessment.result.findings.map((f) => f.code)).toContain(
         'SOURCE_CHANGED',
       );
+      const overview = await call('overview', { target: 'DATASET', first: 25 });
+      expect(overview).toMatchObject({
+        totalCount: 1,
+        checkedCount: 1,
+        uncheckedCount: 0,
+        selectedCount: 1,
+        items: [
+          {
+            dataItemId: item,
+            versionId: version,
+            nextAction: 'COMPLETE_METADATA',
+          },
+        ],
+      });
+      expect(
+        await call('overview', { target: 'DESCRIPTION_PAGE', first: 25 }),
+      ).toMatchObject({
+        totalCount: 1,
+        checkedCount: 0,
+        uncheckedCount: 1,
+        items: [{ nextAction: 'UNCHECKED' }],
+      });
       const page = ListAssessmentsOutputSchema.parse(
         await call('list', { dataItemId: item, versionId: version, first: 1 }),
       );
@@ -272,6 +294,9 @@ it.skipIf(process.env['WISER_DATA_PG_INTEGRATION'] !== '1')(
         "update catalog.data_item set publication_status='WITHDRAWN' where data_item_id=$1",
         [item],
       );
+      expect(
+        await call('overview', { target: 'DATASET', first: 25 }),
+      ).toMatchObject({ totalCount: 0, checkedCount: 0, items: [] });
       await expect(
         call('get', { assessmentId: first.assessment.assessmentId }),
       ).rejects.toMatchObject({ code: 'NOT_FOUND' });

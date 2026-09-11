@@ -10,7 +10,12 @@ export async function POST(
   context: { params: Promise<{ action: string }> },
 ): Promise<Response> {
   const { action } = await context.params;
-  if (action !== 'create' && action !== 'list' && action !== 'get')
+  if (
+    action !== 'create' &&
+    action !== 'list' &&
+    action !== 'get' &&
+    action !== 'overview'
+  )
     return Response.json({ code: 'NOT_FOUND' }, { status: 404, headers });
   if (!isSameOriginRequest(request)) {
     return Response.json({ code: 'FORBIDDEN' }, { status: 403, headers });

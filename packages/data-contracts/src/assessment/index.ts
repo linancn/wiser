@@ -117,6 +117,7 @@ export const IntakeFindingCodeSchema = z.enum([
   'CRS_UNVERIFIED',
   'LOCATOR_UNKNOWN',
   'TARGET_NOT_ACQUIRED',
+  'TARGET_CONTENT_UNVERIFIED',
   'REMOTE_QUERY_UNVERIFIED',
   'CONTENT_NOT_PARSED',
   'PARTIAL_CONTENT',
@@ -195,3 +196,44 @@ export const ListAssessmentsOutputSchema = z.strictObject({
   nextCursor: z.uuid().optional(),
 });
 export type Assessment = z.infer<typeof AssessmentSchema>;
+
+export const AssessmentActionSchema = IntakeResultSchema.shape.nextAction.or(
+  z.literal('UNCHECKED'),
+);
+export const AssessmentOverviewInputSchema = z.strictObject({
+  target: IntakeDeclarationSchema.shape.target,
+  query: z.string().min(1).max(512).optional(),
+  action: AssessmentActionSchema.optional(),
+  first: z.number().int().min(1).max(100).default(25),
+  after: z.uuid().optional(),
+});
+export const AssessmentOverviewOutputSchema = z.strictObject({
+  target: IntakeDeclarationSchema.shape.target,
+  totalCount: z.number().int().nonnegative(),
+  checkedCount: z.number().int().nonnegative(),
+  uncheckedCount: z.number().int().nonnegative(),
+  selectedCount: z.number().int().nonnegative(),
+  counts: z.array(
+    z.strictObject({
+      action: AssessmentActionSchema,
+      count: z.number().int().nonnegative(),
+    }),
+  ),
+  items: z
+    .array(
+      z.strictObject({
+        dataItemId: z.uuid(),
+        versionId: z.uuid(),
+        name: z.string(),
+        assessmentId: z.uuid().nullable(),
+        checkedAt: OffsetDateTimeSchema.nullable(),
+        acquisition: IntakeDeclarationSchema.shape.acquisition.nullable(),
+        access: IntakeDeclarationSchema.shape.access.nullable(),
+        coverage: IntakeDeclarationSchema.shape.coverage.nullable(),
+        nextAction: AssessmentActionSchema,
+      }),
+    )
+    .max(100),
+  nextCursor: z.uuid().optional(),
+});
+export type AssessmentOverview = z.infer<typeof AssessmentOverviewOutputSchema>;

@@ -62,6 +62,7 @@ const EXPECTED_DATA_TOOLS = [
   'data_assessment_create',
   'data_assessment_get',
   'data_assessment_list',
+  'data_assessment_overview',
 ] as const;
 
 class StubExconHttpClient implements AgentExconHttpClient {

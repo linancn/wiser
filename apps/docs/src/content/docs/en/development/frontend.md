@@ -186,3 +186,5 @@ Resource content mounts `DataReconciliation` for two fully parsed table assets. 
 ## Resource checks
 
 The resource content workspace exposes acquisition and use checks for the selected file. Explicit declarations and unknown states are shown separately from source-backed server facts. The authenticated same-origin `/api/data-foundation/assessment/[action]` adapter bounds bodies to 128 KiB, uses the existing DAL, retains command keys for ambiguous retries and clears report content on source denial. Records are loaded on request with bounded pagination; no initial report is fabricated.
+
+The catalogue exposes an on-demand acquisition overview with an explicit resource denominator, target selector, next-step filters and bounded resource links. Query text is retained; a new query remounts the panel. Unknown records never appear as zero-quality or inaccessible.

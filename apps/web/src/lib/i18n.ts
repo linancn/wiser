@@ -27,7 +27,31 @@ export function isLocale(value: string): value is Locale {
 }
 
 const zhCN = {
+  availabilityOverview: {
+    title: '取得情况与下一步',
+    load: '查看核查概况',
+    hint: '按当前可访问、已发布资料的最新版本统计。先选择检查对象；说明页和原件分别查看，未核查不等于不可取得。',
+    checked: '已有检查记录',
+    unchecked: '未核查',
+    denominator: '资料总数',
+    list: '对应资料',
+    all: '全部下一步',
+    empty: '当前条件下没有对应资料。可切换检查对象或下一步。',
+    scope: '各数字以同一批资料总数为分母；取得情况来自所示时间的检查记录。',
+    selected: '当前条件下的资料数',
+    more: '下一页资料',
+  },
   assessment: {
+    failureKind: '获取失败原因（如有）',
+    failureKinds: {
+      '': '未说明',
+      LOGIN_REQUIRED: '需要登录',
+      FORBIDDEN: '无权取得',
+      RATE_LIMITED: '请求过于频繁，稍后重试',
+      TEMPORARY: '暂时故障',
+      NOT_FOUND: '入口失效',
+      APPLICATION_REQUIRED: '需要申请',
+    },
     title: '资料取得与使用检查',
     hint: '保存原件、完成解析和适合业务使用是不同阶段。这里记录当前文件的取得情况，并检查已有信息；通过检查不代表科学结论或位置已经核验。',
     unknown: '待核查：尚未读取该版本的检查记录。',
@@ -136,6 +160,8 @@ const zhCN = {
       TIME_ROLE_UNKNOWN: '尚未说明时间字段及其含义。',
       CRS_UNVERIFIED: '尚无经过坐标系检查的可展示几何。',
       LOCATOR_UNKNOWN: '缺少可回查的原文位置。',
+      TARGET_CONTENT_UNVERIFIED:
+        '当前文件内容检查未通过，尚不能确认是所需数据集原件。',
       TARGET_NOT_ACQUIRED: '当前保存的是网页，不能据此确认数据集原件已取得。',
       REMOTE_QUERY_UNVERIFIED:
         '查询接口的成功记录仍待独立核验，不能视为整库已取得。',
@@ -1752,7 +1778,33 @@ const zhCN = {
 };
 
 const en: typeof zhCN = {
+  availabilityOverview: {
+    title: 'Acquisition and next steps',
+    load: 'View check overview',
+    hint: 'Counts cover the latest published versions of currently accessible resources. Select the target object; description pages and originals are separate. Unchecked does not mean unavailable.',
+    checked: 'With check records',
+    unchecked: 'Unchecked',
+    denominator: 'Total resources',
+    list: 'Matching resources',
+    all: 'All next steps',
+    empty:
+      'No resources match these conditions. Change the target or next step.',
+    scope:
+      'All counts use the same resource denominator. Acquisition is based on records at their stated check times.',
+    selected: 'Resources matching these conditions',
+    more: 'Next page of resources',
+  },
   assessment: {
+    failureKind: 'Acquisition failure reason (if any)',
+    failureKinds: {
+      '': 'Not specified',
+      LOGIN_REQUIRED: 'Sign-in required',
+      FORBIDDEN: 'Access denied',
+      RATE_LIMITED: 'Too many requests; retry later',
+      TEMPORARY: 'Temporary failure',
+      NOT_FOUND: 'Entry no longer found',
+      APPLICATION_REQUIRED: 'Application required',
+    },
     title: 'Acquisition and use checks',
     hint: 'Saving originals, parsing content and suitability for use are separate stages. Record acquisition for this file and check available information. Passing these checks does not verify scientific conclusions or position.',
     unknown:
@@ -1869,6 +1921,8 @@ const en: typeof zhCN = {
       CRS_UNVERIFIED:
         'No renderable geometry with checked coordinates is available.',
       LOCATOR_UNKNOWN: 'An original-source locator is missing.',
+      TARGET_CONTENT_UNVERIFIED:
+        'The saved content failed validation; acquisition of the intended dataset is not established.',
       TARGET_NOT_ACQUIRED:
         'The saved object is a webpage; dataset acquisition is not established.',
       REMOTE_QUERY_UNVERIFIED:

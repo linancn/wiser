@@ -1,3 +1,4 @@
+import { assessmentOverview } from './assessment-overview.js';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import {
@@ -107,6 +108,11 @@ export function createAssessmentExecutors(
     }
   };
   return [
+    {
+      id: 'data.assessment.overview',
+      execute: (raw, context) =>
+        read(context, (client) => assessmentOverview(client, raw)),
+    },
     {
       id: 'data.assessment.create',
       async execute(raw, context) {

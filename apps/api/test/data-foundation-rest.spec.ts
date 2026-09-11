@@ -69,6 +69,7 @@ const point = {
 };
 
 const validInputs = {
+  'data.assessment.overview': { target: 'DATASET', first: 25 },
   'data.assessment.create': {
     dataItemId: DATA_ITEM_ID,
     versionId: VERSION_ID,

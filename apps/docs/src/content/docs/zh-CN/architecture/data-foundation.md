@@ -47,7 +47,7 @@ GeoServer、TiTiler 和 Martin 作为 Compose-internal GIS 服务存在于同一
 
 | 模块                                        | 职责                                                                        |
 | ------------------------------------------- | --------------------------------------------------------------------------- |
-| `@wiser/data-contracts`                     | 严格 Zod DTO、33 项 Capability、四种 transport mapping                      |
+| `@wiser/data-contracts`                     | 严格 Zod DTO、37 项 Capability、四种 transport mapping                      |
 | `@wiser/data-core`                          | 纯确定性的入库/Operation 状态机、质量、安全继承和发布门禁                   |
 | `@wiser/data-infra`                         | checksum migration、PostgreSQL/S3、任务/Outbox、投影、检索和 fake embedding |
 | `@wiser/data-worker`                        | 具体入库 Handler、Scheduler、投影 consumer、健康与指标                      |
@@ -85,7 +85,7 @@ Data Foundation 不把 SQL 放进 Supabase migration。`infrastructure/data-foun
 
 TS7 runner 按四位版本排序，在 session advisory lock 下逐文件事务执行，并记录文件名和 SHA-256。已执行文件缺失、改名、内容漂移或非前缀历史会失败关闭。pgSTAC 使用官方 pyPgSTAC 0.9.12 migration，不伪造成 PostgreSQL extension。
 
-业务模型共有 36 张表，全部 `ENABLE` 且 `FORCE ROW LEVEL SECURITY`；另有独立 `schema_migrations` ledger。API 和 Worker 通过部署脚本创建的不同非超级用户 role 访问，migration 不隐式授予 runtime。每个事务必须设置并验证 Tenant、Project、最高安全等级和 policy version；缺任一上下文返回零行或失败。
+业务表全部 `ENABLE` 且 `FORCE ROW LEVEL SECURITY`；另有独立 `schema_migrations` ledger。API 和 Worker 通过部署脚本创建的不同非超级用户 role 访问，migration 不隐式授予 runtime。每个事务必须设置并验证 Tenant、Project、最高安全等级和 policy version；缺任一上下文返回零行或失败。
 
 Martin 使用隔离的 `wiser_data_gis` 登录：`NOSUPERUSER`、`NOBYPASSRLS`，不继承通用 runtime role、没有业务表权限，只能执行 `service.wiser_spatial_extent_mvt`。该 security-definer function 严格接收 `tenantId/projectId/versionId/maxSecurityLevel/policyVersion` 五项 query 参数，在 SQL 内再次过滤 Version 与 spatial extent。
 
@@ -177,7 +177,7 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 
 数据总览使用 `includeTotal=true` 取得受授权的目录总数，指标不再取预览页大小。目录计数和当前页使用同一个短 repeatable-read 权威事务。该数量表示登记对象，不表示已经通过分析验证的记录。
 
-- REST：`/api/data/v1` 的 discovery、33 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；36 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
+- REST：`/api/data/v1` 的 discovery、37 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；37 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
 - GraphQL：`POST /graphql`，36 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
 - MCP：stdio/无状态 Streamable HTTP，36 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
 - Skill：`skills/wiser-data-foundation` 定义发现、查询、上传、入库、Operation 与安全解释流程。
@@ -320,3 +320,5 @@ GIS 适配器在权威授权后，仅将与请求坐标完全一致的 TiTiler P
 取得情况分别针对数据集本体、说明网页、下载文件或查询接口，入口、访问条件及完整性声明均保留证据，不自动传递到关联对象。保存 HTML 不证明数据集原件已取得；样本即使解析完整仍是样本。接口查询报告保持待独立核验。旧资料在没有报告时保持待核查，原质量和发布状态不变。生成方法、参考尺度、时间含义和限制可带出处登记，但本流程的位置状态始终为待核验。
 
 写入复用现有幂等、审计和 Outbox；读取及重试都重新检查原版本和文件权限。报告仅在相应项目、安全等级和策略范围内可读，每页最多 100 条，不把本页报告数当作全库核查覆盖率或独立数据集总数。更正追加新报告；回退时停用新入口并保留证据，无须改写旧原件。
+
+目录概况 `data.assessment.overview` 仅统计当前有权限查看、已发布且接纳通过资料的最新合格版本，按指定检查对象选取最近报告。同一条一致性查询同时返回全范围下一步计数和筛选后的资料页，未核查保持独立；说明页的检查不转移为数据集检查。解析已判定内容无效时，即使声明类型像 CSV，也不能证明数据集原件已取得。

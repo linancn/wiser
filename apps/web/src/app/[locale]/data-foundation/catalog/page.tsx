@@ -1,3 +1,4 @@
+import { DataAvailabilityOverview } from '@/components/data-availability-overview';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { DataCatalogTable } from '@/components/data-catalog-table';
@@ -84,6 +85,11 @@ export default async function CatalogPage({
         title={copy.catalogPage.title}
         lede={copy.catalogPage.lede}
         aside={<AuthorityFlag locale={locale} />}
+      />
+      <DataAvailabilityOverview
+        key={query ?? ''}
+        locale={locale}
+        query={query ?? ''}
       />
       <QueryForm
         action={route}

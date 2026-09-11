@@ -1,6 +1,6 @@
 ---
 title: Data MCP integration
-description: Invoke 36 Data Capabilities and five governed Resources through the shared WISER MCP Gateway.
+description: Invoke 37 Data Capabilities and five governed Resources through the shared WISER MCP Gateway.
 docType: protocol-reference
 scope: data-mcp-adapter
 status: active
@@ -245,3 +245,5 @@ Saved exploration views use `data.explore.view.create`, `.list`, `.open` and `.r
 ## Intake checks
 
 Use `data_assessment_create`, `data_assessment_get` and `data_assessment_list` through HTTP. Discover their schemas first. Reuse the original asset and completed analysis; do not redownload or reparse just to run metadata checks. Supply an explicit target object and source evidence, leave unknown units/CRS unknown, and retain the command key on identical retries. A returned `CHECKS_PASSED` is scoped information consistency, not a scientific verdict. Follow report pages and preserve file/version/hash, rule/parser versions and limitations.
+
+`data_assessment_overview` gives resource counts and next-action pages for one explicit target type. Check unknown resources before acquiring more files, reuse saved originals pending parsing, and keep application/rate-limit/temporary failures distinct. Do not add counts from separate targets as independent datasets.

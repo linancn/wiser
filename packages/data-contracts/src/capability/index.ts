@@ -1,4 +1,8 @@
 import {
+  AssessmentOverviewInputSchema,
+  AssessmentOverviewOutputSchema,
+} from '../assessment/index.ts';
+import {
   CreateAssessmentInputSchema,
   AssessmentOutputSchema,
   GetAssessmentInputSchema,
@@ -145,6 +149,7 @@ export const DATA_CAPABILITY_IDS = [
   'data.assessment.create',
   'data.assessment.get',
   'data.assessment.list',
+  'data.assessment.overview',
 ] as const;
 
 export const DataCapabilityIdSchema = z.enum(DATA_CAPABILITY_IDS);
@@ -1254,6 +1259,27 @@ const capabilityRegistry = {
     graphqlMapping: { operationType: 'query', field: 'dataAssessments' },
     mcpMapping: { toolName: 'data_assessment_list' },
     skillMapping: { operation: 'data.assessment.list' },
+  }),
+  'data.assessment.overview': defineCapability({
+    id: 'data.assessment.overview',
+    version: '1.0.0',
+    kind: 'query',
+    inputSchema: AssessmentOverviewInputSchema,
+    outputSchema: AssessmentOverviewOutputSchema,
+    requiredScopes: ['data.catalog.read'],
+    maxSecurityLevel: 'L3_CONFIDENTIAL',
+    executionMode: 'SYNCHRONOUS',
+    timeout: 30000,
+    idempotent: true,
+    auditLevel: 'DETAILED',
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/assessments/overview',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataAssessmentOverview' },
+    mcpMapping: { toolName: 'data_assessment_overview' },
+    skillMapping: { operation: 'data.assessment.overview' },
   }),
 } satisfies Record<DataCapabilityId, Readonly<CapabilityDefinition>>;
 

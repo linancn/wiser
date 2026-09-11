@@ -47,7 +47,7 @@ GeoServer, TiTiler, and Martin run as Compose-internal GIS services in the same 
 
 | Module                                      | Responsibility                                                                      |
 | ------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `@wiser/data-contracts`                     | Strict Zod DTOs, 36 Capabilities, four transport mappings                           |
+| `@wiser/data-contracts`                     | Strict Zod DTOs, 37 Capabilities, four transport mappings                           |
 | `@wiser/data-core`                          | Pure ingestion/Operation state, quality, security inheritance, publication gates    |
 | `@wiser/data-infra`                         | Checksum migration, PostgreSQL/S3, jobs/Outbox, projections, search, fake embedding |
 | `@wiser/data-worker`                        | Concrete ingestion Handler, Scheduler, projection consumer, health and metrics      |
@@ -85,7 +85,7 @@ Data SQL never enters the Supabase migration history. `infrastructure/data-found
 
 The TS7 runner sorts four-digit versions, runs each file transactionally under one session advisory lock, and records filename plus SHA-256. Missing, renamed, modified, or non-prefix applied history fails closed. pgSTAC uses official pyPgSTAC 0.9.12 migrations rather than pretending to be a PostgreSQL extension.
 
-There are 36 business tables, every one with `ENABLE` and `FORCE ROW LEVEL SECURITY`, plus a separate `schema_migrations` ledger. API and Worker use distinct non-superuser roles created by deployment provisioning; migrations do not grant runtime implicitly. Every transaction sets validated Tenant, Project, maximum security level, and policy version. Missing context returns no rows or fails.
+Business tables have `ENABLE` and `FORCE ROW LEVEL SECURITY`, plus a separate `schema_migrations` ledger. API and Worker use distinct non-superuser roles created by deployment provisioning; migrations do not grant runtime implicitly. Every transaction sets validated Tenant, Project, maximum security level, and policy version. Missing context returns no rows or fails.
 
 Martin uses an isolated `wiser_data_gis` login: `NOSUPERUSER`, `NOBYPASSRLS`, no generic runtime-role inheritance, no business-table privileges, and execute-only access to the governed version and query MVT functions. The version function `service.wiser_spatial_extent_mvt` accepts exactly five `tenantId/projectId/versionId/maxSecurityLevel/policyVersion` query values and repeats Version/spatial-extent filtering inside SQL.
 
@@ -177,7 +177,7 @@ The graph workspace lazily loads G6 5.1.1 on the client and renders only the bou
 
 The Data overview reads the scoped catalog total with `includeTotal=true`; its metric is independent of the preview page size. Catalog count and page use one short repeatable-read authority transaction. Counts describe registered objects, not analytically validated records.
 
-- REST: `/api/data/v1` discovery, 36 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 36 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
+- REST: `/api/data/v1` discovery, 37 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 37 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
 - GraphQL: `POST /graphql`, 24 schema-first fields sharing the same Handler; see [Data GraphQL](/en/protocols/data-graphql/).
 - MCP: stdio/stateless Streamable HTTP, 33 Tools and governed Resources that call HTTP only; see [Data MCP](/en/protocols/data-mcp/).
 - Skill: `skills/wiser-data-foundation` documents discovery, query, upload, ingestion, Operation, and security workflows.
@@ -320,3 +320,5 @@ Opening a pinned Version map without a bbox now authorizes that exact DataItem/V
 Availability observations identify the dataset, description page, downloaded file or query interface separately. Entry/access/coverage declarations retain their evidence and must not be inherited by related objects. Saved HTML cannot establish dataset acquisition; samples remain partial even when parsing is complete. Reported remote queries remain explicitly unverified. Existing versions remain unchecked until a report exists; no publication or quality fields are rewritten. Spatial method, reference scale, time meaning and limitations remain source-backed declarations, with position always unchecked in this workflow.
 
 Writes use existing command idempotency, audit and Outbox; reads and retries reauthorize the original Version and asset. Reports are shared only inside their authorized project/security/policy scope. The list is bounded to 100, uses an opaque report cursor, and does not claim inventory coverage or a total independent dataset count. Corrections append another report. Disable the new entrypoints to roll back behavior; retain evidence and unchanged originals.
+
+The catalogue availability overview (`data.assessment.overview`) counts only currently authorized, published/accepted resources at their latest eligible version. It selects the latest check for the requested target object, keeps unchecked distinct, and returns both whole-scope next-action counts and their filtered resource pages from one consistent SQL result. It never promotes description-page checks to dataset checks. Parsed invalid content cannot establish acquisition even when its declared media type looks like CSV.

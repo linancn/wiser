@@ -167,6 +167,12 @@ export function DataAssessment({
                 >
                   {getDictionary(locale).dataFoundation.content.download}
                 </a>
+                {report.declaration.failure ? (
+                  <p>
+                    {copy.failureKind}:{' '}
+                    {copy.failureKinds[report.declaration.failure]}
+                  </p>
+                ) : null}
                 <p>{copy.position}</p>
                 <p>
                   {copy.evidence}: {report.declaration.evidence}
@@ -274,6 +280,7 @@ export function DataAssessment({
                 acquisition: text('acquisition'),
                 coverage: text('coverage'),
                 evidence,
+                ...(text('failure') ? { failure: text('failure') } : {}),
                 metadata,
               },
             });
@@ -307,6 +314,7 @@ export function DataAssessment({
                 'REGISTERED_ONLY',
               )}
               {select('coverage', copy.coverage, copy.coverages, 'UNKNOWN')}
+              {select('failure', copy.failureKind, copy.failureKinds, '')}
               {field('source', copy.source)}
               {field('authorization', copy.authorization)}
               {field('locator', copy.locator)}

@@ -1,6 +1,6 @@
 ---
 title: Data REST API
-description: Data Foundation 33 项 Capability、OpenAPI、受控 Resource、幂等、SSE 与资产下载协议。
+description: Data Foundation 37 项 Capability、OpenAPI、受控 Resource、幂等、SSE 与资产下载协议。
 docType: protocol-reference
 scope: data-rest-api
 status: active
@@ -51,7 +51,7 @@ MCP、Skill 和 Web 的服务端 DAL 都通过这个 HTTP 边界工作。任何�
 
 ## OpenAPI 契约投影
 
-共享 `GET /openapi.json` 返回 OpenAPI 3.1 文档，标题固定为 **WISER Platform API**，同时覆盖 Platform、Agent EXCON 与 Data Foundation。Data 的 33 项 Capability 不维护第二份手写 Schema：Fastify 在注册路由时直接把 Registry 的 Zod 4 输入/输出转换成 draft-7 JSON Schema，再按 path、query、body 与 required Header 投影为 OpenAPI operation。
+共享 `GET /openapi.json` 返回 OpenAPI 3.1 文档，标题固定为 **WISER Platform API**，同时覆盖 Platform、Agent EXCON 与 Data Foundation。Data 的 37 项 Capability 不维护第二份手写 Schema：Fastify 在注册路由时直接把 Registry 的 Zod 4 输入/输出转换成 draft-7 JSON Schema，再按 path、query、body 与 required Header 投影为 OpenAPI operation。
 
 每个 Data operation 都带 `data-foundation` tag、稳定 `operationId`、`bearerAuth`、成功状态的响应 Schema，以及 command 的 `Idempotency-Key` 和版本化 command 的 `If-Match`。Fastify 的 schema compiler 在这里服务于 OpenAPI 投影；运行时唯一业务门禁仍是同一 `DataCapabilityHandler` 的 strict Zod 输入/输出校验，不能让生成文档变成第二个行为来源。
 
@@ -85,7 +85,7 @@ If-Match: "v3"
 
 适用范围是 upload Session complete、ingestion submit/approve/reject 与 Operation cancel。Header 与 body 中已有的 `expectedVersion` 必须一致。成功响应在能找到聚合版本时返回 `ETag: "vN"`。所有身份、业务与错误响应使用 `private, no-store`。
 
-## 33 项 Capability 路由
+## 37 项 Capability 路由
 
 | Capability                    | 方法与路径                                                | 成功               |
 | ----------------------------- | --------------------------------------------------------- | ------------------ |
@@ -320,3 +320,5 @@ Data REST 错误是扁平安全 envelope：
 `POST /api/data/v1/assessments` 对应 `data.assessment.create`，要求 `data.catalog.read`、`data.ingestion.write` 及 UUID `Idempotency-Key`。传入 `dataItemId`、固定 `versionId`、`assetId` 和严格的 `declaration`，包含预期文件哈希、资料类型、检查对象、取得与访问条件、覆盖范围、依据及可选类型信息。目标必须是已提交且当前可见的 RAW 原件。返回 `{ assessment }`，保留服务器读取的哈希、解析器版本、分析标识、检查时间、声明和确定性发现；过期自查不替代服务器重查。
 
 `GET /api/data/v1/assessments/:assessmentId` 读取单条；`GET /api/data/v1/assessments?dataItemId=…&versionId=…&first=25` 分页读取，通过 `after=nextCursor` 继续，每页最多 100 条，均要求 `data.catalog.read`。读取和同键重试都会重新核对原件权限，来源撤回后不可读取。报告不授予权限、批准发布或认证位置；`REMOTE_QUERY_REPORTED` 保持未独立核验，声明范围完整也不等于已独立测得整个数据集总量。
+
+`GET /api/data/v1/assessments/overview` 对应 `data.assessment.overview`，要求 `data.catalog.read` 和明确的检查对象，可传入 `query`、`action`、`first`（1–100）及不透明 `after` 游标。总数、已记录数、未核查数和下一步计数共用完整授权范围的资料分母；`selectedCount` 是当前下一步条件的资料数，不是本页数量。明细固定资料/版本并保留最近适用报告的时间。没有检查就是 `UNCHECKED`，不表示不可取得。

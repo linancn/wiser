@@ -100,7 +100,7 @@ export class DataFoundationApiError extends Error {
 
 export interface DataFoundationDal {
   assess(
-    action: 'create' | 'get' | 'list',
+    action: 'create' | 'get' | 'list' | 'overview',
     input: unknown,
     idempotencyKey?: string,
   ): Promise<unknown>;

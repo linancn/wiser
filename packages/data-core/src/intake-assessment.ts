@@ -101,6 +101,14 @@ export function assessIntake(
     acquisition = 'REGISTERED_ONLY';
     add('TARGET_NOT_ACQUIRED', 'acquisition');
   }
+  if (
+    input.target === 'DATASET' &&
+    facts.status === 'INVALID' &&
+    ['ORIGINAL_ACQUIRED', 'PARTIAL_ACQUIRED'].includes(acquisition)
+  ) {
+    acquisition = 'REGISTERED_ONLY';
+    add('TARGET_CONTENT_UNVERIFIED', 'facts.status');
+  }
   if (acquisition === 'REMOTE_QUERY_REPORTED')
     add('REMOTE_QUERY_UNVERIFIED', 'acquisition', 'WARNING');
   if (

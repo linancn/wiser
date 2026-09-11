@@ -126,6 +126,7 @@ input ApprovalInput {
 }
 
 type Query {
+  dataAssessmentOverview(input: JSON!): JSON!
   dataAssessment(input: JSON!): JSON!
   dataAssessments(input: JSON!): JSON!
   dataReconciliation(input: JSON!): JSON!
@@ -180,6 +181,7 @@ export const GRAPHQL_CAPABILITY_BY_FIELD: Readonly<
 > = Object.freeze({
   dataAssessment: 'data.assessment.get',
   dataAssessments: 'data.assessment.list',
+  dataAssessmentOverview: 'data.assessment.overview',
   createDataAssessment: 'data.assessment.create',
   dataReconciliation: 'data.reconciliation.get',
   dataReconciliations: 'data.reconciliation.list',
@@ -515,6 +517,11 @@ const resolvers = {
       args: { input: unknown },
       context: GraphqlContext,
     ) => executeQuery(context, 'data.assessment.get', args.input),
+    dataAssessmentOverview: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeQuery(context, 'data.assessment.overview', args.input),
     dataAssessments: (
       _: unknown,
       args: { input: unknown },
