@@ -16,6 +16,9 @@ import type {
 } from '@/lib/data-foundation';
 
 import styles from './data-foundation-map.module.css';
+import { requireIntegerMapZoom } from '@/lib/map-integer-zoom';
+import { DataRasterDisplay } from './data-raster-display';
+import { rasterDisplayUrl, type RasterDisplay } from '@/lib/raster-display';
 import { AmapBasemap, type AmapBasemapHandle } from './amap-basemap';
 import {
   amapCoordinates,
@@ -195,6 +198,48 @@ export function DataFoundationMap({
   const basemap = useRef<AmapBasemapHandle>(null);
   const amapCopy = getDictionary(locale).dataFoundation.amap;
   const mapCopy = getDictionary(locale).dataFoundation.mapPage;
+  const rasterCopy = getDictionary(locale).rasterDisplay;
+  const rasterRef = useRef<ReturnType<typeof registerAmapRaster> | null>(null);
+  const displayRef = useRef<RasterDisplay | null>(null);
+  const sourceTemplate = useRef(rasterTileUrl);
+  const [rasterState, setRasterState] = useState<
+    'loading' | 'ready' | 'failed'
+  >('loading');
+  const rasterFailed = useRef(false);
+  const [integerZoom, setIntegerZoom] = useState(false);
+  const integerZoomRef = useRef(false);
+  function applyDisplay(display: RasterDisplay | null) {
+    displayRef.current = display;
+    const map = mapRef.current;
+    if (!map || !rasterTileUrl) return;
+    const replace = () => {
+      if (mapRef.current !== map) return;
+      const style = map.getStyle();
+      const source = style.sources['governed-raster'];
+      const index = style.layers.findIndex(
+        (layer) => layer.id === 'governed-raster-layer',
+      );
+      const layer = style.layers[index];
+      if (source?.type !== 'raster' || !layer) return;
+      const next = registerAmapRaster(
+        rasterDisplayUrl(rasterTileUrl, displayRef.current),
+      );
+      const previous = rasterRef.current;
+      // Detach the old source before stopping its worker, so late failures cannot
+      // change the new attempt's state. Other layers and the camera stay intact.
+      map.removeLayer(layer.id);
+      map.removeSource('governed-raster');
+      previous?.dispose();
+      rasterRef.current = next;
+      rasterFailed.current = false;
+      setRasterState('loading');
+      map.addSource('governed-raster', { ...source, tiles: [next.url] });
+      map.addLayer(layer, style.layers[index + 1]?.id);
+    };
+    if (map.isStyleLoaded()) replace();
+    else map.once('load', replace);
+  }
+
   const [rasterOpacity, setRasterOpacity] = useState(78);
   const [visible, setVisible] = useState<Readonly<Record<MapLayer, boolean>>>(
     () => ({
@@ -210,7 +255,16 @@ export function DataFoundationMap({
     const color = (name: string, fallback: string) =>
       getComputedStyle(container.current!).getPropertyValue(name).trim() ||
       fallback;
-    const raster = rasterTileUrl ? registerAmapRaster(rasterTileUrl) : null;
+    if (sourceTemplate.current !== rasterTileUrl) {
+      sourceTemplate.current = rasterTileUrl;
+      displayRef.current = null;
+      rasterFailed.current = false;
+      setRasterState('loading');
+    }
+    const raster = rasterTileUrl
+      ? registerAmapRaster(rasterDisplayUrl(rasterTileUrl, displayRef.current))
+      : null;
+    rasterRef.current = raster;
     const sources: StyleSpecification['sources'] = {
       authority: { type: 'geojson', data: geoJsonData(features, displayCrs) },
     };
@@ -387,6 +441,17 @@ export function DataFoundationMap({
       },
     });
     mapRef.current = map;
+    if (integerZoomRef.current) requireIntegerMapZoom(map);
+    map.on('error', (event) => {
+      if ('sourceId' in event && event.sourceId === 'governed-raster') {
+        rasterFailed.current = true;
+        setRasterState('failed');
+      }
+    });
+    map.on('sourcedata', (event) => {
+      if (event.sourceId === 'governed-raster' && !rasterFailed.current)
+        setRasterState(event.isSourceLoaded ? 'ready' : 'loading');
+    });
     map.touchZoomRotate.disableRotation();
     map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
     const sync = () => {
@@ -476,7 +541,8 @@ export function DataFoundationMap({
     return () => {
       mapRef.current = null;
       map.remove();
-      raster?.dispose();
+      rasterRef.current?.dispose();
+      rasterRef.current = null;
     };
   }, [
     features,
@@ -600,6 +666,21 @@ export function DataFoundationMap({
             </label>
             <output>{rasterOpacity}%</output>
             <p>{mapCopy.rasterMeaning}</p>
+            {visible.raster ? (
+              <p role="status">
+                {rasterCopy[rasterState]}{' '}
+                {rasterState === 'failed' ? (
+                  <button onClick={() => applyDisplay(displayRef.current)}>
+                    {rasterCopy.retry}
+                  </button>
+                ) : null}
+              </p>
+            ) : null}
+            <DataRasterDisplay
+              key={rasterTileUrl}
+              locale={locale}
+              onApply={applyDisplay}
+            />
           </div>
         ) : null}
         <dl>
@@ -614,6 +695,7 @@ export function DataFoundationMap({
             <dd>{amapCopy.aligned}</dd>
           </div>
         </dl>
+        {integerZoom ? <p role="status">{rasterCopy.integerZoom}</p> : null}
       </div>
       <div
         className={styles.map}
@@ -621,7 +703,16 @@ export function DataFoundationMap({
         aria-label={ariaLabel}
         data-testid="data-foundation-map"
       >
-        <AmapBasemap ref={basemap} locale={locale} />
+        <AmapBasemap
+          ref={basemap}
+          locale={locale}
+          onIntegerZoom={() => {
+            if (integerZoomRef.current) return;
+            integerZoomRef.current = true;
+            setIntegerZoom(true);
+            if (mapRef.current) requireIntegerMapZoom(mapRef.current);
+          }}
+        />
         <div ref={container} className={styles.overlay} />
       </div>
     </section>

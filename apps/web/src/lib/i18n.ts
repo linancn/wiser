@@ -27,6 +27,65 @@ export function isLocale(value: string): value is Locale {
 }
 
 const zhCN = {
+  rasterDisplay: {
+    settings: '单波段数值显示',
+    integerZoom:
+      '当前底图使用分级缩放。请用地图加减按钮缩放，以保持影像与底图比例一致。',
+    hint: '依据原件填写显示范围、单位和缺测码。仅调整显示，不改变原始数值。',
+    band: '波段编号',
+    min: '显示下限',
+    max: '显示上限',
+    nodata: '缺测码（可选）',
+    unit: '单位（按原件填写）',
+    apply: '应用数值配色',
+    reset: '恢复原始配色',
+    invalid: '请填写有效数字，上限须大于下限；波段编号为 1–256。',
+    legend: '数值颜色图例',
+    declaredUnit: '填写的单位',
+    unknownUnit: '单位未知',
+    clipped: '图例范围外的有效值使用两端颜色；颜色不表示精确读数。',
+    sourceMask: '保留原件缺测掩膜；原件未标注的缺测码需另行核对。',
+    transparent: '透明显示，区别于数值零',
+    original: '当前使用原始配色。单波段数值资料请设置范围与图例后解读。',
+    loading: '正在加载影像像元…',
+    ready: '影像图层已加载，位置仍需核对',
+    failed: '部分影像像元未能加载，请重试。',
+    retry: '重新加载影像',
+  },
+  spatialSource: {
+    title: '空间来源与适用尺度',
+    scope: '按当前版本的原文件分别显示最新说明；不同文件的说明不能互相替代。',
+    load: '查看来源说明',
+    busy: '正在读取来源说明…',
+    retry: '重试',
+    more: '下一页原件',
+    empty: '尚无来源说明。可到资料页补充依据；未知信息保持未知。',
+    failed: '暂时无法读取来源说明，请重试。',
+    stale: '这份说明与原件不符，其中的来源和尺度信息暂不采用。',
+    source: '来源',
+    method: '生成方式',
+    resolution: '分辨率／参考尺度',
+    time: '时间含义',
+    limits: '适用限制',
+    evidence: '说明依据',
+    original: '查看这份原件',
+    version: '当前版本',
+    geometry: '几何状态',
+    geometryReady: '有可上图几何',
+    geometryUnknown: '未确认有可上图几何',
+    rendering: '显示状态',
+    renderingNote: '以地图当前的加载和错误提示为准',
+    position: '位置核验',
+    unchecked: '未完成独立位置核对',
+    business: '业务用途',
+    businessNote: '需结合用途、时间和尺度复核',
+    unknown: '未知',
+    scaleWarning:
+      '放大地图不会提高原始精度。粗尺度推导河网不能直接用于精细河道或排口认定。',
+    roles:
+      '模型推导、实测、报告地名和推测位置保留各自来源；邻近不代表已确认的接纳关系。可添加独立资料进行对照。',
+    details: '资料与完整检查记录',
+  },
   knowledgeRelations: {
     title: '有证据的业务关系',
     hint: '候选关系先保留原件依据，经人工审核后才进入正式关系。相同名称不代表同一个对象；来源中的报告结论不等于系统重新判断。',
@@ -1841,6 +1900,72 @@ const zhCN = {
 };
 
 const en: typeof zhCN = {
+  rasterDisplay: {
+    settings: 'Single-band value display',
+    integerZoom:
+      'This basemap uses stepped zoom. Use the map plus/minus buttons to keep image and basemap scales consistent.',
+    hint: 'Use the original to set the display range, unit and missing-value code. This changes display only, not source values.',
+    band: 'Band number',
+    min: 'Display minimum',
+    max: 'Display maximum',
+    nodata: 'Missing-value code (optional)',
+    unit: 'Unit (from the original)',
+    apply: 'Apply value colors',
+    reset: 'Restore original colors',
+    invalid:
+      'Enter valid numbers with maximum greater than minimum; band must be 1–256.',
+    legend: 'Value color legend',
+    declaredUnit: 'Entered unit',
+    unknownUnit: 'Unit unknown',
+    clipped:
+      'Valid values beyond this range use the end colors. Colors are not exact readings.',
+    sourceMask:
+      'The original missing-data mask is retained. Unmarked missing codes need checking.',
+    transparent: 'Transparent, distinct from zero',
+    original:
+      'Original colors are active. Set a range and legend before interpreting single-band values.',
+    loading: 'Loading image pixels…',
+    ready: 'Image layer loaded; position still needs checking',
+    failed: 'Some image pixels could not be loaded. Please retry.',
+    retry: 'Reload image',
+  },
+  spatialSource: {
+    title: 'Spatial source and scale',
+    scope:
+      'The latest description is shown separately for each original in this version; one file does not describe another.',
+    load: 'View source descriptions',
+    busy: 'Loading source descriptions…',
+    retry: 'Retry',
+    more: 'Next originals',
+    empty:
+      'No source description yet. Add evidence on the resource page; unknown information stays unknown.',
+    failed: 'Source descriptions could not be loaded. Please retry.',
+    stale:
+      'This description does not match the original. Its source and scale claims are not used.',
+    source: 'Source',
+    method: 'Generation method',
+    resolution: 'Resolution / reference scale',
+    time: 'Meaning of time',
+    limits: 'Use limitations',
+    evidence: 'Description evidence',
+    original: 'View this original',
+    version: 'Current version',
+    geometry: 'Geometry state',
+    geometryReady: 'Mappable geometry available',
+    geometryUnknown: 'Mappable geometry not confirmed',
+    rendering: 'Display state',
+    renderingNote: 'Check the current map loading and error messages',
+    position: 'Position verification',
+    unchecked: 'Independent position check pending',
+    business: 'Business use',
+    businessNote: 'Review the intended use, time and scale',
+    unknown: 'Unknown',
+    scaleWarning:
+      'Zooming does not improve source accuracy. Coarse derived networks cannot directly establish detailed river or outfall locations.',
+    roles:
+      'Model results, observations, reported place names and inferred positions retain separate provenance. Proximity does not confirm a receiving-water relation. Add independent data for comparison.',
+    details: 'Resource and full check history',
+  },
   knowledgeRelations: {
     title: 'Evidence-backed business relations',
     hint: 'Candidates retain source evidence and enter approved relations after human review. Matching names do not establish identity; reported conclusions remain distinct from a new system judgment.',

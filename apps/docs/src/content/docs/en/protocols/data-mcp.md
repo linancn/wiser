@@ -249,3 +249,5 @@ Use `data_assessment_create`, `data_assessment_get` and `data_assessment_list` t
 `data_assessment_overview` gives resource counts and next-action pages for one explicit target type. Check unknown resources before acquiring more files, reuse saved originals pending parsing, and keep application/rate-limit/temporary failures distinct. Do not add counts from separate targets as independent datasets.
 
 `data_knowledge_relations_import/get/list/review` mirror the REST business-relation workflow. Importing evidence creates pending candidates, never approved knowledge. Normal lists default to approved relations; a candidate review queue requests its status explicitly. A delegated agent may prepare/import candidates with its existing scopes but cannot act as the human reviewer. Every returned relation retains exact source files, locators, reported values and limitations. Projection storage is never a supported agent entrypoint.
+
+`data_assessment_list` 1.1 accepts optional `assetId` and `latestPerAsset` through the same HTTP contract. Use these to display source-specific spatial metadata, never to infer a position-verification or business-approval verdict.

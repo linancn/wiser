@@ -398,6 +398,7 @@ const RasterTileRouteSchema = {
     properties: {
       resampling: { type: 'string' },
       rescale: { type: 'string' },
+      nodata: { type: 'string' },
       bidx: { type: 'integer', minimum: 1, maximum: 256 },
       colormap_name: { type: 'string' },
       return_mask: { type: 'boolean' },
@@ -860,6 +861,7 @@ function tileCoordinates(value: unknown) {
 const RASTER_QUERY = new Set([
   'resampling',
   'rescale',
+  'nodata',
   'bidx',
   'colormap_name',
   'return_mask',
@@ -882,8 +884,16 @@ function rasterQuery(request: FastifyRequest) {
       ].includes(values['resampling'])) ||
     (values['bidx'] !== undefined &&
       !/^(?:[1-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-6])$/.test(values['bidx'])) ||
+    (values['nodata'] !== undefined &&
+      (!/^-?\d+(?:\.\d+)?$/.test(values['nodata']) ||
+        !Number.isFinite(Number(values['nodata'])))) ||
     (values['rescale'] !== undefined &&
-      !/^-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?$/.test(values['rescale'])) ||
+      (!/^-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?$/.test(values['rescale']) ||
+        !values['rescale']
+          .split(',')
+          .every((value) => Number.isFinite(Number(value))) ||
+        Number(values['rescale'].split(',')[0]) >=
+          Number(values['rescale'].split(',')[1]))) ||
     (values['colormap_name'] !== undefined &&
       !/^[a-z][a-z0-9_-]{0,63}$/.test(values['colormap_name'])) ||
     (values['return_mask'] !== undefined &&

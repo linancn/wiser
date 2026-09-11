@@ -112,14 +112,14 @@ test('keeps the migrated document routes and built-in search available', async (
   ).toBeVisible();
 });
 
-test('renders the documentation without overflow or browser errors', async ({
-  browser,
-}, testInfo) => {
-  for (const colorScheme of ['light', 'dark'] as const) {
-    for (const viewport of [
-      { name: 'desktop', width: 1440, height: 1000 },
-      { name: 'mobile-390', width: 390, height: 844 },
-    ]) {
+for (const colorScheme of ['light', 'dark'] as const) {
+  for (const viewport of [
+    { name: 'desktop', width: 1440, height: 1000 },
+    { name: 'mobile-390', width: 390, height: 844 },
+  ]) {
+    test(`renders documentation without overflow or browser errors: ${colorScheme}, ${viewport.name}`, async ({
+      browser,
+    }, testInfo) => {
       const context = await browser.newContext({
         colorScheme,
         viewport: { width: viewport.width, height: viewport.height },
@@ -132,12 +132,16 @@ test('renders the documentation without overflow or browser errors', async ({
       page.on('pageerror', (error) => errors.push(error.message));
 
       for (const route of [
-        { name: 'home', path: '/' },
-        { name: 'quick-start', path: '/quick-start/' },
-        { name: 'development', path: '/development/' },
+        { name: 'home', path: '/', heading: 'wiser water, better future' },
+        { name: 'quick-start', path: '/quick-start/', heading: '快速开始' },
+        { name: 'development', path: '/development/', heading: '开发手册' },
       ]) {
         await page.goto(route.path);
-        await page.waitForLoadState('networkidle');
+        await expect(page.getByRole('main')).toBeVisible();
+        await expect(
+          page.getByRole('heading', { name: route.heading, exact: true }),
+        ).toBeVisible();
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
         const overflow = await page.evaluate(
           () =>
             document.documentElement.scrollWidth -
@@ -153,6 +157,6 @@ test('renders the documentation without overflow or browser errors', async ({
         });
       }
       await context.close();
-    }
+    });
   }
-});
+}

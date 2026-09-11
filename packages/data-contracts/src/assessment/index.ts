@@ -185,11 +185,15 @@ export const AssessmentOutputSchema = z.strictObject({
 export const GetAssessmentInputSchema = z.strictObject({
   assessmentId: z.uuid(),
 });
-export const ListAssessmentsInputSchema = z.strictObject({
+export const ListAssessmentsInputV1Schema = z.strictObject({
   dataItemId: z.uuid(),
   versionId: z.uuid(),
   first: z.number().int().min(1).max(100).default(25),
   after: z.uuid().optional(),
+});
+export const ListAssessmentsInputSchema = ListAssessmentsInputV1Schema.extend({
+  assetId: z.uuid().optional(),
+  latestPerAsset: z.boolean().optional(),
 });
 export const ListAssessmentsOutputSchema = z.strictObject({
   items: z.array(AssessmentSchema).max(100),

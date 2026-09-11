@@ -45,6 +45,7 @@ export interface AmapMap {
   resize(): void;
 }
 export interface AmapSdk {
+  readonly Browser?: { readonly isWebGL?: boolean };
   Map: new (
     container: HTMLElement,
     options: Readonly<Record<string, unknown>>,

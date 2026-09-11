@@ -218,17 +218,24 @@ export function createAssessmentExecutors(
             const cursor = await load(client, input.after);
             if (
               cursor.versionId !== input.versionId ||
-              cursor.dataItemId !== input.dataItemId
+              cursor.dataItemId !== input.dataItemId ||
+              (input.assetId !== undefined && cursor.assetId !== input.assetId)
             )
               throw new DataCapabilityHandlerError('VALIDATION_FAILED');
           }
           const rows = await client.query(
-            `select r.* from service.intake_assessment r join catalog.asset a on a.asset_id=r.asset_id and a.version_id=r.version_id and a.content_hash=r.source_hash and a.lifecycle_state='RAW' where r.version_id=$1::uuid and r.data_item_id=$2::uuid and ($3::uuid is null or r.assessment_id>$3::uuid) order by r.assessment_id limit $4`,
+            `with visible as (
+              select r.* from service.intake_assessment r join catalog.asset a on a.asset_id=r.asset_id and a.version_id=r.version_id and a.content_hash=r.source_hash and a.lifecycle_state='RAW'
+              where r.version_id=$1::uuid and r.data_item_id=$2::uuid and ($5::uuid is null or r.asset_id=$5::uuid)
+            ), chosen as (
+              ${input.latestPerAsset ? 'select distinct on (asset_id) * from visible order by asset_id,created_at desc,assessment_id desc' : 'select * from visible'}
+            ) select * from chosen where ($3::uuid is null or assessment_id>$3::uuid) order by assessment_id limit $4`,
             [
               input.versionId,
               input.dataItemId,
               input.after ?? null,
               input.first + 1,
+              input.assetId ?? null,
             ],
           );
           const items = rows.rows.slice(0, input.first).map(assessment);

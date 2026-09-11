@@ -9,10 +9,12 @@ const mock = vi.hoisted(() => ({
   center: vi.fn(),
   destroy: vi.fn(),
   load: vi.fn(),
+  webgl: true,
 }));
 vi.mock('@/lib/amap-loader', () => ({
   loadAmap: () =>
     Promise.resolve({
+      Browser: { isWebGL: mock.webgl },
       Map: class {
         constructor(_element: HTMLElement, options: unknown) {
           mock.options(options);
@@ -30,6 +32,14 @@ vi.mock('@/lib/amap-loader', () => ({
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  mock.webgl = true;
+});
+
+it('requests integral overlay zoom only when the SDK falls back from WebGL', async () => {
+  mock.webgl = false;
+  const onIntegerZoom = vi.fn();
+  render(<AmapBasemap ref={null} locale="en" onIntegerZoom={onIntegerZoom} />);
+  await waitFor(() => expect(onIntegerZoom).toHaveBeenCalledOnce());
 });
 
 it('retains a camera arriving before the official SDK and releases its map on unmount', async () => {
@@ -38,14 +48,17 @@ it('retains a camera arriving before the official SDK and releases its map on un
   ref.current!.syncCamera({
     longitude: 116.39754,
     latitude: 39.908901,
-    zoom: 15,
+    zoom: 15.25,
     bearing: 0,
     pitch: 0,
   });
   await waitFor(() => expect(mock.options).toHaveBeenCalled());
   expect(mock.options.mock.calls[0][0]).toMatchObject({
     center: [116.39754, 39.908901],
-    zoom: 16,
+    zoom: 16.25,
+    viewMode: '3D',
+    pitch: 0,
+    rotation: 0,
     dragEnable: false,
   });
   ref.current!.syncCamera({

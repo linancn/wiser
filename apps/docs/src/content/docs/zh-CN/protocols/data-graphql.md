@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/data-foundation/graphql-module.ts
   - packages/data-contracts/src/capability/**
 lastReviewedAt: 2026-09-11
-lastReviewedCommit: d190e7a687be3a6f57860d8469491459ceba84ab
+lastReviewedCommit: b0299f324b18879dcf076cfde9521e077ee7bac5
 ---
 
 ## 入口与权威契约
@@ -225,3 +225,5 @@ Query 可按相同 cursor 安全重试。Mutation 只能以相同身份、operat
 `dataAssessmentOverview(input: JSON!)` 映射 `data.assessment.overview`，保持检查对象、授权范围、资料计数口径与分页含义一致。
 
 `importDataRelations`、`reviewDataRelation` 为 JSON 输入 mutation；`dataRelation`、`dataRelations` 为 JSON 输入 query。它们映射到与 REST 相同的业务关系能力，保留原件哈希、默认仅已通过列表、人工审核、预期版本及命令幂等要求。邻域查询固定来源版本，并可按实体和映射筛选，不隐式合并来源内身份。
+
+`dataAssessments` 使用检查列表 1.1：可选 `assetId` 限定原文件，`latestPerAsset: true` 先逐文件选择最新且仍可访问的检查，再有界分页；缺项或失效声明不退回旧结论，默认仍返回历史。

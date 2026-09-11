@@ -231,6 +231,26 @@ it.skipIf(process.env['WISER_DATA_PG_INTEGRATION'] !== '1')(
       expect(second.assessment.result.findings.map((f) => f.code)).toContain(
         'SOURCE_CHANGED',
       );
+      const latest = ListAssessmentsOutputSchema.parse(
+        await call('list', {
+          dataItemId: item,
+          versionId: version,
+          assetId: saved.ref.assetId,
+          latestPerAsset: true,
+        }),
+      );
+      expect(latest.items.map((r) => r.assessmentId)).toEqual([
+        second.assessment.assessmentId,
+      ]);
+      expect(latest.nextCursor).toBeUndefined();
+      expect(
+        await call('list', {
+          dataItemId: item,
+          versionId: version,
+          assetId: randomUUID(),
+          latestPerAsset: true,
+        }),
+      ).toEqual({ items: [] });
       const overview = await call('overview', { target: 'DATASET', first: 25 });
       expect(overview).toMatchObject({
         totalCount: 1,

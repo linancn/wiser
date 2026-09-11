@@ -47,7 +47,7 @@ GeoServer、TiTiler 和 Martin 作为 Compose-internal GIS 服务存在于同一
 
 | 模块                                        | 职责                                                                        |
 | ------------------------------------------- | --------------------------------------------------------------------------- |
-| `@wiser/data-contracts`                     | 严格 Zod DTO、37 项 Capability、四种 transport mapping                      |
+| `@wiser/data-contracts`                     | 严格 Zod DTO、41 项 Capability、四种 transport mapping                      |
 | `@wiser/data-core`                          | 纯确定性的入库/Operation 状态机、质量、安全继承和发布门禁                   |
 | `@wiser/data-infra`                         | checksum migration、PostgreSQL/S3、任务/Outbox、投影、检索和 fake embedding |
 | `@wiser/data-worker`                        | 具体入库 Handler、Scheduler、投影 consumer、健康与指标                      |
@@ -177,7 +177,7 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 
 数据总览使用 `includeTotal=true` 取得受授权的目录总数，指标不再取预览页大小。目录计数和当前页使用同一个短 repeatable-read 权威事务。该数量表示登记对象，不表示已经通过分析验证的记录。
 
-- REST：`/api/data/v1` 的 discovery、37 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；37 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
+- REST：`/api/data/v1` 的 discovery、41 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；41 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
 - GraphQL：`POST /graphql`，36 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
 - MCP：stdio/无状态 Streamable HTTP，36 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
 - Skill：`skills/wiser-data-foundation` 定义发现、查询、上传、入库、Operation 与安全解释流程。
@@ -328,3 +328,9 @@ GIS 适配器在权威授权后，仅将与请求坐标完全一致的 TiTiler P
 业务关系流程复用 `knowledge.assertion`、`knowledge.evidence_fragment` 和 `knowledge.review_record`；迁移 `0025` 增加不可变的 `knowledge.assertion_binding`。未知置信度保留 null，不编造分数。候选整理保留同名异物、多处及矛盾证据、未知单位、报告原值、时间与限制。证据及断言正文不能覆盖；更正通过 `supersedesId` 保留前序关系，以明确的映射和版本范围避免静默身份合并。默认关系查询及图只包含已通过断言，每次读取均重新授权来源；待审核、需修正、已否决队列独立计数。
 
 Data Worker 按至多 100 条的批次把权威关系同步到独立的 Neo4j `WiserBusinessEntity` / `WISER_BUSINESS_RELATION` 标签，保留断言标识及原件证据，不改变已有发布目标和来源溯源图。迁移 `0026` 保存各目标的权威读取位点，项目/目标 advisory lock 串行化写入，失败不推进位点。每轮完成后重新扫描，以接收审核、更正及来源撤回。API 读取 PostgreSQL 权威状态，因此撤回后立即拒绝读取；投影在后续扫描中移除。重建 CLI 先完成保留的进度，再做一次完整扫描；删除投影后仍可恢复相同身份和审核依据。回退时停用新增入口与消费者并保留权威证据，不回填旧资料或替换原始几何。
+
+空间来源说明按固定版本、原文件读取最新且仍有访问权限的检查。来源、生成方式、参考尺度、时间含义和限制，与可上图几何、当前显示状态、独立位置核验及业务用途复核分别展示。SOURCE_CHANGED 发现使旧说明停止用于地图标签；未知保持未知，放大地图不会提升原始精度，也不会确认接纳水体关系。
+
+栅格显示设置可选择单个波段、有限且递增的数值范围、明确的缺测码和用户填写的单位标签。TiTiler 仅对显示像元应用范围、viridis 配色、最近邻采样和透明掩膜，原始数值、文件及来源声明不变。单位未知时继续显示未知。重新加载先移除旧栅格来源，再替换该来源，保留视角、透明度、图层顺序和其他图层；部分瓦片失败时持续显示失败，直到用户主动重试。
+
+高德采用俯视的 3D 模式以支持连续缩放。若 SDK 报告不支持 WebGL，两个地图页面均使用整数缩放，并提示使用加减按钮；该回退状态禁用滚轮及双指缩放。适配范围时向下取整，保证范围仍可见。视角一致属于显示验证，不等于独立的位置或科学适用性验收。
