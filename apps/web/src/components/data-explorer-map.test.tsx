@@ -123,7 +123,18 @@ it('invalidates denied tiles and offers a fresh map attempt without retaining th
       locale="en"
     />,
   );
+  act(() => probe.props.onIdle?.());
+  expect(
+    screen
+      .getByTestId('explorer-map')
+      .getAttribute('data-rendered-feature-count'),
+  ).toBe('1');
   act(() => probe.props.onError?.({ error: { status: 403 } }));
+  expect(
+    screen
+      .getByTestId('explorer-map')
+      .getAttribute('data-rendered-feature-count'),
+  ).toBe('0');
   expect(onInvalidated).toHaveBeenCalledWith(id, 403);
   await user.click(screen.getByRole('button', { name: 'Reload map' }));
   act(() => probe.props.onLoad?.());

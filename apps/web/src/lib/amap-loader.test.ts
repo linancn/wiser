@@ -13,7 +13,7 @@ it('loads one official SDK script with the server proxy and retries a failed loa
       Promise.resolve(
         Response.json({
           key: 'public-key',
-          serviceHost: '/api/maps/amap',
+          serviceHost: '/_AMapService',
           version: '2.0',
         }),
       ),
@@ -25,6 +25,9 @@ it('loads one official SDK script with the server proxy and retries a failed loa
   await vi.waitFor(() => expect(document.querySelector('script')).toBeTruthy());
   const script = document.querySelector('script')!;
   expect(new URL(script.src).origin).toBe('https://webapi.amap.com');
+  expect(window._AMapSecurityConfig).toEqual({
+    serviceHost: `${window.location.origin}/_AMapService`,
+  });
   expect(script.src).not.toContain('security');
   expect(loadAmap()).toBe(first);
   script.dispatchEvent(new Event('error'));

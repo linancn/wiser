@@ -15,8 +15,8 @@ whenToUpdate:
 checkPaths:
   - apps/web/src/**
   - apps/web/e2e/**
-lastReviewedAt: 2026-09-09
-lastReviewedCommit: 2e98d90315eae4e86b3fb20219d5fb2a94f650f4
+lastReviewedAt: 2026-09-11
+lastReviewedCommit: ba7d68f6d3b2e74e6884455800de2780571ddaee
 ---
 
 ## What this guide governs

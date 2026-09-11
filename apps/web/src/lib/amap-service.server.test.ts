@@ -35,7 +35,7 @@ it('requires a verified session and never returns the security code in configura
   const response = await amapService(request, ['config'], options);
   expect(await response.json()).toEqual({
     key: 'public-key',
-    serviceHost: '/api/maps/amap',
+    serviceHost: '/_AMapService',
     version: '2.0',
   });
   const denied = await amapService(request, ['config'], {
