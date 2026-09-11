@@ -132,12 +132,16 @@ for (const colorScheme of ['light', 'dark'] as const) {
       page.on('pageerror', (error) => errors.push(error.message));
 
       for (const route of [
-        { name: 'home', path: '/' },
-        { name: 'quick-start', path: '/quick-start/' },
-        { name: 'development', path: '/development/' },
+        { name: 'home', path: '/', heading: 'wiser water, better future' },
+        { name: 'quick-start', path: '/quick-start/', heading: '快速开始' },
+        { name: 'development', path: '/development/', heading: '开发手册' },
       ]) {
         await page.goto(route.path);
-        await page.waitForLoadState('networkidle');
+        await expect(page.getByRole('main')).toBeVisible();
+        await expect(
+          page.getByRole('heading', { name: route.heading, exact: true }),
+        ).toBeVisible();
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
         const overflow = await page.evaluate(
           () =>
             document.documentElement.scrollWidth -

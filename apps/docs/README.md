@@ -65,4 +65,4 @@ The search browser check waits for the static index response and completed downl
 
 The human workflow is documented in [Development documentation](./src/content/docs/en/development/index.md) and [Quick start](./src/content/docs/en/quick-start.md). / 面向人的开发流程见[开发手册](./src/content/docs/zh-CN/development/index.md)与[快速开始](./src/content/docs/zh-CN/quick-start.md)。
 
-Layout browser checks run each theme/viewport combination as an independent test, retaining the same routes, overflow/error assertions and screenshots within each test's default deadline. / 布局浏览器检查按主题和屏幕尺寸拆成独立测试，每项保留原有路由、溢出及错误断言、截图与默认超时。
+Layout browser checks run each theme/viewport combination as an independent test. They wait for the route's heading, main content and fonts instead of global network idle, then retain every overflow/error assertion and screenshot within the default deadline. / 布局浏览器检查按主题和屏幕尺寸拆成独立测试，等待当前页面标题、正文和字体就绪后执行全部溢出／错误断言及截图，保留默认超时，不依赖整个开发服务器的网络空闲。
