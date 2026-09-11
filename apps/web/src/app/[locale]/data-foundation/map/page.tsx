@@ -199,6 +199,7 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
               }
               vectorTileUrl={tileUrls.vectorTileUrl}
               rasterTileUrl={tileUrls.rasterTileUrl}
+              requestedBounds={bbox ?? undefined}
             />
           )}
           {unsupportedCount === 0 ? null : (

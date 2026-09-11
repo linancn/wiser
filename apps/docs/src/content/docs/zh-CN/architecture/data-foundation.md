@@ -19,7 +19,7 @@ checkPaths:
   - apps/mcp/src/data-foundation/**
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
-lastReviewedAt: 2026-09-09
+lastReviewedAt: 2026-09-10
 lastReviewedCommit: bac8703efbf93c408d68b6f7a8ca8305d9565c1b
 ---
 
@@ -291,6 +291,8 @@ API 与 Worker 共用 `DATA_EMBEDDING_PROVIDER` 和明确的嵌入配置。本�
 
 地图仅在显示边界使用 GCJ-02。原始 WGS84/CGCS2000 坐标、空间查询和已保存视角保留权威坐标系。高德缩放级别等于 MapLibre 加一，方位角与俯仰角固定为零。GeoJSON 和授权矢量瓦片使用校准后的显示坐标。高德原生标识和版权信息始终可见、可点击。JS Key 属于公开客户端标识，安全密钥仅由经过认证的服务端代理使用。
 
+SDK 安全代理使用高德要求的一级路径 `/_AMapService`，由 Next.js 的 `%5FAMapService` 路由提供；需登录的配置入口仍为 `/api/maps/amap/config`。两条入口复用会话验证与上游白名单，安全密钥不返回浏览器。专业地图没有权威要素或 STAC 范围时，使用已校验的查询 bbox 定位仅有栅格的结果。这只是视角回退，不会生成资产范围，也不代表栅格已经完成对齐验收。
+
 栅格叠加在独立浏览器 Worker 中，将 GCJ-02 像素中心反向映射至授权 WGS84 TiTiler 瓦片，采用最近邻采样保留类别和无数据区域。中国境内且缩放级别不低于 8 时使用八像素间隔的显示插值；低缩放级别及坐标转换边界采用精确映射。相邻瓦片请求有数量上限，地图销毁时取消请求并终止 Worker。原始栅格数值和文件保持不变。
 
 ## 副本关系核验与业务观测去重
@@ -304,3 +306,5 @@ API 与 Worker 共用 `DATA_EMBEDDING_PROVIDER` 和明确的嵌入配置。本�
 批次区分候选格式副本、部分重叠、修订、无共同观测和待核对关系。两份文件各两条记录仍计四条解析记录，可以得到两个候选观测。存在任何冲突或信息不完整的记录时，候选总数保持未知。只有创建批次的人类用户具备 `data.publish` 权限，提交预期版本和核验说明后，才能确认或拒绝候选；仅确认后提供 `independentObservationCount`。确认仅覆盖本批所选规则，不能推广至整个资源或目录。已审核批次不可变；调整规则须创建新批次。
 
 创建同步执行；两份来源合计超过 50,000 条记录、任一来源所选字段超过 8 MiB，或分组证据序列化超过 24 MiB 时直接失败，不截断计算。观测组和来源成员分别分页，每页最多 100 项，游标绑定批次、版本和观测组。列表返回涉及指定版本的最近最多 100 批。命令复用事务、审计、Outbox 和幂等账本，重放也重新授权来源。私有的 `service.observation_reconciliation` 表强制 RLS，绑定所有者、租户、项目、用途和安全上下文。每次读取或审核均重新检查两份版本及分析的当前权限，包括策略变更后。`0022_observation_reconciliation.sql` 和隔离 PostgreSQL 集成测试验证这些边界。
+
+迁移`0023_exploration_point_guard.sql`先物化非空点候选，再读取X/Y坐标进行聚合，防止查询规划器重排条件后将线、面传入仅支持点的函数。原始与高德查询瓦片继续沿用既有权限检查，来源几何不变。

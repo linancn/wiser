@@ -97,6 +97,12 @@ export async function verifyExplorationTiles(
     expect(converted.rows[0]!.lng).toBeCloseTo(116.39754, 5);
     expect(converted.rows[0]!.lat).toBeCloseTo(39.908901, 5);
   }
+  await client.query(
+    await readFile(
+      'infrastructure/data-foundation/postgres/migrations/0023_exploration_point_guard.sql',
+      'utf8',
+    ),
+  );
   const tileRole = `wiser_tile_test_${randomUUID().replaceAll('-', '')}`;
   await client.query(`create role ${tileRole} nologin nosuperuser nobypassrls`);
   await client.query(`grant usage on schema service to ${tileRole}`);

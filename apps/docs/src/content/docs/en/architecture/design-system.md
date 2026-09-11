@@ -96,6 +96,8 @@ Shared components include AppShell, SystemSwitcher, ProjectSwitcher, PageHeader,
 
 The Data map implements this contract through accessible controls rather than canvas color alone. DataItem version links use `aria-current`; the map form pins bbox, immutable Version, and EPSG:4326/4490 source CRS. PostGIS authority, STAC extent, vector MVT, and raster layers each have a text-labeled checkbox, with unavailable layers disabled. Controls continuously show selectedVersion and the AMap display alignment; layer colors read current theme tokens, so light/dark changes never alter authority hierarchy. Browser tiles use same-origin Web paths, keeping server identity and internal GIS origins out of the UI.
 
+For raster-only specialist maps, the requested area controls the initial viewport when no verified feature or STAC extent is present. Existing unavailable-layer indicators remain unchanged; a camera location is not presented as a newly verified spatial feature.
+
 ## Acceptance
 
 Every page passes Chinese and English, light and dark, desktop and 390px, keyboard focus, no browser errors, no horizontal overflow, and reduced-motion checks. Screenshot review compares EXCON and Data Foundation together; any local UI that looks like a second product is pulled back into shared tokens or components.

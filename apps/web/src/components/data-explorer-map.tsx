@@ -170,6 +170,7 @@ export default function DataExplorerMap({
       onSelect(record);
     } catch {
       if (!controller.signal.aborted) {
+        setRenderedCount(0);
         setFailed(true);
         setReady(false);
       }
@@ -299,6 +300,7 @@ export default function DataExplorerMap({
               invalidatesExploration(error.status)
             )
               onInvalidated(result.queryId, error.status);
+            setRenderedCount(0);
             setFailed(true);
             setReady(false);
           }}

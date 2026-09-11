@@ -32,7 +32,7 @@ export async function amapService(
   if (!options.key || !options.securityCode) return unavailable(503);
   if (name === 'config')
     return Response.json(
-      { key: options.key, serviceHost: '/api/maps/amap', version: '2.0' },
+      { key: options.key, serviceHost: '/_AMapService', version: '2.0' },
       { headers: { 'cache-control': cacheControl } },
     );
   const url = new URL(request.url);

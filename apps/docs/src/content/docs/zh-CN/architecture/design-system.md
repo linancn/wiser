@@ -96,6 +96,8 @@ WISER 面向水系统专家、导调人员和数据治理人员。界面的单�
 
 Data 地图把这一合同落实为可访问控件，而不是只靠画布颜色：DataItem 版本链接使用 `aria-current`，地图表单同时固定 bbox、不可变 Version 与 EPSG:4326/4490 source CRS；PostGIS authority、STAC extent、vector MVT、raster 四图层都用带文字的 checkbox，缺失图层保持 disabled。控制区持续显示 selectedVersion 与 高德显示校准状态，图层颜色从当前主题 token 读取，深浅色切换不改变权威层级。浏览器瓦片使用同源 Web 路径，服务器身份与内部 GIS origin 不出现在 UI。
 
+只有栅格的专业地图在缺少已验证要素和 STAC 范围时，按查询区域设置初始视角。缺失图层的提示仍然保留，不将视角位置展示为新增、已验证的空间要素。
+
 ## 验收
 
 每个页面必须通过中文与英文、浅色与深色、桌面与 390px、键盘焦点、无浏览器错误、无横向溢出和 reduced-motion 检查。截图评审同时比较 EXCON 与 Data Foundation，任何看起来像第二套产品的局部 UI 都需要回收到共享 Token 或组件。

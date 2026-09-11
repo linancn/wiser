@@ -4,7 +4,6 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 import {
   setWorkerUrl,
-  LngLatBounds,
   Map as MapLibreMap,
   NavigationControl,
   type StyleSpecification,
@@ -25,30 +24,9 @@ import {
 } from '@/lib/amap-coordinates';
 import { getDictionary, type Locale } from '@/lib/i18n';
 import { registerAmapRaster } from '@/lib/amap-raster-protocol';
+import { mapDisplayBounds } from '@/lib/data-foundation-map-bounds';
 
 setWorkerUrl('/vendor/maplibre/6.8.0/maplibre-gl-worker.mjs');
-
-function collectBounds(value: unknown, bounds: LngLatBounds): LngLatBounds {
-  if (!Array.isArray(value)) return bounds;
-  const coordinates: readonly unknown[] = value;
-  const longitude: unknown = coordinates[0];
-  const latitude: unknown = coordinates[1];
-  if (
-    typeof longitude === 'number' &&
-    Number.isFinite(longitude) &&
-    typeof latitude === 'number' &&
-    Number.isFinite(latitude) &&
-    longitude >= -180 &&
-    longitude <= 180 &&
-    latitude >= -90 &&
-    latitude <= 90
-  ) {
-    bounds.extend([longitude, latitude]);
-    return bounds;
-  }
-  for (const child of coordinates) collectBounds(child, bounds);
-  return bounds;
-}
 
 type Position = [number, number, ...number[]];
 
@@ -194,6 +172,7 @@ export function DataFoundationMap({
   features,
   labels,
   rasterTileUrl,
+  requestedBounds,
   selectedVersion,
   selectedName,
   stacExtents,
@@ -205,6 +184,7 @@ export function DataFoundationMap({
   readonly features: MapFeatureCollectionDto;
   readonly labels: MapLayerLabels;
   readonly rasterTileUrl?: string;
+  readonly requestedBounds?: readonly [number, number, number, number];
   readonly selectedVersion?: string;
   readonly selectedName?: string;
   readonly stacExtents: readonly StacExtentDto[];
@@ -421,23 +401,14 @@ export function DataFoundationMap({
     map.on('resize', sync);
     map.on('load', sync);
     map.once('load', () => {
-      const bounds = new LngLatBounds();
-      for (const feature of features.features) {
-        collectBounds(
-          amapCoordinates(feature.geometry.coordinates, displayCrs),
-          bounds,
-        );
-      }
-      for (const extent of stacExtents) {
-        bounds.extend(
-          toAmap([extent.bbox[0], extent.bbox[1]]) as [number, number],
-        );
-        bounds.extend(
-          toAmap([extent.bbox[2], extent.bbox[3]]) as [number, number],
-        );
-      }
-      if (!bounds.isEmpty()) {
-        map.fitBounds(bounds, { padding: 52, maxZoom: 11, duration: 0 });
+      const bounds = mapDisplayBounds(
+        features.features.map((feature) => feature.geometry.coordinates),
+        stacExtents.map((extent) => extent.bbox),
+        displayCrs,
+        requestedBounds,
+      );
+      if (bounds !== undefined) {
+        map.fitBounds([...bounds], { padding: 52, maxZoom: 11, duration: 0 });
       }
     });
     const updateTheme = () => {
@@ -509,6 +480,7 @@ export function DataFoundationMap({
     features,
     labels.controls,
     rasterTileUrl,
+    requestedBounds,
     stacExtents,
     vectorTileUrl,
     displayCrs,

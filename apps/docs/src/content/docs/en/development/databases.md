@@ -18,7 +18,7 @@ checkPaths:
   - packages/data-infra/src/migrations/**
   - scripts/data-foundation/**
   - compose.yaml
-lastReviewedAt: 2026-09-09
+lastReviewedAt: 2026-09-10
 lastReviewedCommit: bac8703efbf93c408d68b6f7a8ca8305d9565c1b
 ---
 
@@ -182,3 +182,5 @@ Migration `0021_amap_display.sql` keeps WGS84 analysis records append-only and b
 `0022_observation_reconciliation.sql` adds immutable candidate/review evidence with forced owner/scope RLS, one-way optimistic review, and narrow column grants. `pnpm test:postgres:data-api` includes `data-reconciliation.integration.spec.ts`; run it only against a disposable migrated database. It verifies source reauthorization, idempotency, pagination, review conflicts, and unchanged original records using a role without BYPASSRLS.
 
 After its common table grants, runtime-role provisioning explicitly revokes whole-table updates on reconciliation evidence and restores updates only to `status`, `row_version`, `reviewed_at` and `review_note`. Repeated provisioning must preserve this boundary as well as forced RLS and the immutable-evidence trigger.
+
+Migration `0023_exploration_point_guard.sql` adds a materialized point-only stage before tile clustering. The rolled-back exploration integration suite combines 100,000 points with a line and polygon, changes the type-check planner cost within a savepoint, and decodes both authority and Amap tiles. It verifies that permitted predicate reordering cannot invoke X/Y access on non-point geometry, while preserving record identities, point totals and existing authorization boundaries.

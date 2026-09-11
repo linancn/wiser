@@ -19,7 +19,7 @@ checkPaths:
   - apps/mcp/src/data-foundation/**
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
-lastReviewedAt: 2026-09-09
+lastReviewedAt: 2026-09-10
 lastReviewedCommit: bac8703efbf93c408d68b6f7a8ca8305d9565c1b
 ---
 
@@ -291,6 +291,8 @@ Exact source bytes are available through `GET/HEAD /api/data/v1/tenants/{tenantI
 
 Maps use GCJ-02 only at the display boundary. Original WGS84/CGCS2000 coordinates, spatial predicates, and saved cameras retain their authority CRS. AMap zoom is MapLibre zoom plus one; bearing and pitch stay zero. GeoJSON and scoped vector tiles use calibrated display coordinates. The native AMap logo and attribution remain visible and interactive. The official JS key is public; the security code stays in the authenticated server proxy.
 
+The SDK security proxy uses AMap's required first-level `/_AMapService` path. Next.js exposes it through `%5FAMapService`, while the authenticated configuration remains at `/api/maps/amap/config`. Both routes reuse the same verified-session and upstream allowlist checks; the security code is never returned to the browser. On the specialist map, a validated requested bbox locates a raster-only result when neither authority features nor STAC extents exist. That camera fallback does not create an asset extent or establish raster alignment.
+
 Raster overlays inverse-map GCJ-02 pixel centers to authorized WGS84 TiTiler tiles in a dedicated browser Worker. Nearest-neighbor sampling preserves classes and nodata. The display grid uses eight-pixel interpolation inside China at zoom 8 and above, and exact mapping at coarse zooms or the coordinate-conversion boundary. Adjacent source requests are bounded; map disposal cancels requests and terminates the Worker. Raster values and originals remain unchanged.
 
 ## Copy verification and business observation deduplication
@@ -304,3 +306,5 @@ The pure deterministic engine groups by normalized business keys, measure and un
 Batches distinguish candidate format copies, overlap, revisions, disjoint observations and unresolved relationships. Four parsed rows representing two observations remain four parsed rows and yield two candidate observations. Any conflict or incomplete record makes the candidate total unknown. Only the creating human, with `data.publish`, can verify or reject a candidate using its expected version and a review note; only verification exposes `independentObservationCount`. Confirmation is scoped to this batch and its rules, never to an entire resource or catalog. Reviewed batches are immutable; different rules require a new batch.
 
 Creation is synchronous and fails without truncation above 50,000 combined parsed rows, 8 MiB of selected fields per source, or 24 MiB of serialized group evidence. Group and source-member pages are separate, at most 100 items, with batch/version/group-bound cursors. Listing returns at most 100 recent batches involving the requested version. Commands use the shared transaction, audit, Outbox and idempotency ledger; replay reauthorizes the pinned sources. The private, forced-RLS `service.observation_reconciliation` table is bound to owner, tenant, project, purpose and security context. Every read/review rechecks current authorization for both versions and analyses, including after policy changes. Migration `0022_observation_reconciliation.sql` and the disposable PostgreSQL integration test enforce this boundary.
+
+Migration `0023_exploration_point_guard.sql` materializes valid nonempty point candidates before clustering reads X/Y coordinates. This prevents legal predicate reordering from evaluating point-only functions on line or polygon records; both authority and Amap query tiles retain their existing scope checks and source geometries.
