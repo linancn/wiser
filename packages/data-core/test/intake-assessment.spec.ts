@@ -201,3 +201,15 @@ describe('version-bound intake assessment', () => {
     ).toBe('RETRY_LATER');
   });
 });
+
+it('does not count mislabeled invalid HTML as an acquired dataset', () => {
+  const result = assessIntake(input, {
+    ...facts,
+    status: 'INVALID',
+    reason: 'INVALID_CONTENT',
+  });
+  expect(result.acquisition).toBe('REGISTERED_ONLY');
+  expect(result.findings.map((f) => f.code)).toContain(
+    'TARGET_CONTENT_UNVERIFIED',
+  );
+});
