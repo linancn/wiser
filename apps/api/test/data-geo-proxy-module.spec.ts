@@ -387,7 +387,7 @@ describe('Data Foundation governed GIS proxy', () => {
       method: 'GET',
       url:
         `/api/data/v1/geo/tiles/raster/versions/${VERSION_ID}` +
-        '/WebMercatorQuad/3/4/2.png?resampling=nearest',
+        '/WebMercatorQuad/3/4/2.png?resampling=nearest&nodata=-9999&rescale=0,50&colormap_name=viridis',
       headers,
     });
     expect(raster.statusCode).toBe(200);
@@ -400,7 +400,12 @@ describe('Data Foundation governed GIS proxy', () => {
       path: '/cog/tiles/WebMercatorQuad/3/4/2.png',
     });
     const rasterQuery = Object.fromEntries(fixture.requests[1]!.query);
-    expect(rasterQuery).toMatchObject({ resampling: 'nearest' });
+    expect(rasterQuery).toMatchObject({
+      resampling: 'nearest',
+      nodata: '-9999',
+      rescale: '0,50',
+      colormap_name: 'viridis',
+    });
     expect(rasterQuery['url']).toMatch(/^s3:\/\/wiser-authority\/tenants\//);
   });
 
