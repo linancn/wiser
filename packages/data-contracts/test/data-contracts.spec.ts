@@ -154,6 +154,29 @@ for (const serverOwnedField of [
 }
 
 const validCapabilityInputs = {
+  'data.assessment.create': {
+    dataItemId: DATA_ITEM_ID,
+    versionId: VERSION_ID,
+    assetId: ASSET_ID,
+    declaration: {
+      kind: 'TABLE',
+      target: 'DATASET',
+      expectedSourceHash: 'a'.repeat(64),
+      entry: 'UNCHECKED',
+      access: 'UNKNOWN',
+      acquisition: 'ORIGINAL_ACQUIRED',
+      coverage: 'UNKNOWN',
+      evidence: 'Original header',
+      metadata: {},
+    },
+  },
+  'data.assessment.get': { assessmentId: OPERATION_ID },
+  'data.assessment.list': {
+    dataItemId: DATA_ITEM_ID,
+    versionId: VERSION_ID,
+    first: 25,
+  },
+
   'data.reconciliation.create': {
     title: 'Observations',
     left: {
@@ -310,6 +333,39 @@ const validCapabilityInputs = {
 } satisfies Record<DataCapabilityId, Readonly<Record<string, unknown>>>;
 
 const expectedCapabilityMappings = {
+  'data.assessment.create': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/assessments',
+      successStatus: 201,
+    },
+    graphqlMapping: {
+      operationType: 'mutation',
+      field: 'createDataAssessment',
+    },
+    mcpMapping: { toolName: 'data_assessment_create' },
+    skillMapping: { operation: 'data.assessment.create' },
+  },
+  'data.assessment.get': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/assessments/:assessmentId',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataAssessment' },
+    mcpMapping: { toolName: 'data_assessment_get' },
+    skillMapping: { operation: 'data.assessment.get' },
+  },
+  'data.assessment.list': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/assessments',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataAssessments' },
+    mcpMapping: { toolName: 'data_assessment_list' },
+    skillMapping: { operation: 'data.assessment.list' },
+  },
   'data.reconciliation.create': {
     restMapping: {
       method: 'POST',
@@ -679,6 +735,9 @@ const expectedCapabilityMappings = {
 } satisfies Record<DataCapabilityId, unknown>;
 
 const expectedCapabilityScopes = {
+  'data.assessment.create': ['data.catalog.read', 'data.ingestion.write'],
+  'data.assessment.get': ['data.catalog.read'],
+  'data.assessment.list': ['data.catalog.read'],
   'data.reconciliation.create': [
     'data.query.execute',
     'data.catalog.read',
@@ -732,6 +791,18 @@ const asynchronousCapabilityIds = new Set<DataCapabilityId>([
 ]);
 
 const expectedJsonSchemaHashes = {
+  'data.assessment.create': {
+    input: '634c3fce7ac37a8921dfe8d84c412b7dde655c583dc2c5854974aaf0b939d5a4',
+    output: '59ad258fe60870d31f30934c83f872fc5911b7d65624bdeca3be994e4547e1aa',
+  },
+  'data.assessment.get': {
+    input: '634b8c46936a7ee7574ff70aa88e41178267e7ef4c7756f6930686c9ec1221a4',
+    output: '59ad258fe60870d31f30934c83f872fc5911b7d65624bdeca3be994e4547e1aa',
+  },
+  'data.assessment.list': {
+    input: '06cc8b27e6444c6b8c6620927d9cc8d1b555346bf00a2151d6e93a6c8a2389e8',
+    output: '530fac3758aa798459fc933c5ddec530defe41f8faf19988a19b647b3a1940c0',
+  },
   'data.reconciliation.create': {
     input: '174f36b476aadd5f390397981c199625802d4318ae22bf05fc0cf05a335104f8',
     output: 'f6f66367e8d65a82bdbf0086b7f263d05ad5cf96570dfa91a49c55f30298c73c',
@@ -1212,6 +1283,9 @@ describe('Data Foundation capability registry', () => {
       'data.reconciliation.get',
       'data.reconciliation.review',
       'data.reconciliation.list',
+      'data.assessment.create',
+      'data.assessment.get',
+      'data.assessment.list',
     ]);
     expect(Object.keys(DATA_CAPABILITY_REGISTRY)).toEqual(DATA_CAPABILITY_IDS);
 

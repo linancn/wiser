@@ -126,6 +126,8 @@ input ApprovalInput {
 }
 
 type Query {
+  dataAssessment(input: JSON!): JSON!
+  dataAssessments(input: JSON!): JSON!
   dataReconciliation(input: JSON!): JSON!
   dataReconciliations(input: JSON!): JSON!
   dataCatalog(
@@ -157,6 +159,7 @@ type Query {
 }
 
 type Mutation {
+  createDataAssessment(input: JSON!): JSON!
   createDataReconciliation(input: JSON!): JSON!
   reviewDataReconciliation(input: JSON!): JSON!
   createDataExploreView(input: JSON!): JSON!
@@ -175,6 +178,9 @@ type Mutation {
 export const GRAPHQL_CAPABILITY_BY_FIELD: Readonly<
   Record<string, DataCapabilityId>
 > = Object.freeze({
+  dataAssessment: 'data.assessment.get',
+  dataAssessments: 'data.assessment.list',
+  createDataAssessment: 'data.assessment.create',
   dataReconciliation: 'data.reconciliation.get',
   dataReconciliations: 'data.reconciliation.list',
   createDataReconciliation: 'data.reconciliation.create',
@@ -504,6 +510,16 @@ function connectionFrom(value: unknown) {
 const resolvers = {
   JSON: JsonScalar,
   Query: {
+    dataAssessment: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeQuery(context, 'data.assessment.get', args.input),
+    dataAssessments: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeQuery(context, 'data.assessment.list', args.input),
     dataReconciliation: (
       _: unknown,
       args: { input: unknown },
@@ -671,6 +687,11 @@ const resolvers = {
       ),
   },
   Mutation: {
+    createDataAssessment: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeCommand(context, 'data.assessment.create', args.input),
     createDataReconciliation: (
       _: unknown,
       args: { input: unknown },

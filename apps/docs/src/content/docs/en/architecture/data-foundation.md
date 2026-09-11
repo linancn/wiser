@@ -47,7 +47,7 @@ GeoServer, TiTiler, and Martin run as Compose-internal GIS services in the same 
 
 | Module                                      | Responsibility                                                                      |
 | ------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `@wiser/data-contracts`                     | Strict Zod DTOs, 33 Capabilities, four transport mappings                           |
+| `@wiser/data-contracts`                     | Strict Zod DTOs, 36 Capabilities, four transport mappings                           |
 | `@wiser/data-core`                          | Pure ingestion/Operation state, quality, security inheritance, publication gates    |
 | `@wiser/data-infra`                         | Checksum migration, PostgreSQL/S3, jobs/Outbox, projections, search, fake embedding |
 | `@wiser/data-worker`                        | Concrete ingestion Handler, Scheduler, projection consumer, health and metrics      |
@@ -177,7 +177,7 @@ The graph workspace lazily loads G6 5.1.1 on the client and renders only the bou
 
 The Data overview reads the scoped catalog total with `includeTotal=true`; its metric is independent of the preview page size. Catalog count and page use one short repeatable-read authority transaction. Counts describe registered objects, not analytically validated records.
 
-- REST: `/api/data/v1` discovery, 33 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 33 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
+- REST: `/api/data/v1` discovery, 36 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 36 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
 - GraphQL: `POST /graphql`, 24 schema-first fields sharing the same Handler; see [Data GraphQL](/en/protocols/data-graphql/).
 - MCP: stdio/stateless Streamable HTTP, 33 Tools and governed Resources that call HTTP only; see [Data MCP](/en/protocols/data-mcp/).
 - Skill: `skills/wiser-data-foundation` documents discovery, query, upload, ingestion, Operation, and security workflows.
@@ -312,3 +312,11 @@ Creation is synchronous and fails without truncation above 50,000 combined parse
 Migration `0023_exploration_point_guard.sql` materializes valid nonempty point candidates before clustering reads X/Y coordinates. This prevents legal predicate reordering from evaluating point-only functions on line or polygon records; both authority and Amap query tiles retain their existing scope checks and source geometries.
 
 Opening a pinned Version map without a bbox now authorizes that exact DataItem/Version pair and reuses its existing exploration analysis bounds through HTTP. Only opening the map creates this bounded query; catalog rendering does not prefetch another analysis or download a file. A point-only extent gets a small query viewport without creating an asset footprint. Unknown extents stay unknown. Catalog and exploration details link to this same map and back to the pinned source.
+
+## Intake checks and availability observations
+
+`data.assessment.create/get/list` records append-only, version/asset/hash-bound checks in `service.intake_assessment`. The server reuses the latest completed analysis for the exact saved RAW asset; it does not download, parse or trust a provider self-check verdict. Rule `wiser.intake.v1` checks declared source/authorization, field bindings, units, time meaning and source locators by material type. An unknown unit or unverified CRS limits its corresponding use while retaining the original. `CHECKS_PASSED` means the named information checks passed, never scientific suitability, publication approval or independent position verification. Model suggestions are not admitted as deterministic checks.
+
+Availability observations identify the dataset, description page, downloaded file or query interface separately. Entry/access/coverage declarations retain their evidence and must not be inherited by related objects. Saved HTML cannot establish dataset acquisition; samples remain partial even when parsing is complete. Reported remote queries remain explicitly unverified. Existing versions remain unchecked until a report exists; no publication or quality fields are rewritten. Spatial method, reference scale, time meaning and limitations remain source-backed declarations, with position always unchecked in this workflow.
+
+Writes use existing command idempotency, audit and Outbox; reads and retries reauthorize the original Version and asset. Reports are shared only inside their authorized project/security/policy scope. The list is bounded to 100, uses an opaque report cursor, and does not claim inventory coverage or a total independent dataset count. Corrections append another report. Disable the new entrypoints to roll back behavior; retain evidence and unchanged originals.

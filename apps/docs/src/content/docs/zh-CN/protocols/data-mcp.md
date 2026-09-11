@@ -25,7 +25,7 @@ lastReviewedCommit: a67f905d4afbb2008494f5ebd7a50fd21953bd99
 
 Data MCP 是现有 WISER MCP Gateway 的静态 `WiserMcpModule`，不是第二套业务实现。stdio 与无状态 Streamable HTTP 都调用 `/api/data/v1`，从不连接 data-postgres、SeaweedFS 或任一投影，也不持有 Supabase service-role key。
 
-模块从 `@wiser/data-contracts` 的有序 Registry 注册 33 个 strict Zod Tool。Tool name、输入 schema、query/command 注解和 REST mapping 在运行时来自同一 Capability definition；不存在 AST 扫描、通用 SQL/Cypher/DSL Tool 或自动发现的数据库命令。
+模块从 `@wiser/data-contracts` 的有序 Registry 注册 36 个 strict Zod Tool。Tool name、输入 schema、query/command 注解和 REST mapping 在运行时来自同一 Capability definition；不存在 AST 扫描、通用 SQL/Cypher/DSL Tool 或自动发现的数据库命令。
 
 ## Data API 配置
 
@@ -88,7 +88,7 @@ pnpm --filter @wiser/mcp start:http
 
 禁止把任一 token 放进 query、Tool 参数、Resource URI、日志、Telemetry 或 Git。`GET /health/live` 与 `/health/ready` 无需认证且禁止缓存；优雅关闭先让 ready 变为 false，再排空在途请求。每个 `/mcp` 请求创建新 server/transport，当前入口不签发或恢复 MCP session。
 
-## 33 个 Tools
+## 36 个 Tools
 
 | MCP Tool                       | Capability                    | 类型    |
 | ------------------------------ | ----------------------------- | ------- |
@@ -241,3 +241,7 @@ MCP 不替调用方保存 bearer、upload id、multipart ETag 或 Operation curs
 `data_reconciliation_create`, `data_reconciliation_list`, `data_reconciliation_get`, `data_reconciliation_review` 对应 `data.reconciliation.create/list/get/review`。来源固定、规范化、不可变证据和限额见[副本核验与业务去重](/architecture/data-foundation/#副本关系核验与业务观测去重)。读取需要 `data.query` 和 `data.catalog.read`；创建另需 `data.ingestion.write`，审核另需 `data.publish` 且只能由创建批次的人类身份执行。审核携带 `expectedVersion`；REST 还要求一致的 `If-Match: "v1"`，MCP 将预期版本转为该请求头。两个命令在相同重试中均须保留原 UUID 幂等键。
 
 `get` 接收 `batchId`、`first`（默认 25，最多 100）、可选 `after` 和 `groupIndex`。未指定组号时分页返回观测组摘要；指定时分页返回该组来源成员。使用 `nextCursor` 继续，不得改变绑定的批次、版本和组。`list` 接收 `versionId`，返回本人最近最多 100 批。创建冻结 `left`、`right` 和 `plan`；审核接收 `decision: "verify" | "reject"` 和 `note`。冲突或信息不完整时不能确认；候选的 `independentObservationCount` 为 null，只有人工确认的批次才返回所选规则范围内的计数。Agent 可以提出批次并读取确定性证据，不能以 Agent 身份作最终审核。
+
+## 资料类型检查
+
+通过 HTTP 使用 `data_assessment_create/get/list`，先发现实际契约。复用原件和已完成解析，不为检查元数据重复下载或解析。明确检查对象与出处，单位或坐标系未知就保留未知，同一命令重试复用幂等键。`CHECKS_PASSED` 仅是本项信息一致性检查，不是科学结论；翻页时保留文件、版本、哈希、规则及解析器版本和限制。

@@ -184,3 +184,7 @@ WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
 运行角色配置在通用表权限授予后，显式撤销核验证据的整表更新权，仅恢复 `status`、`row_version`、`reviewed_at`、`review_note` 四个审核字段的更新权。重复配置也必须保留此边界，并继续受强制 RLS 和不可变证据触发器保护。
 
 迁移`0023_exploration_point_guard.sql`在瓦片点聚合前加入仅含非空点的物化阶段。可回滚的探索集成测试组合十万个点、一条线和一个面，并在保存点内调整类型检查的规划成本，分别解码原始与高德瓦片。测试验证合法的条件重排不会对非点几何读取X/Y坐标，同时保留记录身份、点计数与既有授权边界。
+
+## 资料检查证据
+
+`0024_intake_assessment.sql` 新增强制 RLS、不可改写的 `service.intake_assessment`，插入时绑定资料、版本、文件、哈希和可选已完成分析，安全等级不能低于原件。运行角色配置在通用授权后撤销修改及删除权限，不迁移旧资料或发布状态。隔离 PostgreSQL 测试 `apps/api/test/data-assessment.integration.spec.ts` 验证证据、过期哈希、幂等重试、分页、不可改写和来源撤回，已加入 `pnpm test:postgres:data-api`。

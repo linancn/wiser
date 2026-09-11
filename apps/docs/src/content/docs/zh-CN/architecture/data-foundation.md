@@ -177,9 +177,9 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 
 数据总览使用 `includeTotal=true` 取得受授权的目录总数，指标不再取预览页大小。目录计数和当前页使用同一个短 repeatable-read 权威事务。该数量表示登记对象，不表示已经通过分析验证的记录。
 
-- REST：`/api/data/v1` 的 discovery、33 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；33 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
-- GraphQL：`POST /graphql`，33 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
-- MCP：stdio/无状态 Streamable HTTP，33 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
+- REST：`/api/data/v1` 的 discovery、33 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；36 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
+- GraphQL：`POST /graphql`，36 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
+- MCP：stdio/无状态 Streamable HTTP，36 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
 - Skill：`skills/wiser-data-foundation` 定义发现、查询、上传、入库、Operation 与安全解释流程。
 - Web：现有 Next.js 应用中的 14 个 Data route，server-only DAL、真实 Supabase Session、双语/主题、不可变版本选择，以及高德 JS API 2.0 官方底图与同步的透明 MapLibre 业务图层：PostGIS authority GeoJSON、STAC extent、受控 vector MVT 与 raster 四图层。
 
@@ -312,3 +312,11 @@ SDK 安全代理使用高德要求的一级路径 `/_AMapService`，由 Next.js 
 GIS 适配器在权威授权后，仅将与请求坐标完全一致的 TiTiler PNG 越界响应转换为透明瓦片，使覆盖边缘的有效邻接影像继续显示。文件缺失、访问拒绝和其他错误仍然失败。地图显示坐标已转换不代表位置已经独立核验。
 
 打开未填写 bbox 的固定版本地图时，先授权校验精确的 DataItem/Version，再通过 HTTP 复用该版本已有探索解析范围。仅打开地图时建立这一有界查询；目录渲染不额外预取解析或下载文件。只有点的范围扩为小幅查询视口，不生成资产足迹；未知范围仍然未知。目录与探索详情指向同一地图，地图可回到固定版本来源。
+
+## 资料取得与类型检查
+
+`data.assessment.create/get/list` 将检查记录追加到 `service.intake_assessment`，绑定固定资料版本、文件及其哈希。服务器复用该原件最近一次完成的解析结果，不重新下载、解析，也不采信提供方自查的通过结论。`wiser.intake.v1` 按资料类型检查来源、授权说明、字段绑定、单位、时间含义和原文位置。单位或坐标系未知时保留原件，限制相应用途。`CHECKS_PASSED` 仅表示所列信息检查通过，不代表科学适用性、发布批准或位置已实证核验；模型建议不参与确定性通过判断。
+
+取得情况分别针对数据集本体、说明网页、下载文件或查询接口，入口、访问条件及完整性声明均保留证据，不自动传递到关联对象。保存 HTML 不证明数据集原件已取得；样本即使解析完整仍是样本。接口查询报告保持待独立核验。旧资料在没有报告时保持待核查，原质量和发布状态不变。生成方法、参考尺度、时间含义和限制可带出处登记，但本流程的位置状态始终为待核验。
+
+写入复用现有幂等、审计和 Outbox；读取及重试都重新检查原版本和文件权限。报告仅在相应项目、安全等级和策略范围内可读，每页最多 100 条，不把本页报告数当作全库核查覆盖率或独立数据集总数。更正追加新报告；回退时停用新入口并保留证据，无须改写旧原件。

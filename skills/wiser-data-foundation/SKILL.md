@@ -90,3 +90,9 @@ Map results may include `spatial.bounds` and `mercatorFeatureCount` for the comp
 - When refining an existing exploration, send its `queryId` as `baseQueryId` alongside the new `spec`. This preserves authorized version and analysis pins. It cannot broaden beyond the base result; create an ordinary new query when broader discovery is intended. An unavailable base must be refreshed explicitly.
 
 - Use `spec.spatialBounds: [west, south, east, north]` for one verified-geometry condition across records, aggregates, graph record lookups and tiles. Keep it distinct from map-only `bbox`. Refine with `baseQueryId` to change or clear the area while retaining analysis pins. Unlocated and unverified coordinates do not match an area.
+
+## Record typed intake checks
+
+Discover `data.assessment.create/get/list` before use. Reconcile the current target item, version and saved RAW asset; historical IDs and local receipts are not target ingestion proof. Supply `declaration` with exact expected file hash, material type, target object, access/acquisition/coverage and original-source evidence. Keep missing scientific definitions unknown. The server binds the actual stored hash and latest completed analysis, runs `wiser.intake.v1` independently, and appends a report without downloading or parsing again. Self-check rule/hash/model declarations never override server findings.
+
+Read pages with `first` and `after`; preserve source IDs, rule/parser versions, coverage and limitations. A description-page report does not make a dataset available; a reported remote query remains unverified. Report acceptance is not ingestion approval, scientific quality, knowledge review or position verification. Correct metadata by appending another report; reuse the same command key only for an identical retry. Existing originals and publication states remain unchanged.

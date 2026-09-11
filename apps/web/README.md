@@ -99,3 +99,5 @@ Portal actions use verified sessions; catalog pages preserve name filters across
 Data discovery uses 25-row catalog/quality pages and 10-row search/knowledge pages. Search result names are loaded through authorized exact-version HTTP reads; source conditions and protocol details remain inspectable. Resource links preserve versions across shared exploration. Intake and Agent access reuse the public setup-copy action. The product review browser suite uses the admitted research case and checks both locales, themes and viewport sizes.
 
 Resource content includes a rule-scoped, non-destructive copy-verification and observation-deduplication workflow through `/api/data-foundation/reconciliation/{action}`. Candidates, conflicts, source references and human verification remain distinct. / 资源内容通过同源接口提供规则范围内的无损副本核验与业务去重，分别呈现候选、冲突、来源引用与人工确认。
+
+Resource content includes per-file acquisition and typed information checks through the existing authenticated HTTP DAL. Unknown fields remain explicit; reports do not approve publication or verify position.

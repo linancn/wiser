@@ -99,6 +99,11 @@ export class DataFoundationApiError extends Error {
 }
 
 export interface DataFoundationDal {
+  assess(
+    action: 'create' | 'get' | 'list',
+    input: unknown,
+    idempotencyKey?: string,
+  ): Promise<unknown>;
   reconcile(
     action: 'create' | 'get' | 'review' | 'list',
     input: unknown,
@@ -390,6 +395,42 @@ export function createDataFoundationDal(
   }
 
   const dal: DataFoundationDal = {
+    assess: (action, input, idempotencyKey) => {
+      const id: DataCapabilityId = `data.assessment.${action}`;
+      const definition = DATA_CAPABILITY_REGISTRY[id];
+      const checked = definition.inputSchema.safeParse(input);
+      if (
+        !checked.success ||
+        (definition.kind === 'command' &&
+          (!idempotencyKey || !UUID_PATTERN.test(idempotencyKey)))
+      )
+        throw new DataFoundationApiError('invalid-request', 422);
+      const values = checked.data as Record<string, unknown>;
+      let path = definition.restMapping.path;
+      const body = { ...values };
+      if (typeof body['assessmentId'] === 'string') {
+        path = path.replace(
+          ':assessmentId',
+          encodeURIComponent(body['assessmentId']),
+        );
+        delete body['assessmentId'];
+      }
+      if (definition.restMapping.method === 'GET') {
+        const query = new URLSearchParams(
+          Object.entries(body).map(([key, value]) => [key, String(value)]),
+        );
+        if (query.size) path += `?${query}`;
+      }
+      return parsed(
+        () =>
+          call(path, {
+            method: definition.restMapping.method as 'GET' | 'POST',
+            ...(definition.kind === 'command' ? { body, idempotencyKey } : {}),
+          }),
+        (value) => definition.outputSchema.parse(value),
+      );
+    },
+
     reconcile: (action, input, idempotencyKey) => {
       const id: DataCapabilityId = `data.reconciliation.${action}`;
       const definition = DATA_CAPABILITY_REGISTRY[id];

@@ -16,8 +16,8 @@ checkPaths:
   - compose.yaml
   - .env.example
   - scripts/data-foundation/**
-lastReviewedAt: 2026-09-09
-lastReviewedCommit: d96eb8c5a16778cf0ea51b604fc346b833a4e2fb
+lastReviewedAt: 2026-09-11
+lastReviewedCommit: 438aff3b05f1486a38834f184946a0f5458580c1
 ---
 
 ## 运行模式

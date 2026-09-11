@@ -69,6 +69,29 @@ const point = {
 };
 
 const validInputs = {
+  'data.assessment.create': {
+    dataItemId: DATA_ITEM_ID,
+    versionId: VERSION_ID,
+    assetId: ASSET_ID,
+    declaration: {
+      kind: 'TABLE',
+      target: 'DATASET',
+      expectedSourceHash: 'a'.repeat(64),
+      entry: 'UNCHECKED',
+      access: 'UNKNOWN',
+      acquisition: 'ORIGINAL_ACQUIRED',
+      coverage: 'UNKNOWN',
+      evidence: 'Original header',
+      metadata: {},
+    },
+  },
+  'data.assessment.get': { assessmentId: OPERATION_ID },
+  'data.assessment.list': {
+    dataItemId: DATA_ITEM_ID,
+    versionId: VERSION_ID,
+    first: 25,
+  },
+
   'data.reconciliation.create': {
     title: 'Observations',
     left: {
