@@ -47,7 +47,7 @@ GeoServer, TiTiler, and Martin run as Compose-internal GIS services in the same 
 
 | Module                                      | Responsibility                                                                      |
 | ------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `@wiser/data-contracts`                     | Strict Zod DTOs, 37 Capabilities, four transport mappings                           |
+| `@wiser/data-contracts`                     | Strict Zod DTOs, 41 Capabilities, four transport mappings                           |
 | `@wiser/data-core`                          | Pure ingestion/Operation state, quality, security inheritance, publication gates    |
 | `@wiser/data-infra`                         | Checksum migration, PostgreSQL/S3, jobs/Outbox, projections, search, fake embedding |
 | `@wiser/data-worker`                        | Concrete ingestion Handler, Scheduler, projection consumer, health and metrics      |
@@ -177,7 +177,7 @@ The graph workspace lazily loads G6 5.1.1 on the client and renders only the bou
 
 The Data overview reads the scoped catalog total with `includeTotal=true`; its metric is independent of the preview page size. Catalog count and page use one short repeatable-read authority transaction. Counts describe registered objects, not analytically validated records.
 
-- REST: `/api/data/v1` discovery, 37 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 37 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
+- REST: `/api/data/v1` discovery, 41 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 41 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
 - GraphQL: `POST /graphql`, 24 schema-first fields sharing the same Handler; see [Data GraphQL](/en/protocols/data-graphql/).
 - MCP: stdio/stateless Streamable HTTP, 33 Tools and governed Resources that call HTTP only; see [Data MCP](/en/protocols/data-mcp/).
 - Skill: `skills/wiser-data-foundation` documents discovery, query, upload, ingestion, Operation, and security workflows.
@@ -330,3 +330,7 @@ The source-bound business workflow reuses `knowledge.assertion`, `knowledge.evid
 The Data Worker reconciles the scoped authority into distinct `WiserBusinessEntity` / `WISER_BUSINESS_RELATION` Neo4j labels in batches of at most 100, retaining assertion IDs and original evidence. This does not alter legacy publication targets or provenance graphs. Migration `0026` stores the per-target authority cursor. A project/target advisory lock serializes writes; failures retain the cursor. Each completed sweep starts again to observe approvals, corrections and source withdrawals. API reads use PostgreSQL authority and therefore reject withdrawn sources immediately, while projection removal follows the next sweep. The Worker rebuild CLI finishes a retained sweep and one full sweep, allowing a deleted projection to be restored without changing source identities or reviews. Rollback disables the new entrypoints/consumer and retains authority evidence; no historical source backfill or source geometry replacement occurs.
 
 Spatial source descriptions use the latest authorized assessment for each original file in a fixed version. They keep declared source, generation method, reference scale, time meaning and limitations separate from mappable geometry, current rendering, independent position verification and business-use review. A SOURCE_CHANGED finding prevents stale declarations from becoming map labels. Unknowns remain explicit; map zoom never upgrades source precision or confirms receiving-water relations.
+
+Raster display settings select one band, a finite increasing range, optional explicit missing-value code and a user-entered unit label. TiTiler applies the range, viridis palette, nearest-neighbor sampling and transparent mask only to rendered pixels; original values, files and source declarations do not change. Unknown units stay unknown. Reloading replaces only the raster source after detaching the previous source, preserving camera, opacity, layer order and other layers. Failed tiles remain visibly failed until an explicit reload.
+
+AMap requests flat 3D mode for continuous fractional zoom. If the SDK reports no WebGL support, both map surfaces switch to integer zoom and explain use of the zoom buttons; wheel and pinch zoom are disabled in that fallback. Fitted extents round down to retain coverage. Camera agreement is display validation, not independent positional or scientific acceptance.

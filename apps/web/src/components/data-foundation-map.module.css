@@ -61,7 +61,7 @@
   border-top: 1px solid var(--border-on-strong);
 }
 
-.rasterControls label {
+.layerControls .rasterControls label {
   display: flex;
   flex-direction: column;
   font-size: 1rem;
@@ -70,6 +70,26 @@
 .rasterControls input[type='range'] {
   width: 100%;
   height: 32px;
+}
+
+.rasterControls input:not([type='range']) {
+  width: 100%;
+  height: auto;
+  min-height: 44px;
+}
+
+.layerControls .rasterControls fieldset {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.rasterControls button,
+.rasterControls summary {
+  min-height: 44px;
+}
+
+.rasterControls summary {
+  cursor: pointer;
 }
 
 .rasterControls p {

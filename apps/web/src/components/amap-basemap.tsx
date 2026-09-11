@@ -18,11 +18,15 @@ export interface AmapBasemapHandle {
 export function AmapBasemap({
   ref,
   locale,
+  onIntegerZoom,
 }: {
   readonly ref: Ref<AmapBasemapHandle>;
   readonly locale: Locale;
+  readonly onIntegerZoom?: () => void;
 }) {
   const copy = getDictionary(locale).dataFoundation.amap;
+  const integerZoomCallback = useRef(onIntegerZoom);
+  integerZoomCallback.current = onIntegerZoom;
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<AmapMap | null>(null);
   const camera = useRef<MapCamera>({
@@ -67,7 +71,10 @@ export function AmapBasemap({
         instance = new sdk.Map(container.current, {
           ...position,
           zooms: [2, 22],
-          viewMode: '2D',
+          // Continuous fractional zoom keeps the basemap scale equal to the business overlay.
+          viewMode: '3D',
+          pitch: 0,
+          rotation: 0,
           lang: copy.language,
           mapStyle: theme(),
           showBuildingBlock: false,
@@ -82,6 +89,7 @@ export function AmapBasemap({
           resizeEnable: true,
         });
         map.current = instance;
+        if (sdk.Browser?.isWebGL === false) integerZoomCallback.current?.();
         instance.on('complete', () => {
           if (disposed) return;
           clearTimeout(timeout);

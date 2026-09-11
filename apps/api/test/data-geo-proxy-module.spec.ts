@@ -409,6 +409,27 @@ describe('Data Foundation governed GIS proxy', () => {
     expect(rasterQuery['url']).toMatch(/^s3:\/\/wiser-authority\/tenants\//);
   });
 
+  it.each([
+    'nodata=NaN',
+    'nodata=Infinity',
+    'nodata=1e3',
+    'nodata=1&nodata=2',
+    'rescale=50,0',
+    'rescale=0,0',
+  ])(
+    'rejects invalid raster display choices before upstream I/O: %s',
+    async (query) => {
+      const fixture = appWith({});
+      const response = await fixture.app.inject({
+        method: 'GET',
+        url: `/api/data/v1/geo/tiles/raster/versions/${VERSION_ID}/WebMercatorQuad/3/4/2.png?${query}`,
+        headers,
+      });
+      expect(response.statusCode).toBe(422);
+      expect(fixture.requests).toHaveLength(0);
+    },
+  );
+
   it('bounds content types, response sizes, errors, and credential disclosure', async () => {
     const oversized = appWith({
       response: {

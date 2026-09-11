@@ -239,6 +239,7 @@ function validateProxyRequest(request: DataFoundationGeoProxyRequest): void {
               'url',
               'resampling',
               'rescale',
+              'nodata',
               'bidx',
               'colormap_name',
               'return_mask',

@@ -105,3 +105,5 @@ Resource content includes per-file acquisition and typed information checks thro
 Resource content also provides source-bound business relations: separate review queues, exact original evidence, human review and an approved-only graph using the shared canvas. / 资料内容同时提供固定来源的业务关系，分别展示审核队列、原件依据及人工审核，并复用共享画布展示已通过关系。
 
 Spatial-source disclosures on resources, records and version maps read the latest authorized report per original only when expanded. The shared assessment DAL keeps source identities fixed; scale warnings remain visible, while unknown or stale declarations never imply verified position or business suitability.
+
+Version maps provide display-only single-band ranges, missing-value codes, unit labels and legends; retry preserves the map camera and opacity. AMap non-WebGL fallback uses explained integer zoom on both map surfaces. / 版本地图提供仅影响显示的单波段范围、缺测码、单位标签和图例，重试保留视角与透明度；高德回退为非 WebGL 模式时，两个地图页面均提供整数缩放说明。

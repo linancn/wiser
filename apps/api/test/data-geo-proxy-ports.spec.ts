@@ -85,9 +85,17 @@ describe('fixed-origin GIS upstream port', () => {
             'url',
             `s3://wiser-authority/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/sha256/${HASH}`,
           ],
+          ['nodata', '-9999'],
+          ['rescale', '0,50'],
         ],
       }),
     );
+    const requested = fetch.mock.calls[0]![0];
+    const sent = new URL(
+      requested instanceof Request ? requested.url : requested,
+    );
+    expect(sent.searchParams.get('nodata')).toBe('-9999');
+    expect(sent.searchParams.get('rescale')).toBe('0,50');
     expect(response.status).toBe(200);
     expect(response.body.byteLength).toBe(0);
     expect(fetch.mock.calls.map((call) => call[1]?.method)).toEqual(['HEAD']);

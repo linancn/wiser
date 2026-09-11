@@ -112,14 +112,14 @@ test('keeps the migrated document routes and built-in search available', async (
   ).toBeVisible();
 });
 
-test('renders the documentation without overflow or browser errors', async ({
-  browser,
-}, testInfo) => {
-  for (const colorScheme of ['light', 'dark'] as const) {
-    for (const viewport of [
-      { name: 'desktop', width: 1440, height: 1000 },
-      { name: 'mobile-390', width: 390, height: 844 },
-    ]) {
+for (const colorScheme of ['light', 'dark'] as const) {
+  for (const viewport of [
+    { name: 'desktop', width: 1440, height: 1000 },
+    { name: 'mobile-390', width: 390, height: 844 },
+  ]) {
+    test(`renders documentation without overflow or browser errors: ${colorScheme}, ${viewport.name}`, async ({
+      browser,
+    }, testInfo) => {
       const context = await browser.newContext({
         colorScheme,
         viewport: { width: viewport.width, height: viewport.height },
@@ -153,6 +153,6 @@ test('renders the documentation without overflow or browser errors', async ({
         });
       }
       await context.close();
-    }
+    });
   }
-});
+}
