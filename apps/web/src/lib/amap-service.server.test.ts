@@ -82,3 +82,30 @@ it('allows only official map endpoints, injects credentials on the server and st
   }
   expect(fetch).toHaveBeenCalledOnce();
 });
+
+it('allows the SDK initialization endpoint through the same authenticated proxy', async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>(() =>
+    Promise.resolve(Response.json({ status: '1' })),
+  );
+  const request = new Request(
+    'https://wiser.test/_AMapService/v3/log/init?eventId=resource.load',
+  );
+  const response = await amapService(request, ['v3', 'log', 'init'], {
+    ...options,
+    fetch,
+  });
+  expect(response.status).toBe(200);
+  expect((fetch.mock.calls[0][0] as URL).origin).toBe(
+    'https://restapi.amap.com',
+  );
+  expect(
+    (
+      await amapService(request, ['v3', 'log', 'init'], {
+        ...options,
+        fetch,
+        verifySession: () => Promise.resolve(false),
+      })
+    ).status,
+  ).toBe(401);
+  expect(fetch).toHaveBeenCalledOnce();
+});

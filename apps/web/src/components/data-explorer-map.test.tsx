@@ -258,3 +258,26 @@ it('refuses mismatched record responses and propagates revoked feature permissio
     rendered.unmount();
   }
 });
+
+it.each(['zh-CN', 'en'] as const)(
+  'keeps position and scale limitations visible in %s while map features are renderable',
+  (locale) => {
+    render(
+      <DataExplorerMap
+        result={result}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onInvalidated={vi.fn()}
+        locale={locale}
+      />,
+    );
+    expect(screen.getByRole('note').textContent).toContain(
+      locale === 'zh-CN'
+        ? '位置尚待独立核对'
+        : 'Position still needs independent verification',
+    );
+    expect(screen.getByRole('note').textContent).toContain(
+      locale === 'zh-CN' ? '尺度' : 'scale',
+    );
+  },
+);

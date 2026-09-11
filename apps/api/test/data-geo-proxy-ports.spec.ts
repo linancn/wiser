@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { inflateSync } from 'node:zlib';
 
 import type { PlatformRequestContext } from '@wiser/platform-contracts';
 
@@ -55,6 +56,102 @@ function proxyRequest(
 }
 
 describe('fixed-origin GIS upstream port', () => {
+  it.each(['GET', 'HEAD'] as const)(
+    'returns a transparent PNG only for the exact authorized out-of-bounds tile on %s',
+    async (method) => {
+      const fetch = vi.fn<typeof globalThis.fetch>(() =>
+        Promise.resolve(
+          Response.json(
+            { detail: 'Tile(x=2, y=3, z=4) is outside bounds' },
+            { status: 404 },
+          ),
+        ),
+      );
+      const port = new FixedOriginDataFoundationGeoProxyPort({
+        origins: {
+          GEOSERVER: 'http://geoserver:8080',
+          STAC: 'http://stac-api:8080',
+          TITILER: 'http://titiler:80',
+          MARTIN: 'http://martin:3000',
+        },
+        stacBearerToken: 'internal-stac-token-value',
+        fetch,
+      });
+      const response = await port.request(
+        proxyRequest({
+          target: 'TITILER',
+          method,
+          path: '/cog/tiles/WebMercatorQuad/4/2/3.png',
+          query: [
+            [
+              'url',
+              `s3://wiser-authority/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/sha256/${HASH}`,
+            ],
+          ],
+        }),
+      );
+      expect(response.status).toBe(200);
+      expect(response.contentType).toBe('image/png');
+      const png = Buffer.from(response.body);
+      expect(png.subarray(0, 8)).toEqual(
+        Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+      );
+      expect(png.readUInt32BE(16)).toBe(256);
+      expect(png.readUInt32BE(20)).toBe(256);
+      const data: Buffer[] = [];
+      for (let offset = 8; offset < png.length;) {
+        const length = png.readUInt32BE(offset);
+        if (png.toString('ascii', offset + 4, offset + 8) === 'IDAT')
+          data.push(png.subarray(offset + 8, offset + 8 + length));
+        offset += 12 + length;
+      }
+      const pixels = inflateSync(Buffer.concat(data));
+      expect(pixels.length).toBe(256 * (256 * 4 + 1));
+      expect(pixels.every((value) => value === 0)).toBe(true);
+    },
+  );
+
+  it.each([
+    [404, 'Tile(x=1, y=3, z=4) is outside bounds', 'application/json'],
+    [404, 'Not Found', 'application/json'],
+    [404, 'Tile(x=2, y=3, z=4) is outside bounds', 'text/html'],
+    [403, 'Tile(x=2, y=3, z=4) is outside bounds', 'application/json'],
+    [500, 'Tile(x=2, y=3, z=4) is outside bounds', 'application/json'],
+  ])(
+    'preserves failure for status %s / %s / %s',
+    async (status, detail, contentType) => {
+      const port = new FixedOriginDataFoundationGeoProxyPort({
+        origins: {
+          GEOSERVER: 'http://geoserver:8080',
+          STAC: 'http://stac-api:8080',
+          TITILER: 'http://titiler:80',
+          MARTIN: 'http://martin:3000',
+        },
+        stacBearerToken: 'internal-stac-token-value',
+        fetch: () =>
+          Promise.resolve(
+            new Response(JSON.stringify({ detail }), {
+              status,
+              headers: { 'content-type': contentType },
+            }),
+          ),
+      });
+      const response = await port.request(
+        proxyRequest({
+          target: 'TITILER',
+          path: '/cog/tiles/WebMercatorQuad/4/2/3.png',
+          query: [
+            [
+              'url',
+              `s3://wiser-authority/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/sha256/${HASH}`,
+            ],
+          ],
+        }),
+      );
+      expect(response.status).toBe(status);
+    },
+  );
+
   it.each(['wiser_exploration_mvt', 'wiser_exploration_amap_mvt'])(
     'normalizes an authorized empty %s tile without treating it as an upstream failure',
     async (source) => {
