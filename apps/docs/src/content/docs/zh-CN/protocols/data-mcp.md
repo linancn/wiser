@@ -249,3 +249,5 @@ MCP 不替调用方保存 bearer、upload id、multipart ETag 或 Operation curs
 `data_assessment_overview` 按明确检查对象返回资料计数和下一步清单。获取前先核对未核查资料，优先复用已保存待解析原件，申请、限流和暂时故障分别处理。不同检查对象的计数不能相加当作独立数据集总数。
 
 `data_knowledge_relations_import/get/list/review` 与 REST 业务关系入口一致。导入证据只创建待审核候选；普通列表默认已通过关系，候选队列需明确请求其状态。委托智能体可在已有权限内整理、导入候选，不能代替人工审核。每条关系保留原件、定位、报告原值及限制；投影存储不作为智能体操作入口。
+
+`data_assessment_list` 1.1 通过同一 HTTP 合同接受可选 `assetId`、`latestPerAsset`。可用于显示对应原件的空间说明，不得据此生成位置已核验或业务已批准的结论。

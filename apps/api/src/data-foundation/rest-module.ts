@@ -357,7 +357,7 @@ function normalizeQuery(
   const normalized: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(source)) {
     if (FORBIDDEN_KEYS.has(key)) return null;
-    if (key === 'includeTotal') {
+    if (key === 'includeTotal' || key === 'latestPerAsset') {
       if (entry !== 'true' && entry !== 'false') return null;
       normalized[key] = entry === 'true';
       continue;

@@ -1,4 +1,5 @@
 'use client';
+import { DataSpatialSource } from './data-spatial-source';
 import { dataResourceName } from '@/lib/data-foundation-presentation';
 
 import { graphNodeLabel } from '@/lib/data-graph-label';
@@ -953,6 +954,13 @@ export function DataExplorer({
                     ×
                   </button>
                 </div>
+                <DataSpatialSource
+                  locale={locale}
+                  dataItemId={selectedRecord.dataItemId}
+                  versionId={selectedRecord.versionId}
+                  assetId={selectedRecord.assetId}
+                  geometryAvailable={selectedRecord.featureId !== null}
+                />
                 <h3>
                   {selectedRecord.sourceId ??
                     `${copy.records} ${selectedRecord.index}`}
@@ -1054,6 +1062,12 @@ export function DataExplorer({
                     ×
                   </button>
                 </div>
+                <DataSpatialSource
+                  locale={locale}
+                  dataItemId={selected.dataItemId}
+                  versionId={selected.versionId}
+                  geometryAvailable={(selected.featureCount ?? 0) > 0}
+                />
                 <dl>
                   <dt>{copy.provider}</dt>
                   <dd>{selected.provider}</dd>

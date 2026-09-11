@@ -16,6 +16,7 @@ import {
   AssessmentOutputSchema,
   GetAssessmentInputSchema,
   ListAssessmentsInputSchema,
+  ListAssessmentsInputV1Schema,
   ListAssessmentsOutputSchema,
 } from '../assessment/index.ts';
 import {
@@ -1254,7 +1255,7 @@ const capabilityRegistry = {
   }),
   'data.assessment.list': defineCapability({
     id: 'data.assessment.list',
-    version: '1.0.0',
+    version: '1.1.0',
     kind: 'query',
     inputSchema: ListAssessmentsInputSchema,
     outputSchema: ListAssessmentsOutputSchema,
@@ -1385,6 +1386,13 @@ export const DATA_CAPABILITY_REGISTRY: Readonly<
 > = Object.freeze(capabilityRegistry);
 
 const capabilityArchive = {
+  'data.assessment.list': Object.freeze([
+    defineCapability({
+      ...capabilityRegistry['data.assessment.list'],
+      version: '1.0.0',
+      inputSchema: ListAssessmentsInputV1Schema,
+    }),
+  ]),
   'data.explore.query': Object.freeze([
     defineCapability({
       ...capabilityRegistry['data.explore.query'],

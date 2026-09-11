@@ -929,7 +929,7 @@ const expectedJsonSchemaHashes = {
     output: '07ec50caea5d37f4bb6a2281b617d97641aae55774693fa6b4f8b586e7d36d8a',
   },
   'data.assessment.list': {
-    input: '06cc8b27e6444c6b8c6620927d9cc8d1b555346bf00a2151d6e93a6c8a2389e8',
+    input: 'ff179ec9e726041ca27dcb2d6bb45f6ba69a779c84de0611b4a80a7842ff5a48',
     output: '02a35b5600df4df19ea4fd4ced1a7bee1bce2b32b6ae6c6802cf822a1a546f92',
   },
   'data.assessment.overview': {
@@ -1622,6 +1622,13 @@ describe('Data Foundation capability registry', () => {
     }
   });
 
+  it('preserves the historical assessment list input', () => {
+    const old = DATA_CAPABILITY_ARCHIVE['data.assessment.list']?.[0];
+    expect(old?.version).toBe('1.0.0');
+    expect(old && jsonSchemaHash(old.inputSchema)).toBe(
+      '06cc8b27e6444c6b8c6620927d9cc8d1b555346bf00a2151d6e93a6c8a2389e8',
+    );
+  });
   it('validates every capability input strictly', () => {
     for (const capabilityId of DATA_CAPABILITY_IDS) {
       const definition = DATA_CAPABILITY_REGISTRY[capabilityId];

@@ -1,3 +1,4 @@
+import { DataSpatialSource } from '@/components/data-spatial-source';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
@@ -210,6 +211,14 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
             >
               {copy.explorer.openData}
             </Link>
+          ) : null}
+          {selection ? (
+            <DataSpatialSource
+              locale={locale}
+              dataItemId={selection.dataItemId}
+              versionId={selection.versionId}
+              geometryAvailable={displayable.length > 0}
+            />
           ) : null}
           {displayable.length === 0 &&
           stacExtents.length === 0 &&

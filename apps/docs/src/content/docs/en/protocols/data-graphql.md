@@ -225,3 +225,5 @@ Saved-view queries are `dataExploreViews(input: JSON!)`, `dataExploreView(input:
 `dataAssessmentOverview(input: JSON!)` maps to `data.assessment.overview`, retaining the exact target, authorization, count grain and paging semantics.
 
 `importDataRelations` and `reviewDataRelation` are JSON-input mutations; `dataRelation` and `dataRelations` are JSON-input queries. All map to the same versioned business-relation capabilities as REST, including exact source hashes, default approved-only lists, human review, optimistic versions and command idempotency. Graph neighborhoods use the source version and optional entity/mapping filter; they never implicitly merge source-local identities.
+
+`dataAssessments` uses assessment list 1.1: optional `assetId` selects an exact original, and `latestPerAsset: true` returns one newest authorized report per file before bounded pagination. Missing or stale declarations are not replaced with older claims; the default still returns history.

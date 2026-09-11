@@ -103,3 +103,5 @@ Resource content includes a rule-scoped, non-destructive copy-verification and o
 Resource content includes per-file acquisition and typed information checks through the existing authenticated HTTP DAL. Unknown fields remain explicit; reports do not approve publication or verify position.
 
 Resource content also provides source-bound business relations: separate review queues, exact original evidence, human review and an approved-only graph using the shared canvas. / 资料内容同时提供固定来源的业务关系，分别展示审核队列、原件依据及人工审核，并复用共享画布展示已通过关系。
+
+Spatial-source disclosures on resources, records and version maps read the latest authorized report per original only when expanded. The shared assessment DAL keeps source identities fixed; scale warnings remain visible, while unknown or stale declarations never imply verified position or business suitability.

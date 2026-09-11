@@ -143,6 +143,8 @@ const validInputs = {
   'data.assessment.list': {
     dataItemId: DATA_ITEM_ID,
     versionId: VERSION_ID,
+    assetId: OPERATION_ID,
+    latestPerAsset: true,
     first: 25,
   },
 

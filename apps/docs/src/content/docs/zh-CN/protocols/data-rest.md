@@ -343,3 +343,5 @@ Data REST 错误是扁平安全 envelope：
 `GET /api/data/v1/assessments/overview` 对应 `data.assessment.overview`，要求 `data.catalog.read` 和明确的检查对象，可传入 `query`、`action`、`first`（1–100）及不透明 `after` 游标。总数、已记录数、未核查数和下一步计数共用完整授权范围的资料分母；`selectedCount` 是当前下一步条件的资料数，不是本页数量。明细固定资料/版本并保留最近适用报告的时间。没有检查就是 `UNCHECKED`，不表示不可取得。
 
 `data.knowledge.relations.import/get/list/review` 提供业务关系的受控入口。每次导入最多 100 个候选、每个候选至多 100,000 字节、每次至多 256 KiB，固定已获授权并发布的资料版本及原件哈希，每个三元组最多保留 64 处证据。`mappingVersion` 划分来源内身份；同一映射下属性冲突会失败，更正使用新映射及明确的 `supersedesId`。列表默认只返回 `APPROVED`，支持来源范围内的 `entityKey`/`mappingVersion`，给出所选状态的关系总数，每页最多 100 条，UUID 游标绑定版本。读取与命令重试均重新检查全部来源。导入要求目录读取及接入写入权限；审核要求目录读取、发布权限、人工身份、预期断言版本和说明。关系审核与资料接收独立，已有来源溯源图保持独立。
+
+检查列表能力 1.1 新增可选 `assetId` 和 `latestPerAsset`（REST 使用 `true` / `false`）。启用后先按 `created_at DESC, assessment_id DESC` 选出每份可访问原件的最新检查，再按既有检查编号分页。较新记录即使缺项或声明与原件不符，也不会暗中退回较旧完整说明。省略参数仍查询完整历史，1.0 输入合同保留；无需迁移或修改返回结构。
