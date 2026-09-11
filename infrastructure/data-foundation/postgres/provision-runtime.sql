@@ -161,6 +161,9 @@ grant execute on functions to wiser_data_runtime;
 
 -- Query manifests are immutable, expiring caches owned by the verified caller.
 do $$ begin
+  if to_regclass('knowledge.assertion_binding') is not null then
+    revoke update,delete on knowledge.assertion_binding from wiser_data_runtime;
+  end if;
   if to_regclass('service.intake_assessment') is not null then
     revoke update,delete on service.intake_assessment from wiser_data_runtime;
   end if;

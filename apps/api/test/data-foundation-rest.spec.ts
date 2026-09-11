@@ -69,6 +69,59 @@ const point = {
 };
 
 const validInputs = {
+  'data.knowledge.relations.import': {
+    dataItemId: DATA_ITEM_ID,
+    versionId: VERSION_ID,
+    mappingVersion: 'test.v1',
+    candidates: [
+      {
+        subject: {
+          key: 'enterprise:1',
+          label: 'Enterprise',
+          kind: 'ENTERPRISE',
+          externalId: null,
+        },
+        predicate: 'HAS_DECLARED_MONITORING_POINT',
+        object: {
+          key: 'point:1',
+          label: 'Point',
+          kind: 'MONITORING_POINT',
+          externalId: null,
+        },
+        qualifiers: {
+          measure: null,
+          unit: null,
+          observedAt: null,
+          missing: true,
+          spatialScope: null,
+          limitations: [],
+          reportedConclusion: null,
+        },
+        generation: { method: 'SOURCE_TABLE', model: null },
+        evidence: [
+          {
+            assetId: ASSET_ID,
+            sourceHash: 'a'.repeat(64),
+            locator: 'PDF page 1, row 1',
+            excerpt: null,
+            polarity: 'SUPPORTS',
+          },
+        ],
+        supersedesId: null,
+      },
+    ],
+  },
+  'data.knowledge.relations.get': { assertionId: OPERATION_ID },
+  'data.knowledge.relations.list': {
+    dataItemId: DATA_ITEM_ID,
+    versionId: VERSION_ID,
+  },
+  'data.knowledge.relations.review': {
+    assertionId: OPERATION_ID,
+    expectedVersion: 1,
+    decision: 'APPROVED',
+    rationale: 'Source checked',
+  },
   'data.assessment.overview': { target: 'DATASET', first: 25 },
   'data.assessment.create': {
     dataItemId: DATA_ITEM_ID,

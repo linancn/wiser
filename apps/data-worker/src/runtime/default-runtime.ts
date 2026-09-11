@@ -1,4 +1,8 @@
 import {
+  BusinessProjectionConsumer,
+  Neo4jBusinessProjection,
+} from '@wiser/data-infra';
+import {
   createDataEmbedding,
   Neo4jKnowledgeGraphProjection,
   OPENSEARCH_EVIDENCE_INDEX,
@@ -192,9 +196,44 @@ export function createDefaultDataWorkerRuntime(
     consumerName: config.projection.consumerName,
     embeddingModel: embedding.model,
   });
+  const business = new BusinessProjectionConsumer(
+    createDataPostgresPool({
+      connectionString: config.databaseUrl,
+      applicationName: 'wiser-business-projection',
+      maximumConnections: 1,
+    }),
+    new Neo4jBusinessProjection({
+      baseUrl: config.projection.neo4jBaseUrl,
+      database: config.projection.neo4jDatabase,
+      username: config.projection.neo4jUsername,
+      password: config.projection.neo4jPassword,
+      http,
+    }),
+  );
   const runtime = new DataWorkerRuntime({
     scheduler,
-    projectionConsumer,
+    projectionConsumer: {
+      async processBatch(scope, limit) {
+        let readEvents = 0,
+          failed = false;
+        try {
+          readEvents += (await projectionConsumer.processBatch(scope, limit))
+            .readEvents;
+        } catch {
+          failed = true;
+        }
+        try {
+          readEvents += (await business.processBatch(scope, limit)).readEvents;
+        } catch {
+          failed = true;
+        }
+        if (failed) throw Error('Projection reconciliation failed');
+        return { readEvents };
+      },
+      async close() {
+        await Promise.all([projectionConsumer.close(), business.close()]);
+      },
+    },
     projectionScope: config.scope,
     projectionBatchLimit: config.projection.batchLimit,
     projectionPollIntervalMs: config.projection.pollIntervalMs,

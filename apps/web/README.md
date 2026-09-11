@@ -101,3 +101,5 @@ Data discovery uses 25-row catalog/quality pages and 10-row search/knowledge pag
 Resource content includes a rule-scoped, non-destructive copy-verification and observation-deduplication workflow through `/api/data-foundation/reconciliation/{action}`. Candidates, conflicts, source references and human verification remain distinct. / 资源内容通过同源接口提供规则范围内的无损副本核验与业务去重，分别呈现候选、冲突、来源引用与人工确认。
 
 Resource content includes per-file acquisition and typed information checks through the existing authenticated HTTP DAL. Unknown fields remain explicit; reports do not approve publication or verify position.
+
+Resource content also provides source-bound business relations: separate review queues, exact original evidence, human review and an approved-only graph using the shared canvas. / 资料内容同时提供固定来源的业务关系，分别展示审核队列、原件依据及人工审核，并复用共享画布展示已通过关系。

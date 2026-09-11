@@ -28,7 +28,7 @@ describe('Data PostgreSQL CI', () => {
     const scripts = manifest.scripts as Record<string, string>;
 
     expect(scripts['test:postgres:data-api']).toBe(
-      'pnpm --filter @wiser/api exec vitest run --config vitest.config.ts test/data-postgres-command-executors.spec.ts test/data-postgres-geo-query.spec.ts test/data-reconciliation.integration.spec.ts test/data-assessment.integration.spec.ts',
+      'pnpm --filter @wiser/api exec vitest run --no-file-parallelism --config vitest.config.ts test/data-postgres-command-executors.spec.ts test/data-postgres-geo-query.spec.ts test/data-reconciliation.integration.spec.ts test/data-assessment.integration.spec.ts test/data-knowledge-relations.integration.spec.ts',
     );
     expect(scripts['test:postgres:data-worker']).toBe(
       'pnpm --filter @wiser/data-worker exec vitest run --config vitest.config.ts test/ingestion-runtime-adapters.spec.ts',

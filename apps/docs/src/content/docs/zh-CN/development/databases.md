@@ -188,3 +188,5 @@ WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
 ## 资料检查证据
 
 `0024_intake_assessment.sql` 新增强制 RLS、不可改写的 `service.intake_assessment`，插入时绑定资料、版本、文件、哈希和可选已完成分析，安全等级不能低于原件。运行角色配置在通用授权后撤销修改及删除权限，不迁移旧资料或发布状态。隔离 PostgreSQL 测试 `apps/api/test/data-assessment.integration.spec.ts` 验证证据、过期哈希、幂等重试、分页、不可改写和来源撤回，已加入 `pnpm test:postgres:data-api`。
+
+迁移 `0025_knowledge_relations.sql`、`0026_business_projection_cursor.sql` 增加强制 RLS 的来源绑定和内部可续跑投影位点。断言置信度允许 null 表达未知，历史数值保留。所属范围外键和来源约束核对 RAW 原件、版本与哈希，关系证据、审核历史及断言正文保持不可变；状态改变必须匹配下一版本的审核记录。关系数据库实测覆盖重复命令、映射变更、人工审核、过期审核拒绝、跨项目、证据不可变及来源撤回。仅对隔离测试目标配置 `DATA_TEST_NEO4J_URL`（可选 `DATA_TEST_NEO4J_PASSWORD`），即可追加投影删除、中断重试、重建与撤回移除验证。

@@ -1,6 +1,6 @@
 ---
 title: Data MCP integration
-description: Invoke 37 Data Capabilities and five governed Resources through the shared WISER MCP Gateway.
+description: Invoke 41 Data Capabilities and five governed Resources through the shared WISER MCP Gateway.
 docType: protocol-reference
 scope: data-mcp-adapter
 status: active
@@ -247,3 +247,5 @@ Saved exploration views use `data.explore.view.create`, `.list`, `.open` and `.r
 Use `data_assessment_create`, `data_assessment_get` and `data_assessment_list` through HTTP. Discover their schemas first. Reuse the original asset and completed analysis; do not redownload or reparse just to run metadata checks. Supply an explicit target object and source evidence, leave unknown units/CRS unknown, and retain the command key on identical retries. A returned `CHECKS_PASSED` is scoped information consistency, not a scientific verdict. Follow report pages and preserve file/version/hash, rule/parser versions and limitations.
 
 `data_assessment_overview` gives resource counts and next-action pages for one explicit target type. Check unknown resources before acquiring more files, reuse saved originals pending parsing, and keep application/rate-limit/temporary failures distinct. Do not add counts from separate targets as independent datasets.
+
+`data_knowledge_relations_import/get/list/review` mirror the REST business-relation workflow. Importing evidence creates pending candidates, never approved knowledge. Normal lists default to approved relations; a candidate review queue requests its status explicitly. A delegated agent may prepare/import candidates with its existing scopes but cannot act as the human reviewer. Every returned relation retains exact source files, locators, reported values and limitations. Projection storage is never a supported agent entrypoint.

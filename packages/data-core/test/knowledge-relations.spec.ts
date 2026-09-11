@@ -33,6 +33,26 @@ const candidate = () => ({
 });
 
 describe('source-scoped business relation candidates', () => {
+  it('rejects inconsistent attributes of the same source identity across different triples', () => {
+    const first = candidate(),
+      second = {
+        ...candidate(),
+        subject: entity(first.subject.key, 'Different name'),
+        object: entity('point:2'),
+      };
+    expect(() => groupRelationCandidates([first, second])).toThrow(
+      'Conflicting source entity',
+    );
+  });
+  it('retains all 24 source locations of a real-world-sized shared monitoring point', () => {
+    const rows = Array.from({ length: 24 }, (_, i) => ({
+      ...candidate(),
+      evidence: [evidence(`page 1 row ${i + 1}`)],
+    }));
+    expect(groupRelationCandidates(rows)[0]?.candidate.evidence).toHaveLength(
+      24,
+    );
+  });
   it('counts one triple with two supporting locations rather than two relations', () => {
     const first = candidate(),
       second = { ...candidate(), evidence: [evidence('page 2, row 4')] };
@@ -64,7 +84,7 @@ describe('source-scoped business relation candidates', () => {
         first,
         { ...first, object: entity('point:1', 'Different') },
       ]),
-    ).toThrow('Conflicting relation candidate');
+    ).toThrow(/Conflicting/);
   });
   it('requires a saved-source hash and an explicit evidence locator', () => {
     expect(() =>
