@@ -274,15 +274,15 @@ export default async function DataItemPage({
                 selectedVersionId={selectedVersion?.versionId}
                 versions={versions.items}
               />
-              {selectedVersion === undefined ? null : (
-                <Link
-                  href={`/${locale}/data-foundation/map?${mapSearch.toString()}`}
-                >
-                  {copy.itemPage.openOnMap}
-                </Link>
-              )}
             </DataSection>
           </DataDisclosure>
+          {selectedVersion === undefined ? null : (
+            <Link
+              href={`/${locale}/data-foundation/map?${mapSearch.toString()}`}
+            >
+              {copy.itemPage.openOnMap}
+            </Link>
+          )}
           {selectedVersion === undefined ? null : (
             <Link
               href={`/${locale}/data-foundation/explore?dataItem=${item.dataItemId}&version=${selectedVersion.versionId}&view=graph`}

@@ -1101,7 +1101,10 @@ const zhCN = {
       authorityLayer: '数据要素',
       stacLayer: '资产范围',
       vectorLayer: '矢量图层',
-      rasterLayer: '栅格图层',
+      rasterLayer: '栅格像元',
+      rasterOpacity: '栅格不透明度',
+      rasterMeaning:
+        '像元影像与范围框分开显示。透明处不代表数值为零；数值含义、单位与范围请回查来源说明。',
       selectedVersion: '地图版本',
       noSelectedVersion: '未固定版本',
       displayCrs: '显示坐标系',
@@ -2762,7 +2765,10 @@ const en: typeof zhCN = {
       authorityLayer: 'Data features',
       stacLayer: 'Asset extents',
       vectorLayer: 'Vector layer',
-      rasterLayer: 'Raster layer',
+      rasterLayer: 'Raster pixels',
+      rasterOpacity: 'Raster opacity',
+      rasterMeaning:
+        'Image pixels are separate from extent outlines. Transparent areas do not mean zero; check the source for value meanings, units and ranges.',
       selectedVersion: 'Map version',
       noSelectedVersion: 'No version pinned',
       displayCrs: 'Display coordinate system',

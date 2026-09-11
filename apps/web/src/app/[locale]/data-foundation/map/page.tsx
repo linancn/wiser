@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 
 import { DataFoundationMap } from '@/components/data-foundation-map';
 import {
@@ -21,6 +22,7 @@ import {
   resolveMapTileUrls,
   toMapFeatureCollection,
   type DataItemVersionDto,
+  type DataItemDetailDto,
   type GeoQueryDto,
   type StacFeatureCollectionDto,
 } from '@/lib/data-foundation';
@@ -57,9 +59,9 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
   if (!isLocale(locale)) notFound();
   const copy = getDictionary(locale).dataFoundation;
   const route = `/${locale}/data-foundation/map`;
-  const bbox = parseGeoBbox(search.bbox);
+  let bbox = parseGeoBbox(search.bbox);
   const selection = parseMapVersionSelection(search.dataItem, search.version);
-  const crs =
+  let crs: 'EPSG:4326' | 'EPSG:4490' | null =
     search.crs === undefined
       ? 'EPSG:4326'
       : search.crs === 'EPSG:4326' || search.crs === 'EPSG:4490'
@@ -77,6 +79,40 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
       throw invalidDataPageRequest();
     }
     const dal = await getDataFoundationDal();
+    let selectedDetail: DataItemDetailDto | undefined;
+    if (bbox === undefined && selection !== undefined) {
+      selectedDetail = await dal.dataItem(
+        selection.dataItemId,
+        selection.versionId,
+      );
+      if (
+        selectedDetail.selectedVersion?.dataItemId !== selection.dataItemId ||
+        selectedDetail.selectedVersion.versionId !== selection.versionId
+      )
+        throw dataPageFailure('contract', 502);
+      const query = await dal.explore({
+        spec: { versions: [selection] },
+        view: 'resources',
+        first: 1,
+      });
+      const map = await dal.explore({
+        queryId: query.queryId,
+        view: 'map',
+        first: 1,
+      });
+      bbox = map.spatial?.bounds ?? undefined;
+      if (bbox !== undefined) {
+        const [west, south, east, north] = bbox;
+        // A query viewport needs area even when the source is a single point.
+        bbox = [
+          west === east ? Math.max(-180, west - 0.001) : west,
+          south === north ? Math.max(-90, south - 0.001) : south,
+          west === east ? Math.min(180, east + 0.001) : east,
+          south === north ? Math.min(90, north + 0.001) : north,
+        ];
+        crs = 'EPSG:4326';
+      }
+    }
     if (bbox === undefined) {
       const registry = await dal.capabilities();
       capabilityAvailable = registry.capabilities.some(
@@ -94,7 +130,9 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
         dal.stacItems({ bbox }),
         selection === undefined
           ? Promise.resolve(undefined)
-          : dal.dataItem(selection.dataItemId, selection.versionId),
+          : selectedDetail === undefined
+            ? dal.dataItem(selection.dataItemId, selection.versionId)
+            : Promise.resolve(selectedDetail),
       ]);
       result = geoResult;
       stac = stacResult;
@@ -166,6 +204,13 @@ export default async function MapPage({ params, searchParams }: MapPageProps) {
       {result === undefined ? null : (
         <DataSection>
           <SectionHeading title={copy.mapPage.mapTitle} />
+          {selection && authoritativeVersion ? (
+            <Link
+              href={`/${locale}/data-foundation/catalog/${selection.dataItemId}?version=${selection.versionId}`}
+            >
+              {copy.explorer.openData}
+            </Link>
+          ) : null}
           {displayable.length === 0 &&
           stacExtents.length === 0 &&
           selectedVersionId === undefined ? (

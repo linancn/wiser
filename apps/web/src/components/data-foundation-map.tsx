@@ -194,12 +194,14 @@ export function DataFoundationMap({
   const mapRef = useRef<MapLibreMap | null>(null);
   const basemap = useRef<AmapBasemapHandle>(null);
   const amapCopy = getDictionary(locale).dataFoundation.amap;
+  const mapCopy = getDictionary(locale).dataFoundation.mapPage;
+  const [rasterOpacity, setRasterOpacity] = useState(78);
   const [visible, setVisible] = useState<Readonly<Record<MapLayer, boolean>>>(
     () => ({
       authority: true,
       stac: stacExtents.length > 0,
       vector: vectorTileUrl !== undefined,
-      raster: false,
+      raster: rasterTileUrl !== undefined,
     }),
   );
 
@@ -517,6 +519,23 @@ export function DataFoundationMap({
       instance.off('load', update);
     };
   }, [visible]);
+  useEffect(() => {
+    const instance = mapRef.current;
+    if (!instance) return;
+    const update = () => {
+      if (instance.getLayer('governed-raster-layer'))
+        instance.setPaintProperty(
+          'governed-raster-layer',
+          'raster-opacity',
+          rasterOpacity / 100,
+        );
+    };
+    update();
+    instance.on('load', update);
+    return () => {
+      instance.off('load', update);
+    };
+  }, [rasterOpacity, rasterTileUrl]);
 
   const controls: readonly {
     readonly id: MapLayer;
@@ -563,6 +582,26 @@ export function DataFoundationMap({
             </label>
           ))}
         </fieldset>
+        {rasterTileUrl ? (
+          <div className={styles.rasterControls}>
+            <label>
+              <span>{mapCopy.rasterOpacity}</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={rasterOpacity}
+                disabled={!visible.raster}
+                onChange={(event) =>
+                  setRasterOpacity(Number(event.target.value))
+                }
+              />
+            </label>
+            <output>{rasterOpacity}%</output>
+            <p>{mapCopy.rasterMeaning}</p>
+          </div>
+        ) : null}
         <dl>
           <div>
             <dt>{labels.selectedVersion}</dt>

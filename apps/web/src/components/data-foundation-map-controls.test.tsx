@@ -50,12 +50,8 @@ it.each(['zh-CN', 'en'] as const)(
       />,
     );
     expect(
-      (
-        screen.getByRole('checkbox', {
-          name: copy.rasterLayer,
-        }) as HTMLInputElement
-      ).checked,
-    ).toBe(true);
+      screen.getByRole('checkbox', { name: copy.rasterLayer }),
+    ).toHaveProperty('checked', true);
     const slider = screen.getByRole('slider', {
       name: locale === 'zh-CN' ? '栅格不透明度' : 'Raster opacity',
     });
@@ -67,6 +63,6 @@ it.each(['zh-CN', 'en'] as const)(
     );
     expect(probe.dispose).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('checkbox', { name: copy.rasterLayer }));
-    expect((slider as HTMLInputElement).disabled).toBe(true);
+    expect(slider).toHaveProperty('disabled', true);
   },
 );
