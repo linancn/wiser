@@ -9,3 +9,4 @@ export * from './analysis/index.ts';
 export * from './exploration/saved.ts';
 export * from './reconciliation/index.ts';
 export * from './assessment/index.ts';
+export * from './knowledge-relations/index.ts';

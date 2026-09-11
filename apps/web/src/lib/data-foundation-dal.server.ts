@@ -99,6 +99,11 @@ export class DataFoundationApiError extends Error {
 }
 
 export interface DataFoundationDal {
+  relations(
+    action: 'import' | 'get' | 'list' | 'review',
+    input: unknown,
+    idempotencyKey?: string,
+  ): Promise<unknown>;
   assess(
     action: 'create' | 'get' | 'list' | 'overview',
     input: unknown,
@@ -414,6 +419,42 @@ export function createDataFoundationDal(
           encodeURIComponent(body['assessmentId']),
         );
         delete body['assessmentId'];
+      }
+      if (definition.restMapping.method === 'GET') {
+        const query = new URLSearchParams(
+          Object.entries(body).map(([key, value]) => [key, String(value)]),
+        );
+        if (query.size) path += `?${query}`;
+      }
+      return parsed(
+        () =>
+          call(path, {
+            method: definition.restMapping.method as 'GET' | 'POST',
+            ...(definition.kind === 'command' ? { body, idempotencyKey } : {}),
+          }),
+        (value) => definition.outputSchema.parse(value),
+      );
+    },
+
+    relations: (action, input, idempotencyKey) => {
+      const id: DataCapabilityId = `data.knowledge.relations.${action}`;
+      const definition = DATA_CAPABILITY_REGISTRY[id];
+      const checked = definition.inputSchema.safeParse(input);
+      if (
+        !checked.success ||
+        (definition.kind === 'command' &&
+          (!idempotencyKey || !UUID_PATTERN.test(idempotencyKey)))
+      )
+        throw new DataFoundationApiError('invalid-request', 422);
+      const values = checked.data as Record<string, unknown>;
+      let path = definition.restMapping.path;
+      const body = { ...values };
+      if (typeof body['assertionId'] === 'string') {
+        path = path.replace(
+          ':assertionId',
+          encodeURIComponent(body['assertionId']),
+        );
+        delete body['assertionId'];
       }
       if (definition.restMapping.method === 'GET') {
         const query = new URLSearchParams(

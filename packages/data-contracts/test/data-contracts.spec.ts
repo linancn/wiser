@@ -154,6 +154,59 @@ for (const serverOwnedField of [
 }
 
 const validCapabilityInputs = {
+  'data.knowledge.relations.import': {
+    dataItemId: DATA_ITEM_ID,
+    versionId: VERSION_ID,
+    mappingVersion: 'test.v1',
+    candidates: [
+      {
+        subject: {
+          key: 'enterprise:1',
+          label: 'Enterprise',
+          kind: 'ENTERPRISE',
+          externalId: null,
+        },
+        predicate: 'HAS_DECLARED_MONITORING_POINT',
+        object: {
+          key: 'point:1',
+          label: 'Point',
+          kind: 'MONITORING_POINT',
+          externalId: null,
+        },
+        qualifiers: {
+          measure: null,
+          unit: null,
+          observedAt: null,
+          missing: true,
+          spatialScope: null,
+          limitations: [],
+          reportedConclusion: null,
+        },
+        generation: { method: 'SOURCE_TABLE', model: null },
+        evidence: [
+          {
+            assetId: ASSET_ID,
+            sourceHash: 'a'.repeat(64),
+            locator: 'PDF page 1, row 1',
+            excerpt: null,
+            polarity: 'SUPPORTS',
+          },
+        ],
+        supersedesId: null,
+      },
+    ],
+  },
+  'data.knowledge.relations.get': { assertionId: OPERATION_ID },
+  'data.knowledge.relations.list': {
+    dataItemId: DATA_ITEM_ID,
+    versionId: VERSION_ID,
+  },
+  'data.knowledge.relations.review': {
+    assertionId: OPERATION_ID,
+    expectedVersion: 1,
+    decision: 'APPROVED',
+    rationale: 'Source checked',
+  },
   'data.assessment.overview': { target: 'DATASET', first: 25 },
   'data.assessment.create': {
     dataItemId: DATA_ITEM_ID,
@@ -334,6 +387,46 @@ const validCapabilityInputs = {
 } satisfies Record<DataCapabilityId, Readonly<Record<string, unknown>>>;
 
 const expectedCapabilityMappings = {
+  'data.knowledge.relations.import': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/knowledge/relations',
+      successStatus: 201,
+    },
+    graphqlMapping: { operationType: 'mutation', field: 'importDataRelations' },
+    mcpMapping: { toolName: 'data_knowledge_relations_import' },
+    skillMapping: { operation: 'data.knowledge.relations.import' },
+  },
+  'data.knowledge.relations.get': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/knowledge/relations/:assertionId',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataRelation' },
+    mcpMapping: { toolName: 'data_knowledge_relations_get' },
+    skillMapping: { operation: 'data.knowledge.relations.get' },
+  },
+  'data.knowledge.relations.list': {
+    restMapping: {
+      method: 'GET',
+      path: '/api/data/v1/knowledge/relations',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'query', field: 'dataRelations' },
+    mcpMapping: { toolName: 'data_knowledge_relations_list' },
+    skillMapping: { operation: 'data.knowledge.relations.list' },
+  },
+  'data.knowledge.relations.review': {
+    restMapping: {
+      method: 'POST',
+      path: '/api/data/v1/knowledge/relations/:assertionId/review',
+      successStatus: 200,
+    },
+    graphqlMapping: { operationType: 'mutation', field: 'reviewDataRelation' },
+    mcpMapping: { toolName: 'data_knowledge_relations_review' },
+    skillMapping: { operation: 'data.knowledge.relations.review' },
+  },
   'data.assessment.overview': {
     restMapping: {
       method: 'GET',
@@ -746,6 +839,13 @@ const expectedCapabilityMappings = {
 } satisfies Record<DataCapabilityId, unknown>;
 
 const expectedCapabilityScopes = {
+  'data.knowledge.relations.import': [
+    'data.catalog.read',
+    'data.ingestion.write',
+  ],
+  'data.knowledge.relations.get': ['data.catalog.read'],
+  'data.knowledge.relations.list': ['data.catalog.read'],
+  'data.knowledge.relations.review': ['data.catalog.read', 'data.publish'],
   'data.assessment.overview': ['data.catalog.read'],
   'data.assessment.create': ['data.catalog.read', 'data.ingestion.write'],
   'data.assessment.get': ['data.catalog.read'],
@@ -803,6 +903,23 @@ const asynchronousCapabilityIds = new Set<DataCapabilityId>([
 ]);
 
 const expectedJsonSchemaHashes = {
+  'data.knowledge.relations.import': {
+    input: '4c2b3769088db2caf0e6fe6b14acc966ab92b2fed294b7708ce18e6758598e20',
+    output: '785dc563ef01a4b71cd4867edae960023e334a9b9e6aee2eb453e45b8fc7cc00',
+  },
+  'data.knowledge.relations.get': {
+    input: '1da03b60eb041eb77e0be2ebfedbab9881708170afa6df8b899d360def5f55c4',
+    output: '8b0534b4f09790ef4906068f4a3bf464ce2d99c06f65959c573dbef7847923df',
+  },
+  'data.knowledge.relations.list': {
+    input: '39556b5ee516b087088cfedd0b535489f9f9d1e30510a854975dbf660a35f2d6',
+    output: '132fc40f5f5b9b87babfe9506cb8ff529d770cf73ab678aeea068488a39f9a62',
+  },
+  'data.knowledge.relations.review': {
+    input: 'b942992c3638c17b7e34d211bc383be46b59383211be1fef3db3c8f14db4fe8b',
+    output: '8b0534b4f09790ef4906068f4a3bf464ce2d99c06f65959c573dbef7847923df',
+  },
+
   'data.assessment.create': {
     input: '634c3fce7ac37a8921dfe8d84c412b7dde655c583dc2c5854974aaf0b939d5a4',
     output: '07ec50caea5d37f4bb6a2281b617d97641aae55774693fa6b4f8b586e7d36d8a',
@@ -1303,6 +1420,10 @@ describe('Data Foundation capability registry', () => {
       'data.assessment.get',
       'data.assessment.list',
       'data.assessment.overview',
+      'data.knowledge.relations.import',
+      'data.knowledge.relations.get',
+      'data.knowledge.relations.list',
+      'data.knowledge.relations.review',
     ]);
     expect(Object.keys(DATA_CAPABILITY_REGISTRY)).toEqual(DATA_CAPABILITY_IDS);
 

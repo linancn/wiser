@@ -118,3 +118,9 @@ CSV/JSON analysis is bounded at 64 MiB and 2,000,000 records per asset. Capacity
 The live consumer has a separate checkpoint for each real embedding profile and configured consumer name. It replays Weaviate writes despite shared success ledgers, skips other successful targets, and advances only after projection and publication succeed. Its first activation traverses retained history independently of the rebuild CLI; later starts resume. Fake retains the legacy checkpoint. For cutover and rollback, let the selected Worker profile catch up and verify coverage before changing API reads.
 
 持续消费者按真实嵌入配置和消费者名称使用独立位点，不把共享台账的成功视为当前集合已完成；仅重放 Weaviate，跳过其他成功投影，投影与发布成功后才推进位点。首次启用独立遍历保留的历史，之后续跑；fake 保留原位点。切换与回退都先让所选 Worker 配置追平并验收，再切换 API 查询。
+
+## Business relation projection / 业务关系投影
+
+The Worker also runs a bounded authority reconciliation for reviewed business relations through the shared Data infra adapter. Its cursor and labels are independent of legacy publication/provenance projections. Approval and source withdrawal change the next sweep's writes; API authority checks apply immediately. Failures leave the cursor unchanged. / Worker 使用共享 Data infra 适配器分批同步已审核业务关系，位点与标签独立于已有发布/溯源投影。审核及来源撤回影响下一轮写入，API 权限检查立即生效；失败保留进度。
+
+To rebuild a configured business projection after it is removed, use the existing Worker environment and pinned Compose files, including `compose.override.yaml`, with `pnpm --filter @wiser/data-worker exec tsx src/business-rebuild-cli.ts`. It completes the retained sweep and one full sweep with a per-project/target lock, preserving assertion IDs, originals and reviews. Keep one change owner for the target; inspect and verify an isolated target before any shared cutover. / 重建使用已有 Worker 环境，保留本地 Compose override，并执行上述命令。它完成保留进度及一次完整扫描，以项目/目标锁避免相互覆盖，原断言、原件与审核记录保留；共享切换前先验证隔离目标。

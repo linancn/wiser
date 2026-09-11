@@ -127,6 +127,8 @@ input ApprovalInput {
 
 type Query {
   dataAssessmentOverview(input: JSON!): JSON!
+  dataRelation(input: JSON!): JSON!
+  dataRelations(input: JSON!): JSON!
   dataAssessment(input: JSON!): JSON!
   dataAssessments(input: JSON!): JSON!
   dataReconciliation(input: JSON!): JSON!
@@ -160,6 +162,8 @@ type Query {
 }
 
 type Mutation {
+  importDataRelations(input: JSON!): JSON!
+  reviewDataRelation(input: JSON!): JSON!
   createDataAssessment(input: JSON!): JSON!
   createDataReconciliation(input: JSON!): JSON!
   reviewDataReconciliation(input: JSON!): JSON!
@@ -179,6 +183,10 @@ type Mutation {
 export const GRAPHQL_CAPABILITY_BY_FIELD: Readonly<
   Record<string, DataCapabilityId>
 > = Object.freeze({
+  dataRelation: 'data.knowledge.relations.get',
+  dataRelations: 'data.knowledge.relations.list',
+  importDataRelations: 'data.knowledge.relations.import',
+  reviewDataRelation: 'data.knowledge.relations.review',
   dataAssessment: 'data.assessment.get',
   dataAssessments: 'data.assessment.list',
   dataAssessmentOverview: 'data.assessment.overview',
@@ -512,6 +520,16 @@ function connectionFrom(value: unknown) {
 const resolvers = {
   JSON: JsonScalar,
   Query: {
+    dataRelation: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeQuery(context, 'data.knowledge.relations.get', args.input),
+    dataRelations: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeQuery(context, 'data.knowledge.relations.list', args.input),
     dataAssessment: (
       _: unknown,
       args: { input: unknown },
@@ -694,6 +712,16 @@ const resolvers = {
       ),
   },
   Mutation: {
+    importDataRelations: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeCommand(context, 'data.knowledge.relations.import', args.input),
+    reviewDataRelation: (
+      _: unknown,
+      args: { input: unknown },
+      context: GraphqlContext,
+    ) => executeCommand(context, 'data.knowledge.relations.review', args.input),
     createDataAssessment: (
       _: unknown,
       args: { input: unknown },

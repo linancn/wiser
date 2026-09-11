@@ -434,6 +434,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: 3.1118.0
         version: 3.1118.0
+      '@wiser/data-contracts':
+        specifier: workspace:*
+        version: link:../data-contracts
       csv-parse:
         specifier: 7.0.2
         version: 7.0.2

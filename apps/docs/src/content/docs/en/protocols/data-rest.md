@@ -1,6 +1,6 @@
 ---
 title: Data REST API
-description: Data Foundation's 37 Capabilities, OpenAPI, governed Resources, idempotency, SSE, and asset-download protocol.
+description: Data Foundation's 41 Capabilities, OpenAPI, governed Resources, idempotency, SSE, and asset-download protocol.
 docType: protocol-reference
 scope: data-rest-api
 status: active
@@ -32,7 +32,7 @@ These non-cacheable reads require no identity:
 | Method | Path                                               | Result                                                                             |
 | ------ | -------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `GET`  | `/api/data/v1/health`                              | data-postgres, object-store, Worker readiness; any missing authority returns `503` |
-| `GET`  | `/api/data/v1/capabilities`                        | ordered 37-item Registry, draft-7 I/O Schemas, and four mappings                   |
+| `GET`  | `/api/data/v1/capabilities`                        | ordered 41-item Registry, draft-7 I/O Schemas, and four mappings                   |
 | `GET`  | `/api/data/v1/capabilities/:capabilityId/:version` | one fixed Capability version; unknown version returns `404`                        |
 
 A ready response has this core shape:
@@ -51,7 +51,7 @@ A ready response has this core shape:
 
 ## OpenAPI contract projection
 
-Shared `GET /openapi.json` returns OpenAPI 3.1 with the fixed title **WISER Platform API**, covering Platform, Agent EXCON, and Data Foundation. The 37 Data Capabilities do not maintain another handwritten schema. At route registration, Fastify converts Registry Zod 4 input/output into draft-7 JSON Schema and projects it into path, query, body, and required-header OpenAPI operations.
+Shared `GET /openapi.json` returns OpenAPI 3.1 with the fixed title **WISER Platform API**, covering Platform, Agent EXCON, and Data Foundation. The 41 Data Capabilities do not maintain another handwritten schema. At route registration, Fastify converts Registry Zod 4 input/output into draft-7 JSON Schema and projects it into path, query, body, and required-header OpenAPI operations.
 
 Every Data operation has the `data-foundation` tag, a stable `operationId`, `bearerAuth`, its successful response Schema, plus `Idempotency-Key` for commands and `If-Match` for versioned commands. Fastify schema compilers serve the OpenAPI projection here; the single runtime behavior gate remains strict Zod input/output validation in the shared `DataCapabilityHandler`. Generated documentation never becomes a second behavior source.
 
@@ -85,32 +85,51 @@ If-Match: "v3"
 
 This applies to upload Session completion, ingestion submit/approve/reject, and Operation cancel. The header must equal an `expectedVersion` already present in the body. Successful responses include `ETag: "vN"` when an aggregate version is present. Identity, business, and error responses are all `private, no-store`.
 
-## The 37 Capability routes
+## The 41 Capability routes
 
-| Capability                    | Method and path                                           | Success            |
-| ----------------------------- | --------------------------------------------------------- | ------------------ |
-| `data.catalog.search`         | `GET /catalog/data-items`                                 | `200`              |
-| `data.catalog.get`            | `GET /catalog/data-items/:dataItemId`                     | `200`              |
-| `data.query`                  | `POST /query`                                             | `200`              |
-| `data.search.federated`       | `POST /search`                                            | `200`              |
-| `data.knowledge.search`       | `POST /knowledge/search`                                  | `200`              |
-| `data.graph.expand`           | `POST /graph/expand`                                      | `200`              |
-| `data.graph.findPath`         | `POST /graph/find-path`                                   | `200`              |
-| `data.geo.query`              | `POST /geo/query`                                         | `200`              |
-| `data.geo.intersect`          | `POST /geo/intersect`                                     | `200`              |
-| `data.ingestion.create`       | `POST /ingestions`                                        | `202`              |
-| `data.ingestion.submit`       | `POST /ingestions/:ingestionId/submit`                    | `202`              |
-| `data.operation.get`          | `GET /operations/:operationId`                            | `200`              |
-| `data.catalog.create`         | `POST /catalog/data-items`                                | `201`              |
-| `data.catalog.versions.list`  | `GET /catalog/data-items/:dataItemId/versions`            | `200`              |
-| `data.catalog.versions.get`   | `GET /catalog/data-items/:dataItemId/versions/:versionId` | `200`              |
-| `data.uploadSession.create`   | `POST /upload-sessions`                                   | `201`              |
-| `data.uploadSession.complete` | `POST /upload-sessions/:uploadSessionId/complete`         | `200`              |
-| `data.ingestion.get`          | `GET /ingestions/:ingestionId`                            | `200`              |
-| `data.ingestion.approve`      | `POST /ingestions/:ingestionId/approve`                   | `202`              |
-| `data.ingestion.reject`       | `POST /ingestions/:ingestionId/reject`                    | `200`              |
-| `data.operation.cancel`       | `POST /operations/:operationId/cancel`                    | `200`              |
-| `data.operation.events`       | `GET /operations/:operationId/events`                     | `200` SSE snapshot |
+| Capability                        | Method and path                                           | Success |
+| --------------------------------- | --------------------------------------------------------- | ------- |
+| `data.catalog.search`             | `GET /catalog/data-items`                                 | `200`   |
+| `data.catalog.get`                | `GET /catalog/data-items/:dataItemId`                     | `200`   |
+| `data.query`                      | `POST /query`                                             | `200`   |
+| `data.search.federated`           | `POST /search`                                            | `200`   |
+| `data.knowledge.search`           | `POST /knowledge/search`                                  | `200`   |
+| `data.graph.expand`               | `POST /graph/expand`                                      | `200`   |
+| `data.graph.findPath`             | `POST /graph/find-path`                                   | `200`   |
+| `data.geo.query`                  | `POST /geo/query`                                         | `200`   |
+| `data.geo.intersect`              | `POST /geo/intersect`                                     | `200`   |
+| `data.ingestion.create`           | `POST /ingestions`                                        | `202`   |
+| `data.ingestion.submit`           | `POST /ingestions/:ingestionId/submit`                    | `202`   |
+| `data.operation.get`              | `GET /operations/:operationId`                            | `200`   |
+| `data.catalog.create`             | `POST /catalog/data-items`                                | `201`   |
+| `data.catalog.versions.list`      | `GET /catalog/data-items/:dataItemId/versions`            | `200`   |
+| `data.catalog.versions.get`       | `GET /catalog/data-items/:dataItemId/versions/:versionId` | `200`   |
+| `data.uploadSession.create`       | `POST /upload-sessions`                                   | `201`   |
+| `data.uploadSession.complete`     | `POST /upload-sessions/:uploadSessionId/complete`         | `200`   |
+| `data.ingestion.get`              | `GET /ingestions/:ingestionId`                            | `200`   |
+| `data.ingestion.approve`          | `POST /ingestions/:ingestionId/approve`                   | `202`   |
+| `data.ingestion.reject`           | `POST /ingestions/:ingestionId/reject`                    | `200`   |
+| `data.operation.cancel`           | `POST /operations/:operationId/cancel`                    | `200`   |
+| `data.operation.events`           | `GET /operations/:operationId/events`                     | `200`   |
+| `data.explore.view.create`        | `POST /explore/views`                                     | `200`   |
+| `data.explore.view.list`          | `GET /explore/views`                                      | `200`   |
+| `data.explore.view.open`          | `POST /explore/views/:viewId/open`                        | `200`   |
+| `data.explore.view.revoke`        | `POST /explore/views/:viewId/revoke`                      | `200`   |
+| `data.explore.export`             | `POST /explore/export`                                    | `200`   |
+| `data.explore.query`              | `POST /explore/query`                                     | `200`   |
+| `data.analysis.create`            | `POST /analyses`                                          | `202`   |
+| `data.reconciliation.create`      | `POST /reconciliations`                                   | `201`   |
+| `data.reconciliation.get`         | `GET /reconciliations/:batchId`                           | `200`   |
+| `data.reconciliation.review`      | `POST /reconciliations/:batchId/review`                   | `200`   |
+| `data.reconciliation.list`        | `GET /reconciliations`                                    | `200`   |
+| `data.assessment.create`          | `POST /assessments`                                       | `201`   |
+| `data.assessment.get`             | `GET /assessments/:assessmentId`                          | `200`   |
+| `data.assessment.list`            | `GET /assessments`                                        | `200`   |
+| `data.assessment.overview`        | `GET /assessments/overview`                               | `200`   |
+| `data.knowledge.relations.import` | `POST /knowledge/relations`                               | `201`   |
+| `data.knowledge.relations.get`    | `GET /knowledge/relations/:assertionId`                   | `200`   |
+| `data.knowledge.relations.list`   | `GET /knowledge/relations`                                | `200`   |
+| `data.knowledge.relations.review` | `POST /knowledge/relations/:assertionId/review`           | `200`   |
 
 Paths in the table are relative to `/api/data/v1`. Obtain exact inputs, outputs, scopes, and timeouts from discovery schema; do not substitute stale client types for the runtime contract.
 
@@ -185,7 +204,7 @@ Publication consumer respects terminal Operations. Even after all five completio
 
 ## Evidence and STAC Resource reads
 
-These governed GETs are not part of the 33 business Capabilities. They specifically back MCP Resources while still using unified Auth, data-postgres RLS, post-authorization audit, and no-store:
+These governed GETs are not part of the 41 business Capabilities. They specifically back MCP Resources while still using unified Auth, data-postgres RLS, post-authorization audit, and no-store:
 
 | Path                                                        | Scope                 | Authority and output boundary                                                                                                                                       |
 | ----------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -322,3 +341,5 @@ AMap vector display routes add `/geo/tiles/vector/amap/queries/{queryId}/{z}/{x}
 `GET /api/data/v1/assessments/:assessmentId` and `GET /api/data/v1/assessments?dataItemId=…&versionId=…&first=25` require `data.catalog.read`; continue using `after=nextCursor`, up to 100 per page. Both reads and identical command retries reauthorize the exact source; withdrawal makes it unavailable. Reports do not grant access, approve publication or certify position. `REMOTE_QUERY_REPORTED` deliberately remains unverified; declared complete coverage is not an independently measured whole-dataset count.
 
 `GET /api/data/v1/assessments/overview` (`data.assessment.overview`, `data.catalog.read`) requires the target object and optionally accepts `query`, `action`, `first` (1–100) and an opaque `after` resource cursor. `totalCount`, `checkedCount`, `uncheckedCount`, and next-action counts share the whole authorized filtered resource denominator; `selectedCount` describes the selected action, independently of the bounded page. Each item pins a resource/version and its latest applicable report time. No check means `UNCHECKED`, not inaccessible.
+
+`data.knowledge.relations.import/get/list/review` is the governed business-relation workflow. Import is bounded to 100 candidates, 100,000 bytes per candidate and 256 KiB per command, pins an authorized published DataItem/Version and all saved source hashes, and accepts up to 64 evidence locations per triple. `mappingVersion` scopes stable source-local identities; changed attributes under the same mapping are conflicts, while corrections use another mapping and an explicit `supersedesId`. `list` defaults to `APPROVED`, supports source-scoped `entityKey`/`mappingVersion`, reports the count for that status and uses at most 100 rows with a version-bound UUID cursor. Every source is reauthorized on reads and command retries. Import requires catalog read plus ingestion write; review requires catalog read plus publish and a human principal, an expected assertion version and rationale. Review remains independent of asset acceptance. The legacy source-provenance graph stays separate.

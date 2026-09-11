@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-09-11
-lastReviewedCommit: e5eb59fb91d5499a2ad885a8c746496188154d3c
+lastReviewedCommit: 604bcc02ca89913e99e38bcfb3acef799088bcca
 ---
 
 ## Authority boundary
@@ -322,3 +322,9 @@ Availability observations identify the dataset, description page, downloaded fil
 Writes use existing command idempotency, audit and Outbox; reads and retries reauthorize the original Version and asset. Reports are shared only inside their authorized project/security/policy scope. The list is bounded to 100, uses an opaque report cursor, and does not claim inventory coverage or a total independent dataset count. Corrections append another report. Disable the new entrypoints to roll back behavior; retain evidence and unchanged originals.
 
 The catalogue availability overview (`data.assessment.overview`) counts only currently authorized, published/accepted resources at their latest eligible version. It selects the latest check for the requested target object, keeps unchecked distinct, and returns both whole-scope next-action counts and their filtered resource pages from one consistent SQL result. It never promotes description-page checks to dataset checks. Parsed invalid content cannot establish acquisition even when its declared media type looks like CSV.
+
+## Evidence-backed business relations
+
+The source-bound business workflow reuses `knowledge.assertion`, `knowledge.evidence_fragment` and `knowledge.review_record`; migration `0025` adds an immutable `knowledge.assertion_binding`. Unknown confidence is null instead of an invented score. Candidate grouping preserves same-name distinct keys, multiple and contradictory evidence, unknown units, reported values, time and limitations. Evidence and reviewed assertion content cannot be overwritten. A correction preserves its predecessor through `supersedesId`; explicit mapping/version scopes prevent silent identity reconciliation. The default relation API and graph include approved assertions only, with current source authorization on every read. Pending, correction-required and rejected queues have separate counts.
+
+The Data Worker reconciles the scoped authority into distinct `WiserBusinessEntity` / `WISER_BUSINESS_RELATION` Neo4j labels in batches of at most 100, retaining assertion IDs and original evidence. This does not alter legacy publication targets or provenance graphs. Migration `0026` stores the per-target authority cursor. A project/target advisory lock serializes writes; failures retain the cursor. Each completed sweep starts again to observe approvals, corrections and source withdrawals. API reads use PostgreSQL authority and therefore reject withdrawn sources immediately, while projection removal follows the next sweep. The Worker rebuild CLI finishes a retained sweep and one full sweep, allowing a deleted projection to be restored without changing source identities or reviews. Rollback disables the new entrypoints/consumer and retains authority evidence; no historical source backfill or source geometry replacement occurs.

@@ -28,7 +28,7 @@ POST /graphql
 Content-Type: application/json
 ```
 
-实现使用 Mercurius 的 schema-first SDL，不使用 decorator 或 TypeScript AST 扫描。GraphQL field 只是 37 项 Capability 的投影；resolver 与 REST 调用同一个 `DataCapabilityHandler`，因此输入/输出 Zod 校验、Scope、安全 ceiling、Purpose、timeout、幂等和 audit 语义一致。
+实现使用 Mercurius 的 schema-first SDL，不使用 decorator 或 TypeScript AST 扫描。GraphQL field 只是 41 项 Capability 的投影；resolver 与 REST 调用同一个 `DataCapabilityHandler`，因此输入/输出 Zod 校验、Scope、安全 ceiling、Purpose、timeout、幂等和 audit 语义一致。
 
 GraphQL 与 Mercurius 的精确兼容版本由 `apps/api/package.json` 和根 lockfile 定义，并由 API typecheck/build 验证。协议文档不复制会随依赖升级变化的版本清单。
 
@@ -223,3 +223,5 @@ Query 可按相同 cursor 安全重试。Mutation 只能以相同身份、operat
 `createDataAssessment(input: JSON!)`、`dataAssessment(input: JSON!)` 和 `dataAssessments(input: JSON!)` 分别映射 `data.assessment.create/get/list`，共用严格输入输出、原件授权及命令幂等。JSON 标量不绕过校验。报告区分原件保存事实、范围声明、类型检查发现和位置待核验，不修改发布状态。
 
 `dataAssessmentOverview(input: JSON!)` 映射 `data.assessment.overview`，保持检查对象、授权范围、资料计数口径与分页含义一致。
+
+`importDataRelations`、`reviewDataRelation` 为 JSON 输入 mutation；`dataRelation`、`dataRelations` 为 JSON 输入 query。它们映射到与 REST 相同的业务关系能力，保留原件哈希、默认仅已通过列表、人工审核、预期版本及命令幂等要求。邻域查询固定来源版本，并可按实体和映射筛选，不隐式合并来源内身份。

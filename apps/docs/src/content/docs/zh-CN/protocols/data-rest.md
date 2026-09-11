@@ -1,6 +1,6 @@
 ---
 title: Data REST API
-description: Data Foundation 37 项 Capability、OpenAPI、受控 Resource、幂等、SSE 与资产下载协议。
+description: Data Foundation 41 项 Capability、OpenAPI、受控 Resource、幂等、SSE 与资产下载协议。
 docType: protocol-reference
 scope: data-rest-api
 status: active
@@ -51,7 +51,7 @@ MCP、Skill 和 Web 的服务端 DAL 都通过这个 HTTP 边界工作。任何�
 
 ## OpenAPI 契约投影
 
-共享 `GET /openapi.json` 返回 OpenAPI 3.1 文档，标题固定为 **WISER Platform API**，同时覆盖 Platform、Agent EXCON 与 Data Foundation。Data 的 37 项 Capability 不维护第二份手写 Schema：Fastify 在注册路由时直接把 Registry 的 Zod 4 输入/输出转换成 draft-7 JSON Schema，再按 path、query、body 与 required Header 投影为 OpenAPI operation。
+共享 `GET /openapi.json` 返回 OpenAPI 3.1 文档，标题固定为 **WISER Platform API**，同时覆盖 Platform、Agent EXCON 与 Data Foundation。Data 的 41 项 Capability 不维护第二份手写 Schema：Fastify 在注册路由时直接把 Registry 的 Zod 4 输入/输出转换成 draft-7 JSON Schema，再按 path、query、body 与 required Header 投影为 OpenAPI operation。
 
 每个 Data operation 都带 `data-foundation` tag、稳定 `operationId`、`bearerAuth`、成功状态的响应 Schema，以及 command 的 `Idempotency-Key` 和版本化 command 的 `If-Match`。Fastify 的 schema compiler 在这里服务于 OpenAPI 投影；运行时唯一业务门禁仍是同一 `DataCapabilityHandler` 的 strict Zod 输入/输出校验，不能让生成文档变成第二个行为来源。
 
@@ -85,32 +85,51 @@ If-Match: "v3"
 
 适用范围是 upload Session complete、ingestion submit/approve/reject 与 Operation cancel。Header 与 body 中已有的 `expectedVersion` 必须一致。成功响应在能找到聚合版本时返回 `ETag: "vN"`。所有身份、业务与错误响应使用 `private, no-store`。
 
-## 37 项 Capability 路由
+## 41 项 Capability 路由
 
-| Capability                    | 方法与路径                                                | 成功               |
-| ----------------------------- | --------------------------------------------------------- | ------------------ |
-| `data.catalog.search`         | `GET /catalog/data-items`                                 | `200`              |
-| `data.catalog.get`            | `GET /catalog/data-items/:dataItemId`                     | `200`              |
-| `data.query`                  | `POST /query`                                             | `200`              |
-| `data.search.federated`       | `POST /search`                                            | `200`              |
-| `data.knowledge.search`       | `POST /knowledge/search`                                  | `200`              |
-| `data.graph.expand`           | `POST /graph/expand`                                      | `200`              |
-| `data.graph.findPath`         | `POST /graph/find-path`                                   | `200`              |
-| `data.geo.query`              | `POST /geo/query`                                         | `200`              |
-| `data.geo.intersect`          | `POST /geo/intersect`                                     | `200`              |
-| `data.ingestion.create`       | `POST /ingestions`                                        | `202`              |
-| `data.ingestion.submit`       | `POST /ingestions/:ingestionId/submit`                    | `202`              |
-| `data.operation.get`          | `GET /operations/:operationId`                            | `200`              |
-| `data.catalog.create`         | `POST /catalog/data-items`                                | `201`              |
-| `data.catalog.versions.list`  | `GET /catalog/data-items/:dataItemId/versions`            | `200`              |
-| `data.catalog.versions.get`   | `GET /catalog/data-items/:dataItemId/versions/:versionId` | `200`              |
-| `data.uploadSession.create`   | `POST /upload-sessions`                                   | `201`              |
-| `data.uploadSession.complete` | `POST /upload-sessions/:uploadSessionId/complete`         | `200`              |
-| `data.ingestion.get`          | `GET /ingestions/:ingestionId`                            | `200`              |
-| `data.ingestion.approve`      | `POST /ingestions/:ingestionId/approve`                   | `202`              |
-| `data.ingestion.reject`       | `POST /ingestions/:ingestionId/reject`                    | `200`              |
-| `data.operation.cancel`       | `POST /operations/:operationId/cancel`                    | `200`              |
-| `data.operation.events`       | `GET /operations/:operationId/events`                     | `200` SSE snapshot |
+| Capability                        | 方法与路径                                                | 成功  |
+| --------------------------------- | --------------------------------------------------------- | ----- |
+| `data.catalog.search`             | `GET /catalog/data-items`                                 | `200` |
+| `data.catalog.get`                | `GET /catalog/data-items/:dataItemId`                     | `200` |
+| `data.query`                      | `POST /query`                                             | `200` |
+| `data.search.federated`           | `POST /search`                                            | `200` |
+| `data.knowledge.search`           | `POST /knowledge/search`                                  | `200` |
+| `data.graph.expand`               | `POST /graph/expand`                                      | `200` |
+| `data.graph.findPath`             | `POST /graph/find-path`                                   | `200` |
+| `data.geo.query`                  | `POST /geo/query`                                         | `200` |
+| `data.geo.intersect`              | `POST /geo/intersect`                                     | `200` |
+| `data.ingestion.create`           | `POST /ingestions`                                        | `202` |
+| `data.ingestion.submit`           | `POST /ingestions/:ingestionId/submit`                    | `202` |
+| `data.operation.get`              | `GET /operations/:operationId`                            | `200` |
+| `data.catalog.create`             | `POST /catalog/data-items`                                | `201` |
+| `data.catalog.versions.list`      | `GET /catalog/data-items/:dataItemId/versions`            | `200` |
+| `data.catalog.versions.get`       | `GET /catalog/data-items/:dataItemId/versions/:versionId` | `200` |
+| `data.uploadSession.create`       | `POST /upload-sessions`                                   | `201` |
+| `data.uploadSession.complete`     | `POST /upload-sessions/:uploadSessionId/complete`         | `200` |
+| `data.ingestion.get`              | `GET /ingestions/:ingestionId`                            | `200` |
+| `data.ingestion.approve`          | `POST /ingestions/:ingestionId/approve`                   | `202` |
+| `data.ingestion.reject`           | `POST /ingestions/:ingestionId/reject`                    | `200` |
+| `data.operation.cancel`           | `POST /operations/:operationId/cancel`                    | `200` |
+| `data.operation.events`           | `GET /operations/:operationId/events`                     | `200` |
+| `data.explore.view.create`        | `POST /explore/views`                                     | `200` |
+| `data.explore.view.list`          | `GET /explore/views`                                      | `200` |
+| `data.explore.view.open`          | `POST /explore/views/:viewId/open`                        | `200` |
+| `data.explore.view.revoke`        | `POST /explore/views/:viewId/revoke`                      | `200` |
+| `data.explore.export`             | `POST /explore/export`                                    | `200` |
+| `data.explore.query`              | `POST /explore/query`                                     | `200` |
+| `data.analysis.create`            | `POST /analyses`                                          | `202` |
+| `data.reconciliation.create`      | `POST /reconciliations`                                   | `201` |
+| `data.reconciliation.get`         | `GET /reconciliations/:batchId`                           | `200` |
+| `data.reconciliation.review`      | `POST /reconciliations/:batchId/review`                   | `200` |
+| `data.reconciliation.list`        | `GET /reconciliations`                                    | `200` |
+| `data.assessment.create`          | `POST /assessments`                                       | `201` |
+| `data.assessment.get`             | `GET /assessments/:assessmentId`                          | `200` |
+| `data.assessment.list`            | `GET /assessments`                                        | `200` |
+| `data.assessment.overview`        | `GET /assessments/overview`                               | `200` |
+| `data.knowledge.relations.import` | `POST /knowledge/relations`                               | `201` |
+| `data.knowledge.relations.get`    | `GET /knowledge/relations/:assertionId`                   | `200` |
+| `data.knowledge.relations.list`   | `GET /knowledge/relations`                                | `200` |
+| `data.knowledge.relations.review` | `POST /knowledge/relations/:assertionId/review`           | `200` |
 
 表中路径相对于 `/api/data/v1`。准确输入、输出、Scope 与 timeout 必须从 discovery schema 获取，不能复制旧客户端类型代替运行时契约。
 
@@ -322,3 +341,5 @@ Data REST 错误是扁平安全 envelope：
 `GET /api/data/v1/assessments/:assessmentId` 读取单条；`GET /api/data/v1/assessments?dataItemId=…&versionId=…&first=25` 分页读取，通过 `after=nextCursor` 继续，每页最多 100 条，均要求 `data.catalog.read`。读取和同键重试都会重新核对原件权限，来源撤回后不可读取。报告不授予权限、批准发布或认证位置；`REMOTE_QUERY_REPORTED` 保持未独立核验，声明范围完整也不等于已独立测得整个数据集总量。
 
 `GET /api/data/v1/assessments/overview` 对应 `data.assessment.overview`，要求 `data.catalog.read` 和明确的检查对象，可传入 `query`、`action`、`first`（1–100）及不透明 `after` 游标。总数、已记录数、未核查数和下一步计数共用完整授权范围的资料分母；`selectedCount` 是当前下一步条件的资料数，不是本页数量。明细固定资料/版本并保留最近适用报告的时间。没有检查就是 `UNCHECKED`，不表示不可取得。
+
+`data.knowledge.relations.import/get/list/review` 提供业务关系的受控入口。每次导入最多 100 个候选、每个候选至多 100,000 字节、每次至多 256 KiB，固定已获授权并发布的资料版本及原件哈希，每个三元组最多保留 64 处证据。`mappingVersion` 划分来源内身份；同一映射下属性冲突会失败，更正使用新映射及明确的 `supersedesId`。列表默认只返回 `APPROVED`，支持来源范围内的 `entityKey`/`mappingVersion`，给出所选状态的关系总数，每页最多 100 条，UUID 游标绑定版本。读取与命令重试均重新检查全部来源。导入要求目录读取及接入写入权限；审核要求目录读取、发布权限、人工身份、预期断言版本和说明。关系审核与资料接收独立，已有来源溯源图保持独立。

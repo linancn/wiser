@@ -63,6 +63,10 @@ const EXPECTED_DATA_TOOLS = [
   'data_assessment_get',
   'data_assessment_list',
   'data_assessment_overview',
+  'data_knowledge_relations_import',
+  'data_knowledge_relations_get',
+  'data_knowledge_relations_list',
+  'data_knowledge_relations_review',
 ] as const;
 
 class StubExconHttpClient implements AgentExconHttpClient {
