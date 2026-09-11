@@ -19,9 +19,12 @@ export async function amapService(
   if (request.method !== 'GET') return unavailable(405);
   const name = path.join('/');
   if (
-    !['config', 'v4/map/styles', 'v3/assistant/coordinate/convert'].includes(
-      name,
-    )
+    ![
+      'config',
+      'v4/map/styles',
+      'v3/assistant/coordinate/convert',
+      'v3/log/init',
+    ].includes(name)
   )
     return unavailable(404);
   try {

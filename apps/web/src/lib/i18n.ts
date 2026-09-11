@@ -95,7 +95,9 @@ const zhCN = {
       loading: '正在加载高德底图…',
       failed: '暂时无法加载底图。数据内容仍可查看。',
       retry: '重试底图',
-      aligned: '已按高德底图对齐',
+      aligned: '显示坐标已转换；位置尚待独立核对',
+      positionLimit:
+        '可上图只说明几何可显示，位置尚待独立核对。精细分析前请核对来源、生成方式、时间与适用尺度；放大地图不会提高原始数据精度。',
       coordinateLabel: '地图位置',
       sourceDetails: '坐标与版本信息',
     },
@@ -1716,7 +1718,10 @@ const en: typeof zhCN = {
       failed:
         'The basemap is temporarily unavailable. You can still inspect the data.',
       retry: 'Retry basemap',
-      aligned: 'Aligned with the AMap basemap',
+      aligned:
+        'Display coordinates converted; Position still needs independent verification',
+      positionLimit:
+        'Renderable geometry alone does not establish accuracy. Position still needs independent verification. Check the source, derivation, time and reference scale before detailed analysis; zooming does not increase source precision.',
       coordinateLabel: 'Map alignment',
       sourceDetails: 'Coordinates and version',
     },

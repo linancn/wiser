@@ -155,6 +155,8 @@ GeoServer、STAC API、TiTiler 与 Martin 没有宿主 published port；浏览�
 
 MapLibre 不把 API Bearer 放进 tile URL。登录后的浏览器只请求同源 `/api/data-foundation/geo/...`；Next Route Handler 重新验证 Supabase Session，以 server-only access token 和固定 Tenant/Project/Purpose 转发上述 Fastify 路由，同时再次限制 path/query/content/response size。该 Web 路径不是第二套 GIS 业务逻辑。
 
+权威授权通过后，只有 TiTiler PNG 返回坐标与当前请求完全一致的越界响应（`404` JSON 且仅含 `detail: Tile(x=…, y=…, z=…) is outside bounds`）才转换为透明的 256 像素 PNG。资产缺失、权限拒绝、格式异常及其他错误仍然失败。正常 HEAD 保持 HEAD；只有 PNG HEAD 的越界候选响应才在同一超时和正文上限内补取一次 GET。响应继续审计并使用 `no-store`。
+
 ## 上传与入库
 
 `data.ingestion.create` 1.1 接受可选 `sourceRegistration`，ingestion get/reject 1.1 保留该描述；1.0 schema 仍可从不可变发现归档读取。完整严格字段以 discovery 为准，包含来源/数据包身份、类型、名称、提供方、访问状态、明确的完整性、限制说明以及 `manifestAssetId` / `manifestSha256`。清单资产必须属于本次入库引用的已完成上传资产。

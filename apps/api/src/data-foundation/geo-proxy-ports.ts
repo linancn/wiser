@@ -17,6 +17,45 @@ import {
   type DataFoundationGeoTarget,
 } from './geo-proxy-module.js';
 
+// A 256 x 256 RGBA PNG with zeroed channels (including alpha), generated once.
+const EMPTY_RASTER_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAABFUlEQVR42u3BMQEAAADCoPVP7WsIoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeAMBPAAB2ClDBAAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+function isOutsideRasterTile(
+  request: DataFoundationGeoProxyRequest,
+  response: DataFoundationGeoProxyResponse,
+): boolean {
+  if (
+    request.target !== 'TITILER' ||
+    response.status !== 404 ||
+    response.contentType.split(';')[0]?.trim() !== 'application/json' ||
+    response.body.byteLength > 1024
+  )
+    return false;
+  const tile = /^\/cog\/tiles\/WebMercatorQuad\/(\d+)\/(\d+)\/(\d+)\.png$/.exec(
+    request.path,
+  );
+  if (!tile) return false;
+  try {
+    const body: unknown = JSON.parse(
+      new TextDecoder('utf-8', { fatal: true }).decode(response.body),
+    );
+    return (
+      typeof body === 'object' &&
+      body !== null &&
+      !Array.isArray(body) &&
+      Object.keys(body).length === 1 &&
+      'detail' in body &&
+      body.detail ===
+        `Tile(x=${Number(tile[2])}, y=${Number(tile[3])}, z=${Number(tile[1])}) is outside bounds`
+    );
+  } catch {
+    return false;
+  }
+}
+
 const MAXIMUM_PROXY_BYTES = 8 * 1024 * 1024;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -341,6 +380,21 @@ export class FixedOriginDataFoundationGeoProxyPort implements DataFoundationGeoP
         redirect: 'error',
         signal: request.signal,
       });
+      // Only a failed PNG HEAD needs a body to distinguish absent coverage.
+      if (
+        request.method === 'HEAD' &&
+        request.target === 'TITILER' &&
+        request.path.endsWith('.png') &&
+        response.status === 404
+      ) {
+        await response.body?.cancel();
+        response = await this.#fetch(url, {
+          method: 'GET',
+          headers,
+          redirect: 'error',
+          signal: request.signal,
+        });
+      }
     } catch (error) {
       if (request.signal.aborted) throw proxyError('TIMEOUT', error);
       throw proxyError('UPSTREAM_UNAVAILABLE', error);
@@ -357,13 +411,20 @@ export class FixedOriginDataFoundationGeoProxyPort implements DataFoundationGeoP
     }
     const etag = safeHeader(response.headers.get('etag'));
     const lastModified = safeHeader(response.headers.get('last-modified'));
-    return Object.freeze({
+    const result = {
       status: response.status,
       contentType,
       body: await boundedBody(response, this.#maximumResponseBytes),
       ...(etag === undefined ? {} : { etag }),
       ...(lastModified === undefined ? {} : { lastModified }),
-    });
+    };
+    if (isOutsideRasterTile(request, result))
+      return Object.freeze({
+        status: 200,
+        contentType: 'image/png',
+        body: new Uint8Array(EMPTY_RASTER_PNG),
+      });
+    return Object.freeze(result);
   }
 }
 

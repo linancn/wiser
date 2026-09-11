@@ -432,6 +432,9 @@ export default function DataExplorerMap({
           ).toLocaleString(locale)}
         </span>
       </div>
+      <p role="note" className={styles.mapPositionNote}>
+        {getDictionary(locale).dataFoundation.amap.positionLimit}
+      </p>
       {!failed ? (
         <details className={styles.mapLegend}>
           <summary>{copy.mapLayers.title}</summary>

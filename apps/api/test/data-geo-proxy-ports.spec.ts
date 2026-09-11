@@ -56,15 +56,57 @@ function proxyRequest(
 }
 
 describe('fixed-origin GIS upstream port', () => {
+  it('does not download pixels or retry a successful raster HEAD', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(() =>
+      Promise.resolve(
+        new Response(null, {
+          status: 200,
+          headers: { 'content-type': 'image/png' },
+        }),
+      ),
+    );
+    const port = new FixedOriginDataFoundationGeoProxyPort({
+      origins: {
+        GEOSERVER: 'http://geoserver:8080',
+        STAC: 'http://stac-api:8080',
+        TITILER: 'http://titiler:80',
+        MARTIN: 'http://martin:3000',
+      },
+      stacBearerToken: 'internal-stac-token-value',
+      fetch,
+    });
+    const response = await port.request(
+      proxyRequest({
+        target: 'TITILER',
+        method: 'HEAD',
+        path: '/cog/tiles/WebMercatorQuad/4/2/3.png',
+        query: [
+          [
+            'url',
+            `s3://wiser-authority/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/sha256/${HASH}`,
+          ],
+        ],
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(response.body.byteLength).toBe(0);
+    expect(fetch.mock.calls.map((call) => call[1]?.method)).toEqual(['HEAD']);
+  });
+
   it.each(['GET', 'HEAD'] as const)(
     'returns a transparent PNG only for the exact authorized out-of-bounds tile on %s',
     async (method) => {
-      const fetch = vi.fn<typeof globalThis.fetch>(() =>
+      const fetch = vi.fn<typeof globalThis.fetch>((_url, init) =>
         Promise.resolve(
-          Response.json(
-            { detail: 'Tile(x=2, y=3, z=4) is outside bounds' },
-            { status: 404 },
-          ),
+          init?.method === 'HEAD'
+            ? new Response(null, {
+                status: 404,
+                headers: { 'content-type': 'application/json' },
+              })
+            : Response.json(
+                { detail: 'Tile(x=2, y=3, z=4) is outside bounds' },
+                { status: 404 },
+              ),
         ),
       );
       const port = new FixedOriginDataFoundationGeoProxyPort({
@@ -91,6 +133,9 @@ describe('fixed-origin GIS upstream port', () => {
         }),
       );
       expect(response.status).toBe(200);
+      expect(fetch.mock.calls.map((call) => call[1]?.method)).toEqual(
+        method === 'HEAD' ? ['HEAD', 'GET'] : ['GET'],
+      );
       expect(response.contentType).toBe('image/png');
       const png = Buffer.from(response.body);
       expect(png.subarray(0, 8)).toEqual(
