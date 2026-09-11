@@ -281,3 +281,5 @@ WORKBUDDY_LIVE=1 pnpm cookbook:workbuddy
 - 多提交分支对目标 base 运行 `docpact lint --root . --merge-base <base-ref> --mode enforce --fail-on-uncovered-change --fail-on-stale-docs`，覆盖已经提交的 Red/Green 切片。
 - 所需聚焦门禁、集成 smoke 和最终 `pnpm verify` 均通过。
 - Git diff 只包含预期范围，`git diff --check` 通过；Red 是可恢复检查点，最终提交处于 Green 且目的单一。
+
+Data API 的 PostgreSQL 集成命令依次运行各测试文件。临时角色仍需在共享 schema 上配置权限，即使业务数据分属不同租户，并发 fixture 也可能在系统目录发生冲突。全部测试和回滚检查仍保留。

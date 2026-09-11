@@ -31,7 +31,7 @@ describe('Data PostgreSQL CI', () => {
       'pnpm --filter @wiser/api exec vitest run --no-file-parallelism --config vitest.config.ts test/data-postgres-command-executors.spec.ts test/data-postgres-geo-query.spec.ts test/data-reconciliation.integration.spec.ts test/data-assessment.integration.spec.ts',
     );
     expect(scripts['test:postgres:data-worker']).toBe(
-      'pnpm --filter @wiser/data-worker exec vitest run --no-file-parallelism --config vitest.config.ts test/ingestion-runtime-adapters.spec.ts',
+      'pnpm --filter @wiser/data-worker exec vitest run --config vitest.config.ts test/ingestion-runtime-adapters.spec.ts',
     );
     expect(scripts.test).toBe('pnpm test:unit && pnpm test:ops');
   });
