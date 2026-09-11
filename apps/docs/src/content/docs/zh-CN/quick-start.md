@@ -16,8 +16,8 @@ checkPaths:
   - compose.yaml
   - .env.example
   - scripts/data-foundation/**
-lastReviewedAt: 2026-09-09
-lastReviewedCommit: d96eb8c5a16778cf0ea51b604fc346b833a4e2fb
+lastReviewedAt: 2026-09-11
+lastReviewedCommit: 86b39efb34aaf91589e7cb89fb65b9d41abbd9d4
 ---
 
 本页只覆盖第一次完整运行。日常的前后端单独启动、所有端口、环境变量和故障排查见[本机开发环境](/development/local-environment/)。

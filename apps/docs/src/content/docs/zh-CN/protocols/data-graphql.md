@@ -28,7 +28,7 @@ POST /graphql
 Content-Type: application/json
 ```
 
-实现使用 Mercurius 的 schema-first SDL，不使用 decorator 或 TypeScript AST 扫描。GraphQL field 只是 33 项 Capability 的投影；resolver 与 REST 调用同一个 `DataCapabilityHandler`，因此输入/输出 Zod 校验、Scope、安全 ceiling、Purpose、timeout、幂等和 audit 语义一致。
+实现使用 Mercurius 的 schema-first SDL，不使用 decorator 或 TypeScript AST 扫描。GraphQL field 只是 37 项 Capability 的投影；resolver 与 REST 调用同一个 `DataCapabilityHandler`，因此输入/输出 Zod 校验、Scope、安全 ceiling、Purpose、timeout、幂等和 audit 语义一致。
 
 GraphQL 与 Mercurius 的精确兼容版本由 `apps/api/package.json` 和根 lockfile 定义，并由 API typecheck/build 验证。协议文档不复制会随依赖升级变化的版本清单。
 
@@ -217,3 +217,9 @@ Query 可按相同 cursor 安全重试。Mutation 只能以相同身份、operat
 `createDataReconciliation`, `dataReconciliations`, `dataReconciliation`, `reviewDataReconciliation` 对应 `data.reconciliation.create/list/get/review`。来源固定、规范化、不可变证据和限额见[副本核验与业务去重](/architecture/data-foundation/#副本关系核验与业务观测去重)。读取需要 `data.query` 和 `data.catalog.read`；创建另需 `data.ingestion.write`，审核另需 `data.publish` 且只能由创建批次的人类身份执行。审核携带 `expectedVersion`；REST 还要求一致的 `If-Match: "v1"`，MCP 将预期版本转为该请求头。两个命令在相同重试中均须保留原 UUID 幂等键。
 
 `get` 接收 `batchId`、`first`（默认 25，最多 100）、可选 `after` 和 `groupIndex`。未指定组号时分页返回观测组摘要；指定时分页返回该组来源成员。使用 `nextCursor` 继续，不得改变绑定的批次、版本和组。`list` 接收 `versionId`，返回本人最近最多 100 批。创建冻结 `left`、`right` 和 `plan`；审核接收 `decision: "verify" | "reject"` 和 `note`。冲突或信息不完整时不能确认；候选的 `independentObservationCount` 为 null，只有人工确认的批次才返回所选规则范围内的计数。Agent 可以提出批次并读取确定性证据，不能以 Agent 身份作最终审核。
+
+## 资料检查字段
+
+`createDataAssessment(input: JSON!)`、`dataAssessment(input: JSON!)` 和 `dataAssessments(input: JSON!)` 分别映射 `data.assessment.create/get/list`，共用严格输入输出、原件授权及命令幂等。JSON 标量不绕过校验。报告区分原件保存事实、范围声明、类型检查发现和位置待核验，不修改发布状态。
+
+`dataAssessmentOverview(input: JSON!)` 映射 `data.assessment.overview`，保持检查对象、授权范围、资料计数口径与分页含义一致。

@@ -95,6 +95,9 @@ input ApprovalInput {
 }
 
 type Query {
+  dataAssessmentOverview(input: JSON!): JSON!
+  dataAssessment(input: JSON!): JSON!
+  dataAssessments(input: JSON!): JSON!
   dataReconciliation(input: JSON!): JSON!
   dataReconciliations(input: JSON!): JSON!
   dataCatalog(
@@ -126,6 +129,7 @@ type Query {
 }
 
 type Mutation {
+  createDataAssessment(input: JSON!): JSON!
   createDataReconciliation(input: JSON!): JSON!
   reviewDataReconciliation(input: JSON!): JSON!
   createDataExploreView(input: JSON!): JSON!

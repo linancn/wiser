@@ -1,6 +1,6 @@
 ---
 title: Data MCP integration
-description: Invoke 33 Data Capabilities and five governed Resources through the shared WISER MCP Gateway.
+description: Invoke 37 Data Capabilities and five governed Resources through the shared WISER MCP Gateway.
 docType: protocol-reference
 scope: data-mcp-adapter
 status: active
@@ -241,3 +241,9 @@ Saved exploration views use `data.explore.view.create`, `.list`, `.open` and `.r
 `data_reconciliation_create`, `data_reconciliation_list`, `data_reconciliation_get`, `data_reconciliation_review` project `data.reconciliation.create/list/get/review`. See [copy verification and business deduplication](/en/architecture/data-foundation/#copy-verification-and-business-observation-deduplication) for source pins, normalization, immutable evidence and limits. Reads require `data.query` and `data.catalog.read`; creation additionally requires `data.ingestion.write`, review requires `data.publish` and the creating human identity. Review requires `expectedVersion`; REST also requires matching `If-Match: "v1"`. MCP forwards its expected version as that header. Both commands require a stable UUID idempotency key across identical retries.
 
 `get` takes `batchId`, `first` (default 25, maximum 100), optional `after`, and optional `groupIndex`. Without a group index it pages group summaries; with it, it pages that group's source members. Continue with the returned `nextCursor` without changing the batch/version/group. `list` takes `versionId` and returns at most 100 recent owned batches. Creation freezes `left`, `right` and `plan`; review accepts `decision: "verify" | "reject"` and `note`. Conflicts or incomplete records block verification. Candidate results have null `independentObservationCount`; only a human-verified batch has a count within the declared rules. Agents may propose batches and read deterministic evidence but cannot issue the final review as an Agent identity.
+
+## Intake checks
+
+Use `data_assessment_create`, `data_assessment_get` and `data_assessment_list` through HTTP. Discover their schemas first. Reuse the original asset and completed analysis; do not redownload or reparse just to run metadata checks. Supply an explicit target object and source evidence, leave unknown units/CRS unknown, and retain the command key on identical retries. A returned `CHECKS_PASSED` is scoped information consistency, not a scientific verdict. Follow report pages and preserve file/version/hash, rule/parser versions and limitations.
+
+`data_assessment_overview` gives resource counts and next-action pages for one explicit target type. Check unknown resources before acquiring more files, reuse saved originals pending parsing, and keep application/rate-limit/temporary failures distinct. Do not add counts from separate targets as independent datasets.

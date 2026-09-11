@@ -281,3 +281,5 @@ Before a change is ready to hand off:
 - A multi-commit branch runs `docpact lint --root . --merge-base <base-ref> --mode enforce --fail-on-uncovered-change --fail-on-stale-docs` so committed Red/Green slices are included.
 - Required focused gates, integration smoke, and final `pnpm verify` all pass.
 - The Git diff contains only intended scope and passes `git diff --check`; Red is a recoverable checkpoint, while the final commit is Green and single-purpose.
+
+The Data API PostgreSQL integration command runs its test files sequentially. Their temporary roles still grant privileges on shared schemas, so concurrent fixtures can collide in PostgreSQL system catalogs even when business rows use distinct tenants. All fixtures and rollback checks remain enabled.

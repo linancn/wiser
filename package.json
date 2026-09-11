@@ -27,7 +27,7 @@
     "test:unit": "vitest run",
     "test:ops": "node --test scripts/data-foundation/*.test.mjs",
     "test:postgres:excon-v2": "pnpm --filter @wiser/api test:postgres:excon-v2",
-    "test:postgres:data-api": "pnpm --filter @wiser/api exec vitest run --config vitest.config.ts test/data-postgres-command-executors.spec.ts test/data-postgres-geo-query.spec.ts test/data-reconciliation.integration.spec.ts",
+    "test:postgres:data-api": "pnpm --filter @wiser/api exec vitest run --no-file-parallelism --config vitest.config.ts test/data-postgres-command-executors.spec.ts test/data-postgres-geo-query.spec.ts test/data-reconciliation.integration.spec.ts test/data-assessment.integration.spec.ts",
     "test:postgres:data-worker": "pnpm --filter @wiser/data-worker exec vitest run --config vitest.config.ts test/ingestion-runtime-adapters.spec.ts",
     "test:watch": "vitest",
     "typecheck": "pnpm -r --if-present typecheck",

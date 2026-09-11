@@ -184,3 +184,7 @@ Migration `0021_amap_display.sql` keeps WGS84 analysis records append-only and b
 After its common table grants, runtime-role provisioning explicitly revokes whole-table updates on reconciliation evidence and restores updates only to `status`, `row_version`, `reviewed_at` and `review_note`. Repeated provisioning must preserve this boundary as well as forced RLS and the immutable-evidence trigger.
 
 Migration `0023_exploration_point_guard.sql` adds a materialized point-only stage before tile clustering. The rolled-back exploration integration suite combines 100,000 points with a line and polygon, changes the type-check planner cost within a savepoint, and decodes both authority and Amap tiles. It verifies that permitted predicate reordering cannot invoke X/Y access on non-point geometry, while preserving record identities, point totals and existing authorization boundaries.
+
+## Intake assessment evidence
+
+Migration `0024_intake_assessment.sql` appends forced-RLS, immutable `service.intake_assessment`. Its insert guard binds item/version/asset/hash and optional completed analysis, and prevents lower security than the source. Runtime provisioning revokes updates/deletes after common grants. No existing rows or publication states are migrated. The disposable PostgreSQL test `apps/api/test/data-assessment.integration.spec.ts` verifies deterministic evidence, stale hashes, idempotent replay, pagination, immutability and source withdrawal. It is included in `pnpm test:postgres:data-api`.

@@ -18,6 +18,7 @@ import {
 } from '@/lib/data-content-presentation';
 import { invalidatesExploration } from '@/lib/exploration-request';
 import { DataRasterView } from './data-raster-view';
+import { DataAssessment } from './data-assessment';
 import { DataReconciliation } from './data-reconciliation';
 import { DataContentValue } from './data-content-value';
 import { DataExplorerGraph } from './data-explorer-graph';
@@ -240,6 +241,13 @@ export function DataResourceContent({
           </Link>
         ) : null}
       </header>
+      <DataAssessment
+        key={fileId}
+        locale={locale}
+        dataItemId={dataItemId}
+        versionId={versionId}
+        asset={asset ?? null}
+      />
       <DataReconciliation
         locale={locale}
         dataItemId={dataItemId}
