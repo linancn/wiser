@@ -179,7 +179,7 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
       page.getByRole('checkbox', { name: 'Vector layer' }),
     ).toBeEnabled();
     await expect(
-      page.getByRole('checkbox', { name: 'Raster layer' }),
+      page.getByRole('checkbox', { name: 'Raster pixels' }),
     ).toBeDisabled();
     const currentMapUrl = new URL(page.url());
     expect(currentMapUrl.searchParams.get('dataItem')).toBe(fixture.dataItemId);
