@@ -24,6 +24,7 @@ export function BusinessSceneEvidence({
         {dictionary.predicates[row.candidate.predicate]} →{' '}
         {row.candidate.object.label}
       </h3>
+      <p>{dictionary.relationMeaning[row.candidate.predicate]}</p>
       <p>
         {copy.review} · {dictionary.statuses[row.status]}
       </p>

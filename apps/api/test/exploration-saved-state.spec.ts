@@ -2,6 +2,7 @@ import { expect, it, vi } from 'vitest';
 import {
   ExplorationViewSpecSchema,
   ExplorationResultSchema,
+  ExplorationPresentationSchema,
 } from '@wiser/data-contracts';
 import { rebindExplorationView } from '../src/data-foundation/exploration-saved-state.js';
 import { createExplorationSavedExecutors } from '../src/data-foundation/exploration-saved.js';
@@ -80,6 +81,53 @@ it('reissues resource and graph continuations without modifying source identitie
       ),
     ).toThrow();
   expect(() => rebindExplorationView(view, next, id)).toThrow();
+});
+it('preserves presentation identities and camera while rebinding only query continuations', () => {
+  const presentation = ExplorationPresentationSchema.parse({
+    scene: {
+      style: 'evidence',
+      view: 'object',
+      form: 'space',
+      grouping: 'kinds',
+      depth: 2,
+      gap: 240,
+      yaw: -20,
+      pitch: 55,
+      zoom: 1,
+      panX: 0,
+      panY: 0,
+      mapLon: 116,
+      mapLat: 40,
+      mapZoom: 8,
+    },
+    reading: { presentation: 'network', page: 1, mode: 'overview' },
+    layout: {
+      layout: 'network',
+      grouping: 'kind',
+      nodeSpacing: 40,
+      groupSpacing: 100,
+    },
+    periodUnit: 'year',
+    focus: {
+      entity: {
+        dataItemId: id,
+        versionId: id,
+        mappingVersion: 'v1',
+        entityKey: 'reach',
+      },
+      edge: id,
+    },
+  });
+  const view = ExplorationViewSpecSchema.parse({
+    activeView: 'graph',
+    requests: { graph: { queryId: id, view: 'graph' } },
+    presentation,
+  });
+  const restored = rebindExplorationView(view, id, next);
+  expect(restored.requests.graph?.queryId).toBe(next);
+  expect(restored.presentation).toEqual(presentation);
+  expect(restored.presentation).not.toBe(view.presentation);
+  expect(view.requests.graph?.queryId).toBe(id);
 });
 const context: DataCapabilityExecutionContext = {
   principal: {

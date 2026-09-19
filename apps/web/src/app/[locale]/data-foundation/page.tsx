@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { DataSavedTopics } from '@/components/data-saved-topics';
 
 import {
   AuthorityFlag,
@@ -83,6 +84,7 @@ export default async function DataFoundationPage({
       )}
       {result === undefined ? null : (
         <>
+          <DataSavedTopics locale={locale} />
           <DataSection>
             <SectionHeading title={copy.overviewPage.operatingTitle} />
             <WorkspaceLinks

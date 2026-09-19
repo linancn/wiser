@@ -51,11 +51,13 @@ export function createExplorationViewState(
     capture(
       activeView: ExplorationView,
       selection?: ExplorationViewSpec['selection'],
+      presentation?: ExplorationViewSpec['presentation'],
     ) {
       const checked = ExplorationViewSpecSchema.safeParse({
         ...state,
         activeView,
         selection,
+        ...(presentation ? { presentation } : {}),
       });
       return checked.success ? checked.data : null;
     },

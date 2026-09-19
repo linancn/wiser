@@ -960,3 +960,19 @@
 .businessGraphWorkspace > .inspector {
   display: none;
 }
+
+.searchHelp {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+.searchExamples button {
+  margin: 4px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.matchReason {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}

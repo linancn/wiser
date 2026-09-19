@@ -1,0 +1,37 @@
+.workspace {
+  min-width: 0;
+}
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.toolbar span {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+.expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  color: var(--text-strong);
+  padding: 12px clamp(8px, 2vw, 28px);
+  min-width: 0;
+}
+.expanded > .toolbar {
+  position: sticky;
+  top: -12px;
+  z-index: 4;
+  background: var(--surface);
+  padding: 8px 0;
+}
+@media (max-width: 600px) {
+  .toolbar {
+    flex-wrap: wrap;
+  }
+}

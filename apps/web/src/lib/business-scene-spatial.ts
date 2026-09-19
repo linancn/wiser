@@ -1,6 +1,53 @@
 import type { Feature, FeatureCollection } from 'geojson';
 import type { BusinessScene } from './business-scene';
 import { businessMapBounds } from './business-map';
+
+/** Screen-space reading layout only; these positions are never geographic coordinates. */
+export function unlocatedSceneLayout(
+  nodes: BusinessScene['nodes'],
+  width: number,
+  height: number,
+) {
+  const groups = new Map<string, BusinessScene['nodes']>();
+  for (const node of nodes) {
+    const members = groups.get(node.group) ?? [];
+    members.push(node);
+    groups.set(node.group, members);
+  }
+  const ordered = [...groups].sort(([a], [b]) => a.localeCompare(b, 'en'));
+  const columns = Math.max(1, Math.floor(width / 8));
+  const rows = ordered.reduce(
+    (sum, [, members]) => sum + Math.ceil(members.length / columns),
+    0,
+  );
+  const header = Math.min(22, height / Math.max(1, ordered.length) / 2);
+  const dx = width / columns;
+  const dy = Math.min(
+    12,
+    (height - header * ordered.length) / Math.max(1, rows),
+  );
+  const positions = new Map<string, [number, number]>();
+  const captions: { group: string; y: number; count: number }[] = [];
+  let top = 0;
+  for (const [group, members] of ordered) {
+    captions.push({ group, y: top + header * 0.7, count: members.length });
+    top += header;
+    [...members]
+      .sort((a, b) => a.id.localeCompare(b.id, 'en'))
+      .forEach((node, index) => {
+        positions.set(node.id, [
+          ((index % columns) + 0.5) * dx,
+          top + (Math.floor(index / columns) + 0.5) * dy,
+        ]);
+      });
+    top += Math.ceil(members.length / columns) * dy;
+  }
+  return {
+    positions,
+    captions,
+    radius: Math.max(0.4, Math.min(3, (Math.min(dx, dy) - 1) / 2)),
+  };
+}
 export type SpatialSceneAnchor = {
   feature: Feature;
   labelPoint: [number, number];

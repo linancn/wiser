@@ -1,3 +1,7 @@
+import {
+  readBusinessPeriodUnit,
+  writeBusinessPeriodUnit,
+} from './business-period';
 import { readSceneView, writeSceneView } from './business-scene-view';
 import {
   readGraphLayoutSettings,
@@ -25,6 +29,7 @@ export function withBusinessFocus(
     openedSaved.queryId === target;
   if (!sameQuery && !sameSaved) return href;
   writeSceneView(url.searchParams, readSceneView(source));
+  writeBusinessPeriodUnit(url.searchParams, readBusinessPeriodUnit(source));
   const edge = source.getAll('businessEdge');
   if (
     edge.length === 1 &&

@@ -1,6 +1,61 @@
 import type { BusinessScene } from './business-scene';
 import { sceneNeighborhood } from './business-scene';
+/** Allocate group captions only; never move graph members or infer map coordinates. */
+export function placeSceneGroupLabels(
+  anchors: readonly { id: string; x: number; y: number; width: number }[],
+  width: number,
+  height: number,
+) {
+  const result: {
+    id: string;
+    x: number;
+    y: number;
+    width: number;
+    anchorX: number;
+    anchorY: number;
+  }[] = [];
+  if (width < 24 || height < 40) return result;
+  for (const anchor of [...anchors].sort(
+    (a, b) => a.y - b.y || a.x - b.x || a.id.localeCompare(b.id, 'en'),
+  )) {
+    if (![anchor.x, anchor.y, anchor.width].every(Number.isFinite)) continue;
+    const labelWidth = Math.min(Math.max(80, anchor.width), width - 12);
+    const x = Math.max(6, Math.min(width - labelWidth - 6, anchor.x - 6));
+    const preferredY = Math.max(6, Math.min(height - 34, anchor.y - 36));
+    const rows = Array.from(
+      { length: Math.ceil(height / 34) },
+      (_, i) => 6 + i * 34,
+    ).filter((y) => y + 28 <= height - 6);
+    const candidates = [
+      preferredY,
+      ...rows.sort(
+        (a, b) => Math.abs(a - preferredY) - Math.abs(b - preferredY),
+      ),
+    ];
+    const y = candidates.find(
+      (y) =>
+        !result.some(
+          (other) =>
+            x < other.x + other.width + 4 &&
+            x + labelWidth + 4 > other.x &&
+            y < other.y + 32 &&
+            y + 32 > other.y,
+        ),
+    );
+    if (y !== undefined)
+      result.push({
+        id: anchor.id,
+        x,
+        y,
+        width: labelWidth,
+        anchorX: anchor.x,
+        anchorY: anchor.y,
+      });
+  }
+  return result;
+}
 export const defaultSceneView = {
+  style: 'overview' as 'overview' | 'evidence' | 'smooth',
   view: 'overview' as 'overview' | 'compare' | 'object' | 'trace' | 'time',
   form: 'flat' as 'flat' | 'layers' | 'space',
   grouping: 'sources' as 'sources' | 'kinds',
@@ -42,6 +97,11 @@ export function readSceneView(
       : fallback;
   };
   return {
+    style: option(
+      'Style',
+      ['overview', 'evidence', 'smooth'],
+      defaultSceneView.style,
+    ),
     view: option(
       'View',
       ['overview', 'compare', 'object', 'trace', 'time'],
@@ -63,6 +123,7 @@ export function readSceneView(
 }
 export function writeSceneView(params: URLSearchParams, value: SceneView) {
   for (const [key, field] of [
+    ['Style', 'style'],
     ['View', 'view'],
     ['Form', 'form'],
     ['LayerBy', 'grouping'],

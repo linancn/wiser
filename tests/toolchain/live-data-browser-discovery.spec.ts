@@ -127,9 +127,16 @@ it('discovers the CI browser suite without private case URLs', () => {
       'business-record-navigation.case.ts',
       'business-relation-navigation.case.ts',
       'exploration-record-focus.case.ts',
+      'exploration-workspace.case.ts',
     ])
       expect(cases.stdout).toContain(name);
-    expect(cases.stdout).toContain('Total: 4 tests in 3 files');
+    expect(cases.stdout).toContain(
+      'retains real public spatial anchors and unlocated evidence across presentation changes',
+    );
+    expect(cases.stdout).toContain(
+      'applies a real public monthly period consistently across graph, records, map and refresh',
+    );
+    expect(cases.stdout).toContain('Total: 8 tests in 4 files');
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

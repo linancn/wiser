@@ -1,9 +1,5 @@
 import { z } from 'zod';
 import {
-  RelationEntityReferenceSchema,
-  RelationEntitySchema,
-} from '../knowledge-relations/index.ts';
-import {
   ExplorationQueryInputSchema as ExplorationQueryInputV111Schema,
   ExplorationResultSchema as ExplorationResultV111Schema,
   ExplorationResourceSchema,
@@ -75,51 +71,9 @@ export const ExplorationMapViewSchema = z.strictObject({
     })
     .optional(),
 });
-/** Display state only. IDs highlight already authorized results; they never expand a query. */
-export const ExplorationPresentationSchema = z.strictObject({
-  scene: z.strictObject({
-    style: z.enum(['overview', 'evidence', 'smooth']),
-    view: z.enum(['overview', 'compare', 'object', 'trace', 'time']),
-    form: z.enum(['flat', 'layers', 'space']),
-    grouping: z.enum(['sources', 'kinds']),
-    depth: z.union([z.literal(1), z.literal(2)]),
-    gap: z.number().min(100).max(600),
-    yaw: z.number().min(-180).max(180),
-    pitch: z.number().min(0).max(80),
-    zoom: z.number().min(0.1).max(20),
-    panX: z.number().min(-20000).max(20000),
-    panY: z.number().min(-20000).max(20000),
-    mapLon: z.number().min(-180).max(180),
-    mapLat: z.number().min(-85).max(85),
-    mapZoom: z.number().min(0).max(20),
-  }),
-  reading: z.strictObject({
-    presentation: z.enum(['network', 'reading']),
-    page: z.number().int().min(1).max(9999),
-    mode: z.enum(['overview', 'all']),
-  }),
-  layout: z.strictObject({
-    layout: z.enum(['network', 'hierarchy', 'circular']),
-    grouping: z.enum(['topology', 'kind', 'source']),
-    nodeSpacing: z.number().int().min(20).max(100).multipleOf(20),
-    groupSpacing: z.number().int().min(0).max(400).multipleOf(100),
-  }),
-  periodUnit: z.enum(['month', 'year']),
-  focus: z
-    .strictObject({
-      entity: RelationEntityReferenceSchema.optional(),
-      edge: z.uuid().optional(),
-      kind: RelationEntitySchema.shape.kind.optional(),
-    })
-    .optional(),
-});
-export type ExplorationPresentation = z.infer<
-  typeof ExplorationPresentationSchema
->;
 export const ExplorationViewSpecSchema = z
   .strictObject({
     activeView: ExplorationViewNameSchema,
-    presentation: ExplorationPresentationSchema.optional(),
     requests,
     navigation: z
       .strictObject({

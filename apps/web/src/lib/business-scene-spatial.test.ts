@@ -1,6 +1,9 @@
 import { expect, it } from 'vitest';
 import type { FeatureCollection } from 'geojson';
-import { spatialSceneAnchors } from './business-scene-spatial';
+import {
+  spatialSceneAnchors,
+  unlocatedSceneLayout,
+} from './business-scene-spatial';
 import type { BusinessScene } from './business-scene';
 const node = {
   id: 'source-object',
@@ -66,4 +69,29 @@ it('does not guess positions for names, empty features, invalid coordinates or u
     ],
   };
   expect(spatialSceneAnchors(scene, bad).size).toBe(0);
+});
+
+it('retains every source identity in a deterministic narrow reading layout without changing source locations', () => {
+  const nodes = Array.from({ length: 1141 }, (_, i) => ({
+    ...node,
+    id: `source-${i}`,
+    group: `group-${i % 17}`,
+  }));
+  const before = JSON.stringify(nodes);
+  const result = unlocatedSceneLayout(nodes, 140, 590);
+  expect(result.positions.size).toBe(nodes.length);
+  expect(result.captions.reduce((sum, group) => sum + group.count, 0)).toBe(
+    nodes.length,
+  );
+  expect([...result.positions]).toEqual([
+    ...unlocatedSceneLayout([...nodes].reverse(), 140, 590).positions,
+  ]);
+  for (const [x, y] of result.positions.values()) {
+    expect(x).toBeGreaterThan(0);
+    expect(x).toBeLessThan(140);
+    expect(y).toBeGreaterThan(0);
+    expect(y).toBeLessThan(590);
+  }
+  expect(JSON.stringify(nodes)).toBe(before);
+  expect(unlocatedSceneLayout([], 140, 590).positions.size).toBe(0);
 });

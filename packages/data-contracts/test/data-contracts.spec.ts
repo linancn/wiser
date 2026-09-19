@@ -954,7 +954,7 @@ const expectedJsonSchemaHashes = {
   },
 
   'data.explore.view.create': {
-    input: 'b87e4f4b326ae62836ddd3a4411c5537a17fa2444fc73adf9e88dff049829fb4',
+    input: '4ee810036756852f41db6b7ba348a7ede1a6f95b76d4380ddc04f5175d9d13e6',
     output: 'ae6e18d80bf0a0aa54c402a6a791d4e73ddc7e447ba7863539aab549efe12179',
   },
   'data.explore.view.list': {
@@ -963,7 +963,7 @@ const expectedJsonSchemaHashes = {
   },
   'data.explore.view.open': {
     input: '79984f7329c030d9ebe5f8aed58146dee3e374936de3c0bbcbba95045b127cb3',
-    output: '67c4c0d7b588932dfa8b7756325a7f4379f2f4bc81247e6b7b67d76e02b90d4c',
+    output: 'a0df69063e82bd746b47aae2e04eb3f4a2faa8932c86b723c4e1374b11113efc',
   },
   'data.explore.view.revoke': {
     input: '79984f7329c030d9ebe5f8aed58146dee3e374936de3c0bbcbba95045b127cb3',
@@ -1944,4 +1944,25 @@ it('preserves every pre-cross-source-evidence schema hash', () => {
       output: jsonSchemaHash(archived.outputSchema),
     }).toEqual(hashes);
   }
+});
+
+it('archives saved-view discovery unchanged when presentation is introduced', () => {
+  const create = DATA_CAPABILITY_ARCHIVE['data.explore.view.create']!.find(
+    (c) => c.version === '1.0.0',
+  )!;
+  const open = DATA_CAPABILITY_ARCHIVE['data.explore.view.open']!.find(
+    (c) => c.version === '1.1.0',
+  )!;
+  expect(DATA_CAPABILITY_REGISTRY['data.explore.view.create'].version).toBe(
+    '1.1.0',
+  );
+  expect(DATA_CAPABILITY_REGISTRY['data.explore.view.open'].version).toBe(
+    '1.2.0',
+  );
+  expect(jsonSchemaHash(create.inputSchema)).toBe(
+    'b87e4f4b326ae62836ddd3a4411c5537a17fa2444fc73adf9e88dff049829fb4',
+  );
+  expect(jsonSchemaHash(open.outputSchema)).toBe(
+    '67c4c0d7b588932dfa8b7756325a7f4379f2f4bc81247e6b7b67d76e02b90d4c',
+  );
 });

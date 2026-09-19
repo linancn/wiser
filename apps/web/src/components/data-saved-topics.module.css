@@ -1,0 +1,76 @@
+.topics {
+  padding: 12px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.toolbar h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+.toolbar label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+.toolbar input {
+  max-width: 100%;
+  min-width: 0;
+}
+.topics p {
+  margin: 8px 0;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+.list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  max-height: 180px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  gap: 8px;
+}
+.list li {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.list a {
+  font-weight: 650;
+}
+.list span,
+.list time {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.topics button,
+.toolbar input {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+.topics button:focus-visible,
+.topics a:focus-visible,
+.toolbar input:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}

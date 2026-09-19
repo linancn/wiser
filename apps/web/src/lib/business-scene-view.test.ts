@@ -6,6 +6,7 @@ import {
   scenePositions,
   projectScenePoint,
   zoomSceneCamera,
+  placeSceneGroupLabels,
 } from './business-scene-view';
 import type { BusinessScene } from './business-scene';
 const scene: BusinessScene = {
@@ -20,11 +21,58 @@ const scene: BusinessScene = {
   })),
   edges: [],
 };
+it('places nearby group names without overlap while keeping their original anchors and identities', () => {
+  const anchors = Array.from({ length: 17 }, (_, index) => ({
+    id: String(index),
+    x: 60 + (index % 4) * 125,
+    y: 90 + Math.floor(index / 4) * 100,
+    width: 180,
+  }));
+  const labels = placeSceneGroupLabels(anchors, 720, 700);
+  expect(labels).toHaveLength(17);
+  expect(labels.map((item) => item.id).sort()).toEqual(
+    anchors.map((item) => item.id).sort(),
+  );
+  for (const label of labels) {
+    expect([label.anchorX, label.anchorY]).toEqual([
+      anchors.find((a) => a.id === label.id)!.x,
+      anchors.find((a) => a.id === label.id)!.y,
+    ]);
+    expect(label.x).toBeGreaterThanOrEqual(6);
+    expect(label.x + label.width).toBeLessThanOrEqual(714);
+    expect(label.y + 28).toBeLessThanOrEqual(694);
+    for (const other of labels.filter((v) => v.id !== label.id))
+      expect(
+        label.x + label.width <= other.x ||
+          other.x + other.width <= label.x ||
+          label.y + 28 <= other.y ||
+          other.y + 28 <= label.y,
+      ).toBe(true);
+  }
+  expect(placeSceneGroupLabels([...anchors].reverse(), 720, 700)).toEqual(
+    labels,
+  );
+});
+it('bounds crowded labels without inventing group members or putting a long name outside a narrow canvas', () => {
+  const anchors = Array.from({ length: 40 }, (_, i) => ({
+    id: String(i),
+    x: 20,
+    y: 20,
+    width: 400,
+  }));
+  const labels = placeSceneGroupLabels(anchors, 280, 100);
+  expect(labels.length).toBeGreaterThan(0);
+  expect(labels.length).toBeLessThan(anchors.length);
+  expect(
+    labels.every((v) => v.width <= 268 && anchors.some((a) => a.id === v.id)),
+  ).toBe(true);
+});
 it('roundtrips bounded presentation and camera controls without touching query pins', () => {
   const params = new URLSearchParams(
-    'saved=private&businessForm=layers&businessView=compare&businessYaw=30&businessZoom=2.5',
+    'saved=private&businessForm=layers&businessView=compare&businessYaw=30&businessZoom=2.5&businessStyle=smooth',
   );
   const settings = readSceneView(params);
+  expect(settings.style).toBe('smooth');
   expect(settings.form).toBe('layers');
   expect(settings.view).toBe('compare');
   expect(settings.yaw).toBe(30);

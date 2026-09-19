@@ -22,6 +22,7 @@ import {
   type ExplorationResult,
 } from '@wiser/data-contracts';
 import { getDictionary, type Locale } from '@/lib/i18n';
+import { SpatialAttribution } from './spatial-attribution';
 import styles from './data-explorer.module.css';
 import { AmapBasemap, type AmapBasemapHandle } from './amap-basemap';
 import { requireIntegerMapZoom } from '@/lib/map-integer-zoom';
@@ -525,6 +526,11 @@ export default function DataExplorerMap({
           </div>
         ) : null}
       </div>
+      <SpatialAttribution
+        collection={
+          business ? businessMap : { features: result.features ?? [] }
+        }
+      />
       <p role="note" className={styles.mapPositionNote}>
         {getDictionary(locale).dataFoundation.amap.positionLimit}
         {business ? (

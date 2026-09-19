@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - apps/web/src/**
   - apps/docs/src/**
-lastReviewedAt: 2026-09-15
-lastReviewedCommit: 5e30f7f2f342f16c958938d6778cbcc8960bdffb
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: 2bdf167
 ---
 
 ## Design direction
@@ -191,3 +191,13 @@ Business problem graphs keep the full authorized relation set across five readin
 The business scene uses deterministic category positions and SVG projection; ordinary provenance and optional six-assertion reading retain G6. Layer titles occupy a separate caption gutter with connector lines. Continuous pointer/pinch/keyboard zoom changes the camera without recomputing positions or dropping edges. Labels appear progressively; selected nodes/edges and their evidence remain inspectable in a keyboard-accessible list. Hover previews direct connections; selection pins evidence and dims the full-network background. Crossing-edge hit testing offers the actual candidate assertions. Evidence includes original polarity, exact source version, table/paragraph locator, limitations, review state and preceding-assertion links.
 
 Spatial presentation uses the existing complete, bounded HTTP map query and exact data-item/version/record bindings. It keeps original point/line/area geometry, converts display coordinates through the existing map adapter, and retains unlocated knowledge separately with its original relations. Dashed connectors place document labels around a geometry's display center; neither labels nor their centers become new point features or business relations. Geometry lookup rejects changed scope, incomplete pagination and denied access. Map movement does not change the business question. Location precision and knowledge review remain separate. No source acquisition, parser rerun, migration or business-data write is performed by scene controls.
+
+Workspace expansion uses the existing semantic surface, an accessible named dialog and a sticky exit control. The same children retain reading state. Expansion traps keyboard focus and restores it on exit; it does not change query membership. Search explanations and examples remain secondary to results and wrap within narrow viewports.
+
+Node color and shape encode type families, edge colors encode predicate families, and dashes indicate pending review. Identity matches have no directional arrow. Overview/evidence/smooth styles change labels only and retain all members, restoring through the existing URL view state.
+
+Group captions avoid each other within the available canvas and use neutral, arrowless leaders to their original groups. When space is insufficient, only captions are omitted and the displayed caption count is disclosed; complete groups and members remain accessible through keyboard lists. Caption placement never changes business objects, relationships or spatial coordinates.
+
+Spatial anchors retain the same node families, shapes, predicate colors, pending dashes and arrowless identity matches as the planar graph. Unlocated members use deterministic rows within each source-qualified group, allocating room by member count rather than compressing every group into a fixed-radius cluster. All members and relationships remain present; this screen-space arrangement creates no geographic position or identity.
+
+Locating a spatial graph object fits its full line, area or multi-part extent within the unobscured map region. Only zero-extent geometry uses point focus. Display centers remain label connectors; named places without an exact permitted geometry binding retain their existing relations without invented coordinates.

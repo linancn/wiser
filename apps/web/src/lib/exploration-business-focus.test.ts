@@ -101,3 +101,16 @@ it('retains scene, camera and exact edge selection only inside the same reauthor
   expect(withBusinessFocus(href, 'query=other' + fields)).toBe(href);
   expect(withBusinessFocus(href, 'query=next&businessEdge=broken')).toBe(href);
 });
+
+it('retains a validated calendar step only within the same query', () => {
+  const href = '/zh-CN/data-foundation/explore?query=next&view=map';
+  expect(withBusinessFocus(href, '?query=next&businessPeriodUnit=year')).toBe(
+    href + '&businessPeriodUnit=year',
+  );
+  for (const query of [
+    '?query=old&businessPeriodUnit=year',
+    '?query=next&businessPeriodUnit=year&businessPeriodUnit=month',
+    '?query=next&businessPeriodUnit=week',
+  ])
+    expect(withBusinessFocus(href, query)).toBe(href);
+});

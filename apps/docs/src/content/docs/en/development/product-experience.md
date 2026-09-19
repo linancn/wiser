@@ -15,8 +15,8 @@ whenToUpdate:
 checkPaths:
   - apps/web/src/**
   - apps/web/e2e/**
-lastReviewedAt: 2026-09-15
-lastReviewedCommit: 5e30f7f2f342f16c958938d6778cbcc8960bdffb
+lastReviewedAt: 2026-09-20
+lastReviewedCommit: 2bdf167
 ---
 
 ## What this guide governs
@@ -242,3 +242,21 @@ Business problem graphs keep the full authorized relation set across five readin
 The business scene uses deterministic category positions and SVG projection; ordinary provenance and optional six-assertion reading retain G6. Layer titles occupy a separate caption gutter with connector lines. Continuous pointer/pinch/keyboard zoom changes the camera without recomputing positions or dropping edges. Labels appear progressively; selected nodes/edges and their evidence remain inspectable in a keyboard-accessible list. Hover previews direct connections; selection pins evidence and dims the full-network background. Crossing-edge hit testing offers the actual candidate assertions. Evidence includes original polarity, exact source version, table/paragraph locator, limitations, review state and preceding-assertion links.
 
 Spatial presentation uses the existing complete, bounded HTTP map query and exact data-item/version/record bindings. It keeps original point/line/area geometry, converts display coordinates through the existing map adapter, and retains unlocated knowledge separately with its original relations. Dashed connectors place document labels around a geometry's display center; neither labels nor their centers become new point features or business relations. Geometry lookup rejects changed scope, incomplete pagination and denied access. Map movement does not change the business question. Location precision and knowledge review remain separate. No source acquisition, parser rerun, migration or business-data write is performed by scene controls.
+
+### Continuous exploration reading
+
+Resource search matches the registered resource name or source organization, not document bodies or natural-language questions. Examples reuse current authorized names and start an explicit new resource scope. Match explanations refer to applied conditions; a displayed provider alias need not be the registered organization. Chinese composition must finish before submission, and empty results offer a fresh authorized resource query.
+
+Expanding the workspace keeps its existing graph/map children mounted. Escape exits expansion before graph-local Escape clears selection; focus returns to the expansion control and background interaction is disabled only while expanded. Month/year controls prepare inclusive calendar bounds and require explicit application to all views. They preserve the chosen time role and unknown-period policy and never resample annual observations.
+
+Selecting a relation explains its controlled predicate before displaying context and original evidence. Mention, attribution, citation, candidate identity and candidate receiving-water links must retain their distinct meaning and review state.
+
+Business graph panning retains rendered nodes, edges and keyboard lists and translates the viewport. Zoom, focus and grouping still update the original members. Overlap hit testing compensates for the translated camera; performance must be measured on the same real case and browser rather than improved by dropping members.
+
+The Data homepage lists authorized saved topics with a title filter scoped only to that bounded list (up to 100). It does not claim a complete project panorama or source-content search. Opening reuses saved-view reauthorization; refresh failure, revoked entries and late responses cannot retain a previous topic list. Identical titles include visibility and creation time, and clearing the filter restores input focus. This entry changes neither query contracts nor existing saved configurations.
+
+Calendar stepping remembers an explicit year/month choice in bounded URL presentation state. Applying business dates carries only that choice into the new query; ordinary unrelated queries do not inherit it. Tabs and refresh retain it within the same query. Changing the step never changes the applied bounds until Apply and does not change sampling frequency. Invalid or repeated unit parameters fall back to month.
+
+Business map views retain a visible, linked OSM/ODbL notice when displayed geometry carries that exact source declaration. Attribution is outside the zooming graph and independent of selection. This is a reviewed provider mapping, not license inference; other providers require their own declaration mapping before display.
+
+Saved business topics restore presentation controls with their authorized query. Explicit URL overrides affect reading only. Full-screen remains a user action and is not restored automatically.

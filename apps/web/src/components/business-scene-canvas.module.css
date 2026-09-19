@@ -200,3 +200,43 @@
 .plane {
   pointer-events: none;
 }
+
+.typeLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  padding: 0.4rem 0.8rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+.typeLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.typeLegend small {
+  flex-basis: 100%;
+}
+.frame {
+  --scene-water: #2976b0;
+  --scene-site: var(--accent);
+  --scene-asset: #647b92;
+  --scene-action: #b26525;
+  --scene-claim: #8658ab;
+  --scene-actor: var(--success);
+  --scene-observation: #487f78;
+  --scene-other: var(--text-secondary);
+  --scene-identity: #647b92;
+  --scene-spatial: var(--scene-water);
+  --scene-evidence: var(--success);
+  --scene-context: var(--text-secondary);
+}
+:global([data-theme='dark']) .frame {
+  --scene-water: #75bced;
+  --scene-asset: #a5bace;
+  --scene-action: #f2ae73;
+  --scene-claim: #c7a4ec;
+  --scene-observation: #97c6bb;
+  --scene-identity: #a5bace;
+}

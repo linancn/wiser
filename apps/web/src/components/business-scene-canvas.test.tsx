@@ -10,7 +10,7 @@ import {
 } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { BusinessSceneCanvas } from './business-scene-canvas';
-import { defaultSceneView } from '@/lib/business-scene-view';
+import { defaultSceneView, type SceneView } from '@/lib/business-scene-view';
 import type { BusinessScene } from '@/lib/business-scene';
 import type { RelationAssertion } from '@wiser/data-contracts';
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
@@ -45,7 +45,7 @@ const scene: BusinessScene = {
 const props = {
   scene,
   settings: defaultSceneView,
-  onSettings: vi.fn(),
+  onSettings: vi.fn<(next: SceneView) => void>(),
   selectedId: null,
   selectedEdge: null,
   onSelect: vi.fn(),
@@ -55,9 +55,73 @@ const props = {
   onInvalidated: vi.fn(),
 };
 afterEach(() => {
+  vi.useRealTimers();
   cleanup();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
+});
+it('keeps a new preset and the current camera when a delayed zoom write is pending', async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal('ResizeObserver', Resize);
+  render(<BusinessSceneCanvas {...props} />);
+  fireEvent.wheel(screen.getByRole('img', { name: '平面图谱' }), {
+    deltaY: -100,
+    clientX: 200,
+    clientY: 200,
+  });
+  fireEvent.click(screen.getByRole('button', { name: '流畅优先' }));
+  await act(() => vi.advanceTimersByTime(200));
+  expect(props.onSettings).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      style: 'smooth',
+      zoom: Math.exp(0.5),
+    }),
+  );
+});
+it('anchors wheel zoom to the cursor including the layer inset', async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal('ResizeObserver', Resize);
+  render(
+    <BusinessSceneCanvas
+      {...props}
+      settings={{ ...defaultSceneView, form: 'layers' }}
+    />,
+  );
+  fireEvent.wheel(screen.getByRole('img', { name: '立体分层' }), {
+    deltaY: -100,
+    clientX: 200,
+    clientY: 200,
+  });
+  await act(() => vi.advanceTimersByTime(200));
+  const next = props.onSettings.mock.lastCall![0];
+  expect(next.panX).toBeCloseTo((200 - 1100 / 2 - 70) * (1 - Math.exp(0.5)));
+});
+it('does not fill camera history with a click that never moves the view', () => {
+  vi.stubGlobal('ResizeObserver', Resize);
+  render(<BusinessSceneCanvas {...props} />);
+  const graph = screen.getByRole('img', { name: '平面图谱' });
+  fireEvent.pointerDown(graph, { pointerId: 1, clientX: 200, clientY: 200 });
+  fireEvent.pointerUp(graph, { pointerId: 1, clientX: 200, clientY: 200 });
+  fireEvent.wheel(graph, { deltaY: -100, clientX: 200, clientY: 200 });
+  fireEvent.click(screen.getByRole('button', { name: '上一步视野' }));
+  expect(
+    screen.getByRole<HTMLButtonElement>('button', { name: '上一步视野' })
+      .disabled,
+  ).toBe(true);
+});
+it('keeps directed arrow tips outside the selected target glyph', () => {
+  vi.stubGlobal('ResizeObserver', Resize);
+  render(<BusinessSceneCanvas {...props} selectedId="b" />);
+  const edge = screen
+    .getByTestId('business-scene')
+    .querySelector('[data-edge-id="ab"]')!;
+  const line = edge.querySelector('[data-relation-line]')!;
+  const hit = edge.querySelector('line[stroke="transparent"]')!;
+  const inset = Math.hypot(
+    Number(line.getAttribute('x2')) - Number(hit.getAttribute('x2')),
+    Number(line.getAttribute('y2')) - Number(hit.getAttribute('y2')),
+  );
+  expect(inset).toBeGreaterThanOrEqual(10);
 });
 it('keeps every relation visible while focusing one edge, and the evidence list selects the exact assertion', () => {
   vi.stubGlobal('ResizeObserver', Resize);
@@ -120,7 +184,12 @@ it('names category layers and retains the same nodes and directed edges across r
       settings={{ ...defaultSceneView, form: 'layers' }}
     />,
   );
-  expect(screen.getAllByText('地点 · 4')).toHaveLength(2);
+  expect(screen.getByRole('button', { name: /地点 · 4/ })).toBeTruthy();
+  expect(
+    screen
+      .getByTestId('business-scene')
+      .querySelector('[data-group-caption] text')?.textContent,
+  ).toBe('地点 · 4');
   const root = screen.getByTestId('business-scene');
   const before = root.querySelector('polygon')?.getAttribute('points');
   view.rerender(
@@ -151,7 +220,9 @@ it('offers a keyboard list and clears focus without changing the result scope', 
   const inspector = screen.getByRole('complementary', {
     name: '所选关系的原文依据',
   });
-  fireEvent.click(within(inspector).getByRole('button', { name: '地点 · x' }));
+  fireEvent.click(
+    within(inspector).getByRole('button', { name: '地点 · x 来源标题未登记' }),
+  );
   expect(props.onSelect).toHaveBeenCalledWith('x');
   fireEvent.click(screen.getByRole('button', { name: '清除聚焦' }));
   expect(props.onSelect).toHaveBeenCalledWith(null);
@@ -180,4 +251,91 @@ it('clears an earlier selected assertion when switching to a category focus', ()
   legend.open = true;
   fireEvent.click(within(legend).getByRole('button', { name: /地点 · 4/ }));
   expect(props.onEdge).toHaveBeenCalledWith(null);
+});
+
+it('pans without rewriting node geometry and hit-tests overlapping edges in the translated view', () => {
+  vi.stubGlobal('ResizeObserver', Resize);
+  const overlapping = {
+    ...scene,
+    edges: [scene.edges[0], { ...scene.edges[0], id: 'ab-other-source' }],
+  };
+  render(<BusinessSceneCanvas {...props} scene={overlapping} />);
+  const graph = screen.getByRole('img', { name: '平面图谱' });
+  const geometry = () =>
+    [...graph.querySelectorAll('[data-node-id] circle')].map((el) => [
+      el.getAttribute('cx'),
+      el.getAttribute('cy'),
+    ]);
+  const before = geometry();
+  fireEvent.keyDown(graph, { key: 'ArrowLeft' });
+  expect(geometry()).toEqual(before);
+  const hit = graph.querySelector(
+    '[data-edge-id="ab"] line[stroke="transparent"]',
+  )!;
+  fireEvent.click(hit, {
+    clientX:
+      (Number(hit.getAttribute('x1')) + Number(hit.getAttribute('x2'))) / 2 +
+      40,
+    clientY:
+      (Number(hit.getAttribute('y1')) + Number(hit.getAttribute('y2'))) / 2,
+  });
+  expect(screen.getByText(/重叠.*2/)).toBeTruthy();
+  expect(graph.querySelectorAll('[data-node-id]')).toHaveLength(4);
+  expect(graph.querySelectorAll('[data-edge-id]')).toHaveLength(2);
+});
+
+it('distinguishes type families and review status without changing identities when changing reading presets', () => {
+  vi.stubGlobal('ResizeObserver', Resize);
+  const typedScene: BusinessScene = {
+    nodes: [
+      { ...node('river'), kind: 'RIVER_REACH' },
+      { ...node('station'), kind: 'MONITORING_POINT' },
+      { ...node('paper'), kind: 'DOCUMENT' },
+      { ...node('claim'), kind: 'CLAIM' },
+    ],
+    edges: [
+      {
+        id: 'identity',
+        from: 'river',
+        to: 'station',
+        row: {
+          ...row('river', 'station'),
+          status: 'PENDING_REVIEW',
+          candidate: {
+            ...row('river', 'station').candidate,
+            predicate: 'IDENTITY_MATCH',
+          },
+        },
+      },
+    ],
+  };
+  render(<BusinessSceneCanvas {...props} scene={typedScene} />);
+  const root = screen.getByTestId('business-scene');
+  expect(
+    root.querySelector('[data-node-id="river"]')?.getAttribute('data-family'),
+  ).toBe('water');
+  expect(
+    root.querySelector('[data-node-id="station"]')?.getAttribute('data-family'),
+  ).toBe('site');
+  expect(
+    root.querySelector('[data-node-id="paper"]')?.getAttribute('data-family'),
+  ).toBe('asset');
+  expect(
+    root.querySelector('[data-node-id="claim"]')?.getAttribute('data-family'),
+  ).toBe('claim');
+  const line = root.querySelector(
+    '[data-edge-id="identity"] line[data-relation-line]',
+  )!;
+  expect(line.getAttribute('marker-end')).toBeNull();
+  expect(line.getAttribute('stroke-dasharray')).toBe('5 3');
+  expect(screen.getByText(/虚线.*待审/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '流畅优先' }));
+  expect(props.onSettings).toHaveBeenCalledWith(
+    expect.objectContaining({ style: 'smooth' }),
+  );
+  expect(
+    [...root.querySelectorAll('[data-node-id]')].map((n) =>
+      n.getAttribute('data-node-id'),
+    ),
+  ).toEqual(['river', 'station', 'paper', 'claim']);
 });

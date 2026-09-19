@@ -6,7 +6,16 @@ import { useEffect, useMemo, useRef, useState, useId } from 'react';
 import type { FeatureCollection } from 'geojson';
 import { ExplorationResultSchema } from '@wiser/data-contracts';
 import { loadBusinessMap, businessMapBounds } from '@/lib/business-map';
-import { spatialSceneAnchors } from '@/lib/business-scene-spatial';
+import {
+  spatialSceneAnchors,
+  unlocatedSceneLayout,
+} from '@/lib/business-scene-spatial';
+import {
+  nodeFamilies,
+  edgeFamilies,
+  familyColor,
+} from '@/lib/business-scene-style';
+import { BusinessSceneGlyph } from './business-scene-glyph';
 import type { BusinessScene } from '@/lib/business-scene';
 import type { SceneView } from '@/lib/business-scene-view';
 import { getDictionary, type Locale } from '@/lib/i18n';
@@ -15,6 +24,7 @@ import {
   type InvalidateExploration,
 } from '@/lib/exploration-request';
 import { AmapBasemap, type AmapBasemapHandle } from './amap-basemap';
+import { SpatialAttribution } from './spatial-attribution';
 import styles from './business-scene-canvas.module.css';
 maplibre.setWorkerUrl('/vendor/maplibre/6.8.0/maplibre-gl-worker.mjs');
 const mapStyle: maplibre.StyleSpecification = {
@@ -82,6 +92,7 @@ export function BusinessSceneMap({
     setFailed(false);
     fitted.current = false;
     const request = async (after?: string) => {
+      controller.signal.throwIfAborted();
       const response = await fetch('/api/data-foundation/explore', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -94,12 +105,15 @@ export function BusinessSceneMap({
         signal: controller.signal,
         cache: 'no-store',
       });
+      controller.signal.throwIfAborted();
       if (!response.ok) {
         if (invalidatesExploration(response.status))
           onInvalidated(queryId, response.status);
         throw Error('Unavailable');
       }
-      const value = ExplorationResultSchema.parse(await response.json());
+      const body: unknown = await response.json();
+      controller.signal.throwIfAborted();
+      const value = ExplorationResultSchema.parse(body);
       if (value.queryId !== queryId || value.view !== 'map')
         throw Error('Wrong scope');
       return value;
@@ -188,26 +202,22 @@ export function BusinessSceneMap({
     settings.mapLat,
     settings.mapZoom,
   ]);
+  const unlocated = useMemo(
+    () =>
+      unlocatedSceneLayout(
+        scene.nodes.filter((n) => !anchors.has(n.id)),
+        Math.max(1, width * 0.43 - 24),
+        590,
+      ),
+    [scene, anchors, width],
+  );
   const positions = useMemo(() => {
-    const result = new globalThis.Map<string, [number, number]>();
-    const local = scene.nodes.filter((n) => !anchors.has(n.id));
-    const grouped = new globalThis.Map<string, typeof local>();
-    for (const node of local) {
-      const group = grouped.get(node.group) ?? [];
-      group.push(node);
-      grouped.set(node.group, group);
-    }
-    const groupList = [...grouped].sort(([a], [b]) => a.localeCompare(b, 'en'));
-    for (const [i, [, nodes]] of groupList.entries()) {
-      const x = width * 0.68 + (i % 2) * width * 0.2,
-        y = 75 + Math.floor(i / 2) * 61;
-      const radius = Math.min(width * 0.075, 23);
-      nodes.forEach((n, j) => {
-        const angle = j * 2.399963229728653,
-          r = radius * Math.sqrt((j + 1) / nodes.length);
-        result.set(n.id, [x + Math.cos(angle) * r, y + Math.sin(angle) * r]);
-      });
-    }
+    const result = new globalThis.Map<string, [number, number]>(
+      [...unlocated.positions].map(([id, [x, y]]) => [
+        id,
+        [width * 0.57 + 12 + x, 40 + y],
+      ]),
+    );
     const located = [...anchors];
     for (const [i, [id, anchor]] of located.entries()) {
       const p = map.current?.project(anchor.labelPoint);
@@ -220,7 +230,7 @@ export function BusinessSceneMap({
       }
     }
     return result;
-  }, [scene, anchors, width, revision]);
+  }, [unlocated, anchors, width, revision]);
   const saveCamera = () => {
     const m = map.current;
     if (m)
@@ -271,11 +281,37 @@ export function BusinessSceneMap({
           disabled={!selectedId || !anchors.has(selectedId)}
           onClick={() => {
             const a = anchors.get(selectedId!);
-            if (a)
+            if (!a) return;
+            const extent = businessMapBounds({
+              type: 'FeatureCollection',
+              features: [a.feature],
+            });
+            if (
+              extent &&
+              (extent[0] !== extent[2] || extent[1] !== extent[3])
+            ) {
+              map.current?.fitBounds(
+                [
+                  [extent[0], extent[1]],
+                  [extent[2], extent[3]],
+                ],
+                {
+                  padding: {
+                    left: 35,
+                    right: Math.round(width * 0.45),
+                    top: 60,
+                    bottom: 60,
+                  },
+                  maxZoom: 11,
+                  duration: 0,
+                },
+              );
+            } else {
               map.current?.jumpTo({
                 center: a.labelPoint,
                 zoom: Math.max(map.current.getZoom(), 10),
               });
+            }
           }}
         >
           {copy.locate}
@@ -361,17 +397,20 @@ export function BusinessSceneMap({
             aria-label={copy.forms.space}
           >
             <defs>
-              <marker
-                id={marker}
-                viewBox="0 0 8 8"
-                refX="8"
-                refY="4"
-                markerWidth="4"
-                markerHeight="4"
-                orient="auto"
-              >
-                <path d="M0 0 L8 4 L0 8" fill="var(--accent)" />
-              </marker>
+              {[...new Set(Object.values(edgeFamilies))].map((family) => (
+                <marker
+                  key={family}
+                  id={`${marker}-${family}`}
+                  viewBox="0 0 8 8"
+                  refX="8"
+                  refY="4"
+                  markerWidth="4"
+                  markerHeight="4"
+                  orient="auto"
+                >
+                  <path d="M0 0 L8 4 L0 8" fill={familyColor(family)} />
+                </marker>
+              ))}
             </defs>
             <rect
               x={width * 0.57}
@@ -404,22 +443,75 @@ export function BusinessSceneMap({
                 b = positions.get(e.to);
               if (!a || !b) return null;
               const active = focus.edges.has(e.id);
+              const family = edgeFamilies[e.row.candidate.predicate];
+              const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+              const inset = Math.min(
+                e.to === selectedId
+                  ? 11
+                  : anchors.has(e.to)
+                    ? 8
+                    : unlocated.radius + 2,
+                length / 3,
+              );
+              const end = length
+                ? [
+                    b[0] - ((b[0] - a[0]) * inset) / length,
+                    b[1] - ((b[1] - a[1]) * inset) / length,
+                  ]
+                : b;
               return (
-                <line
+                <g
                   key={e.id}
                   data-edge-id={e.id}
+                  data-family={family}
                   data-highlighted={active}
-                  x1={a[0]}
-                  y1={a[1]}
-                  x2={b[0]}
-                  y2={b[1]}
-                  stroke={active ? 'var(--warning-bright)' : 'var(--accent)'}
-                  strokeWidth={active ? 2.5 : 1}
-                  opacity={hasFocus ? (active ? 1 : 0.12) : 0.3}
-                  markerEnd={`url(#${marker})`}
-                  onClick={() => onEdge(e.id)}
-                  style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
-                />
+                  opacity={hasFocus ? (active ? 1 : 0.08) : 0.24}
+                >
+                  {active ? (
+                    <line
+                      x1={a[0]}
+                      y1={a[1]}
+                      x2={b[0]}
+                      y2={b[1]}
+                      stroke="var(--warning-bright)"
+                      strokeWidth={5}
+                      opacity={0.55}
+                    />
+                  ) : null}
+                  <line
+                    data-relation-line
+                    x1={a[0]}
+                    y1={a[1]}
+                    x2={end[0]}
+                    y2={end[1]}
+                    stroke={familyColor(family)}
+                    strokeWidth={1.2}
+                    strokeDasharray={
+                      e.row.status === 'PENDING_REVIEW' ? '5 3' : undefined
+                    }
+                    markerEnd={
+                      e.row.candidate.predicate === 'IDENTITY_MATCH'
+                        ? undefined
+                        : `url(#${marker}-${family})`
+                    }
+                  />
+                  <line
+                    x1={a[0]}
+                    y1={a[1]}
+                    x2={b[0]}
+                    y2={b[1]}
+                    stroke="transparent"
+                    strokeWidth={9}
+                    onClick={() => onEdge(e.id)}
+                    style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+                  >
+                    <title>
+                      {e.row.candidate.subject.label} →{' '}
+                      {dictionary.predicates[e.row.candidate.predicate]} →{' '}
+                      {e.row.candidate.object.label}
+                    </title>
+                  </line>
+                </g>
               );
             })}
             {scene.nodes.map((n) => {
@@ -431,19 +523,28 @@ export function BusinessSceneMap({
                 <g
                   key={n.id}
                   data-node-id={n.id}
+                  data-family={nodeFamilies[n.kind]}
                   data-anchored={anchored}
                   onClick={() => onSelect(n.id)}
                   opacity={hasFocus ? (active ? 1 : 0.25) : 1}
                   style={{ pointerEvents: 'all', cursor: 'pointer' }}
                 >
-                  <circle
-                    cx={p[0]}
-                    cy={p[1]}
-                    r={anchored ? 7 : 3}
-                    fill={
-                      n.id === selectedId
-                        ? 'var(--warning-bright)'
-                        : 'var(--accent)'
+                  {n.id === selectedId ? (
+                    <circle
+                      cx={p[0]}
+                      cy={p[1]}
+                      r={10}
+                      fill="none"
+                      stroke="var(--warning-bright)"
+                      strokeWidth={2}
+                    />
+                  ) : null}
+                  <BusinessSceneGlyph
+                    family={nodeFamilies[n.kind]}
+                    x={p[0]}
+                    y={p[1]}
+                    size={
+                      n.id === selectedId ? 7 : anchored ? 6 : unlocated.radius
                     }
                   />
                   <title>
@@ -463,33 +564,26 @@ export function BusinessSceneMap({
                 </g>
               );
             })}{' '}
-            {[
-              ...new Set(
-                scene.nodes
-                  .filter((n) => !anchors.has(n.id))
-                  .map((n) => n.group),
-              ),
-            ]
-              .sort()
-              .map((key, i) => {
-                const title =
-                  (copy.groups as Record<string, string>)[key] ??
-                  (dictionary.kinds as Record<string, string>)[key] ??
-                  copy.unclassified;
-                return (
-                  <text
-                    key={key}
-                    x={width * 0.6 + (i % 2) * width * 0.2}
-                    y={42 + Math.floor(i / 2) * 61}
-                    className={styles.spatialGroupLabel}
-                  >
-                    {title}
-                  </text>
-                );
-              })}
+            {unlocated.captions.map(({ group: key, y, count }) => {
+              const title =
+                (copy.groups as Record<string, string>)[key] ??
+                (dictionary.kinds as Record<string, string>)[key] ??
+                copy.unclassified;
+              return (
+                <text
+                  key={key}
+                  x={width * 0.57 + 12}
+                  y={40 + y}
+                  className={styles.spatialGroupLabel}
+                >
+                  {title} · {count}
+                </text>
+              );
+            })}
           </svg>
         ) : null}
       </div>
+      <SpatialAttribution collection={anchoredGeometry} />
       <p className={styles.hint}>
         {copy.located} · {anchors.size} / {scene.nodes.length} · {copy.mapHint}
       </p>

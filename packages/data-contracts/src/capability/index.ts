@@ -1,4 +1,5 @@
 import * as RelationsV11 from '../knowledge-relations/v11.ts';
+import * as SavedV11 from '../exploration/saved-v11.ts';
 import * as SavedV1 from '../exploration/saved-v1.ts';
 import {
   ExplorationQueryInputV111Schema,
@@ -970,7 +971,7 @@ const capabilityRegistry = {
   }),
   'data.explore.view.create': defineCapability({
     id: 'data.explore.view.create',
-    version: '1.0.0',
+    version: '1.1.0',
     kind: 'command',
     inputSchema: CreateExplorationViewInputSchema,
     outputSchema: CreateExplorationViewOutputSchema,
@@ -1015,7 +1016,7 @@ const capabilityRegistry = {
   }),
   'data.explore.view.open': defineCapability({
     id: 'data.explore.view.open',
-    version: '1.1.0',
+    version: '1.2.0',
     kind: 'query',
     inputSchema: OpenExplorationViewInputSchema,
     outputSchema: OpenExplorationViewOutputSchema,
@@ -1474,7 +1475,21 @@ const capabilityArchive = {
       outputSchema: RelationsV11.RelationOutputSchema,
     }),
   ]),
+  'data.explore.view.create': Object.freeze([
+    defineCapability({
+      ...capabilityRegistry['data.explore.view.create'],
+      version: '1.0.0',
+      inputSchema: SavedV11.CreateExplorationViewInputSchema,
+      outputSchema: SavedV11.CreateExplorationViewOutputSchema,
+    }),
+  ]),
   'data.explore.view.open': Object.freeze([
+    defineCapability({
+      ...capabilityRegistry['data.explore.view.open'],
+      version: '1.1.0',
+      inputSchema: SavedV11.OpenExplorationViewInputSchema,
+      outputSchema: SavedV11.OpenExplorationViewOutputSchema,
+    }),
     defineCapability({
       ...capabilityRegistry['data.explore.view.open'],
       version: '1.0.0',

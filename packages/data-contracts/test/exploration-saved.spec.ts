@@ -91,3 +91,68 @@ it('bounds map cameras and navigation history without accepting arbitrary presen
     }).success,
   ).toBe(false);
 });
+
+it('retains typed business presentation without changing the saved query or evidence selection', () => {
+  const presentation = {
+    scene: {
+      style: 'evidence',
+      view: 'compare',
+      form: 'layers',
+      grouping: 'kinds',
+      depth: 2,
+      gap: 300,
+      yaw: 20,
+      pitch: 50,
+      zoom: 2,
+      panX: 30,
+      panY: -40,
+      mapLon: 116,
+      mapLat: 40,
+      mapZoom: 8,
+    },
+    reading: { presentation: 'network', page: 1, mode: 'overview' },
+    layout: {
+      layout: 'hierarchy',
+      grouping: 'source',
+      nodeSpacing: 40,
+      groupSpacing: 200,
+    },
+    periodUnit: 'year',
+    focus: {
+      entity: {
+        dataItemId: id,
+        versionId: id,
+        mappingVersion: 'v1',
+        entityKey: 'reach',
+      },
+    },
+  };
+  const saved = ExplorationViewSpecSchema.safeParse({
+    ...viewSpec,
+    presentation,
+  });
+  expect(saved.success).toBe(true);
+  expect(saved.success && saved.data).toEqual({ ...viewSpec, presentation });
+  for (const invalid of [
+    { ...presentation, script: 'alert(1)' },
+    { ...presentation, scene: { ...presentation.scene, mapLat: 91 } },
+    { ...presentation, scene: { ...presentation.scene, zoom: Infinity } },
+    {
+      ...presentation,
+      scene: { ...presentation.scene, form: 'external-engine' },
+    },
+    { ...presentation, layout: { ...presentation.layout, nodeSpacing: 41 } },
+    { ...presentation, reading: { ...presentation.reading, page: 10000 } },
+    {
+      ...presentation,
+      focus: { entity: { dataItemId: id, versionId: 'unknown' } },
+    },
+  ])
+    expect(
+      ExplorationViewSpecSchema.safeParse({
+        ...viewSpec,
+        presentation: invalid,
+      }).success,
+    ).toBe(false);
+  expect(ExplorationViewSpecSchema.parse(viewSpec)).toEqual(viewSpec);
+});

@@ -88,6 +88,37 @@ const zhCN = {
   },
   knowledgeRelations: {
     scene: {
+      readingStyle: '读图风格',
+      unknownSource: '来源标题未登记',
+      sourceVersion: '版本',
+      styles: {
+        overview: '全景展示',
+        evidence: '证据阅读',
+        smooth: '流畅优先',
+      },
+      styleScope: '只调整标签，不改变范围和对象。',
+      typeLegend: '节点与关系图例',
+      nodeFamilies: {
+        water: '水体与区域',
+        site: '监测点与企业',
+        asset: '资料与政策',
+        action: '事件与模型运行',
+        claim: '观点',
+        actor: '人物与机构',
+        observation: '观测与指标',
+        other: '其他对象',
+      },
+      edgeFamilies: {
+        identity: '身份对应',
+        spatial: '空间关系',
+        evidence: '来源与引用',
+        claim: '观点归属',
+        context: '涉及与适用',
+        observation: '观测对象',
+        action: '事件位置',
+      },
+      statusLegend:
+        '颜色和形状表示类别；虚线表示待审。高亮表示当前关注，线宽不表示可信度，箭头含义以原关系为准。',
       overlapping: '此处重叠的关系，请选择一条核对',
       anchor: '范围资料',
       view: '查阅视角',
@@ -121,6 +152,8 @@ const zhCN = {
       direct: '直接关系',
       twoHops: '再展开一层',
       search: '查找节点或关系',
+      groupCaptions:
+        '显示 {shown}/{total} 个分组标签；完整分组见分层依据，节点与关系未删减。',
       nodeList: '节点列表',
       edgeList: '关系列表',
       evidence: '所选关系的原文依据',
@@ -156,10 +189,10 @@ const zhCN = {
       loading: '正在读取当前查询的位置依据…',
       mapFailed: '位置资料暂时无法读取，可重试；平面与立体图谱仍可查阅。',
       retry: '重新读取位置依据',
-      unlocated: '未定位或区域性资料',
+      unlocated: '尚未绑定空间范围的资料与知识',
       located: '有明确记录位置绑定',
       mapHint:
-        '实线表示原有业务关系。虚线连接记录与原几何的显示中心，不新增业务关系。资料卡片为阅读排布，不代表地理位置；区域范围不等于采样站点。',
+        '点、线、面保留原几何；定位河段或区域时展示其范围。资料卡位置只为阅读排布；标签引线不是采样点，也不新增业务关系。只有地名、尚未匹配可靠范围的资料仍保留在知识图谱中。',
       mapEmpty: '当前范围没有可绑定的位置几何，可继续查看未定位资料。',
       noMatches: '当前没有匹配项。',
       polarity: '证据含义',
@@ -204,6 +237,14 @@ const zhCN = {
       '从政策、事件、研究与数据之间的联系理解问题。点击对象展开相关证据；资料关联不等于因果结论。',
     businessScope: '图谱、表格和地图共用的业务时段',
     businessApply: '应用到所有视图',
+    periodUnit: '浏览时段',
+    periodMonth: '按月',
+    periodYear: '按年',
+    periodPrevious: '上一时段',
+    periodNext: '下一时段',
+    periodCurrent: '选中完整时段',
+    periodHint:
+      '先选时间含义和开始日期，再按年或月调整；点击“应用到所有视图”后生效。仅筛选重叠时段，不改变原始采样频率。',
     businessLoading: '正在读取完整范围',
     businessOverview: '多类对象总览',
     businessAll: '展开全部观测关系',
@@ -396,6 +437,30 @@ const zhCN = {
       APPROVED: '已通过',
       REJECTED: '已否决',
       CORRECTION_REQUIRED: '需修正',
+    },
+    relationMeaning: {
+      HAS_DECLARED_MONITORING_POINT:
+        '来源登记了该对象对应的监测点；登记关系不等于位置或运行状态已核实。',
+      HAS_REPORTED_INDICATOR:
+        '来源报告了该对象的指标记录；使用前需核对时段、单位和原始口径。',
+      FLOWS_TO:
+        '该关系记录来源所述的流向；须结合适用时段和水系证据判断，不能仅凭邻近位置推定。',
+      BELONGS_TO_BASIN: '来源将对象归入该流域；行政归属与水文归属应分别核对。',
+      CANDIDATE_RECEIVING_WATER:
+        '这是潜在受纳水体的候选联系，尚不能据此确认实际排放去向。',
+      IDENTITY_MATCH:
+        '两份来源中的对象被提出作身份对应；是否同一对象应结合审核状态和身份依据判断。',
+      EXPRESSES_CLAIM:
+        '该观点归属于此处记录的发言人或机构；观点不自动成为已核实事实。',
+      REPORTS_CLAIM: '资料报道或转述了这一观点；报道者与原发言人不应混为一人。',
+      ABOUT_ENTITY: '这份资料或陈述涉及该对象；提及本身不证明因果或治理成效。',
+      OBSERVES_ENTITY: '该观测或序列描述这一对象；需保留采样时间、位置和尺度。',
+      OCCURRED_IN: '来源把事件与这一地点联系起来；事件发生地不一定是影响范围。',
+      CITES_SOURCE: '这份资料引用了另一来源；重复引用不会增加独立证据数量。',
+      DERIVED_FROM: '这项成果由另一来源加工或推导而来；应回查原件与处理条件。',
+      APPLIES_TO:
+        '来源说明该政策、方法或结论适用于这一对象；适用条件决定能否迁移使用。',
+      USES_DATA: '该模型或分析使用了这一资料；使用资料不表示结果已经专业核验。',
     },
     predicates: {
       HAS_DECLARED_MONITORING_POINT: '报告列明监测点',
@@ -769,12 +834,28 @@ const zhCN = {
       },
     },
     explorer: {
+      expandWorkspace: '全屏工作区',
+      exitWorkspace: '退出工作区全屏',
+      workspaceEscape: '按 Esc 返回，保留当前阅读位置',
       inspectSelection: '查看所选详情',
       collapseDetails: '收起详情',
       clearSelection: '取消选择',
 
       tools: '更多查询方式',
       readinessOverview: '资源就绪概况',
+      topics: {
+        title: '打开已保存专题',
+        find: '查找已保存专题',
+        refresh: '刷新专题',
+        scope:
+          '最多列出100个有权查看的保存视图，不代表完整项目范围。打开专题时会重新核对来源访问权限。',
+        loading: '正在读取已保存专题…',
+        failed: '暂时无法读取专题，请刷新重试；仍可继续查询资料。',
+        empty: '还没有可打开的专题，可进入数据探索保存视图。',
+        explore: '进入数据探索',
+        noMatch: '这些已保存专题中没有匹配名称，可清除文字重新选择。',
+        clear: '清除专题筛选',
+      },
       saved: {
         title: '保存、分享与导出',
         description:
@@ -979,6 +1060,16 @@ const zhCN = {
       description: '查询已发布的数据，检查来源、版本与可用内容。',
       scope: '当前项目 · 按权限显示',
       queryLabel: '查询数据',
+      searchExampleAction: '搜索资料',
+      searchScope:
+        '资料搜索检索登记名称和来源机构。图内对象请使用图谱中的对象定位；专题请从保存视图打开。本搜索不检索正文，也不解释自然语言问题。',
+      searchExamples: '用当前资料名称试搜（重新查询资料范围）',
+      searchMatches: {
+        name: '登记名称包含关键词',
+        registration: '登记来源机构匹配（可能不同于展示的提供方）',
+        pattern: '登记名称或来源机构符合字符模式',
+      },
+      browseResources: '清除条件，浏览全部授权资料',
       placeholder: '搜索数据名称或提供机构…',
       quality: '质量等级',
       allQuality: '全部质量等级',
@@ -2254,6 +2345,37 @@ const en: typeof zhCN = {
   },
   knowledgeRelations: {
     scene: {
+      readingStyle: 'Reading style',
+      unknownSource: 'Source title not registered',
+      sourceVersion: 'version',
+      styles: {
+        overview: 'Overview',
+        evidence: 'Read evidence',
+        smooth: 'Smooth interaction',
+      },
+      styleScope: 'Labels only; scope and membership stay unchanged.',
+      typeLegend: 'Node and relation legend',
+      nodeFamilies: {
+        water: 'Water bodies and areas',
+        site: 'Monitoring points and enterprises',
+        asset: 'Sources and policies',
+        action: 'Events and model runs',
+        claim: 'Claims',
+        actor: 'People and organizations',
+        observation: 'Observations and indicators',
+        other: 'Other entities',
+      },
+      edgeFamilies: {
+        identity: 'Identity',
+        spatial: 'Spatial',
+        evidence: 'Sources and citations',
+        claim: 'Claim attribution',
+        context: 'Subject and applicability',
+        observation: 'Observed entity',
+        action: 'Event location',
+      },
+      statusLegend:
+        'Color and shape indicate type; dashes indicate pending review. Highlight indicates focus, not confidence. Arrow meaning follows the original relation.',
       overlapping: 'Overlapping relations: choose one to inspect',
       anchor: 'Footprint',
       view: 'Reading perspective',
@@ -2287,6 +2409,8 @@ const en: typeof zhCN = {
       direct: 'Direct relations',
       twoHops: 'Expand one more step',
       search: 'Find a node or relation',
+      groupCaptions:
+        '{shown}/{total} group captions shown; all groups remain in the grouping list. Nodes and relations are unchanged.',
       nodeList: 'Nodes',
       edgeList: 'Relations',
       evidence: 'Original evidence for the selected relation',
@@ -2326,10 +2450,10 @@ const en: typeof zhCN = {
       mapFailed:
         'Location sources could not be read. Retry, or continue with the planar and layered graphs.',
       retry: 'Reload location evidence',
-      unlocated: 'Unlocated or regional sources',
+      unlocated: 'Sources and knowledge without a bound geometry',
       located: 'Explicit record location binding',
       mapHint:
-        'Solid lines represent existing business relations. Dashed connectors locate records relative to the original geometry without adding business relations. Source cards are arranged for reading, not at geographic coordinates. An area is not a sampling station.',
+        'Points, lines and areas retain their source geometry. Locating a reach or area fits its extent; source cards are arranged for reading, and a label connector is not a sampling point or a new business relation. Named places without a verified geometry remain in the knowledge graph.',
       mapEmpty:
         'No bound location geometry in this scope. Unlocated sources remain available.',
       noMatches: 'No matching items.',
@@ -2376,6 +2500,14 @@ const en: typeof zhCN = {
       'Explore connections among policy, events, research and data. Select an object for evidence. A source association does not establish causality.',
     businessScope: 'Business period shared by graph, table and map',
     businessApply: 'Apply to all views',
+    periodUnit: 'Period navigation',
+    periodMonth: 'Month',
+    periodYear: 'Year',
+    periodPrevious: 'Previous period',
+    periodNext: 'Next period',
+    periodCurrent: 'Select whole period',
+    periodHint:
+      'Choose a time role and start date, then adjust by month or year. Apply to all views to activate the bounds. This selects overlapping periods without changing the original sampling frequency.',
     businessLoading: 'Reading the complete scope',
     businessOverview: 'Overview by object',
     businessAll: 'Include all observation relations',
@@ -2581,6 +2713,38 @@ const en: typeof zhCN = {
       APPROVED: 'Approved',
       REJECTED: 'Rejected',
       CORRECTION_REQUIRED: 'Correction required',
+    },
+    relationMeaning: {
+      HAS_DECLARED_MONITORING_POINT:
+        'The source registers a monitoring point for this object. Registration does not verify its position or operating state.',
+      HAS_REPORTED_INDICATOR:
+        'The source reports an indicator record for this object. Check the period, units and original definition before use.',
+      FLOWS_TO:
+        'This relation records a reported flow direction. Check its applicable period and hydrological evidence; proximity alone does not establish flow.',
+      BELONGS_TO_BASIN:
+        'The source assigns the object to this basin. Administrative and hydrological membership require separate checks.',
+      CANDIDATE_RECEIVING_WATER:
+        'This is a candidate receiving-water connection; it does not confirm an actual discharge destination.',
+      IDENTITY_MATCH:
+        'Objects in two sources are proposed as corresponding identities. Review the status and identity evidence before treating them as one object.',
+      EXPRESSES_CLAIM:
+        'This claim is attributed to the recorded speaker or organization. A claim is not automatically a verified fact.',
+      REPORTS_CLAIM:
+        'The material reports or paraphrases this claim. The reporter and original speaker must remain distinct.',
+      ABOUT_ENTITY:
+        'This material or statement concerns the object. Mention alone does not establish causality or management effectiveness.',
+      OBSERVES_ENTITY:
+        'This observation or series describes the object. Retain sampling time, location and scale.',
+      OCCURRED_IN:
+        'The source associates the event with this place. The event location is not necessarily its impact area.',
+      CITES_SOURCE:
+        'This material cites another source. Repeated citations do not increase independent evidence.',
+      DERIVED_FROM:
+        'This result was processed or derived from another source. Consult the original material and processing conditions.',
+      APPLIES_TO:
+        'The source describes this policy, method or conclusion as applicable to the object. Conditions determine whether it can be transferred.',
+      USES_DATA:
+        'This model or analysis uses the material. Data use does not mean its results have undergone professional review.',
     },
     predicates: {
       HAS_DECLARED_MONITORING_POINT: 'Report declares monitoring point',
@@ -2990,12 +3154,31 @@ const en: typeof zhCN = {
       },
     },
     explorer: {
+      expandWorkspace: 'Expand workspace',
+      exitWorkspace: 'Exit expanded workspace',
+      workspaceEscape: 'Press Esc to return and keep your reading position',
       inspectSelection: 'Inspect selection',
       collapseDetails: 'Collapse details',
       clearSelection: 'Clear selection',
 
       tools: 'More ways to query',
       readinessOverview: 'Resource readiness overview',
+      topics: {
+        title: 'Open saved topics',
+        find: 'Find saved topics',
+        refresh: 'Refresh topics',
+        scope:
+          'Up to 100 authorized saved views; this list is not the complete project. Opening a topic checks source access again.',
+        loading: 'Loading saved topics…',
+        failed:
+          'Topics are unavailable. Refresh to retry; resource exploration remains available.',
+        empty:
+          'No saved topics are available. Open data exploration to save a view.',
+        explore: 'Open data exploration',
+        noMatch:
+          'No matching name in these saved topics. Clear the text to choose again.',
+        clear: 'Clear topic filter',
+      },
       saved: {
         title: 'Save, share and export',
         description:
@@ -3211,6 +3394,19 @@ const en: typeof zhCN = {
         'Query published data and inspect its sources, versions and available content.',
       scope: 'Current project · Authorized data',
       queryLabel: 'Query data',
+      searchExampleAction: 'Search resource',
+      searchScope:
+        'Search registered resource names and source organizations. Locate graph objects within the graph; open topics from saved views. This search does not search document bodies or interpret natural-language questions.',
+      searchExamples:
+        'Try a current resource name (starts a new resource scope)',
+      searchMatches: {
+        name: 'Registered name contains the term',
+        registration:
+          'Registered source organization matches (may differ from the displayed provider)',
+        pattern:
+          'Registered name or source organization matches the character pattern',
+      },
+      browseResources: 'Clear conditions and browse authorized resources',
       placeholder: 'Search data names or providers…',
       quality: 'Quality grade',
       allQuality: 'All quality grades',

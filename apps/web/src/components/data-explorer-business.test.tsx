@@ -7,6 +7,7 @@ import {
   within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import type { ReactNode } from 'react';
 import {
   BusinessQuerySchema,
   type RelationAssertion,
@@ -38,14 +39,19 @@ vi.mock('./data-foundation-graph', () => ({
 vi.mock('./business-scene-canvas', () => ({
   BusinessSceneCanvas: ({
     scene,
+    evidence,
   }: {
     scene: { nodes: { id: string; label: string }[] };
+    evidence?: ReactNode;
   }) => (
-    <ul aria-label="test graph">
-      {scene.nodes.map((n) => (
-        <li key={n.id}>{n.label}</li>
-      ))}
-    </ul>
+    <>
+      <ul aria-label="test graph">
+        {scene.nodes.map((n) => (
+          <li key={n.id}>{n.label}</li>
+        ))}
+      </ul>
+      {evidence}
+    </>
   ),
 }));
 const originalHistory = window.history.replaceState.bind(window.history);
@@ -438,4 +444,151 @@ it('defaults to all relations and retains the complete network while inspecting 
   });
   view.rerender(<DataExplorerBusiness {...props} />);
   expect(nodes()).toHaveLength(3);
+});
+
+it('hides prior-query relationships while the replacement loads and recovers from an earlier failure', async () => {
+  let release!: (response: Response) => void;
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ items: [row], totalCount: 1 }))
+    .mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = resolve;
+        }),
+    )
+    .mockResolvedValueOnce(new Response('', { status: 503 }))
+    .mockResolvedValueOnce(Response.json({ items: [row], totalCount: 1 }));
+  vi.stubGlobal('fetch', fetcher);
+  const view = render(<DataExplorerBusiness {...props} />);
+  await screen.findByRole('button', { name: '政策' });
+  view.rerender(<DataExplorerBusiness {...props} queryId="replacement" />);
+  expect(screen.queryByRole('button', { name: '政策' })).toBeNull();
+  release(Response.json({ items: [], totalCount: 0 }));
+  await screen.findByText(/已加载的关系中没有匹配项/);
+  view.rerender(<DataExplorerBusiness {...props} queryId="failed" />);
+  await screen.findByRole('alert');
+  view.rerender(<DataExplorerBusiness {...props} queryId="recovered" />);
+  await screen.findByRole('button', { name: '政策' });
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('steps a calendar period as a draft and only applies the shared condition explicitly', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(Response.json({ items: [], totalCount: 0 })),
+  );
+  const onApply = vi.fn();
+  const dated = {
+    ...scope,
+    filters: {
+      ...scope.filters,
+      timeRole: 'OBSERVATION_TIME' as const,
+      from: '2024-01-01',
+      to: '2024-01-31',
+    },
+  };
+  render(<DataExplorerBusiness {...props} scope={dated} onApply={onApply} />);
+  await screen.findByText(/已加载的关系中没有匹配项/);
+  fireEvent.click(screen.getByRole('button', { name: '下一时段' }));
+  expect(screen.getByLabelText<HTMLInputElement>('筛选开始日期').value).toBe(
+    '2024-02-01',
+  );
+  expect(screen.getByLabelText<HTMLInputElement>('筛选结束日期').value).toBe(
+    '2024-02-29',
+  );
+  expect(onApply).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: '应用到所有视图' }));
+  expect(onApply).toHaveBeenCalledWith(
+    {
+      ...dated,
+      filters: { ...dated.filters, from: '2024-02-01', to: '2024-02-29' },
+    },
+    'month',
+  );
+});
+
+it('restores the newly applied query dates instead of reusing a previous draft', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve(Response.json({ items: [], totalCount: 0 })),
+      ),
+  );
+  const view = render(<DataExplorerBusiness {...props} />);
+  await screen.findByText(/已加载的关系中没有匹配项/);
+  fireEvent.change(screen.getByLabelText('筛选开始日期'), {
+    target: { value: '2024-06-01' },
+  });
+  view.rerender(
+    <DataExplorerBusiness
+      {...props}
+      queryId="new-period"
+      scope={{
+        ...scope,
+        filters: { ...scope.filters, from: '2025-01-01', to: '2025-12-31' },
+      }}
+    />,
+  );
+  expect(screen.getByLabelText<HTMLInputElement>('筛选开始日期').value).toBe(
+    '2025-01-01',
+  );
+});
+
+it('explains a mentioned object before evidence without claiming causality', async () => {
+  nav.search = new URLSearchParams({ businessEdge: row.assertionId });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(Response.json({ items: [row], totalCount: 1 })),
+  );
+  render(<DataExplorerBusiness {...props} />);
+  await screen.findByText(
+    '这份资料或陈述涉及该对象；提及本身不证明因果或治理成效。',
+  );
+  expect(
+    within(screen.getByRole('region', { name: '已选关系' })).getByText(
+      '原文内容',
+    ),
+  ).toBeTruthy();
+});
+
+it('restores an explicitly selected annual step after remount without reinterpreting dates', async () => {
+  nav.search = new URLSearchParams('query=annual&businessPeriodUnit=year');
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(Response.json({ items: [], totalCount: 0 })),
+  );
+  const onApply = vi.fn();
+  const dated = {
+    ...scope,
+    filters: {
+      ...scope.filters,
+      timeRole: 'OBSERVATION_TIME' as const,
+      from: '2024-01-01',
+      to: '2024-12-31',
+    },
+  };
+  render(<DataExplorerBusiness {...props} scope={dated} onApply={onApply} />);
+  await screen.findByText(/已加载的关系中没有匹配项/);
+  expect(screen.getByLabelText<HTMLSelectElement>('浏览时段').value).toBe(
+    'year',
+  );
+  fireEvent.click(screen.getByRole('button', { name: '下一时段' }));
+  expect(screen.getByLabelText<HTMLInputElement>('筛选开始日期').value).toBe(
+    '2025-01-01',
+  );
+  expect(screen.getByLabelText<HTMLInputElement>('筛选结束日期').value).toBe(
+    '2025-12-31',
+  );
+  expect(onApply).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: '应用到所有视图' }));
+  expect(onApply).toHaveBeenCalledWith(
+    {
+      ...dated,
+      filters: { ...dated.filters, from: '2025-01-01', to: '2025-12-31' },
+    },
+    'year',
+  );
 });
