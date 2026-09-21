@@ -31,7 +31,7 @@
     "@wiser/platform-auth": "workspace:*",
     "@wiser/platform-contracts": "workspace:*",
     "fastify": "5.12.1",
-    "graphql": "16.14.2",
+    "graphql": "17.0.2",
     "mercurius": "16.10.0",
     "pg": "8.23.0",
     "zod": "catalog:"
