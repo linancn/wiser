@@ -41,7 +41,7 @@
     "@types/node": "catalog:",
     "@types/pg": "8.23.1",
     "pbf": "5.1.2",
-    "tsx": "4.23.13",
+    "tsx": "4.23.15",
     "typescript": "catalog:",
     "vitest": "5.0.1"
   },
