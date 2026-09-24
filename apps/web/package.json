@@ -23,7 +23,7 @@
     "@wiser/platform-contracts": "workspace:*",
     "echarts": "6.1.0",
     "gcoord": "1.0.7",
-    "maplibre-gl": "6.8.0",
+    "maplibre-gl": "6.10.0",
     "next": "16.3.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",
