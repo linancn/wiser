@@ -15,8 +15,8 @@ checkPaths:
   - apps/web/**
   - apps/telemetry-ingress/**
   - infrastructure/observability/**
-lastReviewedAt: 2026-09-26
-lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
+lastReviewedAt: 2026-09-27
+lastReviewedCommit: a2a4f4fd7c26b076ec62bcc1163900ff6486659f
 ---
 
 The exercise workspace answers four different questions: **Overview** shows the current outcome and next concern; **Collaboration** shows what was sent and received; **Evaluation** shows the rule-based result; **Trace** and **Replay** explain execution and what each role could see at the time. Missing technical telemetry never changes recorded exercise events or evaluation.

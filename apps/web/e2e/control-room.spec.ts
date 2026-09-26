@@ -289,6 +289,9 @@ test('separates scenario management from active multi-agent runs', async ({
   page,
 }) => {
   await page.goto('/zh-CN/scenarios');
+  await expect(page.getByTestId('scenario-card').first()).toContainText(
+    '仅供演练 · 合成数据',
+  );
   await page
     .getByTestId('scenario-card')
     .filter({ hasText: '永定河联合调度' })
@@ -387,7 +390,7 @@ test('shows causal agent exchanges and per-recipient delivery without claiming t
   const refreshButton = page.getByRole('button', { name: '刷新协作状态' });
   await expect(refreshButton).toBeVisible();
   await expect(page.getByTestId('collaboration-refresh-status')).toContainText(
-    '协作状态',
+    '演练预览 · 合成数据',
   );
   await refreshButton.click();
   await expect(refreshButton).toBeEnabled();

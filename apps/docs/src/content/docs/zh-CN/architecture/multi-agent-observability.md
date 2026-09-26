@@ -15,8 +15,8 @@ checkPaths:
   - apps/web/**
   - apps/telemetry-ingress/**
   - infrastructure/observability/**
-lastReviewedAt: 2026-09-26
-lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
+lastReviewedAt: 2026-09-27
+lastReviewedCommit: a2a4f4fd7c26b076ec62bcc1163900ff6486659f
 ---
 
 演练工作区回答不同问题：**总览**先呈现结果和待处理事项；**协作**说明成果如何发送与接收；**评测**给出按规则形成的结论；**追踪**和**回放**用于查明执行过程及当时各角色可见的信息。技术遥测缺失不会改变已记录的演练事件或评测结果。

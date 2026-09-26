@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - apps/web/src/**
   - apps/docs/src/**
-lastReviewedAt: 2026-09-26
-lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
+lastReviewedAt: 2026-09-27
+lastReviewedCommit: a2a4f4fd7c26b076ec62bcc1163900ff6486659f
 ---
 
 ## 设计方向
