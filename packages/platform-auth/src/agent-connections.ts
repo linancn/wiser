@@ -423,6 +423,11 @@ export class PostgresAgentConnectionService implements AgentConnectionService {
       );
       const expiresAt = times[0]?.expires_at;
       if (expiresAt === undefined) throw new Error('Agent expiry unavailable.');
+      const resourceGrants = await this.#consentedResources(
+        client,
+        human.userId,
+        command,
+      );
       await client.query(
         `insert into platform.actors(id,actor_type) values ($1,'agent')`,
         [actorId],
@@ -482,6 +487,13 @@ export class PostgresAgentConnectionService implements AgentConnectionService {
         expiresAt: expiresAt.toISOString(),
         status: 'active',
       };
+      await this.#grantConsentedResources(
+        client,
+        human.userId,
+        actorId,
+        connection,
+        resourceGrants,
+      );
       await this.#record(
         client,
         human.userId,
@@ -492,6 +504,85 @@ export class PostgresAgentConnectionService implements AgentConnectionService {
       );
       return connection;
     });
+  }
+
+  async #consentedResources(
+    client: PlatformDelegationTransactionClient,
+    owner: string,
+    command: PlatformAgentAuthorizeCommand,
+  ): Promise<string[]> {
+    await client.query(
+      "select set_config('statement_timeout','10000',true),set_config('lock_timeout','5000',true)",
+    );
+    // Match resource administration's lock order before inserting memberships
+    // (whose foreign keys would otherwise hold competing project share locks).
+    const project = await client.query(
+      `select id from platform.projects where id=$1 and tenant_id=$2 and status='active' for update`,
+      [command.projectId, command.tenantId],
+    );
+    if (project.rows.length !== 1)
+      throw new AgentConnectionError('NOT_AUTHORIZED');
+    const settings = await client.query(
+      'select revision from platform_private.resource_access_settings where project_id=$1 for update',
+      [command.projectId],
+    );
+    if (settings.rows.length === 0) return [];
+    const grants = await client.query<{ id: string }>(
+      `select g.id from platform_private.resource_grants g
+       where g.project_id=$1 and g.actor_id=$2 and g.purpose='agent-data'
+         and g.starts_at<=statement_timestamp() and g.expires_at>statement_timestamp()
+         and not exists(select 1 from platform_private.resource_revocations r where r.grant_id=g.id)
+       order by g.id limit 1001`,
+      [command.projectId, owner],
+    );
+    // Never consent to a silently truncated set or to future scheduled grants.
+    if (grants.rows.length > 1000)
+      throw new AgentConnectionError('NOT_AUTHORIZED');
+    return grants.rows.map((grant) => grant.id);
+  }
+
+  async #grantConsentedResources(
+    client: PlatformDelegationTransactionClient,
+    owner: string,
+    actorId: string,
+    connection: PlatformAgentConnectionView,
+    grants: readonly string[],
+  ): Promise<void> {
+    if (grants.length === 0) return;
+    // Fixed immutable versions, bounded by both approvals. The consenting human
+    // approves this delegation; the original independent approval is provenance,
+    // not an invented approval by that administrator of the new Agent.
+    await client.query(
+      `with source as materialized (
+         select g.*,gen_random_uuid() as delegated_grant_id
+         from platform_private.resource_grants g
+         where g.id=any($1::uuid[]) and g.project_id=$2 and g.actor_id=$3
+           and g.purpose='agent-data' and g.starts_at<=statement_timestamp()
+           and least(g.expires_at,$5::timestamptz)>statement_timestamp()
+       ), inserted as (
+         insert into platform_private.resource_grants
+           (id,project_id,actor_id,package_id,package_version,preset_id,preset_version,
+            purpose,starts_at,expires_at,created_by,approved_by,reason)
+         select delegated_grant_id,project_id,$4,package_id,package_version,preset_id,preset_version,
+           'agent-data',statement_timestamp(),least(expires_at,$5::timestamptz),$3,$3,'Explicit OAuth resource consent'
+         from source returning id
+       )
+       insert into platform_private.resource_access_events
+         (project_id,actor_id,action,subject_id,reason,before_state,after_state)
+       select $2,$3,'grant',i.id,'Explicit OAuth resource consent',
+         jsonb_build_object('parentGrantId',s.id,'parentApprovedBy',s.approved_by),
+         jsonb_build_object('grantId',i.id,'connectionId',$6::uuid,'delegationId',$7::uuid,'actorId',$4::uuid,'purpose','agent-data')
+       from inserted i join source s on s.delegated_grant_id=i.id`,
+      [
+        grants,
+        connection.projectId,
+        owner,
+        actorId,
+        connection.expiresAt,
+        connection.connectionId,
+        connection.delegationId,
+      ],
+    );
   }
 
   async exchange(input: CommandInput): Promise<PlatformAgentExchangeView> {

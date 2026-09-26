@@ -44,19 +44,11 @@ describe.skipIf(databaseUrl === undefined)(
   () => {
     const pool = new Pool({ connectionString: databaseUrl, max: 1 });
     let client: PoolClient;
-    let failAudit = false;
     const tokens = new Map<string, VerifiedSupabaseAgentClaims>();
     const txPool: PlatformDelegationTransactionPool = {
       connect: () =>
         Promise.resolve({
           async query<Row>(sql: string, values: readonly unknown[] = []) {
-            if (
-              failAudit &&
-              sql.includes(
-                'insert into platform_private.resource_access_events',
-              )
-            )
-              throw new Error('Synthetic audit outage');
             const text =
               sql === 'begin'
                 ? 'savepoint consent_service'
@@ -119,7 +111,6 @@ describe.skipIf(databaseUrl === undefined)(
       }
     });
     beforeEach(async () => {
-      failAudit = false;
       await client.query('savepoint scenario');
     });
     afterEach(async () => {
@@ -162,7 +153,7 @@ describe.skipIf(databaseUrl === undefined)(
         [grantId, project, approver],
       );
     }
-    async function oauth(clientId = randomUUID()) {
+    async function oauth(clientId: string = randomUUID()) {
       const authorizationId = randomUUID(),
         sessionId = randomUUID();
       await client.query(
@@ -229,7 +220,7 @@ describe.skipIf(databaseUrl === undefined)(
     }
     async function copies(delegationId: string) {
       return (
-        await client.query(
+        await client.query<{ id: string; actor_id: string; expires_at: Date }>(
           'select g.* from platform_private.resource_grants g join platform.delegations d on d.delegate_actor_id=g.actor_id where d.id=$1 order by g.id',
           [delegationId],
         )
@@ -262,26 +253,28 @@ describe.skipIf(databaseUrl === undefined)(
         approved_by: owner,
       });
       const parentRow = (
-        await client.query(
+        await client.query<{ expires_at: Date }>(
           'select expires_at from platform_private.resource_grants where id=$1',
           [parent],
         )
       ).rows[0];
-      expect(records[0].expires_at).toEqual(parentRow.expires_at);
+      const record = records[0];
+      if (!record || !parentRow) throw new Error('Missing immutable grant');
+      expect(record.expires_at).toEqual(parentRow.expires_at);
       const audits = (
         await client.query(
           "select before_state,after_state from platform_private.resource_access_events where subject_id=$1 and action='grant'",
-          [records[0].id],
+          [record.id],
         )
       ).rows;
       expect(audits).toEqual([
         {
           before_state: { parentGrantId: parent, parentApprovedBy: approver },
           after_state: {
-            grantId: records[0].id,
+            grantId: record.id,
             connectionId: setup.connection.connectionId,
             delegationId: setup.connection.delegationId,
-            actorId: records[0].actor_id,
+            actorId: record.actor_id,
             purpose: 'agent-data',
           },
         },
@@ -347,15 +340,23 @@ describe.skipIf(databaseUrl === undefined)(
       await grant();
       const request = await oauth();
       const before = (
-        await client.query('select count(*)::int n from platform.actors')
-      ).rows[0].n;
-      failAudit = true;
+        await client.query<{ n: number }>(
+          'select count(*)::int n from platform.actors',
+        )
+      ).rows[0]?.n;
+      await client.query(`create function pg_temp.reject_consent_audit() returns trigger
+        language plpgsql as $$ begin raise exception 'Synthetic audit outage'; end $$;
+        create trigger reject_consent_audit before insert on platform_private.resource_access_events
+        for each row execute function pg_temp.reject_consent_audit();`);
       await expect(service.authorize(request.input)).rejects.toThrow(
         'Synthetic audit outage',
       );
       expect(
-        (await client.query('select count(*)::int n from platform.actors'))
-          .rows[0].n,
+        (
+          await client.query<{ n: number }>(
+            'select count(*)::int n from platform.actors',
+          )
+        ).rows[0]?.n,
       ).toBe(before);
       expect(
         (

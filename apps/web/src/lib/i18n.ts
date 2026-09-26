@@ -2403,7 +2403,8 @@ const zhCN = {
       duration: '有效期',
       fifteenMinutes: '15 分钟',
       oneHour: '1 小时',
-      projectScope: '实际操作仍受你当前的项目权限和资料许可约束。',
+      projectScope:
+        '实际操作仍受你当前的项目权限和资料许可约束。需要逐项授权的资料，仅限你已获批的 AI/MCP 访问范围；新增资料须重新同意，权限撤销或到期后停止访问。',
       approve: '同意授权此项目',
       deny: '拒绝授权',
       retry: '授权未完成。请核对项目和权限后重试，或拒绝此次请求。',
@@ -5440,7 +5441,7 @@ const en: typeof zhCN = {
       fifteenMinutes: '15 minutes',
       oneHour: '1 hour',
       projectScope:
-        'Your current project access and data permissions still apply to every operation.',
+        'Your current project access and data permissions still apply. Resources requiring individual approval are limited to your approved AI/MCP scope at consent. New resources need fresh consent; revoked or expired access stops immediately.',
       approve: 'Authorize this project',
       deny: 'Deny access',
       retry:
