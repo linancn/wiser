@@ -24,7 +24,7 @@
     "@agent-excon/scenarios": "workspace:*",
     "@fastify/cors": "11.3.0",
     "@fastify/swagger": "9.8.1",
-    "@supabase/supabase-js": "2.112.4",
+    "@supabase/supabase-js": "2.117.1",
     "@wiser/data-contracts": "workspace:*",
     "@wiser/data-core": "workspace:*",
     "@wiser/data-infra": "workspace:*",
@@ -41,7 +41,7 @@
     "@types/node": "catalog:",
     "@types/pg": "8.23.1",
     "pbf": "5.1.2",
-    "tsx": "4.23.13",
+    "tsx": "4.23.15",
     "typescript": "catalog:",
     "vitest": "5.0.1"
   },

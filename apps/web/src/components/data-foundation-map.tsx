@@ -29,7 +29,7 @@ import { getDictionary, type Locale } from '@/lib/i18n';
 import { registerAmapRaster } from '@/lib/amap-raster-protocol';
 import { mapDisplayBounds } from '@/lib/data-foundation-map-bounds';
 
-setWorkerUrl('/vendor/maplibre/6.8.0/maplibre-gl-worker.mjs');
+setWorkerUrl('/vendor/maplibre/6.11.2/maplibre-gl-worker.mjs');
 
 type Position = [number, number, ...number[]];
 

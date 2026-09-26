@@ -19,8 +19,8 @@ checkPaths:
   - apps/mcp/src/data-foundation/**
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: 46cd150396b22e873ae44fc87c869174ce3d7b19
+lastReviewedAt: 2026-09-26
+lastReviewedCommit: 34207d4c91235aa3d1eb01d679569320926f493b
 ---
 
 ## 外部元数据读取边界

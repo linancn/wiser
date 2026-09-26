@@ -31,7 +31,7 @@ import { ContextHelp } from './context-help';
 import { WorkspaceExpandButton } from './exploration-workspace';
 import { SpatialAttribution } from './spatial-attribution';
 import styles from './business-scene-canvas.module.css';
-maplibre.setWorkerUrl('/vendor/maplibre/6.8.0/maplibre-gl-worker.mjs');
+maplibre.setWorkerUrl('/vendor/maplibre/6.11.2/maplibre-gl-worker.mjs');
 const mapStyle: maplibre.StyleSpecification = {
   version: 8,
   sources: {},
