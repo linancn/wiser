@@ -22,7 +22,7 @@ checkPaths:
   - packages/data-infra/**
   - infrastructure/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: e5eef1040b814c154288f24349ff7f0fd4034dcd
+lastReviewedCommit: ce7c39fbcc4aebc5bca1f67ee80634b7ce544c4d
 ---
 
 ## Separate four data classes

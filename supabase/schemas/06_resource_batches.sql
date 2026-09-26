@@ -15,7 +15,7 @@ create table platform_private.resource_batches (
  package_id uuid not null, package_version integer not null,
  preset_id uuid not null, preset_version integer not null,
  applicant_id uuid not null references platform.actors(id) on delete restrict,
- purpose text not null check(purpose='web-console'),
+ purpose text not null check(purpose in ('web-console','agent-data')),
  starts_at timestamptz not null,
  expires_at timestamptz not null check(expires_at>starts_at),
  valid_until timestamptz not null check(valid_until<=expires_at),

@@ -1,6 +1,7 @@
 import {
   ResourceGrantsPageSchema,
   ResourceGrantRevokeReceiptSchema,
+  ResourceBatchPurposeSchema,
   type ResourceGrantsQuery,
   type ResourceGrantsPage,
   type ResourceGrantRevokeCommand,
@@ -165,8 +166,8 @@ export class ResourceGrantStore {
     command: ResourceGrantRenewCommand,
   ): Promise<ResourceGrantRenewReceipt> {
     const g = await this.#record(command.grantId);
-    if (g.revoked_at || g.purpose !== 'web-console')
-      fail('REQUEST_STATE_CONFLICT');
+    const purpose = ResourceBatchPurposeSchema.safeParse(g.purpose);
+    if (g.revoked_at || !purpose.success) fail('REQUEST_STATE_CONFLICT');
     const now = await this.#now(),
       start = new Date(Math.max(now.getTime(), g.expires_at.getTime()));
     if (Date.parse(command.expiresAt) <= start.getTime())
@@ -182,7 +183,7 @@ export class ResourceGrantStore {
         presetId: g.preset_id,
         presetVersion: g.preset_version,
         actorIds: [g.actor_id],
-        purpose: 'web-console',
+        purpose: purpose.data,
         startsAt: start.toISOString(),
         expiresAt: command.expiresAt,
         reason: command.reason,

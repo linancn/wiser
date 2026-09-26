@@ -4,6 +4,7 @@ import {
   ResourceGrantsPageSchema,
   ResourceGrantRevokeReceiptSchema,
   ResourceGrantRenewReceiptSchema,
+  ResourceBatchPurposeSchema,
   ProjectAccessMembersPageSchema,
   type ResourceGrantsPage,
   type ResourceGrantRenewReceipt,
@@ -338,6 +339,18 @@ function GrantWorkspace({ project, viewerId, locale }: Props) {
               <dd>{g.resourceCount}</dd>
             </div>
             <div>
+              <dt>{getDictionary(locale).resourcePurposes.label}</dt>
+              <dd>
+                {
+                  getDictionary(locale).resourcePurposes[
+                    g.purpose === 'web-console' || g.purpose === 'agent-data'
+                      ? g.purpose
+                      : 'other'
+                  ]
+                }
+              </dd>
+            </div>
+            <div>
               <dt>{t.starts}</dt>
               <dd>
                 <time dateTime={g.startsAt}>
@@ -388,7 +401,7 @@ function GrantWorkspace({ project, viewerId, locale }: Props) {
               >
                 {t.revoke}
               </button>
-              {g.purpose === 'web-console' ? (
+              {ResourceBatchPurposeSchema.safeParse(g.purpose).success ? (
                 <button
                   disabled={busy}
                   onClick={() => {

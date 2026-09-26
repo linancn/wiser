@@ -58,7 +58,7 @@ interface Batch extends Definitions {
   id: string;
   project_id: string;
   applicant_id: string;
-  purpose: 'web-console';
+  purpose: ResourceBatchView['purpose'];
   starts_at: Date;
   expires_at: Date;
   valid_until: Date;
@@ -205,12 +205,13 @@ export class ResourceBatchStore {
   async #members(
     ids: readonly string[],
     expiresAt: Date,
+    purpose: ResourceBatchView['purpose'],
   ): Promise<readonly Member[]> {
     return (
       await this.session.client.query<Member>(
         `select m.actor_id,m.membership_version,tm.membership_version tenant_membership_version,a.authz_version actor_authz_version,
     coalesce(nullif(p.display_name,''),u.email,m.actor_id::text) display_name,
-    (select count(*)::int from platform_private.resource_grants g where g.project_id=m.project_id and g.actor_id=m.actor_id and g.purpose='web-console' and g.expires_at>statement_timestamp() and not exists(select 1 from platform_private.resource_revocations r where r.grant_id=g.id)) existing_grant_count
+    (select count(*)::int from platform_private.resource_grants g where g.project_id=m.project_id and g.actor_id=m.actor_id and g.purpose=$5 and g.expires_at>statement_timestamp() and not exists(select 1 from platform_private.resource_revocations r where r.grant_id=g.id)) existing_grant_count
     from platform.project_memberships m join platform.tenant_memberships tm on tm.tenant_id=m.tenant_id and tm.actor_id=m.actor_id
     join platform.actors a on a.id=m.actor_id left join platform.user_profiles p on p.actor_id=a.id left join auth.users u on u.id=a.auth_user_id
     where m.project_id=$1 and m.tenant_id=$2 and m.actor_id=any($3::uuid[]) and a.status='active' and a.actor_type='human'
@@ -221,6 +222,7 @@ export class ResourceBatchStore {
           this.session.project.tenant_id,
           ids,
           expiresAt.toISOString(),
+          purpose,
         ],
       )
     ).rows;
@@ -230,6 +232,7 @@ export class ResourceBatchStore {
     d: Definitions,
     startsAt: Date,
     expiresAt: Date,
+    purpose: ResourceBatchView['purpose'],
     policyFingerprint: string,
   ) {
     const result = await this.session.client.query<{
@@ -242,7 +245,7 @@ export class ResourceBatchStore {
       `select g.id,p.resources,t.actions,g.starts_at,g.expires_at from platform_private.resource_grants g
        join platform_private.resource_package_versions p on (p.project_id,p.package_id,p.version)=(g.project_id,g.package_id,g.package_version)
        join platform_private.resource_preset_versions t on (t.project_id,t.preset_id,t.version)=(g.project_id,g.preset_id,g.preset_version)
-       where g.project_id=$1 and g.actor_id=$2 and g.purpose='web-console' and g.starts_at<$4 and g.expires_at>$3
+       where g.project_id=$1 and g.actor_id=$2 and g.purpose=$5 and g.starts_at<$4 and g.expires_at>$3
        and not exists(select 1 from platform_private.resource_revocations r where r.grant_id=g.id)
        order by g.id limit 1001`,
       [
@@ -250,6 +253,7 @@ export class ResourceBatchStore {
         actorId,
         startsAt.toISOString(),
         expiresAt.toISOString(),
+        purpose,
       ],
     );
     if (result.rows.length > 1000) fail('RESOURCE_UNAVAILABLE');
@@ -271,7 +275,7 @@ export class ResourceBatchStore {
       .filter((g) => g.resources.length && g.actions.length);
     return {
       hash: createHash('sha256')
-        .update(JSON.stringify({ policyFingerprint, grants }))
+        .update(JSON.stringify({ purpose, policyFingerprint, grants }))
         .digest('hex'),
       diff: resourceGrantDiff({
         resources: d.resources,
@@ -398,7 +402,7 @@ export class ResourceBatchStore {
       end.getTime() - start.getTime() > d.max_days * 86400000
     )
       fail('VALIDATION_FAILED');
-    const members = await this.#members(command.actorIds, end);
+    const members = await this.#members(command.actorIds, end, command.purpose);
     if (members.length !== command.actorIds.length) fail('MEMBERSHIP_CHANGED');
     const managementPermit = await assertResourceManagementPolicy(
       this.session,
@@ -435,6 +439,7 @@ export class ResourceBatchStore {
         d,
         start,
         end,
+        command.purpose,
         managementPermit.policyFingerprint,
       );
       await this.session.client.query(
@@ -506,6 +511,7 @@ export class ResourceBatchStore {
                 b,
                 b.starts_at,
                 b.expires_at,
+                b.purpose,
                 managementPermit.policyFingerprint,
               )
             ).hash
@@ -592,6 +598,7 @@ export class ResourceBatchStore {
     const current = await this.#members(
       original.map((m) => m.actor_id),
       b.expires_at,
+      b.purpose,
     );
     for (const previous of before.members) {
       if (previous.status === 'granted') continue;
@@ -620,6 +627,7 @@ export class ResourceBatchStore {
               b,
               b.starts_at,
               b.expires_at,
+              b.purpose,
               managementPermit.policyFingerprint,
             )
           ).hash

@@ -18,8 +18,8 @@ checkPaths:
   - packages/data-infra/src/migrations/**
   - scripts/data-foundation/**
   - compose.yaml
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: e11dd07b
+lastReviewedAt: 2026-09-26
+lastReviewedCommit: ce7c39fbcc4aebc5bca1f67ee80634b7ce544c4d
 ---
 
 ## 先区分两个 PostgreSQL 边界
@@ -74,6 +74,8 @@ Supabase 的四类文件必须同步：顺序 migration 是可重放历史，dec
 `supabase:verify` 会先对本机数据库执行 `db reset --local`，随后运行 pgTAP、数据库 lint 和全部 advisor。它会删除本机 Supabase 数据；不要把它指向共享或生产数据库。已经进入历史的 migration 不得改名、重排或改写，应追加新的 migration。
 
 Agent 授权与交换集成测试通过 `WISER_AGENT_TEST_DATABASE_URL` 连接已迁移并加载 seed 的一次性 Supabase 数据库。设置该变量后运行 `pnpm exec vitest run apps/api/test/platform-agent-connections.integration.spec.ts`。测试会创建合成 OAuth Session、client、consent 与 Agent Membership；应在 pgTAP 之后运行，不能与种子数量断言并发执行。未设置变量时跳过该集成套件，普通单元测试仍不依赖数据库与 AI provider。
+
+迁移 `20260926084756_resource_batch_agent_purpose.sql` 仅将私有批次用途约束扩展为明确的网页与 AI/MCP 两种用途。声明式结构 `06_resource_batches.sql` 和 pgTAP 第 12 组保持同一约束，seed 不授予资源访问权。批次集成套件通过 `WISER_RESOURCE_TEST_DATABASE_URL` 连接可丢弃、已迁移并填充测试种子的数据库，核验用途隔离的预览、审批、执行和续期。部署前备份控制库和运行配置，先应用追加迁移，再更新 API/Web。产生 AI/MCP 批次后，恢复版本须能读取两种用途并保留不可变历史；旧版仅支持网页用途的读取器无法解析这些记录。此前保存的预览因指纹增加用途绑定而须重新生成。
 
 ## Data Foundation 变更流程
 
