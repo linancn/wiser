@@ -17,7 +17,7 @@ checkPaths:
   - .docpact/config.yaml
   - .github/workflows/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: 6ecec49ff897d44bf0d25e6eed5bfac58f2e85aa
+lastReviewedCommit: a35fa4d69dab166ca64b5fa050575bea59e20a6d
 ---
 
 # Contributing / 贡献指南
@@ -37,6 +37,8 @@ lastReviewedCommit: 6ecec49ff897d44bf0d25e6eed5bfac58f2e85aa
 5. **Verify**：提交前运行 `pnpm verify`（含完整单元测试及覆盖率门槛）；数据库变更还要运行数据库重置和 RLS 测试。
 
 测试应优先验证可观察行为，而不是内部调用次数。生产缺陷必须先由回归测试复现。确定性规则和隐藏 outcome 不得由 LLM mock 代替。
+
+Data Foundation CI 在隔离 PostgreSQL 中串行验证探索成员关系与资源范围。`data-resource-scope.integration.spec.ts` 必须启用 `WISER_DATA_PG_INTEGRATION=1`，覆盖受管 RLS、来源/证据绑定、撤回和旧查询/导出重放；普通单元阶段的跳过不能替代该通道。/ The isolated Data PostgreSQL lane runs resource and evidence-reference isolation with the integration flag enabled; a skipped unit test is not integration evidence.
 
 Docpact 需要本机安装 `docpact` 0.1.9（`cargo install docpact --version 0.1.9 --locked`），并把 `~/.cargo/bin` 加入 `PATH`。规则位于 `.docpact/config.yaml`；规则或 CI 变更还应运行 `pnpm docpact:validate`。Baseline 和 waiver 只用于明确的阶段性债务或临时例外，不作为常规跳过手段。
 
