@@ -1,5 +1,5 @@
 begin;
-select plan(23);
+select plan(25);
 select has_table('platform_private','resource_batches','Batch snapshots are durable');
 select has_table('platform_private','resource_batch_members','Explicit recipients are durable');
 select has_table('platform_private','resource_batch_attempts','Per-member attempts are append-only');
@@ -31,5 +31,7 @@ select lives_ok($$insert into platform_private.resource_batch_attempts(batch_id,
 select ok((select grant_snapshot_hash is null and grant_diff is null from platform_private.resource_batch_members where batch_id='f5000000-0000-4000-8000-000000000001'),'Historical previews stay unknown rather than being recomputed');
 select throws_ok($$update platform_private.resource_batch_members set grant_snapshot_hash=repeat('a',64),grant_diff='{}'$$,'22023',null,'Differences remain part of the immutable preview');
 select lives_ok($$insert into platform_private.resource_batch_attempts(batch_id,project_id,actor_id,attempt,executed_by,error_code) values('f5000000-0000-4000-8000-000000000001','b2000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001',2,'10000000-0000-4000-8000-000000000005','ACCESS_CHANGED')$$,'Changed authority has its own bounded failure reason');
+select lives_ok($$insert into platform_private.resource_batches(project_id,package_id,package_version,preset_id,preset_version,applicant_id,purpose,starts_at,expires_at,valid_until,reason) values('b2000000-0000-4000-8000-000000000001','f1000000-0000-4000-8000-000000000001',1,'f4000000-0000-4000-8000-000000000001',1,'10000000-0000-4000-8000-000000000005','agent-data',now(),now()+interval '1 day',now()+interval '15 minutes','Synthetic explicit MCP purpose')$$,'An explicit agent-data request is independently recorded');
+select throws_ok($$insert into platform_private.resource_batches(project_id,package_id,package_version,preset_id,preset_version,applicant_id,purpose,starts_at,expires_at,valid_until,reason) values('b2000000-0000-4000-8000-000000000001','f1000000-0000-4000-8000-000000000001',1,'f4000000-0000-4000-8000-000000000001',1,'10000000-0000-4000-8000-000000000005','unregistered-purpose',now(),now()+interval '1 day',now()+interval '15 minutes','Synthetic unsupported purpose')$$,'23514',null,'Unsupported purposes remain rejected');
 select * from finish();
 rollback;

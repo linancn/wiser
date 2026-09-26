@@ -55,6 +55,40 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
+it.each([
+  ['zh-CN', 'AI/MCP 访问', '申请续期'],
+  ['en', 'AI/MCP access', 'Request renewal'],
+] as const)(
+  'shows the approved agent purpose and permits independent renewal in %s',
+  async (locale, purposeLabel, renewLabel) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) =>
+        Promise.resolve(
+          Response.json(
+            url.includes('/members?')
+              ? { items: [], hasMore: false }
+              : {
+                  items: [{ ...grant, purpose: 'agent-data' }],
+                  hasMore: false,
+                  checkedAt: grant.startsAt,
+                },
+          ),
+        ),
+      ),
+    );
+    render(
+      <ProjectResourceGrants
+        project={project}
+        viewerId={id(4)}
+        locale={locale}
+      />,
+    );
+    await screen.findByText('水文资料');
+    expect(screen.getByText(purposeLabel)).toBeDefined();
+    expect(screen.getByRole('button', { name: renewLabel })).toBeDefined();
+  },
+);
 it('shows own records without management controls and labels stored state separately from actual access', async () => {
   vi.stubGlobal(
     'fetch',

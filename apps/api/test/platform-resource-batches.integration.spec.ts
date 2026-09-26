@@ -177,6 +177,99 @@ describe.skipIf(!url)(
       }
       await pool.end();
     });
+    it.each(['web-console', 'agent-data'] as const)(
+      'isolates %s preview differences, approval, execution and renewal from the other purpose',
+      async (purpose) => {
+        await client.query('savepoint purpose_case');
+        try {
+          const otherPurpose =
+            purpose === 'web-console' ? 'agent-data' : 'web-console';
+          const other = await client.query<{ id: string }>(
+            `insert into platform_private.resource_grants(project_id,actor_id,package_id,package_version,preset_id,preset_version,purpose,starts_at,expires_at,created_by,approved_by,reason)
+           values($1,$2,$3,1,$4,1,$5,$6,$7,$8,$9,'Synthetic separate purpose') returning id`,
+            [
+              project,
+              reader,
+              pack.packageId,
+              preset.presetId,
+              otherPurpose,
+              preview.startsAt,
+              preview.expiresAt,
+              owner,
+              approver,
+            ],
+          );
+          const pending = await service.previewBatch({
+            token: 'owner',
+            idempotencyKey: randomUUID(),
+            command: { ...preview, actorIds: [reader], purpose },
+          });
+          expect(pending.purpose).toBe(purpose);
+          expect(pending.members[0]).toMatchObject({
+            existingGrantCount: 0,
+            diff: { added: 1, retained: 0, extended: 0 },
+          });
+          // Revoking unrelated usage must not invalidate this immutable purpose-specific preview.
+          await client.query(
+            'insert into platform_private.resource_revocations(grant_id,project_id,revoked_by,reason) values($1,$2,$3,$4)',
+            [
+              other.rows[0]!.id,
+              project,
+              owner,
+              'End unrelated purpose permission',
+            ],
+          );
+          const approved = await service.decideBatch({
+            token: 'approver',
+            idempotencyKey: randomUUID(),
+            command: {
+              projectId: project,
+              batchId: pending.id,
+              expectedVersion: pending.version,
+              decision: 'approve',
+              reason: 'Independent review of the selected purpose',
+            },
+          });
+          const done = await service.executeBatch({
+            token: 'owner',
+            idempotencyKey: randomUUID(),
+            command: {
+              projectId: project,
+              batchId: approved.id,
+              expectedVersion: approved.version,
+              reason: 'Execute only the reviewed purpose',
+            },
+          });
+          expect(done.status).toBe('executed');
+          expect(done.purpose).toBe(purpose);
+          const grantId = done.members[0]!.grantId!;
+          const stored = await client.query<{ purpose: string }>(
+            'select purpose from platform_private.resource_grants where id=$1',
+            [grantId],
+          );
+          expect(stored.rows[0]!.purpose).toBe(purpose);
+          const renewal = await service.renewGrant({
+            token: 'owner',
+            idempotencyKey: randomUUID(),
+            command: {
+              projectId: project,
+              grantId,
+              expiresAt: new Date(
+                Date.parse(preview.expiresAt) + 86400000,
+              ).toISOString(),
+              reason: 'Renew only the original access purpose',
+            },
+          });
+          expect(renewal.batch).toMatchObject({
+            purpose,
+            status: 'pending',
+            startsAt: preview.expiresAt,
+          });
+        } finally {
+          await client.query('rollback to savepoint purpose_case');
+        }
+      },
+    );
     it('refuses a grant term beyond the source ceiling even when the preset allows it', async () => {
       await client.query('savepoint source_term_test');
       try {
