@@ -223,6 +223,9 @@ grant select (
 ) on catalog.data_item_version to wiser_data_metadata;
 grant execute on function security.resource_scope_legacy() to wiser_data_metadata;
 grant execute on function security.resource_version_members() to wiser_data_metadata;
+-- PostgreSQL checks the function privilege in the catalog item's RLS policy
+-- even when its legacy branch is selected. Keep invoker and column limits.
+grant execute on function security.resource_related_ids(text) to wiser_data_metadata;
 grant execute on function security.authorized_row(uuid,uuid,text,bigint) to wiser_data_metadata;
 grant execute on function security.current_tenant_id(),
   security.current_project_id(), security.current_max_security_level(),
