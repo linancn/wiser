@@ -172,3 +172,26 @@ CLI 使用 Worker 明确的租户、项目、安全等级和策略范围，以�
 高德官方适配器从 Web 服务端环境读取 `WISER_AMAP_KEY` 和 `WISER_AMAP_SECURITY_CODE`，保存在本机 `.env` 或部署秘密配置中。`/api/maps/amap/config` 仅在会话校验后返回公开 JS API Key。同源代理只允许地图样式和坐标转换，服务端注入安全密钥，限制响应大小并禁用缓存。安全密钥不得使用 `NEXT_PUBLIC_*` 变量；本机 Compose override 仍必须加载。
 
 Data 纵切 smoke 为已登录 Web 目录页 GET 单独保留 60 秒请求预算，以容纳 Next.js 开发模式的首次编译。API 和登录请求仍使用默认 10 秒上限，所有请求继续受整轮 180 秒总期限约束。程序化选项 `webRequestTimeoutMs` 可收紧页面预算（100–60,000 毫秒）；超时不能算作页面断言成功。
+
+## 对象存储的重启安全
+
+SeaweedFS 启动时将 S3 配置写入 `/run/wiser-seaweed/s3.json`。父目录属主为
+`root:seaweed`、权限 `0750`；配置文件保持 `seaweed:seaweed`、权限 `0640`，
+供服务读取。这样同一容器再次启动时，无须在公共 sticky `/tmp` 目录中
+重新打开服务用户所有的文件。保留宿主机 `fs.protected_regular` 保护，
+不要放宽为所有用户可读，也不要通过删除数据卷恢复重启。
+
+核对本地合并后的 Compose 配置后，可运行显式启用的实机回归：
+
+```bash
+WISER_TEST_SEAWEEDFS_RESTART=1 node --test scripts/data-foundation/seaweedfs-restart.test.mjs
+```
+
+测试使用 Compose 锁定的镜像与启动命令，创建无外部网络、无映射端口、
+无业务数据卷的一次性容器，仅用合成凭据。通过 S3 写入测试对象后，
+**对同一容器连续重启两次**，每次读取并核对对象，同时检查目录和文件的
+属主与权限。默认运维测试跳过这项依赖 Docker 的检查。
+
+不同宿主机的内核保护配置可能不同，本地通过不能代替获授权的目标部署
+及读回。修改 Compose 不会改变已创建容器的启动命令；部署时须保留数据卷，
+仅重建受影响服务，并检查健康状态及获准既有原件，才能确认恢复。

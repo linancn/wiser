@@ -326,9 +326,12 @@ services:
     command:
       - |
         umask 027
-        printf '{"identities":[{"name":"wiser-data","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write"]}]}\n' "$${SEAWEEDFS_ACCESS_KEY}" "$${SEAWEEDFS_SECRET_KEY}" >/tmp/seaweed-s3.json
-        chown seaweed:seaweed /tmp/seaweed-s3.json
-        exec /entrypoint.sh server -dir=/data -s3 -s3.port=8333 -s3.config=/tmp/seaweed-s3.json -master.telemetry=false
+        mkdir -p /run/wiser-seaweed
+        chown root:seaweed /run/wiser-seaweed
+        chmod 750 /run/wiser-seaweed
+        printf '{"identities":[{"name":"wiser-data","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write"]}]}\n' "$${SEAWEEDFS_ACCESS_KEY}" "$${SEAWEEDFS_SECRET_KEY}" >/run/wiser-seaweed/s3.json
+        chown seaweed:seaweed /run/wiser-seaweed/s3.json
+        exec /entrypoint.sh server -dir=/data -s3 -s3.port=8333 -s3.config=/run/wiser-seaweed/s3.json -master.telemetry=false
     environment:
       SEAWEEDFS_ACCESS_KEY: ${DATA_S3_ACCESS_KEY_ID:-wiser-data-local-access}
       SEAWEEDFS_SECRET_KEY: ${DATA_S3_SECRET_ACCESS_KEY:-wiser-local-s3-8c492a72f6d84e2e}

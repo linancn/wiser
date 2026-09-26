@@ -172,3 +172,31 @@ After rebuilding, switch the Worker first, let its profile checkpoint catch up t
 The official AMap adapter reads `WISER_AMAP_KEY` and `WISER_AMAP_SECURITY_CODE` from the Web server environment. Keep both in local `.env` or deployment secrets. `/api/maps/amap/config` returns the public JS API key only after session verification. The same-origin proxy permits only map styles and coordinate conversion, injects the security code server-side, bounds responses and disables caching. The security code is never placed in `NEXT_PUBLIC_*` variables. Existing local Compose overrides remain mandatory.
 
 The Data vertical smoke gives authenticated Web catalog GETs a separate 60-second request budget for cold Next.js development compilation. API/login requests retain the 10-second default and every request remains bounded by the 180-second overall smoke deadline. The programmatic `webRequestTimeoutMs` option may narrow this budget (100–60,000 ms); timeout never counts as a successful page assertion.
+
+## Object storage restart safety
+
+The SeaweedFS startup command generates its S3 configuration in
+`/run/wiser-seaweed/s3.json`. The parent directory is owned by `root:seaweed`
+with mode `0750`; the file remains readable by the service as
+`seaweed:seaweed`, mode `0640`. This avoids reopening a service-owned file
+in the public sticky `/tmp` directory on a later container start. Keep host
+`fs.protected_regular` protections enabled; do not make the configuration
+world-readable or remove the data volume to recover a restart.
+
+After reviewing the merged local Compose configuration, run the opt-in live
+regression:
+
+```bash
+WISER_TEST_SEAWEEDFS_RESTART=1 node --test scripts/data-foundation/seaweedfs-restart.test.mjs
+```
+
+It uses the pinned Compose image and command in a disposable, network-isolated
+container, synthetic credentials, no published ports and no business volumes.
+It writes an object through S3, restarts the **same container twice**, and reads
+the object back after each restart. It also checks directory/file ownership and
+permissions. The default operations suite skips this Docker-dependent check.
+Local success does not replace an authorized deployment and readback on the
+target host; hosts can have different kernel protections. Updating Compose
+alone does not change an already-created container's command. Deployment must
+recreate only the affected service while preserving its data volume, then verify
+health and a permitted existing object before declaring recovery.
