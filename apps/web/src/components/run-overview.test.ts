@@ -37,7 +37,7 @@ describe('Run overview', () => {
     expect(html).toContain(`/zh-CN/runs/${run.id}/trace`);
     expect(html).toContain(`/zh-CN/runs/${run.id}/replay`);
     expect(html).toContain(`/zh-CN/runs/${run.id}/collaboration`);
-    expect(html).toContain('<strong>3</strong> 份专业成果已交接');
+    expect(html).toContain('<strong>3</strong> 个专业工件已交接');
   });
 
   it('shows how many attention items are omitted and links to the full evaluation', () => {
@@ -63,6 +63,7 @@ describe('Run overview', () => {
     );
 
     expect(html.match(/data-testid="attention-item"/g)).toHaveLength(3);
+    expect(html).toContain('data-testid="attention-overflow"');
     expect(html).toContain('另有 1 项待查看');
     expect(html).toContain(`href="/zh-CN/runs/${run.id}/diagnostics"`);
   });

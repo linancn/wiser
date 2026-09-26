@@ -14,7 +14,9 @@ test('keeps the live Data Foundation workspace bilingual and fail-closed', async
   await expect(
     page.getByRole('heading', { name: '数据基座尚未开通' }),
   ).toBeVisible();
-  await expect(page.getByText('当前站点尚未开通数据基座。请联系平台管理员。')).toBeVisible();
+  await expect(
+    page.getByText('当前站点尚未开通数据基座。请联系平台管理员。'),
+  ).toBeVisible();
   await expect(page.locator('main')).not.toContainText(
     /HTTP\s*\d{3}|WISER_[A-Z_]+|\/health\/|Capability Registry|DTO|DAL|工作进程/,
   );
@@ -33,7 +35,11 @@ test('keeps the live Data Foundation workspace bilingual and fail-closed', async
       name: 'Data Foundation is not enabled on this site',
     }),
   ).toBeVisible();
-  await expect(page.getByText('Data Foundation is not enabled here. Contact a platform administrator.')).toBeVisible();
+  await expect(
+    page.getByText(
+      'Data Foundation is not enabled here. Contact a platform administrator.',
+    ),
+  ).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 });
 

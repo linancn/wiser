@@ -82,7 +82,7 @@ Agent EXCON pages support two explicit data modes:
 | `reference` | Default deterministic design reference, build, and end-to-end test data      | The page is clearly labeled as a design preview                                 |
 | `live`      | Server Components read operator projections from the Agent EXCON v2 HTTP API | An actionable unavailable/error state appears; reference data is never mixed in |
 
-The server-side `AGENT_EXCON_WEB_DATA_MODE` selects the mode. `live` requests use `cache: no-store`, and the API origin and verified current user access token remain server-only. In Supabase mode, EXCON and Data use the same server-only session verifier; a static `WISER_WEB_OPERATOR_TOKEN` is limited to local Auth-off development. When a current DTO does not provide the required fact, show a coverage gap or empty state. Never fill it from the reference sample or infer Agent, span, replay-perspective, or verdict facts in the frontend.
+The server-side `AGENT_EXCON_WEB_DATA_MODE` selects the mode. In live mode, `AGENT_EXCON_API_INTERNAL_URL` supplies the server-only API origin; requests use `cache: no-store`, and the verified current user access token remains server-only. In Supabase mode, EXCON and Data use the same server-only session verifier; a static `WISER_WEB_OPERATOR_TOKEN` is limited to local Auth-off development. When a current DTO does not provide the required fact, show a coverage gap or empty state. Never fill it from the reference sample or infer Agent, span, replay-perspective, or verdict facts in the frontend. Reference collaboration shows a synthetic exercise preview label; completed live runs keep the ordinary manual-refresh state.
 
 ## Data Foundation data and identity
 

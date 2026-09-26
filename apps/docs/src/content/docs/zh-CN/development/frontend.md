@@ -82,7 +82,7 @@ Agent EXCON 页面支持两个明确的数据模式：
 | `reference` | 默认的确定性设计参考、构建和端到端测试数据                 | 页面明确标记为设计预览                                |
 | `live`      | Server Component 从 Agent EXCON v2 HTTP API 读取操作员投影 | 显示可操作的 unavailable/error 状态，绝不混入参考数据 |
 
-模式由服务端的 `AGENT_EXCON_WEB_DATA_MODE` 选择。`live` 请求使用 `cache: no-store`，API origin 和刚验证的当前用户 Access Token 只能留在服务端。Supabase 模式中 EXCON 与 Data 共用 Session verifier；静态 `WISER_WEB_OPERATOR_TOKEN` 仅用于本机 Auth-off 开发。现有 DTO 没有提供的信息应显示覆盖缺口或空态，不能从参考样例补齐，也不能在前端推断 Agent、Span、回放视角或裁决事实。
+模式由服务端的 `AGENT_EXCON_WEB_DATA_MODE` 选择。实时模式通过 `AGENT_EXCON_API_INTERNAL_URL` 配置仅限服务端使用的 API 地址；请求使用 `cache: no-store`，刚验证的当前用户 Access Token 也只留在服务端。Supabase 模式中 EXCON 与 Data 共用 Session verifier；静态 `WISER_WEB_OPERATOR_TOKEN` 仅用于本机 Auth-off 开发。现有 DTO 没有提供的信息应显示覆盖缺口或空态，不能从参考样例补齐，也不能在前端推断 Agent、Span、回放视角或裁决事实。参考模式的协作页标记为合成数据演练预览；已结束的实时运行仍显示普通的手动刷新状态。
 
 ## Data Foundation 数据与身份
 

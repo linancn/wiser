@@ -400,7 +400,7 @@ test('shows causal agent exchanges and per-recipient delivery without claiming t
   await expect(page.getByTestId('collaboration-exchange')).toHaveCount(7);
   await expect(page.getByTestId('collaboration-handoff')).toHaveCount(3);
   await expect(page.getByTestId('collaboration-request')).toHaveCount(1);
-  await expect(page.getByText('3 份专业成果已交接')).toBeVisible();
+  await expect(page.getByText('3 个专业工件已交接')).toBeVisible();
 
   const request = page.getByTestId('collaboration-request');
   const requestButton = request.getByRole('button').first();

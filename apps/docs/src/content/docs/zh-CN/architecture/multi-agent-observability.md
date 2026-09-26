@@ -39,8 +39,8 @@ Run 只管理阶段和虚拟时钟；评价与重做属于各自 Task。这样�
 
 智能体演练场的二级导航只保留“演练场景”和“演练运行”；它们位于 WISER 一级系统导航之下，不与数据基座或 Portal 混排。演练场景负责草稿、校验、发布、版本和团队契约；演练运行默认只读，每个 Run 再分为“总览 / 协作 / 评测 / 追踪 / 回放”五个对象内工作区。
 
-- **总览**先回答权威结果、最高风险和下一步，只展示前三项关注、团队态势、最近事件与流域决策脊柱。
-- **协作**以汇流账本呈现 request/response、ArtifactVersion handoff 和逐收件人 Receipt 状态；不把 acknowledgement 描述成已读或同意。
+- **总览**先回答权威结果、最高风险和下一步；最多展示三项关注，并注明剩余项数及完整评测入口，随后呈现团队态势、最近事件与流域决策脊柱。
+- **协作**以汇流账本呈现 request/response、ArtifactVersion handoff 和逐收件人 Receipt 状态。参考内容明确标记为合成数据演练预览；不把 acknowledgement 描述成已读或同意。
 - **评测**核对权威 Event、Barrier 与 evaluator verdict，并把 OpenTelemetry 覆盖缺口作为诊断信号，不让遥测替代裁决。
 - **Trace**使用 wall clock 瀑布、Agent 泳道和 Span Inspector 定位执行问题；窄屏转换为可扫读的事件流。
 - **回放**按 `run_seq` 和当时视角重建收据、事件与可见证据，技术遥测只作为 best-effort 叠加。

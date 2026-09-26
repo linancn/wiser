@@ -84,13 +84,16 @@ describe('bilingual product contract', () => {
 
   it('describes the primary workspaces as user tasks in both languages', () => {
     for (const locale of LOCALES) {
-      const { portal, dataFoundation, collaboration, trace } =
+      const { portal, dataFoundation, runOverview, collaboration, trace } =
         dictionaries[locale];
       const entryCopy = stringsOf({
         portal,
         description: dataFoundation.description,
         phase: dataFoundation.phase,
-        ingestionGap: dataFoundation.ingestionsPage.listGapTitle,
+        configuration: dataFoundation.failures.configuration,
+        attention: runOverview.attentionLede,
+        simulation: dictionaries[locale].common.simulationOnly,
+        collaborationPreview: collaboration.referencePreview,
         collaborationRefresh: collaboration.referenceRefresh,
         traceSummary: trace.summaryEyebrow,
       }).join('\n');

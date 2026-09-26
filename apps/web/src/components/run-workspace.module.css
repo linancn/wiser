@@ -340,6 +340,19 @@
   padding: 10px 0 8px 8px;
 }
 
+.attentionOverflow {
+  margin: 8px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.attentionOverflow a {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
 .emptyAttention {
   padding: 20px 0;
   color: var(--text-secondary);

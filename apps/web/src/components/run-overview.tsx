@@ -77,6 +77,8 @@ export function RunOverview({
   const attention = [...run.diagnostics.findings]
     .sort((left, right) => findingWeight(left) - findingWeight(right))
     .slice(0, 3);
+  const hiddenAttentionCount =
+    run.diagnostics.findings.length - attention.length;
   const nodes = [
     ...specialists.map((role) => ({
       id: role.id,
@@ -157,27 +159,43 @@ export function RunOverview({
             {attention.length === 0 ? (
               <p className={styles.emptyAttention}>{copy.noAttention}</p>
             ) : (
-              <ol className={styles.attentionList}>
-                {attention.map((finding, index) => (
-                  <li
-                    data-testid="attention-item"
-                    key={`${finding.code}-${index}`}
+              <>
+                <ol className={styles.attentionList}>
+                  {attention.map((finding, index) => (
+                    <li
+                      data-testid="attention-item"
+                      key={`${finding.code}-${index}`}
+                    >
+                      <span className={styles.attentionMark} aria-hidden="true">
+                        {finding.severity === 'error' ? '!' : index + 1}
+                      </span>
+                      <span className={styles.attentionCopy}>
+                        <strong>
+                          {dictionary.diagnostics.findingLabels[finding.code]}
+                        </strong>
+                        <code>{finding.code}</code>
+                      </span>
+                      <Link href={findingHref(finding.code, locale, run.id)}>
+                        {copy.inspect} →
+                      </Link>
+                    </li>
+                  ))}
+                </ol>
+                {hiddenAttentionCount > 0 ? (
+                  <p
+                    className={styles.attentionOverflow}
+                    data-testid="attention-overflow"
                   >
-                    <span className={styles.attentionMark} aria-hidden="true">
-                      {finding.severity === 'error' ? '!' : index + 1}
-                    </span>
-                    <span className={styles.attentionCopy}>
-                      <strong>
-                        {dictionary.diagnostics.findingLabels[finding.code]}
-                      </strong>
-                      <code>{finding.code}</code>
-                    </span>
-                    <Link href={findingHref(finding.code, locale, run.id)}>
-                      {copy.inspect} →
+                    {copy.attentionOverflow.replace(
+                      '{count}',
+                      String(hiddenAttentionCount),
+                    )}{' '}
+                    <Link href={`/${locale}/runs/${run.id}/diagnostics`}>
+                      {copy.openDiagnostics} →
                     </Link>
-                  </li>
-                ))}
-              </ol>
+                  </p>
+                ) : null}
+              </>
             )}
           </section>
 

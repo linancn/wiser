@@ -25,13 +25,13 @@ lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 
 ## What runs today
 
-| Area              | Current capability                                                                                   | Boundary to keep visible                                                                              |
-| ----------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Authority         | Data Foundation owns source files, fixed versions, ingestion, quality, lineage, and data operations  | Supabase owns people, sessions, organizations, projects, and membership                               |
-| Intake            | Authorized users and agents can register sources, upload, check, review, and publish fixed versions  | Upload or source-registration checks do not establish analytical quality or scientific completeness   |
-| Exploration       | One authorized query links catalog resources, parsed records, maps, relations, and statistics        | Counts retain their data grain; rendered geometry and candidate relations need separate verification  |
-| Access            | Project membership, source license, resource grants, and purpose are checked for each read or action | Web and AI/MCP resource purposes are independent                                                      |
-| External metadata | A bounded station-directory read exists for registered sources                                       | The default reader is disabled until a trusted provider connection and live permission are configured |
+| Area              | Current capability                                                                                                           | Boundary to keep visible                                                                                                       |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Authority         | Data Foundation owns source files, fixed versions, ingestion, quality, lineage, and data operations                          | Supabase owns people, sessions, organizations, projects, and membership                                                        |
+| Intake            | Authorized users and agents can register sources, upload, check, review, and publish fixed versions through the agent or API | The current Web workspace tracks ingestion by task ID; upload and registration checks do not establish scientific completeness |
+| Exploration       | One authorized query links catalog resources, parsed records, maps, relations, and statistics                                | Counts retain their data grain; rendered geometry and candidate relations need separate verification                           |
+| Access            | Project membership, source license, resource grants, and purpose are checked for each read or action                         | Web and AI/MCP resource purposes are independent                                                                               |
+| External metadata | A bounded station-directory read exists for registered sources                                                               | The default reader is disabled until a trusted provider connection and live permission are configured                          |
 
 Start with [the public data use guide](/en/development/wiser-data-guide/) for a human workflow or [the Data REST reference](/en/protocols/data-rest/) for callable operations. This page explains the authority, state, and implementation boundaries behind those tasks; the runtime registry and schemas remain authoritative for exact protocol fields.
 
