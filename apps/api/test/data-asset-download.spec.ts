@@ -42,7 +42,7 @@ afterEach(async () => {
 
 describe('governed version asset download', () => {
   function downloadApp(requestContext: PlatformRequestContext = context) {
-    const assetContentFetch = vi.fn(() =>
+    const assetContentFetch = vi.fn((_input: RequestInfo | URL, _init?: RequestInit) =>
       Promise.resolve(
         new Response('source bytes', {
           headers: { 'content-type': 'text/plain', 'content-length': '12' },
@@ -95,6 +95,114 @@ describe('governed version asset download', () => {
       internal: true,
     });
     expect(assetContentFetch).toHaveBeenCalledOnce();
+  });
+
+  it('answers HEAD from a bounded GET probe when storage signed only GET', async () => {
+    const { app, assetContentFetch } = downloadApp();
+    assetContentFetch.mockImplementationOnce((_input, init) => {
+      if (
+        init?.method !== 'GET' ||
+        new Headers(init.headers).get('range') !== 'bytes=0-0'
+      )
+        return Promise.resolve(new Response('signature mismatch', { status: 403 }));
+      return Promise.resolve(
+        new Response('s', {
+          status: 206,
+          headers: {
+            'content-type': 'text/plain',
+            'content-length': '1',
+            'content-range': 'bytes 0-0/12',
+            'accept-ranges': 'bytes',
+          },
+        }),
+      );
+    });
+    const response = await app.inject({
+      method: 'HEAD',
+      url: `/api/data/v1/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/assets/${ASSET_ID}/content`,
+      headers: {
+        authorization: 'Bearer verified-token',
+        'x-wiser-tenant-id': TENANT_ID,
+        'x-wiser-project-id': PROJECT_ID,
+        'x-wiser-purpose': 'operate',
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toBe('');
+    expect(response.headers['content-type']).toBe('text/plain');
+    expect(response.headers['content-length']).toBe('12');
+    expect(response.headers['content-range']).toBeUndefined();
+    expect(response.headers.location).toBeUndefined();
+    expect(assetContentFetch).toHaveBeenCalledOnce();
+  });
+
+  it('preserves an explicit partial HEAD range through the signed GET method', async () => {
+    const { app, assetContentFetch } = downloadApp();
+    assetContentFetch.mockImplementationOnce((_input, init) => {
+      if (
+        init?.method !== 'GET' ||
+        new Headers(init.headers).get('range') !== 'bytes=5-6'
+      )
+        return Promise.resolve(new Response('signature mismatch', { status: 403 }));
+      return Promise.resolve(
+        new Response('ce', {
+          status: 206,
+          headers: {
+            'content-type': 'text/plain',
+            'content-length': '2',
+            'content-range': 'bytes 5-6/12',
+          },
+        }),
+      );
+    });
+    const response = await app.inject({
+      method: 'HEAD',
+      url: `/api/data/v1/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/assets/${ASSET_ID}/content`,
+      headers: {
+        authorization: 'Bearer verified-token',
+        'x-wiser-tenant-id': TENANT_ID,
+        'x-wiser-project-id': PROJECT_ID,
+        'x-wiser-purpose': 'operate',
+        range: 'bytes=5-6',
+      },
+    });
+    expect(response.statusCode).toBe(206);
+    expect(response.body).toBe('');
+    expect(response.headers['content-range']).toBe('bytes 5-6/12');
+    expect(response.headers['content-length']).toBe('2');
+    expect(assetContentFetch).toHaveBeenCalledOnce();
+  });
+
+  it('reports an empty original with its actual type after an unsatisfiable probe', async () => {
+    const { app, assetContentFetch } = downloadApp();
+    assetContentFetch
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 416,
+          headers: { 'content-range': 'bytes */0', 'content-type': 'application/xml' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 200,
+          headers: { 'content-type': 'text/plain', 'content-length': '0' },
+        }),
+      );
+    const response = await app.inject({
+      method: 'HEAD',
+      url: `/api/data/v1/tenants/${TENANT_ID}/projects/${PROJECT_ID}/versions/${VERSION_ID}/assets/${ASSET_ID}/content`,
+      headers: {
+        authorization: 'Bearer verified-token',
+        'x-wiser-tenant-id': TENANT_ID,
+        'x-wiser-project-id': PROJECT_ID,
+        'x-wiser-purpose': 'operate',
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toBe('');
+    expect(response.headers['content-type']).toBe('text/plain');
+    expect(response.headers['content-length']).toBe('0');
+    expect(assetContentFetch).toHaveBeenCalledTimes(2);
   });
 
   it('proxies managed downloads on the original route without a storage redirect', async () => {
