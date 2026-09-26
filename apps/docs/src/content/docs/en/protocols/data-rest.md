@@ -15,8 +15,8 @@ checkPaths:
   - packages/data-contracts/src/capability/**
   - apps/api/src/data-foundation/**
   - skills/wiser-data-foundation/**
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: 46cd150396b22e873ae44fc87c869174ce3d7b19
+lastReviewedAt: 2026-09-26
+lastReviewedCommit: 26b4d35fec914ff5391b09f47c7cdee6439f70af
 ---
 
 ## Protocol boundary
@@ -331,7 +331,7 @@ Saved-view create 1.1 and open 1.2 add optional typed `presentation`: graph view
 | `data.explore.view.revoke` | `POST /explore/views/:viewId/revoke` |
 | `data.explore.export`      | `POST /explore/export`               |
 
-Exact source bytes are available through `GET/HEAD /api/data/v1/tenants/{tenantId}/projects/{projectId}/versions/{versionId}/assets/{assetId}/content`. The API repeats the existing asset/version authorization and audit, signs only the internal storage endpoint, and streams with a two-minute deadline and single-range support. It does not expose a signed URL. The session-verified Web endpoint `/api/data-foundation/assets/{versionId}/{assetId}` provides an explicitly named attachment or an allowlisted inert preview; it strips upstream cookies and uses no-store, nosniff and a sandbox content policy. File downloads are independent of bounded query-page exports. Resource pages open parsed content before governance metadata, preserve exact version/file identities, and offer paged tables, source documents, structured values and linked map/graph views. Nested structures mount lazily in bounded groups and source labels remain available alongside display labels.
+Exact source bytes are available through `GET/HEAD /api/data/v1/tenants/{tenantId}/projects/{projectId}/versions/{versionId}/assets/{assetId}/content`. The API repeats the existing asset/version authorization and audit, signs only the internal storage endpoint, and streams with a two-minute deadline and single-range support. Internal object URLs sign GET, so an external HEAD uses a one-byte GET probe and returns the original length and type without a body; an empty object uses a second zero-byte GET. The signed URL is never exposed. The session-verified Web endpoint `/api/data-foundation/assets/{versionId}/{assetId}` provides an explicitly named attachment or an allowlisted inert preview; it strips upstream cookies and uses no-store, nosniff and a sandbox content policy. File downloads are independent of bounded query-page exports. Resource pages open parsed content before governance metadata, preserve exact version/file identities, and offer paged tables, source documents, structured values and linked map/graph views. Nested structures mount lazily in bounded groups and source labels remain available alongside display labels.
 
 AMap vector display routes add `/geo/tiles/vector/amap/queries/{queryId}/{z}/{x}/{y}.pbf` and `/geo/tiles/vector/amap/versions/{versionId}/{z}/{x}/{y}.pbf` under `/api/data/v1`. They use the same scopes, immutable query membership, record/spatial predicates, expiry and per-request authorization as the original vector routes. Their tile coordinates are already shifted for the AMap display plane; clients must not shift them again. Original record coordinates, analytical bounds and downloads remain in the declared source/authority CRS.
 

@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: b74196676093df0080c5f515f6478952b64ebaac
+lastReviewedCommit: 26b4d35fec914ff5391b09f47c7cdee6439f70af
 ---
 
 ## 外部元数据读取边界
@@ -303,7 +303,7 @@ API 与 Worker 共用 `DATA_EMBEDDING_PROVIDER` 和明确的嵌入配置。本�
 
 知识图谱画布默认使用使用确定性初始位置、最多 160 次迭代的 ForceAtlas2 关系网络，由现有可取消 Worker 计算。键盘可操作的布局切换提供 Dagre 来源层级；只有层级布局在窄屏改变方向。两种布局均保留有界身份、选择、路径高亮和文字替代视图，独立资源的关联组在二维平面分区排布。初始概览每页显示八项资源，聚焦后的邻居页保留独立条数上限。关系文字与语义节点颜色辅助表达节点类型。
 
-原文件字节通过 `GET/HEAD /api/data/v1/tenants/{tenantId}/projects/{projectId}/versions/{versionId}/assets/{assetId}/content` 提供。API 重复既有资产／版本授权和审计，仅为内部存储入口签名，并以两分钟截止和单范围请求支持流式传输，不暴露签名地址。验证当前会话的 Web 入口 `/api/data-foundation/assets/{versionId}/{assetId}` 提供带文件名的附件或白名单内的惰性预览，剥离上游 Cookie，使用 no-store、nosniff 和沙箱内容策略。原文件下载与有界查询页导出相互独立。资源页先显示解析内容，再展示治理信息，保持精确版本与文件身份，提供分页表格、来源文档、结构化内容及地图／图谱联动。嵌套结构按有界分组懒加载，展示标签之外保留原始标签。
+原文件字节通过 `GET/HEAD /api/data/v1/tenants/{tenantId}/projects/{projectId}/versions/{versionId}/assets/{assetId}/content` 提供。API 重复既有资产／版本授权和审计，仅为内部存储入口签名，并以两分钟截止和单范围请求支持流式传输，内部对象地址按 GET 签名；外部 HEAD 使用单字节 GET 探测，不返回正文，仍返回原件长度和类型；空文件另以零字节 GET 确认。签名地址不外露。验证当前会话的 Web 入口 `/api/data-foundation/assets/{versionId}/{assetId}` 提供带文件名的附件或白名单内的惰性预览，剥离上游 Cookie，使用 no-store、nosniff 和沙箱内容策略。原文件下载与有界查询页导出相互独立。资源页先显示解析内容，再展示治理信息，保持精确版本与文件身份，提供分页表格、来源文档、结构化内容及地图／图谱联动。嵌套结构按有界分组懒加载，展示标签之外保留原始标签。
 
 地图仅在显示边界使用 GCJ-02。原始 WGS84/CGCS2000 坐标、空间查询和已保存视角保留权威坐标系。高德缩放级别等于 MapLibre 加一，方位角与俯仰角固定为零。GeoJSON 和授权矢量瓦片使用校准后的显示坐标。高德原生标识和版权信息始终可见、可点击。JS Key 属于公开客户端标识，安全密钥仅由经过认证的服务端代理使用。
 
