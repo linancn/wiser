@@ -763,6 +763,9 @@ it.each([
         screen.getByTestId('business-spatial-scene').dataset.anchorCount,
       ).toBe('1'),
     );
+    // The initial viewport fit is an effect after geometry is rendered.
+    // Wait for it before isolating the explicit locate action.
+    await waitFor(() => expect(probe.fit).toHaveBeenCalledOnce());
     probe.fit.mockClear();
     fireEvent.click(screen.getByRole('button', { name: '定位所选对象' }));
     expect(probe.jump).not.toHaveBeenCalled();
