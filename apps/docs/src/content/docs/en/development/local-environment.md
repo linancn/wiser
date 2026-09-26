@@ -200,3 +200,5 @@ target host; hosts can have different kernel protections. Updating Compose
 alone does not change an already-created container's command. Deployment must
 recreate only the affected service while preserving its data volume, then verify
 health and a permitted existing object before declaring recovery.
+
+Browser Data requests default to `WISER_DATA_PURPOSE=web-console`, matching the separately approved Web resource grants. Compose uses the same value. Check the effective value in generated case/runtime files before rollout; a legacy override such as `data-steward-console` will not consume `web-console` grants in a managed project. Explicit host overrides remain supported and require matching approval for that exact purpose. This is request context, not a permission grant or an automatic policy migration.
