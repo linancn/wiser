@@ -17,7 +17,7 @@ checkPaths:
   - .docpact/config.yaml
   - .github/workflows/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: a35fa4d69dab166ca64b5fa050575bea59e20a6d
+lastReviewedCommit: 8399164ae86afe6f87ff5c61159996b0dcf92f61
 ---
 
 # Contributing / 贡献指南
@@ -39,6 +39,8 @@ lastReviewedCommit: a35fa4d69dab166ca64b5fa050575bea59e20a6d
 测试应优先验证可观察行为，而不是内部调用次数。生产缺陷必须先由回归测试复现。确定性规则和隐藏 outcome 不得由 LLM mock 代替。
 
 Data Foundation CI 在隔离 PostgreSQL 中串行验证探索成员关系与资源范围。`data-resource-scope.integration.spec.ts` 必须启用 `WISER_DATA_PG_INTEGRATION=1`，覆盖受管 RLS、来源/证据绑定、撤回和旧查询/导出重放；普通单元阶段的跳过不能替代该通道。/ The isolated Data PostgreSQL lane runs resource and evidence-reference isolation with the integration flag enabled; a skipped unit test is not integration evidence.
+
+同一 CI 通道为现有 Neo4j 服务生成独立、已脱敏的测试密码，并设置 `DATA_TEST_NEO4J_URL`，让知识关系集成测试实际验证审核后投影、来源撤回、删除及中断后的重建。未设置该 URL 的 PostgreSQL 测试不会执行图投影断言，不能作为 Neo4j 验收。/ The same lane enables the real Neo4j branch of the knowledge relation integration test with isolated masked credentials. A PostgreSQL-only run without the Neo4j URL does not verify projection withdrawal or recovery.
 
 Docpact 需要本机安装 `docpact` 0.1.9（`cargo install docpact --version 0.1.9 --locked`），并把 `~/.cargo/bin` 加入 `PATH`。规则位于 `.docpact/config.yaml`；规则或 CI 变更还应运行 `pnpm docpact:validate`。Baseline 和 waiver 只用于明确的阶段性债务或临时例外，不作为常规跳过手段。
 
