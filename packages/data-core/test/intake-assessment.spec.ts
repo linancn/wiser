@@ -200,6 +200,40 @@ describe('version-bound intake assessment', () => {
       ).nextAction,
     ).toBe('RETRY_LATER');
   });
+  it.each(['PUBLIC', 'AUTHORIZED'] as const)(
+    'requires access after an authentication or permission failure despite declared %s access',
+    (access) => {
+      for (const failure of [
+        'LOGIN_REQUIRED',
+        'FORBIDDEN',
+        'APPLICATION_REQUIRED',
+      ] as const) {
+        const result = assessIntake(
+          { ...input, acquisition: 'FAILED', access, failure },
+          facts,
+        );
+        expect(result.nextAction).toBe('REQUEST_ACCESS');
+        expect(result.access).toBe(access);
+        expect(result.acquisition).toBe('FAILED');
+      }
+    },
+  );
+  it('keeps transient retries separate from access requests and reuses an already saved original', () => {
+    for (const failure of ['RATE_LIMITED', 'TEMPORARY'] as const) {
+      expect(
+        assessIntake(
+          { ...input, acquisition: 'FAILED', access: 'PUBLIC', failure },
+          facts,
+        ).nextAction,
+      ).toBe('RETRY_LATER');
+    }
+    expect(
+      assessIntake(
+        { ...input, access: 'AUTHORIZED', failure: 'FORBIDDEN' },
+        { ...facts, status: null, parserVersion: null },
+      ).nextAction,
+    ).toBe('PARSE_SAVED_ORIGINAL');
+  });
 });
 
 it('does not count mislabeled invalid HTML as an acquired dataset', () => {
