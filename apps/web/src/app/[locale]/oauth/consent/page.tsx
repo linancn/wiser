@@ -31,7 +31,9 @@ const securityLevels = [
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
-  referrer: 'no-referrer',
+  // Native same-origin POST forms need their Origin for the decision route's
+  // CSRF check. External callbacks must still receive no consent-page referrer.
+  referrer: 'same-origin',
 };
 
 function first(value: string | readonly string[] | undefined): string | null {

@@ -19,6 +19,7 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       WISER_AUTH_MODE: 'off',
+      WISER_PUBLIC_WEB_ORIGIN: 'http://127.0.0.1:3200',
       AGENT_EXCON_WEB_DATA_MODE: 'reference',
     },
     reuseExistingServer: !process.env.CI,
