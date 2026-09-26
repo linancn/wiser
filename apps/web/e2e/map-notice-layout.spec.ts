@@ -8,7 +8,9 @@ const css = readFileSync(
 const basemapCss = readFileSync(
   new URL('../src/components/amap-basemap.module.css', import.meta.url),
   'utf8',
-).replace(/:global\(([^)]+)\)/g, '$1');
+)
+  .replace(/:global\(([^)]+)\)/g, '$1')
+  .replace(/\.status\b/g, '.basemapStatus');
 
 for (const locale of ['zh-CN', 'en'] as const)
   for (const width of [390, 1440])
@@ -19,7 +21,7 @@ for (const locale of ['zh-CN', 'en'] as const)
         await page.setViewportSize({ width, height: 900 });
         const copy = getDictionary(locale).dataFoundation;
         await page.setContent(
-          `<style>${css}${basemapCss}</style><section style="position:relative"><div class="mapSummary"><button>${copy.explorer.fitMap}</button><button>${copy.explorer.mapLayers.filter}</button><span>${copy.explorer.shownFeatures} 1</span></div><div class="mapCanvas"><div class="status" role="status"><span>${failed ? copy.amap.failed : copy.amap.loading}</span>${failed ? `<button>${copy.amap.retry}</button>` : ''}</div></div></section>`,
+          `<style>${css}${basemapCss}</style><section style="position:relative"><div class="mapSummary"><button>${copy.explorer.fitMap}</button><button>${copy.explorer.mapLayers.filter}</button><span>${copy.explorer.shownFeatures} 1</span></div><div class="mapCanvas"><div class="basemapStatus" role="status"><span>${failed ? copy.amap.failed : copy.amap.loading}</span>${failed ? `<button>${copy.amap.retry}</button>` : ''}</div></div></section>`,
         );
         const status = await page.getByRole('status').boundingBox();
         expect(status).not.toBeNull();

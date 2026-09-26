@@ -143,7 +143,10 @@ test('map layer controls and geographic refinement preserve the original authori
   const original = await page
     .getByTestId('data-explorer')
     .getAttribute('data-query-id');
-  await map.getByRole('button', { name: '用当前范围筛选' }).click();
+  await page
+    .getByTestId('explorer-map-controls')
+    .getByRole('button', { name: '用当前范围筛选' })
+    .click();
   await expect(page.getByTestId('data-explorer')).not.toHaveAttribute(
     'data-query-id',
     original!,
@@ -417,7 +420,9 @@ test('record controls filter the real station across views and restore configura
     'data-ready',
     'true',
   );
-  await expect(page.getByTestId('explorer-map')).toContainText('可上图记录 1');
+  await expect(page.getByTestId('explorer-map-controls')).toContainText(
+    '可上图记录 1',
+  );
   await page.getByRole('tab', { name: '记录', exact: true }).click();
   await page.getByLabel('值', { exact: true }).fill('missing-station');
   await page.getByRole('button', { name: '应用到所有视图' }).click();
@@ -428,7 +433,9 @@ test('record controls filter the real station across views and restore configura
     page.getByTestId('explorer-records').getByRole('row'),
   ).toHaveCount(1);
   await page.getByRole('tab', { name: '地图', exact: true }).click();
-  await expect(page.getByTestId('explorer-map')).toContainText('可上图记录 0');
+  await expect(page.getByTestId('explorer-map-controls')).toContainText(
+    '可上图记录 0',
+  );
   await page.getByRole('tab', { name: '记录', exact: true }).click();
   await page.getByRole('button', { name: '清除记录条件' }).click();
   await expect(page.getByTestId('explorer-records')).toContainText(
