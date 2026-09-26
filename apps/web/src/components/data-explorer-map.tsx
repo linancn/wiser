@@ -231,6 +231,21 @@ export default function DataExplorerMap({
   );
   return (
     <>
+      <div className={styles.mapSummary} data-testid="explorer-map-controls">
+        <button onClick={fit}>{copy.fitMap}</button>
+        {onBounds && !business ? (
+          <button disabled={!ready || failed} onClick={filterArea}>
+            {copy.mapLayers.filter}
+          </button>
+        ) : null}
+        <span>
+          {copy.shownFeatures} {renderedCount.toLocaleString(locale)} ·{' '}
+          {copy.spatialRecords}{' '}
+          {(
+            result.spatial?.mercatorFeatureCount ?? result.totalCount
+          ).toLocaleString(locale)}
+        </span>
+      </div>
       <div
         className={styles.mapCanvas}
         data-testid="explorer-map"
@@ -469,21 +484,6 @@ export default function DataExplorerMap({
             </Source>
           </Map>
         )}
-        <div className={styles.mapSummary}>
-          <button onClick={fit}>{copy.fitMap}</button>
-          {onBounds && !business ? (
-            <button disabled={!ready || failed} onClick={filterArea}>
-              {copy.mapLayers.filter}
-            </button>
-          ) : null}
-          <span>
-            {copy.shownFeatures} {renderedCount.toLocaleString(locale)} ·{' '}
-            {copy.spatialRecords}{' '}
-            {(
-              result.spatial?.mercatorFeatureCount ?? result.totalCount
-            ).toLocaleString(locale)}
-          </span>
-        </div>
         {!failed ? (
           <details className={styles.mapLegend}>
             <summary>{copy.mapLayers.title}</summary>

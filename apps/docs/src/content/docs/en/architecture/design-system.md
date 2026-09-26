@@ -15,7 +15,7 @@ checkPaths:
   - apps/web/src/**
   - apps/docs/src/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: 34207d4c91235aa3d1eb01d679569320926f493b
+lastReviewedCommit: b3995391da1900739eb4299ac7b7e2092c39b297
 ---
 
 ## Design direction
@@ -179,6 +179,8 @@ Business exploration offers an optional path reader over the complete authorized
 Evidence links in relation details, query results, and connecting paths use the evidence source version when present, retaining the owning relation context. A cross-source reference changes where the source link goes; it must not relabel the external file as belonging to the current document.
 
 The exploration position note occupies normal flow below the map canvas. It does not overlay the layer legend or failure recovery controls. Bilingual narrow/wide layout checks cover expanded legends and retry states separately from map correctness.
+
+Exploration map actions and viewport counts occupy normal flow above the canvas. Basemap loading and failure notices remain inside the canvas, leaving Fit bounds and area filtering clickable while preserving basemap retry.
 
 Nested source fields choose label/value columns from the available cell width. Narrow cells stack the label above its value even on desktop, so opening table evidence does not reduce short source numbers to one character per line. Values and evidence selection remain unchanged; the surrounding table owns scrolling.
 

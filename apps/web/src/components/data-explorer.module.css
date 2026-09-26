@@ -56,15 +56,12 @@
   filter: invert(1);
 }
 .mapSummary {
-  position: absolute;
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  left: 12px;
-  top: 12px;
-  max-width: calc(100% - 70px);
-  padding: 4px;
+  min-width: 0;
+  padding: 8px 12px;
   border-radius: 8px;
   background: var(--surface-raised);
   box-shadow: var(--shadow-sm);

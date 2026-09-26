@@ -15,7 +15,7 @@ checkPaths:
   - apps/web/src/**
   - apps/docs/src/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: 34207d4c91235aa3d1eb01d679569320926f493b
+lastReviewedCommit: b3995391da1900739eb4299ac7b7e2092c39b297
 ---
 
 ## 设计方向
@@ -97,6 +97,8 @@ WISER 面向水系统专家、导调人员和数据治理人员。界面的单�
 Data 地图把这一合同落实为可访问控件，而不是只靠画布颜色：DataItem 版本链接使用 `aria-current`，地图表单同时固定 bbox、不可变 Version 与 EPSG:4326/4490 source CRS；PostGIS authority、STAC extent、vector MVT、raster 四图层都用带文字的 checkbox，缺失图层保持 disabled。控制区持续显示 selectedVersion 与 显示坐标转换及位置尚待独立核对状态，图层颜色从当前主题 token 读取，深浅色切换不改变权威层级。浏览器瓦片使用同源 Web 路径，服务器身份与内部 GIS origin 不出现在 UI。
 
 只有栅格的专业地图在缺少已验证要素和 STAC 范围时，按查询区域设置初始视角。缺失图层的提示仍然保留，不将视角位置展示为新增、已验证的空间要素。
+
+探索地图的范围操作与视口计数位于画布上方的正常文档流。底图加载和失败提示保留在画布内，避免遮挡“适合范围”和范围筛选，同时保留底图重试。
 
 ## 验收
 
