@@ -263,3 +263,5 @@ PostgreSQL资源授权读取器通过同一语句读取项目配置、固定资�
 现有资源管理HTTP模块增加 GET `/api/platform/v1/access/projects/:projectId/source-policy-requests` 与 POST `/api/platform/v1/access/source-policies/{propose,decide,withdraw,revoke}`。命令拒绝调用者自行提供的身份或审批字段，要求幂等键，响应禁止缓存；岗位仍由受控维护配置。这些接口不开放公众注册，不代替专业审核；浏览器办理流程另行验收。
 
 申请清单按不可变许可版本、撤销记录和有效期计算当前发布状态，并返回服务端核验时间。新版本替代旧发布记录，即使新版已撤销，也不重新启用旧许可；历史办理回执保持不变。独立审批岗位办理发布和驳回，来源登记管理岗位办理撤回和撤销，撤回还须为原申请人。网页按钮与这些服务端限制一致。
+
+授权页使用 `same-origin` Referrer Policy：原生同意／拒绝表单保留决策路由校验所需的同源 `Origin`，外部回调不接收授权页 Referer。整页使用 `no-referrer` 会使 Chromium 在这些表单上发送 `Origin: null`，从而阻断有效授权。缺失、null 和外站来源仍须拒绝；决策后的重定向响应继续使用 `no-referrer`。参考 Playwright 服务显式设置自身公开来源，覆盖两个语言、同意／拒绝和外站引用信息保护。
