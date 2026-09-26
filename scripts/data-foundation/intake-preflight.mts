@@ -62,13 +62,9 @@ export async function preflightFiles(sourcePath: string, profilePath: string) {
           reason: null,
         }
       : {}),
-    ...(html
-      ? {
-          mediaType: 'text/html',
-          status: 'INVALID' as const,
-          reason: 'LOGIN_OR_DESCRIPTION_PAGE',
-        }
-      : {}),
+    // Identifying HTML does not invalidate its parsed document content. The
+    // assessment separately prevents a saved page from proving dataset receipt.
+    ...(html ? { mediaType: 'text/html' } : {}),
   };
   return {
     kind: 'PROVIDER_SELF_CHECK' as const,

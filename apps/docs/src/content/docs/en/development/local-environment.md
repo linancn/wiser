@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: d0edb278f9d57dd0939d5c5d7cf7110ab5f135ab
+lastReviewedCommit: 86651aa7c44d64f6f7195eb148e5dc92d584c4b1
 ---
 
 ## Runtime modes
@@ -101,6 +101,20 @@ The CLI invite template uses `apps/web/public/auth-email-templates/invite.html`.
 See [Platform Auth](/en/architecture/unified-auth/), [Agent EXCON HTTP](/en/protocols/http/), and [MCP](/en/protocols/mcp/) for headers, scopes, and invocation order.
 
 ## Environment variables and secrets
+
+The optional provider-side intake self-check compares an original's streamed
+SHA-256 and byte size with a bounded saved parser profile:
+
+```bash
+pnpm exec tsx scripts/data-foundation/intake-preflight.mts /absolute/original /absolute/profile.json
+```
+
+It reuses parsing facts only for the exact file. Detecting HTML identifies the
+saved content type; it preserves a matching document profile and cannot prove
+that the described dataset was acquired. A changed file requires parsing its
+saved original again, and an invalid parser result stays invalid. The command
+neither downloads nor writes server data. Its output is a provider self-check;
+the receiving API independently verifies its saved source and analysis.
 
 Web and Docs use the public `WISER_AGENT_SETUP_URL` for their copyable Agent instructions; its local default is `http://127.0.0.1:3101/agent-setup/prompt.md`. Point it to the deployment's public API and supply it during production Docs builds. The API's `DATA_PUBLIC_API_ORIGIN` controls content-pinned Skill download URLs. See [Agent setup](/en/protocols/agent-setup/) for release verification and the separate authenticated connection.
 
