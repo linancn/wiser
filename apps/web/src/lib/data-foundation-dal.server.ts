@@ -205,7 +205,7 @@ export function loadDataFoundationWebConfig(
   );
   const tenantId = environment['WISER_DATA_TENANT_ID'];
   const projectId = environment['WISER_DATA_PROJECT_ID'];
-  const purpose = environment['WISER_DATA_PURPOSE'] ?? 'data-steward-console';
+  const purpose = environment['WISER_DATA_PURPOSE'] ?? 'web-console';
   const requestTimeoutMs = positiveInteger(
     environment['WISER_DATA_REQUEST_TIMEOUT_MS'],
     DEFAULT_TIMEOUT_MS,

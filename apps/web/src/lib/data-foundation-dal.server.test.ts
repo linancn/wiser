@@ -272,6 +272,29 @@ function geoFeature(featureId: string) {
 afterEach(() => vi.restoreAllMocks());
 
 describe('Data Foundation server-only HTTP DAL', () => {
+  it('uses the independently approved Web purpose for default browser reads', async () => {
+    const config = loadDataFoundationWebConfig({
+      NODE_ENV: 'test',
+      WISER_DATA_API_INTERNAL_URL: 'http://api:3001',
+      WISER_DATA_TENANT_ID: TENANT_ID,
+      WISER_DATA_PROJECT_ID: PROJECT_ID,
+    });
+    if (!config) throw new Error('Expected complete Web scope');
+    const fetch = vi.fn<typeof globalThis.fetch>(() =>
+      Promise.resolve(Response.json({ items: [] })),
+    );
+    const dal = createDataFoundationDal({
+      config,
+      createAuthClient: () => Promise.resolve(authClient([])),
+      fetch,
+      now: () => new Date('2026-08-22T00:00:00.000Z'),
+    });
+    await dal.catalog({ first: 25 });
+    expect(
+      new Headers(fetch.mock.calls[0]?.[1]?.headers).get('x-wiser-purpose'),
+    ).toBe('web-console');
+  });
+
   it('fails closed when the server API scope is incomplete', () => {
     expect(
       loadDataFoundationWebConfig({

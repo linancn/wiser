@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: 34207d4c91235aa3d1eb01d679569320926f493b
+lastReviewedCommit: 920090a1134ba46e53d0ff7acf16c5d1f23ffb2e
 ---
 
 ## External metadata reader boundary

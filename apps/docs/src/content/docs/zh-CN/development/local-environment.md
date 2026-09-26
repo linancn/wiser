@@ -195,3 +195,5 @@ WISER_TEST_SEAWEEDFS_RESTART=1 node --test scripts/data-foundation/seaweedfs-res
 不同宿主机的内核保护配置可能不同，本地通过不能代替获授权的目标部署
 及读回。修改 Compose 不会改变已创建容器的启动命令；部署时须保留数据卷，
 仅重建受影响服务，并检查健康状态及获准既有原件，才能确认恢复。
+
+网页 Data 请求默认使用 `WISER_DATA_PURPOSE=web-console`，与独立获批的网页资源授权一致，Compose 也使用相同值。上线前须核对生成的 case/runtime 文件；`data-steward-console` 等旧覆盖值无法在受管项目中使用 `web-console` 授权。仍支持受信任部署的显式覆盖，但该用途必须另有准确匹配的批准。这是请求上下文，不会赋予权限或自动迁移项目策略。
