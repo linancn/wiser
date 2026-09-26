@@ -272,10 +272,14 @@ jobs:
           WISER_DATA_PG_INTEGRATION: '1'
         run: pnpm test:postgres:data-api
 
-      - name: Verify immutable exploration membership and row isolation
+      - name: Verify resource isolation and immutable exploration membership
         env:
           WISER_DATA_PG_INTEGRATION: '1'
-        run: pnpm exec vitest run packages/data-infra/test/migrations/exploration-membership.spec.ts apps/api/test/exploration-project-membership.integration.spec.ts
+        run: >-
+          pnpm exec vitest run --no-file-parallelism
+          packages/data-infra/test/migrations/exploration-membership.spec.ts
+          apps/api/test/exploration-project-membership.integration.spec.ts
+          apps/api/test/data-resource-scope.integration.spec.ts
 
       - name: Verify Data Worker commit against real PostgreSQL
         run: pnpm test:postgres:data-worker
