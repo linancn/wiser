@@ -140,6 +140,7 @@ describe('human documentation entrypoints', () => {
 describe('developer handbook and current-state architecture', () => {
   const developmentPages = [
     'index.md',
+    'wiser-data-guide.md',
     'repository-structure.md',
     'local-environment.md',
     'backend.md',

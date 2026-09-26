@@ -92,7 +92,7 @@ export function PortalLanding({
 
       <section className={styles.workspaces} aria-labelledby="workspaces-title">
         <header className={styles.sectionHeading}>
-          <p className={styles.eyebrow}>02 / WORKSPACES</p>
+          <p className={styles.eyebrow}>{copy.workspacesKicker}</p>
           <div>
             <h2 id="workspaces-title">{copy.workspacesTitle}</h2>
             <p>{copy.workspacesLede}</p>
@@ -128,7 +128,7 @@ export function PortalLanding({
 
       <section className={styles.identity} aria-labelledby="identity-title">
         <div>
-          <p className={styles.eyebrow}>01 / IDENTITY</p>
+          <p className={styles.eyebrow}>{copy.identityKicker}</p>
           <h2 id="identity-title">{copy.identityTitle}</h2>
           <p>{copy.identityCopy}</p>
         </div>

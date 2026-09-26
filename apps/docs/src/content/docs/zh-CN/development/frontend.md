@@ -19,7 +19,7 @@ checkPaths:
   - apps/docs/src/**
   - apps/docs/e2e/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: b842f324611ce7d8dfacf4ab522c4adb604d2a71
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
 
 ## 两个前端应用
@@ -52,16 +52,16 @@ Portal、导航层级、产品命名和用户文案见[产品界面与内容设�
 
 ## 产品 Web 路由
 
-| 工作区                 | 路由                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------------------ |
-| WISER Portal           | `/[locale]`；允许匿名查看平台与系统介绍                                                                |
-| 统一身份               | `/[locale]/login`、`/[locale]/auth/login`、`/[locale]/auth/callback`、`/[locale]/auth/sign-out`        |
-| Agent OAuth 授权       | `/oauth/consent` 入口、`/[locale]/oauth/consent` 页面与 `decision` 表单路由                            |
-| Agent EXCON 场景       | `/[locale]/scenarios`、`/[locale]/scenarios/[scenarioId]`                                              |
-| Agent EXCON 运行       | `/[locale]/runs`、`/[locale]/runs/[runId]` 及 `collaboration`、`diagnostics`、`trace`、`replay` 子路由 |
-| Data Foundation 总览   | `/[locale]/data-foundation`                                                                            |
-| Data Foundation 工作区 | `catalog`、`ingestions`、`quality`、`search`、`knowledge`、`graph`、`geo`、`map`、`capabilities`       |
-| Data Foundation 详情   | `catalog/[dataItemId]`、`ingestions/[ingestionId]`、`operations/[operationId]`、`lineage/[dataItemId]` |
+| 工作区                 | 路由                                                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------- |
+| WISER Portal           | `/[locale]`；允许匿名查看平台与系统介绍                                                                     |
+| 统一身份               | `/[locale]/login`、`/[locale]/auth/login`、`/[locale]/auth/callback`、`/[locale]/auth/sign-out`             |
+| Agent OAuth 授权       | `/oauth/consent` 入口、`/[locale]/oauth/consent` 页面与 `decision` 表单路由                                 |
+| Agent EXCON 场景       | `/[locale]/scenarios`、`/[locale]/scenarios/[scenarioId]`                                                   |
+| Agent EXCON 运行       | `/[locale]/runs`、`/[locale]/runs/[runId]` 及 `collaboration`、`diagnostics`、`trace`、`replay` 子路由      |
+| Data Foundation 总览   | `/[locale]/data-foundation`                                                                                 |
+| Data Foundation 工作区 | `explore`、`catalog`、`ingestions`、`quality`、`search`、`knowledge`、`graph`、`geo`、`map`、`capabilities` |
+| Data Foundation 详情   | `catalog/[dataItemId]`、`ingestions/[ingestionId]`、`operations/[operationId]`、`lineage/[dataItemId]`      |
 
 Supabase 模式中，Portal、登录和 Auth transport 公开；其他 locale 产品路由要求 Proxy 取得已验证的 authenticated claims，否则保留目标地址并跳转到同语言登录页。`WISER_AUTH_MODE=off` 只保留本机 reference 预览。
 
@@ -82,7 +82,7 @@ Agent EXCON 页面支持两个明确的数据模式：
 | `reference` | 默认的确定性设计参考、构建和端到端测试数据                 | 页面明确标记为设计预览                                |
 | `live`      | Server Component 从 Agent EXCON v2 HTTP API 读取操作员投影 | 显示可操作的 unavailable/error 状态，绝不混入参考数据 |
 
-模式由服务端的 `AGENT_EXCON_WEB_DATA_MODE` 选择。`live` 请求使用 `cache: no-store`，API origin 和刚验证的当前用户 Access Token 只能留在服务端。Supabase 模式中 EXCON 与 Data 共用 Session verifier；静态 `WISER_WEB_OPERATOR_TOKEN` 仅用于本机 Auth-off 开发。现有 DTO 没有提供的信息应显示覆盖缺口或空态，不能从参考样例补齐，也不能在前端推断 Agent、Span、回放视角或裁决事实。
+模式由服务端的 `AGENT_EXCON_WEB_DATA_MODE` 选择。实时模式通过 `AGENT_EXCON_API_INTERNAL_URL` 配置仅限服务端使用的 API 地址；请求使用 `cache: no-store`，刚验证的当前用户 Access Token 也只留在服务端。Supabase 模式中 EXCON 与 Data 共用 Session verifier；静态 `WISER_WEB_OPERATOR_TOKEN` 仅用于本机 Auth-off 开发。现有 DTO 没有提供的信息应显示覆盖缺口或空态，不能从参考样例补齐，也不能在前端推断 Agent、Span、回放视角或裁决事实。参考模式的协作页标记为合成数据演练预览；已结束的实时运行仍显示普通的手动刷新状态。
 
 ## Data Foundation 数据与身份
 
@@ -154,11 +154,13 @@ Playwright 使用用户可感知的 role、label、可见文本或稳定 test id
 - 新路由、字典键、数据契约和权限失败都具有聚焦测试；截图用于视觉比较，不代替语义断言。
 - 相关架构、协议或开发文档同步更新，并通过 Docpact 和根目录 `pnpm verify`。
 
+## 当前数据基座工作区
+
 `/[locale]/data-foundation/explore` 工作区与 API 共享严格探索契约。紧凑查询栏、资源表格与选择详情面板将结果区置于页面上方。服务端渲染建立或恢复授权结果集，后续请求经过验证当前 Session 的 Next.js 入口 `/api/data-foundation/explore`。调整筛选建立新版本清单，分页沿用同一 `queryId`。数据名称支持键盘操作，详情显示精确版本、就绪状态及来源限制；未知分析数量不会显示为零。
 
-探索地图按需加载高德 JS API 2.0 官方底图，以及透明的 MapLibre GL JS 6.8.0、react-map-gl 8.1.3 业务图层。`apps/web/scripts/prepare-maplibre.mjs` 在开发和构建前，将匹配的 Worker 与共享模块复制到同源、带版本号的公共目录；生成文件不提交 Git。显示坐标与视角在高德边界同步，授权查询与原文件保留来源坐标。高德标识和版权信息始终可见。
+探索地图按需加载高德官方底图，以及透明的 MapLibre GL JS、react-map-gl 业务图层。`apps/web/scripts/prepare-maplibre.mjs` 在开发和构建前，将匹配的 Worker 与共享模块复制到同源、带版本号的公共目录；生成文件不提交 Git。显示坐标与视角在高德边界同步，授权查询与原文件保留来源坐标。高德标识和版权信息始终可见。
 
-探索工作区的统计页签按需加载 [Apache ECharts 6.1.0](https://github.com/apache/echarts/releases/tag/6.1.0)，使用 SVG 渲染和所需图表组件，展示服务端计算的完整授权查询就绪状态数量。选择图柱或对应的键盘可用文字按钮，将同一状态条件应用到资源探索。图表颜色遵循语义变量；卸载时释放尺寸/主题观察器和图表实例。资源数量不能表述为记录数或科学观测数。
+探索工作区的统计页签按需加载 Apache ECharts，使用 SVG 渲染和所需图表组件，展示服务端计算的完整授权查询就绪状态数量。选择图柱或对应的键盘可用文字按钮，将同一状态条件应用到资源探索。图表颜色遵循语义变量；卸载时释放尺寸/主题观察器和图表实例。资源数量不能表述为记录数或科学观测数。
 
 当响应表明授权或固定成员范围失效，或结果到达声明的过期时间时，探索工作区一并清除当前查询、选择、文件详情及已渲染视图；从后台或历史页面恢复时再次检查同一截止时间。旧查询的迟到失败不能清除新查询，被中止的请求也不能恢复旧数据。查询表单条件保留，便于重新获取当前有权查看的结果。临时地图故障卸载画布并提供重新加载，不展示上游诊断。
 

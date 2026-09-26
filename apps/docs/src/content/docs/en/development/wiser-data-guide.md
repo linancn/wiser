@@ -1,6 +1,6 @@
 ---
-title: WISER data review and black-odor water sample trial entry
-description: Public web links, trial ingestion limits, and AI/MCP OAuth integration status.
+title: Use WISER data and connect an agent
+description: Use an organization account to review public-service data, prepare trial ingestion, and understand external agent connection status.
 docType: runbook
 scope: repository
 status: active
@@ -17,53 +17,45 @@ checkPaths:
   - apps/mcp/src/**
   - supabase/config.toml
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: b842f324611ce7d8dfacf4ab522c4adb604d2a71
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
 
-## Web links
+## Current availability
 
-These five links use public HTTPS port `7100`. Sign in with your existing WISER account; the application shows only Projects and data that account may access.
+| Task                   | Current state                                                                                                        | Start here                                                                                  |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Browse data on the web | The public Portal is reachable; after sign-in, only permitted projects and data appear                               | [Open the WISER Portal](https://wiser.thuenv.tiangong.world:7100/en)                        |
+| Access an account      | Existing accounts can sign in with email and password; public self-registration is closed                            | Ask a project administrator for an account or project access                                |
+| Ingest data            | Authorized projects can start intake and review checks, approval, and publication progress                           | [View intake tasks](https://wiser.thuenv.tiangong.world:7100/en/data-foundation/ingestions) |
+| External AI/MCP        | The public OAuth/MCP protocol entrypoint is available; end-to-end acceptance with a personal client is still pending | Follow the connection steps below and verify project scope                                  |
 
-| Purpose                    | Web page                                                                                  |
-| -------------------------- | ----------------------------------------------------------------------------------------- |
-| WISER Portal               | [Open Portal](https://wiser.thuenv.tiangong.world:7100/en)                                |
-| Published data catalog     | [Browse catalog](https://wiser.thuenv.tiangong.world:7100/en/data-foundation/catalog)     |
-| Cross-source search        | [Search data](https://wiser.thuenv.tiangong.world:7100/en/data-foundation/search)         |
-| Explore and check evidence | [Explore data](https://wiser.thuenv.tiangong.world:7100/en/data-foundation/explore)       |
-| Trial ingestion operations | [View ingestions](https://wiser.thuenv.tiangong.world:7100/en/data-foundation/ingestions) |
+The web entrypoint, unauthenticated MCP challenge, and registration settings were checked on 2026-09-26. Earlier protocol and permission checks using synthetic ordinary accounts show that these paths can work. They do not replace acceptance with a real personal client or prove compatibility with every third-party client.
 
-For black-odor water data, confirm your organization and Project, then check source, version, license, security level, and quality state. Trial ingestion is limited to sources approved for your Project and account. Review the resulting operation and quality feedback. Upload or parsing does not publish a source or establish a validated scientific conclusion.
+## Find and check data
 
-## External AI/MCP connection
+1. [Sign in to the Portal](https://wiser.thuenv.tiangong.world:7100/en) with your existing organization account and confirm the current project.
+2. Search the [data catalog](https://wiser.thuenv.tiangong.world:7100/en/data-foundation/catalog) by name, or use [data exploration](https://wiser.thuenv.tiangong.world:7100/en/data-foundation/explore) to review records, maps, and related evidence together. [Data search](https://wiser.thuenv.tiangong.world:7100/en/data-foundation/search) helps find material across sources.
+3. Open the pinned version and check its original file, source, license, security level, quality-check scope, and usage limits. Parsed record counts are not independent observation counts; a visible map position is not proof of scientific position accuracy.
 
-**Personal-client end-to-end status: BLOCKED (2026-09-26; deferred by the user).** Public protocol and authorization checks passed with existing synthetic ordinary accounts, real Chromium and the official MCP TypeScript SDK 1.30.0. This does not replace personal-client acceptance or establish compatibility with every third-party client.
+If an expected project or resource is absent, confirm the selected project first, then ask a project administrator to check membership, source permission, and data grants. Do not use another person's account or client token to bypass scope.
 
-An MCP client supporting OAuth 2.1 authorization code and PKCE S256 connects in this order:
+## Trial ingestion of black-odor water material
 
-1. Configure Streamable HTTP MCP URL `https://mcp.wiser.thuenv.tiangong.world:7100/mcp`, not the old loopback address.
-2. Read protected resource metadata from the 401 `WWW-Authenticate` challenge, discover issuer `https://auth.wiser.thuenv.tiangong.world:7100/auth/v1`, and dynamically register the client's callback. The authorization request needs the exact `resource`, `redirect_uri`, and PKCE S256 challenge.
-3. Sign in with your existing personal WISER account in the browser. Review the client and callback host, then explicitly choose one eligible Project, query or ingestion mode, maximum data level, and a 15-minute or one-hour term before approving. You can also deny. Google, GitHub, and other social sign-in providers are not part of this flow.
-4. The client receives the authorization code, exchanges it at the public Auth token endpoint, and sends the OAuth Bearer token in the MCP request header. Do not place passwords, codes, or tokens in chat, Tool arguments, or logs.
-5. Open “AI/MCP connections” from the account menu to disconnect an owned connection and clear its saved client consent. After expiry or a resource-scope change, disconnect first, then restart authorization and explicitly consent in the original client. Discarding client tokens alone does not force this server to show consent again. Managed Projects require separately approved Web and AI/MCP resource purposes.
-6. Personal acceptance must still record the client name, selected Project and call outcomes, including allowed reads, denied cross-Project/unapproved operations, denial, expiry and revocation. Do not provide passwords, codes or tokens. If disconnection is partial, access has stopped; follow the page's retry action to clear saved consent.
+Trial intake is limited to material approved for the current project and an account with intake permission. Prepare original files, source descriptions, license basis, and file-integrity information. Then use the [agent setup guide](/en/protocols/agent-setup/) for a bounded intake task. Once you receive a task ID, use the [intake page](https://wiser.thuenv.tiangong.world:7100/en/data-foundation/ingestions) to review checks, human approval, and publication progress.
 
-### Independent checks completed
+Upload, parsing, source registration, and formal publication are different states. A trial intake is not a scientific conclusion or professional approval about black-odor water. Before using material, check its time, extent, units, completeness, and applicable scale.
 
-Public `:7100` checks on 2026-09-26 used existing synthetic ordinary identities, without administrative keys for business access:
+## Connect an external AI/MCP client
 
-| Check                           | Evidence obtained                                                                                                                                                                                                                                                                                                                |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Discovery and challenge         | Correct public MCP resource, HTTPS issuer and authorization/token endpoints; unauthenticated requests return 401 with the correct `WWW-Authenticate`.                                                                                                                                                                            |
-| Complete authorization protocol | Real password login, explicit Project approval and successful PKCE S256 code exchange; official SDK initialization, tool listing and actual data calls. Browser denial yields `access_denied` without a code.                                                                                                                    |
-| Resource and Project bounds     | Independently approved A and its two records are readable; unapproved B, another Project and unapproved export are denied. New B is excluded from the old delegation and becomes readable only after revoking prior consent and explicitly consenting again.                                                                     |
-| Revocation and expiry           | The same unexpired OAuth token loses A immediately after revocation. B stops being readable at actual wall-clock expiry. Original delegation expiry and original OAuth JWT expiry both yield 401; that delegation had already expired when the JWT expired, so these are not claimed as isolated proofs of each rejection cause. |
-| Existing features and entries   | An ordinary password session still reads the original 2,409-resource Project; cross-Project and revoked-session reads are denied. Thirty other container IDs, images and start times are unchanged. Existing HAProxy sections are preserved; 7770/7800 HTTPS responses match their configured backends.                          |
-| Routing and registration        | Auth still denies REST, Storage and gateway status routes. Registration settings and denial are recorded below.                                                                                                                                                                                                                  |
+The client must support the OAuth 2.1 authorization-code flow with PKCE S256. Set its Streamable HTTP MCP address to https://mcp.wiser.thuenv.tiangong.world:7100/mcp and let the client complete protected-resource discovery, callback registration, and sign-in. See [Data MCP](/en/protocols/data-mcp/) and [Unified Auth](/en/architecture/unified-auth/) for protocol fields.
 
-Changes and verification are recorded in [PR #87](https://github.com/linancn/wiser/pull/87), [PR #88](https://github.com/linancn/wiser/pull/88), [PR #89](https://github.com/linancn/wiser/pull/89) and [PR #90](https://github.com/linancn/wiser/pull/90). All six CI lanes and the aggregate gate passed for each change. The deployment maintainer retains JSON acceptance receipts and rollback configuration; authentication materials are not published in this guide. Test resources are explicitly synthetic permission fixtures, not scientific black-odor water data or professional review conclusions.
+1. Sign in with your existing WISER account in the browser. Check the requesting client and return address.
+2. Explicitly choose one eligible project, query or intake access, the highest data level, and a 15-minute or one-hour term. Deny the request if you do not agree.
+3. Return to the original client and make one small catalog read. Check the actual project, data, and action scope. Setup instructions or Skill installation alone do not grant access.
+4. Use “AI/MCP connections” in the account menu to disconnect a connection you own. After expiry or when you need more data, disconnect first, then restart from the original client and consent again. Managed projects require separate approval for web and AI/MCP purposes.
 
-### Self-registration status
+Do not paste passwords, authorization codes, or tokens into chat, tool arguments, or logs. If the page says previous consent was not fully cleared, follow its retry action. Data access has stopped, but check the state before reconnecting.
 
-Public self-registration was disabled on 2026-09-26 at the deployment owner's explicit request. Production `/auth/v1/settings` returns `disable_signup=true`; persistent GoTrue configuration sets `GOTRUE_DISABLE_SIGNUP=true`, matching `[auth] enable_signup=false` in the repository. A public `POST /auth/v1/signup` returned `422 signup_disabled`. The check contained no password and created no test account.
+## Personal-client acceptance
 
-Email/password sign-in for existing accounts remains enabled. Account, Session, Project and membership counts were unchanged. Contact the Project maintainer for an authorized account-provisioning or invitation workflow; account activation does not grant Project access automatically. These checks do not replace personal sign-in, email invitation or real MCP client end-to-end acceptance.
+End-to-end acceptance with the person's actual client has not yet been recorded. Record the client name, selected project, and non-secret call outcomes. At minimum, verify an allowed read, denial of another project and unapproved actions, explicit denial, expiry, and immediate loss of access after disconnection. Mark that client accepted only after these checks; synthetic-account verification does not substitute for them.

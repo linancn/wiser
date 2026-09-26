@@ -253,6 +253,7 @@ export function RunCollaboration({
           autoRefresh={liveMode && run.state === 'running'}
           className={styles.refreshBar}
           locale={locale}
+          referenceMode={!liveMode}
         />
 
         <section

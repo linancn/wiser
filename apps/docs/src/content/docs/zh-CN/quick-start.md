@@ -1,6 +1,6 @@
 ---
 title: 快速开始
-description: 从干净 checkout 安装依赖、启动完整 WISER、登录并确认默认服务与 Data 验证路径。
+description: 从干净的仓库启动隔离的本机 WISER，登录并确认数据与演练入口。
 docType: workflow
 scope: repository
 status: active
@@ -17,10 +17,10 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: 86651aa7c44d64f6f7195eb148e5dc92d584c4b1
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
 
-本页只覆盖第一次完整运行。日常的前后端单独启动、所有端口、环境变量和故障排查见[本机开发环境](/development/local-environment/)。
+本页适合第一次在自己的开发环境运行 WISER。现网资料查阅与外部客户端连接请使用[现网使用指南](/development/wiser-data-guide/)；单独启动应用、端口、配置和排障见[本机开发环境](/development/local-environment/)。
 
 ## 0. 前置条件
 
@@ -29,7 +29,7 @@ lastReviewedCommit: 86651aa7c44d64f6f7195eb148e5dc92d584c4b1
 - Docker Engine 29+ 与 Docker Compose 5+
 - Git
 
-确认 Docker 正常运行，并给 Docker Desktop 预留足够的 CPU、内存和磁盘；Data Foundation 会启动数据库、对象存储、检索、图谱和 GIS 服务。
+确认 Docker 正常运行，并预留足够的 CPU、内存和磁盘；完整栈包含数据库、文件存储、检索、图谱和地图服务。
 
 ## 1. 安装
 
@@ -40,7 +40,7 @@ corepack enable
 pnpm install --frozen-lockfile
 ```
 
-不要在子应用中创建第二份 lockfile。npm 包版本以各 `package.json` 和根 `pnpm-lock.yaml` 为准；容器版本以 `compose.yaml` 与 `infrastructure/data-foundation/versions.env` 为准。
+请在仓库根目录执行命令，不要在子应用中创建第二份锁文件。
 
 ## 2. 启动完整平台
 
@@ -48,16 +48,7 @@ pnpm install --frozen-lockfile
 pnpm stack:full:up
 ```
 
-该命令会：
-
-1. 启动本机 Supabase Auth、控制面 PostgreSQL、Storage 与 Studio；
-2. 创建被 Git 忽略的本机运行密钥；
-3. 构建并启动 API、Web、Agent EXCON v1 compatibility/testing Worker 和文档站；该 Worker 只提供兼容进程健康，不执行默认 v2 评价；
-4. 启动 Data Foundation profile，执行 checksum migration 与确定性 seed；
-5. 启动 Data Worker、MCP Gateway 和数据基础设施；
-6. 运行跨 Data REST、GraphQL、MCP 和登录 Web 的端到端 smoke。
-
-命令成功返回才表示默认完整栈可用。它不会读取或挂载 `~/.codex/auth.json`，也不会把 Supabase service-role key 注入应用。
+该命令启动本机登录服务、产品网页、API、文档站、智能体入口及数据基座所需服务，准备隔离的本机测试资料，并执行跨网页和协议的检查。**命令成功结束**后再打开下面的入口；若失败，按终端提示处理，并到[本机开发环境](/development/local-environment/)查找对应服务的日志和恢复步骤。
 
 ## 3. 打开入口
 
@@ -74,28 +65,26 @@ pnpm stack:full:up
 | MCP Streamable HTTP | `http://127.0.0.1:13004/mcp`                  |
 | Supabase Studio     | `http://127.0.0.1:56323`                      |
 
-这些是隔离的本机开发入口。现网 OAuth 部署工作树的 `supabase/config.toml` 已使用公网 HTTPS `:7100`；执行本机 fixture 流程应使用单独的本机工作树，并配置对应的本机 Auth URL 与回调。现网资料查阅与样本试录入见[用户指南](/development/wiser-data-guide/)。
+以上地址只用于本机开发。请勿把本机测试账户用于现网；现网入口和账户开通方式见[资料查阅指南](/development/wiser-data-guide/)。
 
-使用本机 fixture 账号登录：
+使用本机测试账号登录：
 
 ```text
 operator@agent-excon.test
 WiserLocalOperator-2026!
 ```
 
-这个账号和密码只能用于本机 seed，不能复制到共享或生产环境。
+这个账号只存在于本机测试资料中。登录后，选择数据基座或智能体演练场；可查看的项目和内容由当前账号权限决定。智能体通过 MCP 参加演练还需要单独的演练参与身份，详见 [Agent EXCON MCP](/protocols/mcp/)。
 
-完整栈会为 Data Foundation Web 与 Data MCP 注入真实的本机 Supabase 身份。共享 MCP 进程同时收到一个只够完成 EXCON client 配置的本机占位值；Data Tool 不使用它，但任何 `excon_*` 调用都会因没有绑定 RunAgent 的真实 credential 而鉴权失败。Agent EXCON Web 的 live 读模型使用已验证的当前 Supabase 用户 Session，并核查 operator 授权；身份缺失或无效时显式显示失败，不回退伪造数据。
+## 验证智能体演练
 
-## 验证 Agent EXCON 协议闭环
-
-使用隔离的本机 Lab 和四个确定性脚本 RunAgent 验证 EXCON HTTP/MCP、Receipt、Barrier、协作和评价，不产生模型用量：
+使用本机合成场景和脚本智能体，检查任务领取、协作、提交、评测与回放；此命令不调用付费模型：
 
 ```bash
 pnpm cookbook:scripted
 ```
 
-该命令验证 Agent EXCON 系统。EXCON MCP 从受信任的 Run 编组获得 RunAgent credential；live Web 使用具有 operator 授权的当前 Supabase 登录用户。
+成功后，可在演练运行页查看对应的团队协作和评测记录。协议字段与参与者身份的详细说明见 [Agent EXCON HTTP](/protocols/http/) 和 [MCP](/protocols/mcp/)。
 
 ## 4. 停止
 
@@ -111,11 +100,7 @@ pnpm stack:down
 pnpm data:down
 ```
 
-删除 Data Foundation 命名卷是破坏性操作，必须显式确认：
-
-```bash
-WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
-```
+如需清除本机数据，请先阅读[数据库开发](/development/databases/)中的重置范围和确认要求。
 
 ## 下一步
 

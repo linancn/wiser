@@ -82,6 +82,29 @@ describe('bilingual product contract', () => {
     );
   });
 
+  it('describes the primary workspaces as user tasks in both languages', () => {
+    for (const locale of LOCALES) {
+      const { portal, dataFoundation, runOverview, collaboration, trace } =
+        dictionaries[locale];
+      const entryCopy = stringsOf({
+        portal,
+        description: dataFoundation.description,
+        phase: dataFoundation.phase,
+        configuration: dataFoundation.failures.configuration,
+        attention: runOverview.attentionLede,
+        simulation: dictionaries[locale].common.simulationOnly,
+        collaborationPreview: collaboration.referencePreview,
+        collaborationRefresh: collaboration.referenceRefresh,
+        traceSummary: trace.summaryEyebrow,
+      }).join('\n');
+
+      expect(entryCopy).not.toMatch(
+        /平台契约|组合入口|参考投影|不补造|暂不支持浏览|platform contract|composition entry|reference projection|no synthetic spans|not available yet/i,
+      );
+      expect(portal.workspacesLede.length).toBeGreaterThan(20);
+    }
+  });
+
   it('keeps Yongding as the first case inside a multi-scenario catalog', () => {
     expect(scenarios[0]?.id).toBe('yongding-2023-ecological-replenishment');
     expect(scenarios[0]?.title['zh-CN']).toBe(

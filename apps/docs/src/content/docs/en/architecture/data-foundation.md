@@ -1,6 +1,6 @@
 ---
 title: Data Foundation domain architecture
-description: Data Foundation authority, ingestion slice, projections, protocols, and verification contract.
+description: Current Data Foundation capabilities, data authority, ingestion, exploration, access, and verification boundaries.
 docType: architecture
 scope: data-foundation
 status: active
@@ -20,8 +20,20 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: 26b4d35fec914ff5391b09f47c7cdee6439f70af
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
+
+## What runs today
+
+| Area              | Current capability                                                                                                           | Boundary to keep visible                                                                                                       |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Authority         | Data Foundation owns source files, fixed versions, ingestion, quality, lineage, and data operations                          | Supabase owns people, sessions, organizations, projects, and membership                                                        |
+| Intake            | Authorized users and agents can register sources, upload, check, review, and publish fixed versions through the agent or API | The current Web workspace tracks ingestion by task ID; upload and registration checks do not establish scientific completeness |
+| Exploration       | One authorized query links catalog resources, parsed records, maps, relations, and statistics                                | Counts retain their data grain; rendered geometry and candidate relations need separate verification                           |
+| Access            | Project membership, source license, resource grants, and purpose are checked for each read or action                         | Web and AI/MCP resource purposes are independent                                                                               |
+| External metadata | A bounded station-directory read exists for registered sources                                                               | The default reader is disabled until a trusted provider connection and live permission are configured                          |
+
+Start with [the public data use guide](/en/development/wiser-data-guide/) for a human workflow or [the Data REST reference](/en/protocols/data-rest/) for callable operations. This page explains the authority, state, and implementation boundaries behind those tasks; the runtime registry and schemas remain authoritative for exact protocol fields.
 
 ## External metadata reader boundary
 
@@ -40,7 +52,7 @@ The default Data runtime composes:
 ```text
 Supabase principal + Tenant/Project/Purpose
   → Fastify REST / schema-first GraphQL
-  → one DataCapabilityHandler (42 static executors)
+  → one DataCapabilityHandler backed by the active Registry
   → data-postgres RLS transaction / SeaweedFS S3
   → PostgreSQL durable job + Transactional Outbox
   → Data Worker
@@ -55,13 +67,13 @@ GeoServer, TiTiler, and Martin run as Compose-internal GIS services in the same 
 
 | Module                                      | Responsibility                                                                      |
 | ------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `@wiser/data-contracts`                     | Strict Zod DTOs, 42 Capabilities, four transport mappings                           |
+| `@wiser/data-contracts`                     | Strict Zod DTOs, Capability discovery, four transport mappings                      |
 | `@wiser/data-core`                          | Pure ingestion/Operation state, quality, security inheritance, publication gates    |
 | `@wiser/data-infra`                         | Checksum migration, PostgreSQL/S3, jobs/Outbox, projections, search, fake embedding |
 | `@wiser/data-worker`                        | Concrete ingestion Handler, Scheduler, projection consumer, health and metrics      |
-| `apps/api`                                  | Unified-auth REST/GraphQL composition and safe download redirects                   |
+| `apps/api`                                  | Unified-auth REST/GraphQL composition and governed asset delivery                   |
 | `apps/mcp` / `skills/wiser-data-foundation` | Agent adapters that use HTTP only                                                   |
-| `apps/web`                                  | Bilingual read-only governance workspace driven by a server-only DAL                |
+| `apps/web`                                  | Bilingual user workspace for authorized reads and governed actions                  |
 
 Dependency direction is `platform contracts <- data-contracts <- data-core <- application/infra <- apps`. Core imports no database, HTTP, filesystem, framework, clock, random source, or AI provider. Time, IDs, and effects enter through ports.
 
@@ -77,21 +89,9 @@ The local `data-steward` Role seed grants only the scopes needed by the demonstr
 
 ## Data model and independent migration history
 
-Data SQL never enters the Supabase migration history. `infrastructure/data-foundation/postgres/migrations` is canonical:
+Data SQL never enters the Supabase migration history. The checked-sum files in `infrastructure/data-foundation/postgres/migrations` are canonical. Read that directory for the complete, current sequence; the early migrations establish the authority model, RLS, job and publication lifecycles, and governed GIS. Later migrations extend exploration, evidence, resource scope, and relation integrity without replacing earlier history.
 
-| Migration                                    | Content                                                                                                                          |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `0001_bootstrap.sql`                         | pgcrypto, PostGIS, btree_gist, unaccent, eight business schemas, migration ledger                                                |
-| `0002_authority_model.sql`                   | catalog, asset, ingestion, quality, lineage, knowledge, Operation, security, Outbox model                                        |
-| `0003_security_jobs_events.sql`              | RLS, authorization session settings, append-only guards, job/event security                                                      |
-| `0004_job_lifecycle.sql`                     | claim/heartbeat/settle/fail/recover/cancel and atomic Operation/Outbox transitions                                               |
-| `0005_content_blob_model.sql`                | separate content and asset identity, backfill, immutable storage references                                                      |
-| `0006_content_lifecycle_constraints.sql`     | structural `QUARANTINED → FINGERPRINTED → RAW` lifecycle                                                                         |
-| `0007_version_publication_lifecycle.sql`     | the sole one-time `UNPUBLISHED → PUBLISHED` change with content fixed                                                            |
-| `0008_governed_gis_tiles.sql`                | one Martin-discoverable governed MVT function with five fixed scope parameters                                                   |
-| `0009_authority_state_transition_guards.sql` | legal Operation, Ingestion, Job, and Transform Plan transitions with immutable authority scope and exact row-version advancement |
-
-The TS7 runner sorts four-digit versions, runs each file transactionally under one session advisory lock, and records filename plus SHA-256. Missing, renamed, modified, or non-prefix applied history fails closed. pgSTAC uses official pyPgSTAC 0.9.12 migrations rather than pretending to be a PostgreSQL extension.
+The migration runner sorts four-digit versions, runs each file transactionally under one session advisory lock, and records filename plus SHA-256. Missing, renamed, modified, or non-prefix applied history fails closed. pgSTAC uses official pyPgSTAC 0.9.12 migrations rather than pretending to be a PostgreSQL extension.
 
 Business tables have `ENABLE` and `FORCE ROW LEVEL SECURITY`, plus a separate `schema_migrations` ledger. API and Worker use distinct non-superuser roles created by deployment provisioning; migrations do not grant runtime implicitly. Every transaction sets validated Tenant, Project, maximum security level, and policy version. Missing context returns no rows or fails.
 
@@ -107,7 +107,7 @@ Triggers reject invalid UPDATE/DELETE on Operation, Audit, Outbox, content, and 
 
 The SeaweedFS adapter forces path-style S3 and derives every key from validated Tenant/Project/Upload/Version UUIDs and lowercase SHA-256; callers cannot supply arbitrary paths. Upload is an unambiguous `PRESIGNED_PUT` or `MULTIPART` contract. Signed URLs live for 60–900 seconds. Completion HEAD-checks size, content type, and SHA-256 metadata.
 
-Content remains in quarantine first. Fingerprinting establishes `catalog.content_blob`; formal commit idempotently promotes it to content-addressed raw/version keys. An identical hash can be reused, while a different hash is never overwritten. Abort removes only a derived quarantine object. Version-asset reads reauthorize through Supabase and data-postgres RLS, append audit, then return a 60-second `303` signed redirect. STAC manifests never expose long-lived S3 credentials.
+Content remains in quarantine first. Fingerprinting establishes `catalog.content_blob`; formal commit idempotently promotes it to content-addressed raw/version keys. An identical hash can be reused, while a different hash is never overwritten. Abort removes only a derived quarantine object. Version-asset reads reauthorize through Supabase and data-postgres RLS and append audit. Managed resources stream bytes through the API with authority rechecks; legacy resources may still use a short-lived signed redirect. STAC manifests never expose long-lived S3 credentials.
 
 MCP Evidence/STAC Resources read through real HTTP authority boundaries. Evidence GET returns only an RLS-visible fragment attached to a committed version and appends `data.evidence.read` hash-only audit. STAC GET first binds collection to the current Tenant/Project, reads bounded data from one fixed internal STAC origin, strips upstream internals, then reconciles published/accepted version, Evidence, source hash, security, policy, and quality in data-postgres before appending `data.stac-item.read`. Both JSON responses are capped at 256 KiB, and a STAC asset can target only the short-lived governed download endpoint above.
 
@@ -185,7 +185,7 @@ The graph workspace lazily loads G6 5.1.1 on the client and renders only the bou
 
 The Data overview reads the scoped catalog total with `includeTotal=true`; its metric is independent of the preview page size. Catalog count and page use one short repeatable-read authority transaction. Counts describe registered objects, not analytically validated records.
 
-- REST: `/api/data/v1` discovery, 42 Capabilities, Operation SSE, Evidence/STAC Resources, authorized asset redirects, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects all 42 Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
+- REST: `/api/data/v1` discovery, Operation SSE, Evidence/STAC Resources, governed asset delivery, and the sole external OGC/STAC/vector/raster GIS proxy. Fastify OpenAPI projects active Capabilities directly from the Zod 4 Registry and documents GIS GETs with explicit safe route Schemas under the shared **WISER Platform API** title; see [Data REST](/en/protocols/data-rest/).
 - GraphQL: `POST /graphql`, registry-mapped schema-first fields sharing the same Handler; see [Data GraphQL](/en/protocols/data-graphql/).
 - MCP: stdio/stateless Streamable HTTP, registry-mapped Tools and governed Resources that call HTTP only; see [Data MCP](/en/protocols/data-mcp/).
 - Skill: `skills/wiser-data-foundation` documents discovery, query, upload, ingestion, Operation, and security workflows.
@@ -399,7 +399,7 @@ Spatial presentation uses the existing complete, bounded HTTP map query and exac
 
 ### Server-owned business membership storage
 
-Migration `0029_exploration_membership.sql` adds nullable `business_pins` to the existing owner-scoped exploration snapshot and saved-view tables. It stores only assertion UUID/version pairs, separately from the bounded client specification. Existing rows remain null and unchanged. The database rejects malformed, duplicate or oversized memberships (100,000 pairs / 8 MiB maximum); this is a storage guard, not a claimed query/render capacity. Forced RLS, immutable snapshot contents and saved-view one-way revocation continue to apply to the whole row. `packages/data-infra/test/migrations/exploration-membership.spec.ts` exercises 2,033 synthetic members, six scope boundaries and mutation rejection in a disposable database. This storage slice alone does not enable project-wide business queries, change existing capability limits, approve knowledge or load external observations. API use and client integration require separate verification.
+Migration `0029_exploration_membership.sql` adds nullable `business_pins` to the existing owner-scoped exploration snapshot and saved-view tables. It stores only assertion UUID/version pairs, separately from the bounded client specification. Existing rows remain null and unchanged. The database rejects malformed, duplicate or oversized memberships (100,000 pairs / 8 MiB maximum); this is a storage guard, not a claimed query/render capacity. Forced RLS, immutable snapshot contents and saved-view one-way revocation continue to apply to the whole row. `packages/data-infra/test/migrations/exploration-membership.spec.ts` exercises 2,033 synthetic members, six scope boundaries and mutation rejection in a disposable database. Project business queries now use these pinned members through the authorized API path described below. The storage ceiling does not approve knowledge, import external observations, or establish a supported rendering size.
 
 ### Project business scope (exploration 1.13)
 
@@ -435,7 +435,7 @@ The permission workspace reuses authorized exploration resources and whole-query
 
 ## Resource read scope foundation
 
-Append-only migration `0030_resource_read_scope.sql` intersects existing forced tenant/project/security RLS with exact immutable resource membership. A trusted API transaction may install `wiser.resource_scope` and `wiser.resource_action`; unconfigured transactions retain existing behavior. Managed metadata, versions, assets, evidence, analyses, records, geometry and lineage reads use authorized version membership before counts or pagination. Original access is independent; result export also requires content access. Discovery permission never exposes raw catalog metadata. Invalid, empty or expired managed scopes fail closed. Grants remain in the control database; no grant is copied to Data authority. SQL transaction adapters now install the compiled scope before catalog, exploration, evidence, geo authority, analysis, relation and command-source reads; original delivery uses its independent action and exploration export uses content/export intersection. Catalog and structured/geo cursors, plus command replay hashes, bind the authority fingerprint. A real executor/database test rejects old exploration manifests and export replay after scope loss. Principal-runtime activation, live projection integration, revocable download delivery and source-card discovery remain acceptance gates; no managed project is activated yet.
+Append-only migration `0030_resource_read_scope.sql` intersects existing forced tenant/project/security RLS with exact immutable resource membership. A trusted API transaction may install `wiser.resource_scope` and `wiser.resource_action`; unconfigured transactions retain existing behavior. Managed metadata, versions, assets, evidence, analyses, records, geometry and lineage reads use authorized version membership before counts or pagination. Original access is independent; result export also requires content access. Discovery permission never exposes raw catalog metadata. Invalid, empty or expired managed scopes fail closed. Grants remain in the control database; no grant is copied to Data authority. SQL transaction adapters now install the compiled scope before catalog, exploration, evidence, geo authority, analysis, relation and command-source reads; original delivery uses its independent action and exploration export uses content/export intersection. Catalog and structured/geo cursors, plus command replay hashes, bind the authority fingerprint. A real executor/database test rejects old exploration manifests and export replay after scope loss. Current runtime and delivery rechecks are described below. Managed mode still requires an explicit project decision and trusted source policies; the migration alone activates no project.
 
 Managed federated/semantic search sends at most 1000 trusted content-version pins to each backend; discovery-only scope returns no content hits. Search cursors include the resource fingerprint. Exact item/version/evidence references are checked against Data PostgreSQL RLS, publication and cross-source evidence visibility before releasing a page; missing authority adapters fail closed.
 

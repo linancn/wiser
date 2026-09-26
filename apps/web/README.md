@@ -15,60 +15,50 @@ checkPaths:
   - apps/api/src/platform/**
   - apps/api/src/v2-*
   - apps/api/src/data-foundation/**
-lastReviewedAt: 2026-09-26
-lastReviewedCommit: b842f324611ce7d8dfacf4ab522c4adb604d2a71
+lastReviewedAt: 2026-09-27
+lastReviewedCommit: 301a7f41ce7cecc2fcab8dc959a03aac7d346bd4
 ---
 
-# WISER Web / 产品前端
+# WISER Web / 产品界面
 
-`apps/web` is the shared Next.js product UI for the WISER Portal, Data Foundation, and Agent EXCON. Chinese is the default at the public `/zh-CN` Portal, English uses `/en`, and `/` redirects to `/zh-CN`. / `apps/web` 是 WISER Portal、数据基座与智能体演练场共用的 Next.js 产品界面；Portal 允许匿名了解平台，再引导统一登录。
+`apps/web` 是 WISER Portal、数据基座与智能体演练场共用的产品网页。中文是默认语言：`/` 跳转至 `/zh-CN`，英文入口为 `/en`。Portal 与登录页公开；业务工作区依照当前登录账号和项目权限展示。 / `apps/web` serves the Portal, Data Foundation, and Agent EXCON. Chinese is the default language, and business workspaces show only what the signed-in account may access.
 
-Portal 提供“让智能体接入 WISER”复制入口，使用公开的 `WISER_AGENT_SETUP_URL`；复制本身不授予访问权限。 / Portal provides “Connect your agent to WISER” through the public `WISER_AGENT_SETUP_URL`; copying grants no access. See [Agent setup](../docs/src/content/docs/en/protocols/agent-setup.md) / [智能体接入](../docs/src/content/docs/zh-CN/protocols/agent-setup.md).
+## 用户从哪里开始 / Where users start
 
-## Routes / 路由
+| 任务 / Task                                | 中文入口                 | English entry         |
+| ------------------------------------------ | ------------------------ | --------------------- |
+| 了解 WISER / Learn about WISER             | `/zh-CN`                 | `/en`                 |
+| 登录 / Sign in                             | `/zh-CN/login`           | `/en/login`           |
+| 查阅和管理项目访问 / Review project access | `/zh-CN/account/access`  | `/en/account/access`  |
+| 探索资料、记录与地图 / Explore data        | `/zh-CN/data-foundation` | `/en/data-foundation` |
+| 查看演练场景 / Browse scenarios            | `/zh-CN/scenarios`       | `/en/scenarios`       |
+| 查看演练运行 / Review exercise runs        | `/zh-CN/runs`            | `/en/runs`            |
 
-| System                  | Chinese entry            | English entry         |
-| ----------------------- | ------------------------ | --------------------- |
-| WISER Portal            | `/zh-CN`                 | `/en`                 |
-| Project access (opt-in) | `/zh-CN/account/access`  | `/en/account/access`  |
-| Platform sign-in        | `/zh-CN/login`           | `/en/login`           |
-| Data Foundation         | `/zh-CN/data-foundation` | `/en/data-foundation` |
-| Agent EXCON scenarios   | `/zh-CN/scenarios`       | `/en/scenarios`       |
-| Agent EXCON runs        | `/zh-CN/runs`            | `/en/runs`            |
+数据基座还有目录、接入任务、质量、检索、知识、关系、地图与数据操作工作区。演练运行可查看概览、协作、评测、追踪与回放。所有页面按当前项目和资料权限重新读取数据。 / Data Foundation also has catalog, intake, quality, search, knowledge, relation, map, and operation workspaces. A run offers overview, collaboration, evaluation, trace, and replay. Reads are scoped to the current project and permissions.
 
-Run pages include overview, collaboration, replay, trace, and diagnostics. Data routes include catalog, ingestion, quality, lineage, search, knowledge, graph, GIS/map, operations, and capabilities.
+Portal 提供“让智能体接入 WISER”的设置复制入口；复制指令本身不授予权限。参见[智能体接入](../docs/src/content/docs/zh-CN/protocols/agent-setup.md) / [Agent setup](../docs/src/content/docs/en/protocols/agent-setup.md)。
 
-## Identity and data boundary / 身份与数据边界
+## 运行 / Run
 
-- Supabase SSR handles login, cookie refresh, sign-out, and Data Foundation's authenticated server-only DAL.
-- In Supabase mode, Portal and Auth routes are public. Other localized product routes require verified authenticated claims and preserve the requested destination through sign-in. Auth-off is local preview only.
-- Data pages forward the current short-lived Session token from the Next.js server; browsers never receive database, S3, projection, or internal GIS credentials.
-- Agent EXCON `reference` mode renders the committed regression preview. `live` mode reads safe v2 operator DTOs with the verified current Supabase user session and `cache: no-store`.
-- The API rechecks EXCON operator authorization for that user. An invalid session never falls back to a service identity or reference data. Static operator tokens remain limited to local Auth-off development.
-
-## Run / 运行
-
-The application defaults to `http://127.0.0.1:3100` / 本机开发默认入口为 `http://127.0.0.1:3100`：
+从仓库根目录安装依赖，再启动网页： / Install dependencies from the repository root, then start the web app:
 
 ```bash
+pnpm install --frozen-lockfile
 pnpm --filter @wiser/web dev
 ```
 
-Standalone EXCON preview needs no API:
+默认地址为 `http://127.0.0.1:3100`。完整的登录和数据服务本机体验见[快速开始](../docs/src/content/docs/zh-CN/quick-start.md) / [Quick start](../docs/src/content/docs/en/quick-start.md)。单独预览演练界面及所需配置见[前端开发](../docs/src/content/docs/zh-CN/development/frontend.md) / [Frontend development](../docs/src/content/docs/en/development/frontend.md)。
 
-```bash
-AGENT_EXCON_WEB_DATA_MODE=reference pnpm --filter @wiser/web dev
-```
+## 实现边界 / Implementation boundary
 
-Use `pnpm stack:full:up` for unified Auth and Data Foundation integration. Configure the server-only `AGENT_EXCON_API_INTERNAL_URL` and sign in as an authorized operator when testing EXCON `live` mode with Supabase.
+- 登录、会话续期和退出由 Supabase Auth 处理。受保护的业务路由需要已验证会话；仅本机参考预览可关闭认证。 / Supabase Auth handles sign-in and sessions. Protected workspaces require a verified session; Auth-off is for local reference preview only.
+- 数据基座的浏览器请求经 Next.js 服务端转发至 HTTP API；资料原件、项目权限和查询结果由服务端重新核验。 / Data Foundation reads pass through the server-side HTTP API and are reauthorized for each scope.
+- 演练场既可在本机展示参考数据，也可读取已授权的运行状态；会话或权限失效时不会自动切换为参考数据。 / EXCON supports local reference data and authorized live reads. A lost live session never switches to reference data.
+- 可见文案统一维护在 `src/lib/i18n.ts` 的中英文词典。页面使用共享设计语义、键盘交互、响应式布局与明暗主题。 / Both locale dictionaries own visible copy; the shared design system covers interaction, responsive layout, and themes.
 
-The graph workspace uses G6 5.1.1 with client-only loading, bounded HTTP results and accessible entity selection. / 图谱工作区按需加载 G6 5.1.1，并以有界 HTTP 结果提供画布和键盘实体选择。
+具体身份与交互规则见[统一身份](../docs/src/content/docs/zh-CN/architecture/unified-auth.md)、[产品体验](../docs/src/content/docs/zh-CN/development/product-experience.md)及对应英文页。 / See the matching English [identity](../docs/src/content/docs/en/architecture/unified-auth.md) and [product experience](../docs/src/content/docs/en/development/product-experience.md) guides.
 
-## UI contract / 界面合同
-
-All visible copy lives in both locale dictionaries. The shared AppShell follows `Portal → system → workspace → domain object`; Data Foundation precedes Agent EXCON, whose Chinese product name is `智能体演练场`. Semantic tokens, persistent light/dark themes, keyboard focus, loading/empty/error states, and responsive behavior apply to every system. Ordinary UI never exposes HTTP status, environment variables, internal URLs, or operator recovery commands, and it never fabricates domain or telemetry data.
-
-## Verify / 验证
+## 验证 / Verify
 
 ```bash
 pnpm --filter @wiser/web test
@@ -77,86 +67,4 @@ pnpm --filter @wiser/web build
 pnpm --filter @wiser/web test:e2e
 ```
 
-See [Frontend development](../docs/src/content/docs/en/development/frontend.md) / [前端开发](../docs/src/content/docs/zh-CN/development/frontend.md) for route, Auth, i18n, theme, and Playwright details.
-
-Data exploration at `/[locale]/data-foundation/explore` uses shared `@wiser/data-contracts` schemas and the verified-session `/api/data-foundation/explore` endpoint for version-pinned resource queries, pagination and selection details. / 数据探索页面通过共享契约与当前登录会话完成固定版本查询、分页和详情选择。
-
-Data Explorer links resource, record and MapLibre views through one authorized query and shared selection. Dev/build automatically prepares matching MapLibre 6.11.2 worker modules. The checked-in Natural Earth overview basemap is public-domain and has a source/hash manifest in `public/basemap/source.json`. Business records and geometries continue to come exclusively from the authenticated HTTP API.
-
-Exploration invalidation and expiry clear all rendered views and selection together while retaining editable form conditions for retry. / 探索授权失效或到期时，各视图与选择一起清除，表单条件保留以便重新查询。
-
-Record conditions, sorting and column selection create one authorized file query reused by record, map and provenance views. / 记录条件、排序和列配置创建同一授权文件查询，并在记录、地图和溯源视图间复用。
-
-The statistics view aggregates a selected source through the shared HTTP query and offers keyboard group selection alongside its chart. / 统计视图通过共享 HTTP 查询聚合所选来源，图表配有键盘可用的分组选择。
-
-Graph exploration includes bounded neighbor pages and current-page directed path highlighting, with keyboard controls and shared identity. / 图谱探索支持有界邻居分页和当前页有向路径高亮，复用键盘控件与共享身份。
-
-Exploration groups specialist tools without breaking deep links, preserves aggregate units on narrow screens, and offers responsive graph layouts and viewport controls. / 数据探索集中专业工具入口并保留深链接，窄屏统计保留单位，图谱提供响应式布局及视角控件。
-
-Mobile exploration details use a non-modal bottom drawer with explicit focus return and persistent selection. / 手机探索详情使用非模态底部抽屉，明确返回键盘焦点并保留所选数据。
-
-Portal actions use verified sessions; catalog pages preserve name filters across bounded 25-row cursors in a compact scrollable table. / Portal 主操作使用已验证会话；目录以每页 25 行的紧凑可滚动表格呈现，游标翻页保留名称条件。
-
-Data discovery uses 25-row catalog/quality pages and 10-row search/knowledge pages. Search result names are loaded through authorized exact-version HTTP reads; source conditions and protocol details remain inspectable. Resource links preserve versions across shared exploration. Intake and Agent access reuse the public setup-copy action. The product review browser suite uses the admitted research case and checks both locales, themes and viewport sizes.
-
-Resource content includes a rule-scoped, non-destructive copy-verification and observation-deduplication workflow through `/api/data-foundation/reconciliation/{action}`. Candidates, conflicts, source references and human verification remain distinct. / 资源内容通过同源接口提供规则范围内的无损副本核验与业务去重，分别呈现候选、冲突、来源引用与人工确认。
-
-Resource content includes per-file acquisition and typed information checks through the existing authenticated HTTP DAL. Unknown fields remain explicit; reports do not approve publication or verify position.
-
-Resource content also provides source-bound business relations: separate review queues, exact original evidence, human review and an approved-only graph using the shared canvas. / 资料内容同时提供固定来源的业务关系，分别展示审核队列、原件依据及人工审核，并复用共享画布展示已通过关系。
-
-Relation exploration accepts up to thirty-one additional source-version links and an explicit pending-graph preview. Identity correspondences preserve source-local objects and authorized evidence; linked source pages retain map entry points. Structured source and entity filters use JSON-encoded HTTP query parameters. / 关联探索可添加最多三十一份其他来源版本，并显式打开待审图预览。身份对应保留各来源对象和有权限的证据，来源入口可继续查看地图。HTTP查询以JSON编码传递来源集合与对象筛选。
-
-Business-relation URLs restore source versions, review state, focus and bounded cumulative pages through session-verified reads. / 业务关系链接可恢复来源版本、审核状态、对象焦点及有界累计页，每次重新核对会话和访问权限。
-
-Relation lists and deep-link restoration share the contract limit of 63 additional sources. Oversized scopes are rejected rather than truncated. Restoration reauthorizes each source; the API page size remains 100 and cumulative browser loading remains bounded to ten pages.
-
-Business graph source links add a bounded, validated `returnRelations` context. Exploration preserves it across query URL replacement and tab changes; the return action reopens the original graph scope, review state and focus with fresh authorization. It is a navigation origin only. The authenticated regression `e2e-live/business-relation-navigation.case.ts` uses `WISER_WEB_LIVE_RELATION_URL` for a real loopback case and the existing live-test credentials. It tests source records, refresh, map/record tabs and return; it does not establish map alignment or scientific validity.
-
-业务图来源链接携带有界、经过校验的`returnRelations`返回信息。探索页改写查询地址、切换标签时保留该信息，返回时重新授权并恢复原图来源范围、审核状态与焦点；返回信息只代表导航来处。真实浏览器回归`e2e-live/business-relation-navigation.case.ts`使用`WISER_WEB_LIVE_RELATION_URL`指定本机真实案例，凭据沿用既有测试配置；覆盖来源记录、刷新、地图/记录切换及返回，不证明地图对齐或科学有效性。
-
-Business relations offer optional type and time filters over loaded, authorized rows. Either endpoint can match the selected kind; time-role selection is exact. Date comparisons overlap explicit source periods, preserving year/month precision as intervals. Missing, incomplete, reversed or unrecognized periods remain unknown; a point observation is used only with an explicit observation-time role. The unknown-period option applies to date filtering after type/role selection. The graph and evidence list use the same subset and show matched, loaded and total counts separately. Pagination retains nonmatching rows so clearing filters restores them. Strict URL filters survive refresh, history and source-exploration return; they neither query new data nor claim source maps/records use the same temporal conditions. Node labels include localized types without merging source identities.
-
-An observation node may declare `urn:wiser:record:<recordId>` as its external ID, scoped to its own source version or explicit referenced source. The Web offers exact record and spatial-content links only for a valid UUID binding on an OBSERVATION node; it never infers a record from a label or assigns geometry to a document. These links retain the applied graph return context and reauthorize/read all record identities on opening. The URI is a navigation declaration, not server attestation of scientific identity or professional approval; evidence and pending status remain visible. Ordinary external IDs are unchanged.
-
-观测记录节点可用`urn:wiser:record:<recordId>`声明平台记录标识，范围限定在自身来源版本或显式引用来源。网页只对OBSERVATION节点的合法UUID绑定提供精确记录与空间内容链接，不从名称猜记录，也不给文档虚设几何。链接保留原业务图返回状态，打开时重新鉴权并核对完整记录身份。此标识是导航声明，不代表服务端已认定科学身份或通过专业审核；证据和待审状态仍保留。其他外部标识不受影响。
-
-精确记录入口直接显示授权后的目标行，含非第一页记录；“浏览本文件记录”恢复同一查询下的文件分页。保存视图仍恢复原页。 / Exact-record entries show the authorized target even off page one; browsing resumes file pagination under the same query, while saved views retain their original page.
-
-Record inspection offers an on-demand reverse lookup of explicit record bindings through authorized, paged relation lists. It retains a valid case source scope and relationship filters, defaults to approved records without a case, and requires an explicit pending selection otherwise. Partial, empty and unavailable results are distinct; denial clears retained bindings. Opening a match focuses its source-bound business node, while the previous graph return action remains independent. Selecting a different record aborts and clears the previous lookup; matching never uses labels or invented geometry.
-
-记录检查区通过已授权的分页业务关系列表反查明确记录绑定，沿用有效案例来源和关系筛选。没有案例时默认仅查当前版本已通过关系，待审范围须明确选择。部分完成、无绑定和读取失败分别显示；拒绝访问时清空结果。点击匹配项进入来源限定的业务节点，原图返回入口独立保留。切换记录中止并清空此前查询，不按名称或虚构几何匹配。
-
-Business relation correction display preserves immutable history and same-review-queue boundaries; see [product rules](../docs/src/content/docs/en/development/product-experience.md). / 业务图更正显示保留不可变历史与同一审核队列边界，见[产品规则](../docs/src/content/docs/zh-CN/development/product-experience.md)。
-
-Business-scoped exploration renders the shared problem/evidence graph, with explicit observation-detail expansion and query-preserving evidence/table/map links. Saved entries retain the web-console purpose and reauthorize on reopening.
-
-Business object source captions use the current authorized relation set and preserve canonical referenced source/version identities. They add no metadata request or graph merge.
-
-The optional business path reader follows only loaded, authorized source-qualified identities, preserves original edge directions, and limits each inspected connection to eight edges without changing the shared query.
-
-Spatial-source disclosures on resources, records and version maps read the latest authorized report per original only when expanded. The shared assessment DAL keeps source identities fixed; scale warnings remain visible, while unknown or stale declarations never imply verified position or business suitability.
-
-Version maps provide display-only single-band ranges, missing-value codes, unit labels and legends; retry preserves the map camera and opacity. AMap non-WebGL fallback uses explained integer zoom on both map surfaces. / 版本地图提供仅影响显示的单波段范围、缺测码、单位标签和图例，重试保留视角与透明度；高德回退为非 WebGL 模式时，两个地图页面均提供整数缩放说明。
-
-### Business graph presentation
-
-Business problem graphs keep the full authorized relation set across five reading perspectives (panorama, source comparison, object neighborhood, evidence tracing and time) and planar, orthographic category-layer, or spatial-anchor presentation. Display settings and bounded camera coordinates are URL state; same-query record/map links retain them and the exact selected assertion. Source comparison places source categories and business content in separate columns; explicit one/two-step neighborhoods preserve each statement's original direction. The existing bounded path reader opens in the evidence perspective. Source/title grouping is a disclosed reading aid, with unknown classification retained; it never changes registration metadata, identity or knowledge approval. Temporal grouping uses only explicit observation/event roles on the object's own source assertions, preserving unknown and multiple periods.
-
-The business scene uses deterministic category positions and SVG projection; ordinary provenance and optional six-assertion reading retain G6. Layer titles occupy a separate caption gutter with connector lines. Continuous pointer/pinch/keyboard zoom changes the camera without recomputing positions or dropping edges. Labels appear progressively; selected nodes/edges and their evidence remain inspectable in a keyboard-accessible list. Hover previews direct connections; selection pins evidence and dims the full-network background. Crossing-edge hit testing offers the actual candidate assertions. Evidence includes original polarity, exact source version, table/paragraph locator, limitations, review state and preceding-assertion links.
-
-Spatial presentation uses the existing complete, bounded HTTP map query and exact data-item/version/record bindings. It keeps original point/line/area geometry, converts display coordinates through the existing map adapter, and retains unlocated knowledge separately with its original relations. Dashed connectors place document labels around a geometry's display center; neither labels nor their centers become new point features or business relations. Geometry lookup rejects changed scope, incomplete pagination and denied access. Map movement does not change the business question. Location precision and knowledge review remain separate. No source acquisition, parser rerun, migration or business-data write is performed by scene controls.
-
-Mixed business review queries display an explicit scope label while preserving each assertion’s actual status. Record-to-graph navigation retains the same authorized query; this UI never approves a pending relationship.
-
-The normal Data Foundation entry shares the server exploration loader and opens the authorized current project graph with approved and pending relationships distinguished. Explicit searches and saved topics retain their scope; overview diagnostics stream below the workspace and never substitute a demonstration case.
-
-## Project access verification / 项目访问验收
-
-The opt-in account workspace and its isolated real-session browser checks are documented in [Unified Auth](../docs/src/content/docs/en/architecture/unified-auth.md#project-access-workspace) / [统一身份](../docs/src/content/docs/zh-CN/architecture/unified-auth.md#项目访问工作区). It manages only the connected environment. Apply its migration and explicit role policy before enabling both API and Web; the UI never exposes Auth administrative credentials. / 后台只管理所连接环境，页面不能替代迁移和明确授权；邀请需另配服务端邮件与模板，审批通过后仍须显式执行授权；办理结果与当前有效权限分开显示。
-
-The normal account access workspace opens project resource coverage through verified-session HTTP reads, whole-query summaries and bounded resource pages. Selected project context is reauthorized by the API. / 正常账户权限工作区通过已验证会话读取所选项目资料覆盖，采用完整查询汇总和有界资源分页；项目上下文仍由API重新授权。
-
-Managed project managers can create fixed-version resource packages from authorized coverage and versioned presets in the same workspace. Saving definitions does not grant access. / 已启用资源管理的项目管理员可在同一工作区从获准清单创建固定版本资源包及权限预设；保存定义不等于授予权限。
-
-The signed-in account menu includes `/[locale]/account/agents` for owner-only MCP disconnection and prior OAuth consent reset; details and recovery semantics are in Unified Auth. / 已登录账户菜单提供 AI/MCP 连接管理，允许本人断开连接并清除旧同意记录；完整流程和部分失败恢复见统一身份文档。
+仓库交付前还须运行 `pnpm verify` 及 Docpact 检查；需要真实数据库或浏览器环境的检查见[测试与验证](../docs/src/content/docs/zh-CN/development/testing.md) / [Testing and verification](../docs/src/content/docs/en/development/testing.md)。

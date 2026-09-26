@@ -1,6 +1,6 @@
 ---
 title: 数据基座领域架构
-description: Data Foundation 的权威边界、入库纵切、投影、协议与验证合同。
+description: 数据基座当前的资料权威、接入、探索、访问权限及验证边界。
 docType: architecture
 scope: data-foundation
 status: active
@@ -20,8 +20,20 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: 26b4d35fec914ff5391b09f47c7cdee6439f70af
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
+
+## 当前可运行能力
+
+| 领域       | 当前能力                                                                    | 必须保留的边界                                                   |
+| ---------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 权威数据   | 数据基座管理原件、固定版本、接入、质量、血缘与数据操作                      | 人员、会话、组织、项目和成员资格由 Supabase 管理                 |
+| 数据接入   | 获准的用户和智能体通过智能体或 API 登记来源、上传、检查、审核并发布固定版本 | 当前网页工作区按任务编号查看进度；上传和登记检查不代表科学完整性 |
+| 数据探索   | 同一授权查询联动目录资料、解析记录、地图、关系和统计                        | 数量保留各自计数对象；位置和候选关系须另行核验                   |
+| 访问权限   | 每次读取或操作均核对项目成员资格、来源许可、资源授权和用途                  | 网页与 AI/MCP 的资料用途分别授权                                 |
+| 外部元数据 | 已登记来源可通过有界站点目录读取器查询                                      | 默认读取器未启用；真实供方连接及实时许可须由可信宿主配置         |
+
+面向使用者的操作见[现网资料指南](/development/wiser-data-guide/)，可调用操作见 [Data REST 协议](/protocols/data-rest/)。本页解释这些任务背后的权威、状态和实现边界；精确协议字段仍以运行时能力清单与 schema 为准。
 
 ## 外部元数据读取边界
 
@@ -40,7 +52,7 @@ Data Foundation 是与 Agent EXCON 平级的 WISER 业务系统。它拥有 Data
 ```text
 Supabase principal + Tenant/Project/Purpose
   → Fastify REST / schema-first GraphQL
-  → 同一 DataCapabilityHandler（42 项静态 executor）
+  → 由当前 Registry 驱动的 DataCapabilityHandler
   → data-postgres RLS transaction / SeaweedFS S3
   → PostgreSQL durable job + Transactional Outbox
   → Data Worker
@@ -55,13 +67,13 @@ GeoServer、TiTiler 和 Martin 作为 Compose-internal GIS 服务存在于同一
 
 | 模块                                        | 职责                                                                        |
 | ------------------------------------------- | --------------------------------------------------------------------------- |
-| `@wiser/data-contracts`                     | 严格 Zod DTO、42 项 Capability、四种 transport mapping                      |
+| `@wiser/data-contracts`                     | 严格 Zod DTO、Capability 发现及四种传输映射                                 |
 | `@wiser/data-core`                          | 纯确定性的入库/Operation 状态机、质量、安全继承和发布门禁                   |
 | `@wiser/data-infra`                         | checksum migration、PostgreSQL/S3、任务/Outbox、投影、检索和 fake embedding |
 | `@wiser/data-worker`                        | 具体入库 Handler、Scheduler、投影 consumer、健康与指标                      |
-| `apps/api`                                  | 统一身份后的 REST/GraphQL composition 与安全下载重定向                      |
+| `apps/api`                                  | 统一身份后的 REST/GraphQL 服务与受控原件交付                                |
 | `apps/mcp` / `skills/wiser-data-foundation` | 只经 HTTP 的 Agent 适配层                                                   |
-| `apps/web`                                  | server-only DAL 驱动的双语只读治理工作区                                    |
+| `apps/web`                                  | 支持授权读取与受控操作的双语工作区                                          |
 
 依赖固定为 `platform contracts <- data-contracts <- data-core <- application/infra <- apps`。Core 不导入数据库、HTTP、文件系统、框架、时钟、随机或 AI Provider；时钟、ID 与外部效果全部通过 Port 注入。
 
@@ -77,21 +89,9 @@ Registry 覆盖 catalog/version、query/search、knowledge/graph、geo、upload/
 
 ## 数据模型与独立迁移历史
 
-Data Foundation 不把 SQL 放进 Supabase migration。`infrastructure/data-foundation/postgres/migrations` 是唯一 canonical 历史：
+数据基座的 SQL 不进入 Supabase 迁移历史。`infrastructure/data-foundation/postgres/migrations` 中经过校验和核对的文件是唯一正式历史。完整的当前顺序以该目录为准：早期迁移建立权威模型、RLS、任务与发布生命周期及受控 GIS；后续迁移扩展探索、证据、资源范围和关系完整性，同时保留既有历史。
 
-| Migration                                    | 内容                                                                                             |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `0001_bootstrap.sql`                         | pgcrypto、PostGIS、btree_gist、unaccent、8 个业务 schema 与 migration ledger                     |
-| `0002_authority_model.sql`                   | 目录、资产、入库、质量、血缘、知识、Operation、安全、Outbox 主模型                               |
-| `0003_security_jobs_events.sql`              | RLS、授权 Session 参数、append-only guard、任务与事件安全                                        |
-| `0004_job_lifecycle.sql`                     | claim/heartbeat/settle/fail/recover/cancel 与 Operation/Outbox 原子转换                          |
-| `0005_content_blob_model.sql`                | 内容 blob 与资产身份分离、已存在数据回填、不可变存储引用                                         |
-| `0006_content_lifecycle_constraints.sql`     | `QUARANTINED → FINGERPRINTED → RAW` 结构约束                                                     |
-| `0007_version_publication_lifecycle.sql`     | 内容不可变前提下唯一允许一次 `UNPUBLISHED → PUBLISHED`                                           |
-| `0008_governed_gis_tiles.sql`                | Martin 可发现的单一受控 MVT function；五个 scope 参数固定且不创建第二套身份                      |
-| `0009_authority_state_transition_guards.sql` | Operation、Ingestion、Job 与 Transform Plan 的合法转换、权威 scope 不可变及精确 row-version 推进 |
-
-TS7 runner 按四位版本排序，在 session advisory lock 下逐文件事务执行，并记录文件名和 SHA-256。已执行文件缺失、改名、内容漂移或非前缀历史会失败关闭。pgSTAC 使用官方 pyPgSTAC 0.9.12 migration，不伪造成 PostgreSQL extension。
+迁移执行器按四位版本排序，在 session advisory lock 下逐文件事务执行，并记录文件名和 SHA-256。已执行文件缺失、改名、内容漂移或非前缀历史会失败关闭。pgSTAC 使用官方 pyPgSTAC 0.9.12 migration，不伪造成 PostgreSQL extension。
 
 业务表全部 `ENABLE` 且 `FORCE ROW LEVEL SECURITY`；另有独立 `schema_migrations` ledger。API 和 Worker 通过部署脚本创建的不同非超级用户 role 访问，migration 不隐式授予 runtime。每个事务必须设置并验证 Tenant、Project、最高安全等级和 policy version；缺任一上下文返回零行或失败。
 
@@ -107,7 +107,7 @@ Operation event、Audit event、Outbox、content/version 历史由 trigger 拒�
 
 SeaweedFS adapter 强制 path-style S3，并只从已验证的 Tenant/Project/Upload/Version UUID 与小写 SHA-256 派生 key。客户端不能提交任意对象路径。上传支持无歧义的 `PRESIGNED_PUT` 与 `MULTIPART`；签名 URL 只存活 60–900 秒。完成前 HEAD 必须同时匹配 size、content type 与 SHA-256 metadata。
 
-内容先停留在 `quarantine`。指纹后 `catalog.content_blob` 保存内容身份，正式提交把对象幂等提升到内容寻址的 raw/version key；相同 hash 可复用，不同 hash 永不覆盖。Abort 只能删除派生 quarantine 对象。API 读取版本资产时重新执行 Supabase 授权和 data-postgres RLS，追加 audit，再返回 60 秒 `303` signed redirect；STAC manifest 不直接暴露长期 S3 credential。
+内容先停留在 `quarantine`。指纹后 `catalog.content_blob` 保存内容身份，正式提交把对象幂等提升到内容寻址的 raw/version key；相同 hash 可复用，不同 hash 永不覆盖。Abort 只能删除派生 quarantine 对象。API 读取版本资产时重新核验 Supabase 身份和 data-postgres RLS，并记录审计。受管理资料通过 API 流式交付，途中持续复核权限；旧资料仍可能使用短期签名重定向。STAC 清单不暴露长期存储凭据。
 
 MCP Evidence/STAC Resource 通过真实 HTTP 权威边界读取。Evidence GET 只读取调用方 RLS 可见且关联已提交版本的 fragment，并追加 `data.evidence.read` hash-only audit。STAC GET 先把 collection 绑定到当前 Tenant/Project，再从固定内部 STAC origin 有界读取，剥离上游内部字段，并在 data-postgres 中复核已发布/已验收版本、Evidence、source hash、安全等级、policy 与质量；通过后追加 `data.stac-item.read`。两个 JSON 响应都不超过 256 KiB，STAC asset 只能指向上述短期授权下载入口。
 
@@ -185,7 +185,7 @@ Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、lease owner/expiry、heartbe
 
 数据总览使用 `includeTotal=true` 取得受授权的目录总数，指标不再取预览页大小。目录计数和当前页使用同一个短 repeatable-read 权威事务。该数量表示登记对象，不表示已经通过分析验证的记录。
 
-- REST：`/api/data/v1` 的 discovery、42 项 Capability、Operation SSE、Evidence/STAC Resource、授权资产重定向，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；42 个 Capability 的 Fastify OpenAPI 直接由 Zod 4 Registry 投影，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
+- REST：`/api/data/v1` 的能力发现、Operation SSE、Evidence/STAC Resource、受控原件交付，以及唯一外部 OGC/STAC/矢量/栅格 GIS 代理；Fastify OpenAPI 直接由 Zod 4 Registry 的当前能力生成，GIS GET 使用显式安全 route Schema，共享文档标题为 **WISER Platform API**；见 [Data REST](/protocols/data-rest/)。
 - GraphQL：`POST /graphql`，36 个 schema-first field 共用同一 Handler；见 [Data GraphQL](/protocols/data-graphql/)。
 - MCP：stdio/无状态 Streamable HTTP，36 个 Tool 与受控 Resource 都只调用 HTTP；见 [Data MCP](/protocols/data-mcp/)。
 - Skill：`skills/wiser-data-foundation` 定义发现、查询、上传、入库、Operation 与安全解释流程。
@@ -399,7 +399,7 @@ XML解析保留各节点的展开命名空间、同级序号路径、属性、�
 
 ### 服务端业务成员清单存储
 
-追加迁移`0029_exploration_membership.sql`在既有查询快照和保存视图中增加可空的`business_pins`，只保存断言UUID与版本对，与有大小限制的客户端条件分开。旧行继续为null，不回填或改写。数据库拒绝格式错误、重复或超限清单（最多100,000对／8 MiB）；这是存储保护上限，不是已验证的查询或绘图能力。整行强制RLS、快照不可改写及保存视图单向撤销约束同样覆盖新列。`packages/data-infra/test/migrations/exploration-membership.spec.ts`在独立合成库验证2,033个成员、六项作用域隔离及修改拒绝。本存储切片本身尚未启用项目全景查询，不修改既有协议上限，不批准知识或导入外部观测；API和网页接续另行验证。
+追加迁移`0029_exploration_membership.sql`在既有查询快照和保存视图中增加可空的`business_pins`，只保存断言UUID与版本对，与有大小限制的客户端条件分开。旧行继续为null，不回填或改写。数据库拒绝格式错误、重复或超限清单（最多100,000对／8 MiB）；这是存储保护上限，不是已验证的查询或绘图能力。整行强制RLS、快照不可改写及保存视图单向撤销约束同样覆盖新列。`packages/data-infra/test/migrations/exploration-membership.spec.ts`在独立合成库验证2,033个成员、六项作用域隔离及修改拒绝。当前项目业务查询已通过下述授权 API 路径使用这些固定成员；存储上限不批准知识、不导入外部观测，也不代表可绘制同等规模。
 
 ### 项目业务范围（探索1.13）
 
@@ -435,7 +435,7 @@ XML解析保留各节点的展开命名空间、同级序号路径、属性、�
 
 ## 资源读取范围基础
 
-追加迁移 `0030_resource_read_scope.sql` 在既有租户、项目和安全等级强制 RLS 上叠加固定资源版本范围。可信 API 事务可设置 `wiser.resource_scope` 与 `wiser.resource_action`；未配置的事务保留原有行为。受管模式下，目录、版本、资产、证据、分析、记录、显示几何及谱系在统计和分页前按获准版本筛选。原件读取独立控制，结果导出还须具备内容查看权限；来源发现权限不开放完整目录元数据。无效、空或过期的受管范围拒绝读取。授权仍由控制库负责，不复制到 Data 权威库。SQL 事务适配器已在目录、探索、证据、地图权威、分析、关系与命令来源读取前设置编译后的范围；原件使用独立动作，探索导出检查查看与导出的交集。目录及结构化/空间游标、命令重放哈希绑定授权指纹。实际执行器和数据库联验已确认失去范围后不能重放旧探索清单或导出。身份运行时启用、外部投影约束、请求期间重新授权、可撤销下载和来源卡片仍待完成验收，尚未启用任何受管项目。
+追加迁移 `0030_resource_read_scope.sql` 在既有租户、项目和安全等级强制 RLS 上叠加固定资源版本范围。可信 API 事务可设置 `wiser.resource_scope` 与 `wiser.resource_action`；未配置的事务保留原有行为。受管模式下，目录、版本、资产、证据、分析、记录、显示几何及谱系在统计和分页前按获准版本筛选。原件读取独立控制，结果导出还须具备内容查看权限；来源发现权限不开放完整目录元数据。无效、空或过期的受管范围拒绝读取。授权仍由控制库负责，不复制到 Data 权威库。SQL 事务适配器已在目录、探索、证据、地图权威、分析、关系与命令来源读取前设置编译后的范围；原件使用独立动作，探索导出检查查看与导出的交集。目录及结构化/空间游标、命令重放哈希绑定授权指纹。实际执行器和数据库联验已确认失去范围后不能重放旧探索清单或导出。当前运行时及响应交付时的复核见下文。受管模式仍需明确启用项目并提供可信来源许可；迁移本身不启用任何项目。
 
 受管项目的联合／语义检索向各后端传递最多1000个获准内容版本；仅有来源发现权限时不返回正文命中。搜索游标绑定资源权限指纹，结果发布前按资料、版本和证据的精确组合回查Data PostgreSQL行级权限、发布状态及跨来源依据可见性；缺少权威回验适配器时拒绝返回。
 

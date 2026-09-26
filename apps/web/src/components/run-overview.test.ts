@@ -25,7 +25,7 @@ describe('Run overview', () => {
     );
 
     expect(html).toContain('运行概览');
-    expect(html).toContain('裁决通过');
+    expect(html).toContain('评测通过');
     expect(html).toContain('遥测有缺口');
     expect(html).toContain('待办与风险');
     expect(html).toContain('data-testid="run-decision-spine"');
@@ -38,5 +38,33 @@ describe('Run overview', () => {
     expect(html).toContain(`/zh-CN/runs/${run.id}/replay`);
     expect(html).toContain(`/zh-CN/runs/${run.id}/collaboration`);
     expect(html).toContain('<strong>3</strong> 个专业工件已交接');
+  });
+
+  it('shows how many attention items are omitted and links to the full evaluation', () => {
+    const run = getRunById('run-yongding-spring-042');
+    const scenario = getScenarioById('yongding-2023-ecological-replenishment');
+    const finding = run?.diagnostics.findings[0];
+    if (run === undefined || scenario === undefined || finding === undefined)
+      throw new Error('fixture');
+
+    const html = renderToStaticMarkup(
+      createElement(RunOverview, {
+        interactions: getReferenceInteractions(run.id),
+        locale: 'zh-CN',
+        run: {
+          ...run,
+          diagnostics: {
+            ...run.diagnostics,
+            findings: [finding, finding, finding, finding],
+          },
+        },
+        scenario,
+      }),
+    );
+
+    expect(html.match(/data-testid="attention-item"/g)).toHaveLength(3);
+    expect(html).toContain('data-testid="attention-overflow"');
+    expect(html).toContain('另有 1 项待查看');
+    expect(html).toContain(`href="/zh-CN/runs/${run.id}/diagnostics"`);
   });
 });

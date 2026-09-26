@@ -1,6 +1,6 @@
 ---
 title: 多智能体导调与可观测性
-description: 场景管理、多 Agent Run、OTel 式 Trace 和当时视角回放的 v2 设计。
+description: 当前演练如何区分团队结果、协作记录、执行追踪与历史回放。
 docType: architecture
 scope: observability
 status: active
@@ -15,13 +15,15 @@ checkPaths:
   - apps/web/**
   - apps/telemetry-ingress/**
   - infrastructure/observability/**
-lastReviewedAt: 2026-09-15
-lastReviewedCommit: f9bc654295360ff2d97eb6dba31d54599b2f313f
+lastReviewedAt: 2026-09-27
+lastReviewedCommit: a2a4f4fd7c26b076ec62bcc1163900ff6486659f
 ---
+
+演练工作区回答不同问题：**总览**先呈现结果和待处理事项；**协作**说明成果如何发送与接收；**评测**给出按规则形成的结论；**追踪**和**回放**用于查明执行过程及当时各角色可见的信息。技术遥测缺失不会改变已记录的演练事件或评测结果。
 
 ## 一个 Run 是一次团队演练
 
-v2 把 `Scenario → ScenarioVersion → ExerciseRun → RunAgent` 作为主导航。每个新场景必须定义多个必需角色、并行 Task、汇流 Barrier 和团队提交，并由不同 RunAgent 实例占据必需角色；不能只给一个 Agent 添加多个标签。
+当前演练领域关系为 `Scenario → ScenarioVersion → ExerciseRun → RunAgent`。每个新场景必须定义多个必需角色、并行 Task、汇流 Barrier 和团队提交，并由不同 RunAgent 实例占据必需角色；不能只给一个 Agent 添加多个标签。
 
 Run 只管理阶段和虚拟时钟；评价与重做属于各自 Task。这样水情、水动力、生态目标和调度协调 Agent 可以同时工作。
 
@@ -37,8 +39,8 @@ Run 只管理阶段和虚拟时钟；评价与重做属于各自 Task。这样�
 
 智能体演练场的二级导航只保留“演练场景”和“演练运行”；它们位于 WISER 一级系统导航之下，不与数据基座或 Portal 混排。演练场景负责草稿、校验、发布、版本和团队契约；演练运行默认只读，每个 Run 再分为“总览 / 协作 / 评测 / 追踪 / 回放”五个对象内工作区。
 
-- **总览**先回答权威结果、最高风险和下一步，只展示前三项关注、团队态势、最近事件与流域决策脊柱。
-- **协作**以汇流账本呈现 request/response、ArtifactVersion handoff 和逐收件人 Receipt 状态；不把 acknowledgement 描述成已读或同意。
+- **总览**先回答权威结果、最高风险和下一步；最多展示三项关注，并注明剩余项数及完整评测入口，随后呈现团队态势、最近事件与流域决策脊柱。
+- **协作**以汇流账本呈现 request/response、ArtifactVersion handoff 和逐收件人 Receipt 状态。参考内容明确标记为合成数据演练预览；不把 acknowledgement 描述成已读或同意。
 - **评测**核对权威 Event、Barrier 与 evaluator verdict，并把 OpenTelemetry 覆盖缺口作为诊断信号，不让遥测替代裁决。
 - **Trace**使用 wall clock 瀑布、Agent 泳道和 Span Inspector 定位执行问题；窄屏转换为可扫读的事件流。
 - **回放**按 `run_seq` 和当时视角重建收据、事件与可见证据，技术遥测只作为 best-effort 叠加。
@@ -79,7 +81,7 @@ Trace/Log 作为单独的 `bestEffortTelemetryOverlay` 按权限叠加，明确�
 
 单 Agent 视角来自不可变 issuance `AgentViewReceipt` 和 append-only acknowledgement；两者各有自己的 `run_seq`，因此可在任意 cursor 严格判断当时状态。`eligible` 由 disclosure grant 计算而不是一种 Receipt；未拉取的 Inject 不能被描述为该 Agent 已知。
 
-## 推荐观测栈
+## 遥测部署路径
 
 可选 Compose profile 使用：
 

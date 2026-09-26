@@ -16,10 +16,12 @@ export function RunLiveRefresh({
   autoRefresh,
   className,
   locale,
+  referenceMode,
 }: {
   readonly autoRefresh: boolean;
   readonly className?: string;
   readonly locale: Locale;
+  readonly referenceMode: boolean;
 }) {
   const router = useRouter();
   const copy = getDictionary(locale).collaboration;
@@ -80,6 +82,7 @@ export function RunLiveRefresh({
   return (
     <div className={className} aria-busy={refreshing}>
       <span data-testid="collaboration-refresh-status" aria-live="polite">
+        {referenceMode ? <strong>{copy.referencePreview} · </strong> : null}
         {autoRefresh ? copy.autoRefresh : copy.referenceRefresh}
         {formattedTime === undefined
           ? ''

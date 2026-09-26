@@ -289,6 +289,9 @@ test('separates scenario management from active multi-agent runs', async ({
   page,
 }) => {
   await page.goto('/zh-CN/scenarios');
+  await expect(page.getByTestId('scenario-card').first()).toContainText(
+    '仅供演练 · 合成数据',
+  );
   await page
     .getByTestId('scenario-card')
     .filter({ hasText: '永定河联合调度' })
@@ -297,7 +300,7 @@ test('separates scenario management from active multi-agent runs', async ({
 
   await expect(page.getByRole('heading', { name: '场景配置' })).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: '角色与协作契约' }),
+    page.getByRole('heading', { name: '角色与协作要求' }),
   ).toBeVisible();
   await expect(page.getByTestId('scenario-contract-summary')).toContainText(
     '4 个必需角色',
@@ -315,7 +318,7 @@ test('opens a human-first Run overview before technical drill-down', async ({
   await page.goto('/zh-CN/runs/run-yongding-spring-042');
 
   await expect(page.getByRole('heading', { name: '运行概览' })).toBeVisible();
-  await expect(page.getByText('裁决通过', { exact: true })).toBeVisible();
+  await expect(page.getByText('评测通过', { exact: true })).toBeVisible();
   await expect(page.getByText('遥测有缺口', { exact: true })).toBeVisible();
   await expect(page.getByText('待办与风险', { exact: true })).toBeVisible();
   await expect(page.getByTestId('run-decision-spine')).toBeVisible();
@@ -387,7 +390,7 @@ test('shows causal agent exchanges and per-recipient delivery without claiming t
   const refreshButton = page.getByRole('button', { name: '刷新协作状态' });
   await expect(refreshButton).toBeVisible();
   await expect(page.getByTestId('collaboration-refresh-status')).toContainText(
-    '参考投影',
+    '演练预览 · 合成数据',
   );
   await refreshButton.click();
   await expect(refreshButton).toBeEnabled();
