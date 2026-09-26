@@ -289,3 +289,5 @@ Data API 的 PostgreSQL 集成命令依次运行各测试文件。临时角色�
 ### 显式来源案例浏览器测试
 
 三个固定版本的业务关系/记录导航回归使用已接纳的本机来源数据，包括 TCI 波段和独立核对的观测关系数。运行 `pnpm --filter @wiser/web test:e2e:data-case` 时，提供 `WISER_WEB_LIVE_BASE_URL`、既有 live 凭据、`WISER_WEB_LIVE_RELATION_URL`、`WISER_WEB_LIVE_RECORD_URL` 和 `WISER_WEB_LIVE_OBSERVATION_COUNT`。关系 URL 必须指向固定目录版本与关系视图，记录 URL 必须携带固定记录焦点；缺少或无效的案例输入会明确失败。`e2e-live/*.case.ts` 保留全部断言，由 `playwright.case.config.ts` 收集，不作为可移植的 CI fixture。`test:e2e:data-live` 继续对 CI smoke 环境收集既有全部 `*.spec.ts` 套件。测试发现回归只使用合成输入调用 Playwright `--list`，不能算作真实案例浏览器运行。
+
+Supabase CI 通道在结构检查后，串行运行真实智能体连接、受管 MCP 同意、资源权威和资源批次集成套件。`WISER_AGENT_TEST_DATABASE_URL` 和 `WISER_RESOURCE_TEST_DATABASE_URL` 均须指向已播种的隔离测试控制库。它们核验真实 PostgreSQL 授权、同意范围上限、撤权、按用途独立审批和审计失败回滚；未设置变量而跳过测试不算验收。不得指向共享部署。本人浏览器／客户端与获许可外部供方仍是独立的目标环境验收。

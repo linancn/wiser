@@ -156,6 +156,17 @@ jobs:
       - name: Verify migrations, pgTAP, lint, and advisors
         run: pnpm supabase:verify
 
+      - name: Verify live OAuth and managed resource authorization
+        env:
+          WISER_AGENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:56322/postgres
+          WISER_RESOURCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:56322/postgres
+        run: >-
+          pnpm --filter @wiser/api exec vitest run --config vitest.config.ts --no-file-parallelism
+          test/platform-agent-connections.integration.spec.ts
+          test/platform-agent-resource-consent.integration.spec.ts
+          test/platform-resource-authority.integration.spec.ts
+          test/platform-resource-batches.integration.spec.ts
+
       - name: Verify durable Agent EXCON journal against real PostgreSQL
         env:
           EXCON_JOURNAL_TEST_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:56322/postgres
