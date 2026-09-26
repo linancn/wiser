@@ -20,7 +20,7 @@ checkPaths:
   - apps/web/src/app/*/data-foundation/**
   - infrastructure/data-foundation/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: 920090a1134ba46e53d0ff7acf16c5d1f23ffb2e
+lastReviewedCommit: b74196676093df0080c5f515f6478952b64ebaac
 ---
 
 ## External metadata reader boundary
@@ -334,6 +334,8 @@ Opening a pinned Version map without a bbox now authorizes that exact DataItem/V
 `data.assessment.create/get/list` records append-only, version/asset/hash-bound checks in `service.intake_assessment`. The server reuses the latest completed analysis for the exact saved RAW asset; it does not download, parse or trust a provider self-check verdict. Rule `wiser.intake.v1` checks declared source/authorization, field bindings, units, time meaning and source locators by material type. An unknown unit or unverified CRS limits its corresponding use while retaining the original. `CHECKS_PASSED` means the named information checks passed, never scientific suitability, publication approval or independent position verification. Model suggestions are not admitted as deterministic checks.
 
 Availability observations identify the dataset, description page, downloaded file or query interface separately. Entry/access/coverage declarations retain their evidence and must not be inherited by related objects. Saved HTML cannot establish dataset acquisition; samples remain partial even when parsing is complete. Reported remote queries remain explicitly unverified. Existing versions remain unchecked until a report exists; no publication or quality fields are rewritten. Spatial method, reference scale, time meaning and limitations remain source-backed declarations, with position always unchecked in this workflow.
+
+When acquisition fails because login, permission or an application is required, the next action requests access even if the source was previously declared public or authorized. This preserves the recorded declaration without treating it as current permission. Rate limits and temporary failures remain retryable; an already saved original remains eligible for reuse through the existing authorization boundary.
 
 Writes use existing command idempotency, audit and Outbox; reads and retries reauthorize the original Version and asset. Reports are shared only inside their authorized project/security/policy scope. The list is bounded to 100, uses an opaque report cursor, and does not claim inventory coverage or a total independent dataset count. Corrections append another report. Disable the new entrypoints to roll back behavior; retain evidence and unchanged originals.
 

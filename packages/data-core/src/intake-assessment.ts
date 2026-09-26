@@ -118,11 +118,17 @@ export function assessIntake(
     acquisition = 'PARTIAL_ACQUIRED';
   const saved =
     acquisition === 'ORIGINAL_ACQUIRED' || acquisition === 'PARTIAL_ACQUIRED';
+  const accessFailed =
+    acquisition === 'FAILED' &&
+    ['LOGIN_REQUIRED', 'FORBIDDEN', 'APPLICATION_REQUIRED'].includes(
+      input.failure ?? '',
+    );
   const nextAction =
     !saved &&
-    ['APPLICATION_REQUIRED', 'LOGIN_REQUIRED', 'RESTRICTED'].includes(
-      input.access,
-    )
+    (accessFailed ||
+      ['APPLICATION_REQUIRED', 'LOGIN_REQUIRED', 'RESTRICTED'].includes(
+        input.access,
+      ))
       ? 'REQUEST_ACCESS'
       : acquisition === 'FAILED' &&
           ['RATE_LIMITED', 'TEMPORARY'].includes(input.failure ?? '')
