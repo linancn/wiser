@@ -67,6 +67,12 @@ export async function CurrentUserControl({
           <p>{viewer.email ?? dictionary.auth.signedIn}</p>
           <Link
             className={styles.authAction}
+            href={`/${locale}/account/agents`}
+          >
+            {dictionary.auth.agentConnections.title}
+          </Link>
+          <Link
+            className={styles.authAction}
             href={`/${locale}/account/access`}
           >
             {dictionary.projectAccess.title}
@@ -101,6 +107,9 @@ export async function CurrentUserControl({
       </span>
       <Link className={styles.authAction} href={`/${locale}/account/password`}>
         {dictionary.auth.ownPassword.title}
+      </Link>
+      <Link className={styles.authAction} href={`/${locale}/account/agents`}>
+        {dictionary.auth.agentConnections.title}
       </Link>
       <form action={`/${locale}/auth/sign-out`} method="post">
         <button className={styles.authAction} type="submit">

@@ -19,7 +19,7 @@ checkPaths:
   - apps/docs/src/**
   - apps/docs/e2e/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: 6ecec49ff897d44bf0d25e6eed5bfac58f2e85aa
+lastReviewedCommit: b842f324611ce7d8dfacf4ab522c4adb604d2a71
 ---
 
 ## Two frontend applications
@@ -271,3 +271,5 @@ The same-origin adapter verifies session, origin, bounded input and idempotency 
 The resource-enabled project workbench includes a batch-access tab for managers and approval reviewers. Managers select only explicitly loaded members and immutable package/preset versions; approval-only users see review controls without member-management controls. Applicant/recipient self-approval controls are absent, while the server independently enforces the rule. Preview, approval and execution statuses remain distinct, receipts retain per-recipient history, and retries reuse unchanged command keys (including fixed preview timestamps). Project changes abort stale requests. The same verified-session BFF handles bounded lists and all four batch actions.
 
 Batch member details show frozen differences by action, with an explicit unknown state for older previews. Changed grants prompt a fresh application; current effective access is never inferred from a historical receipt.
+
+The account control links to `/[locale]/account/agents` for the current user’s AI/MCP connections. The verified-session page shows bounded ownership, status and expiry. Its native disconnect form uses same-origin protection and reports partial provider revocation so the user can retry before reauthorizing in the original client.

@@ -2378,6 +2378,30 @@ const zhCN = {
   },
   auth: {
     metaTitle: '登录',
+    agentConnections: {
+      title: 'AI/MCP 连接',
+      description:
+        '查看由你授权的客户端。断开连接会立即停止其访问；如需连接到期后的续用或更新资料范围，请断开后回到原客户端重新授权。',
+      bounded: '显示最近更新的最多 100 个连接。',
+      empty:
+        '你还没有授权 AI/MCP 客户端。请从需要使用的客户端发起连接，再核对项目并同意授权。',
+      unavailable: '暂时无法加载连接。请重新加载后再试。',
+      retry: '重新加载',
+      client: 'MCP 客户端',
+      project: '授权项目',
+      unknownProject: '原授权项目当前不可见',
+      expires: '授权到期时间',
+      status: { active: '授权有效', expired: '授权已到期', revoked: '已断开' },
+      disconnect: '断开连接',
+      retryDisconnect: '完成断开',
+      impact:
+        '同时清除此客户端保留的同意记录。再次使用需要重新选择项目并明确授权。',
+      disconnected: '连接已断开。需要再次使用时，请回到原客户端重新发起授权。',
+      pending:
+        '已停止此连接的访问，但旧授权尚未清除。请再次选择“完成断开”，然后回到原客户端重新授权。',
+      failed: '未能完成断开。请重新加载连接状态后重试。',
+      home: '返回 WISER',
+    },
     agentConsent: {
       eyebrow: '智能体连接',
       title: '授权外部客户端访问 WISER',
@@ -5414,6 +5438,36 @@ const en: typeof zhCN = {
   },
   auth: {
     metaTitle: 'Sign in',
+    agentConnections: {
+      title: 'AI/MCP connections',
+      description:
+        'Review the clients you authorized. Disconnecting stops access immediately. To renew an expired connection or update its resources, disconnect it and authorize again from the original client.',
+      bounded: 'Shows up to 100 most recently updated connections.',
+      empty:
+        'You have not authorized an AI/MCP client. Start from the client you want to use, then review the project and approve access.',
+      unavailable: 'Connections could not be loaded. Reload and try again.',
+      retry: 'Reload',
+      client: 'MCP client',
+      project: 'Authorized project',
+      unknownProject: 'The original project is no longer visible',
+      expires: 'Authorization expires',
+      status: {
+        active: 'Authorized',
+        expired: 'Expired',
+        revoked: 'Disconnected',
+      },
+      disconnect: 'Disconnect',
+      retryDisconnect: 'Finish disconnecting',
+      impact:
+        'This also clears the consent saved for this client. Using it again requires choosing a project and explicitly approving access.',
+      disconnected:
+        'Disconnected. Return to the original client to authorize again when needed.',
+      pending:
+        'Access has stopped, but the previous consent could not be cleared. Choose “Finish disconnecting” again, then authorize from the original client.',
+      failed:
+        'Disconnection could not be completed. Reload the connection status and try again.',
+      home: 'Return to WISER',
+    },
     agentConsent: {
       eyebrow: 'AGENT CONNECTION',
       title: 'Authorize an external client',
