@@ -56,8 +56,8 @@ describe('TypeScript 7 native toolchain', () => {
 
     expect(scripts.lint).toBe('oxlint --type-aware');
     expect(dependencies.typescript).toBe('7.0.2');
-    expect(dependencies.oxlint).toBe('1.83.0');
-    expect(dependencies['oxlint-tsgolint']).toBe('7.0.2001');
+    expect(dependencies.oxlint).toBe('1.85.0');
+    expect(dependencies['oxlint-tsgolint']).toBe('7.0.2003');
 
     for (const removed of [
       '@eslint/js',
@@ -117,24 +117,24 @@ describe('latest compatible workspace dependencies', () => {
   });
 
   it.each([
-    ['apps/api/package.json', '@supabase/supabase-js', '2.112.4'],
+    ['apps/api/package.json', '@supabase/supabase-js', '2.117.1'],
     ['apps/docs/package.json', '@types/react-dom', '19.2.5'],
     ['apps/docs/package.json', 'fumadocs-core', '16.15.12'],
     ['apps/docs/package.json', 'fumadocs-ui', '16.15.12'],
     ['apps/docs/package.json', 'next', '16.3.3'],
-    ['apps/web/package.json', '@supabase/ssr', '0.12.5'],
-    ['apps/web/package.json', '@supabase/supabase-js', '2.112.4'],
+    ['apps/web/package.json', '@supabase/ssr', '0.12.7'],
+    ['apps/web/package.json', '@supabase/supabase-js', '2.117.1'],
     ['apps/web/package.json', '@types/react-dom', '19.2.5'],
-    ['apps/web/package.json', 'maplibre-gl', '6.8.0'],
+    ['apps/web/package.json', 'maplibre-gl', '6.11.2'],
     ['apps/web/package.json', 'next', '16.3.3'],
-    ['packages/data-infra/package.json', '@aws-sdk/client-s3', '3.1136.0'],
+    ['packages/data-infra/package.json', '@aws-sdk/client-s3', '3.1141.0'],
     [
       'packages/data-infra/package.json',
       '@aws-sdk/s3-request-presigner',
-      '3.1136.0',
+      '3.1141.0',
     ],
     ['packages/infra/package.json', '@openai/codex-sdk', '0.149.1'],
-    ['packages/infra/package.json', '@supabase/supabase-js', '2.112.4'],
+    ['packages/infra/package.json', '@supabase/supabase-js', '2.117.1'],
   ])('%s pins %s at %s', (path, name, version) => {
     expect(dependencyVersion(path, name)).toBe(version);
   });

@@ -30,7 +30,7 @@ import { authorityCamera, displayCamera } from '@/lib/amap-camera';
 import { toAmap, fromAmap } from '@/lib/amap-coordinates';
 import { useExplorationViewState } from './exploration-view-context';
 
-maplibre.setWorkerUrl('/vendor/maplibre/6.8.0/maplibre-gl-worker.mjs');
+maplibre.setWorkerUrl('/vendor/maplibre/6.11.2/maplibre-gl-worker.mjs');
 
 export default function DataExplorerMap({
   result,

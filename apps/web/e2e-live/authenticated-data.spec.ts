@@ -118,7 +118,13 @@ test.describe.serial('real Supabase Auth and Data authority', () => {
       'href',
       `/zh-CN/data-foundation/operations/${fixture.operationId}`,
     );
-    await operation.click();
+    await Promise.all([
+      page.waitForURL(
+        `/zh-CN/data-foundation/operations/${fixture.operationId}`,
+        { waitUntil: 'domcontentloaded' },
+      ),
+      operation.click(),
+    ]);
     await expect(page.getByRole('heading', { name: '任务进度' })).toBeVisible();
     await expect(
       page.getByText(fixture.operationId, { exact: true }).first(),
