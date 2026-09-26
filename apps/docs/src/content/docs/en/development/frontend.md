@@ -19,7 +19,7 @@ checkPaths:
   - apps/docs/src/**
   - apps/docs/e2e/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: a92e91d0b319d45aa25342035389cc26826b3397
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
 
 ## Two frontend applications
@@ -60,7 +60,7 @@ See [Product interface and content design](/en/development/product-experience/) 
 | Agent EXCON scenarios      | `/[locale]/scenarios`, `/[locale]/scenarios/[scenarioId]`                                                        |
 | Agent EXCON runs           | `/[locale]/runs`, `/[locale]/runs/[runId]`, plus `collaboration`, `diagnostics`, `trace`, and `replay` subroutes |
 | Data Foundation overview   | `/[locale]/data-foundation`                                                                                      |
-| Data Foundation workspaces | `catalog`, `ingestions`, `quality`, `search`, `knowledge`, `graph`, `geo`, `map`, and `capabilities`             |
+| Data Foundation workspaces | `explore`, `catalog`, `ingestions`, `quality`, `search`, `knowledge`, `graph`, `geo`, `map`, and `capabilities`  |
 | Data Foundation detail     | `catalog/[dataItemId]`, `ingestions/[ingestionId]`, `operations/[operationId]`, and `lineage/[dataItemId]`       |
 
 In Supabase mode, Portal, sign-in, and Auth transport routes are public. Other localized product routes require verified authenticated claims in Proxy; anonymous requests retain their target and redirect to locale sign-in. `WISER_AUTH_MODE=off` remains a local reference-preview mode only.
@@ -154,11 +154,13 @@ Playwright locators use user-visible roles, labels, text, or stable test IDs. Ap
 - New routes, dictionary keys, data contracts, and authorization failures have focused coverage; screenshots support visual comparison but do not replace semantic assertions.
 - Related architecture, protocol, or development documentation is updated and passes Docpact plus root `pnpm verify`.
 
+## Current Data Foundation workspace behavior
+
 The `/[locale]/data-foundation/explore` workspace shares the strict exploration contracts with the API. A compact query bar, resource table and selection inspector keep the result area near the top of the viewport. Server rendering starts or resumes an authorized result set; subsequent queries pass through the session-verified Next.js endpoint `/api/data-foundation/explore`. Filters start a new version manifest; paging keeps the same `queryId`. Keyboard-operable resource names expose exact versions, readiness and source limitations. Unknown analytical counts remain explicit instead of becoming zero.
 
-The explorer uses the official AMap JS API 2.0 basemap with transparent MapLibre GL JS 6.8.0 and react-map-gl 8.1.3 business overlays, loaded only when opening a map. `apps/web/scripts/prepare-maplibre.mjs` copies the matching worker and shared module into a versioned same-origin public directory before dev/build. Generated vendor files are ignored by Git. Display coordinates and cameras are synchronized at the AMap boundary; authorized queries and originals retain their source coordinates. AMap logo and attribution stay visible.
+The explorer uses the official AMap basemap with transparent MapLibre GL JS and react-map-gl business overlays, loaded only when opening a map. `apps/web/scripts/prepare-maplibre.mjs` copies the matching worker and shared module into a versioned same-origin public directory before dev/build. Generated vendor files are ignored by Git. Display coordinates and cameras are synchronized at the AMap boundary; authorized queries and originals retain their source coordinates. AMap logo and attribution stay visible.
 
-The exploration statistics tab uses [Apache ECharts 6.1.0](https://github.com/apache/echarts/releases/tag/6.1.0), loaded on demand with the SVG renderer and only the required chart components. It charts server-computed readiness counts for the full authorized query. Selecting a bar or its keyboard-accessible text equivalent applies the same readiness filter to resource exploration. Chart colors follow semantic tokens; resize/theme observers and the chart instance are disposed on unmount. Resource counts must not be presented as record counts or scientific observations.
+The exploration statistics tab uses Apache ECharts, loaded on demand with the SVG renderer and only the required chart components. It charts server-computed readiness counts for the full authorized query. Selecting a bar or its keyboard-accessible text equivalent applies the same readiness filter to resource exploration. Chart colors follow semantic tokens; resize/theme observers and the chart instance are disposed on unmount. Resource counts must not be presented as record counts or scientific observations.
 
 Exploration clears the current query, selection, asset details and rendered views when a response invalidates its authorization or immutable membership, or when the advertised result deadline is reached. Background/page restoration checks the same deadline. Late failures from an older query cannot clear a newer result, and aborted requests cannot restore stale data. Query form conditions remain available for a fresh authorized query. Temporary map failures unload the canvas and offer reload without exposing upstream diagnostics.
 

@@ -1,6 +1,6 @@
 ---
 title: Agent EXCON 架构
-description: Agent EXCON 的多智能体领域、持久化、并发、可见性、回放与可观测性边界。
+description: 智能体演练场当前的场景、多智能体运行、评测、协作、回放与观测边界。
 docType: architecture
 scope: agent-excon
 status: active
@@ -23,9 +23,19 @@ checkPaths:
   - apps/web/src/app/*/runs/**
   - supabase/**
   - infrastructure/observability/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: 334c995ea21d39535fc93e398bda354957331968
+lastReviewedAt: 2026-09-26
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
+
+## 当前可运行能力
+
+| 用户任务     | 当前能力                                                | 必须保留的边界                       |
+| ------------ | ------------------------------------------------------- | ------------------------------------ |
+| 准备演练     | 管理场景的角色、阶段、交付成果和发布版本                | 已发布版本固定，修改会形成新草稿     |
+| 组织团队演练 | 不同智能体通过 HTTP 或 MCP 参与、交接成果并提交团队结果 | 网页负责管理和观察，不代替智能体参演 |
+| 复盘结果     | 查看规则评测、协作、追踪与历史回放                      | 遥测缺失不会改变评测结论或虚构事件   |
+
+按页面操作可先阅读[产品界面与内容设计](/development/product-experience/)；参与者请求见 [HTTP](/protocols/http/) 或 [MCP](/protocols/mcp/) 参考。以下章节说明实现与权威边界。
 
 Agent EXCON（智能体演练场 / 导调中枢）把水系统任务编译成可版本化、可并行、可裁决、可回放的多智能体环境。它与 Data Foundation 共用 WISER 的 Auth、API、Web、MCP 和文档宿主，但不共享领域状态机或权威事实。
 

@@ -18,7 +18,7 @@ checkPaths:
   - supabase/**
   - package.json
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: d0edb278f9d57dd0939d5c5d7cf7110ab5f135ab
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
 
 ## 开始前
@@ -46,17 +46,18 @@ pnpm install --frozen-lockfile
 
 ## 指南目录
 
-| 页面                                                     | 解决的问题                                                        |
-| -------------------------------------------------------- | ----------------------------------------------------------------- |
-| [仓库结构与依赖边界](/development/repository-structure/) | 代码、运行时资产、示例和测试应该放在哪里？                        |
-| [本机开发环境](/development/local-environment/)          | 应选完整栈、基础栈还是单应用？端口、身份与停止方式是什么？        |
-| [后端开发](/development/backend/)                        | API、两个 Worker、MCP 与 Telemetry Ingress 如何运行和验证？       |
-| [前端开发](/development/frontend/)                       | Web 与 Docs 的路由、Session、双语、主题和 Playwright 合同是什么？ |
-| [产品界面与内容设计](/development/product-experience/)   | Portal、导航层级、产品命名、用户文案和失败态应该如何设计？        |
-| [数据库与迁移](/development/databases/)                  | Supabase 与 data-postgres 的权威、迁移、RLS 和 reset 如何区分？   |
-| [测试与验证](/development/testing/)                      | 一项改动应运行哪些 Red/Green、聚焦、数据库、浏览器与 smoke 门禁？ |
-| [文档开发](/development/documentation/)                  | README、文档站、组件说明、双语与 Docpact 如何维护？               |
-| [新增 WISER 系统](/development/adding-a-system/)         | 如何把第三个业务系统接入共享 Auth、宿主、UI、文档和 CI？          |
+| 页面                                                       | 解决的问题                                                        |
+| ---------------------------------------------------------- | ----------------------------------------------------------------- |
+| [现网资料使用与智能体连接](/development/wiser-data-guide/) | 组织账号今天如何查阅现网资料、准备试验接入并连接客户端？          |
+| [仓库结构与依赖边界](/development/repository-structure/)   | 代码、运行时资产、示例和测试应该放在哪里？                        |
+| [本机开发环境](/development/local-environment/)            | 应选完整栈、基础栈还是单应用？端口、身份与停止方式是什么？        |
+| [后端开发](/development/backend/)                          | API、两个 Worker、MCP 与 Telemetry Ingress 如何运行和验证？       |
+| [前端开发](/development/frontend/)                         | Web 与 Docs 的路由、Session、双语、主题和 Playwright 合同是什么？ |
+| [产品界面与内容设计](/development/product-experience/)     | Portal、导航层级、产品命名、用户文案和失败态应该如何设计？        |
+| [数据库与迁移](/development/databases/)                    | Supabase 与 data-postgres 的权威、迁移、RLS 和 reset 如何区分？   |
+| [测试与验证](/development/testing/)                        | 一项改动应运行哪些 Red/Green、聚焦、数据库、浏览器与 smoke 门禁？ |
+| [文档开发](/development/documentation/)                    | README、文档站、组件说明、双语与 Docpact 如何维护？               |
+| [新增 WISER 系统](/development/adding-a-system/)           | 如何把第三个业务系统接入共享 Auth、宿主、UI、文档和 CI？          |
 
 ## 共同约束
 
@@ -68,5 +69,3 @@ pnpm install --frozen-lockfile
 - 提交前运行 `pnpm verify`；数据库和浏览器改动追加对应集成测试。
 
 提交规则见仓库 `CONTRIBUTING.md`；面向 Agent 的不可变交付合同见根 `AGENTS.md`。
-
-共享 Data contracts 使用明确的 `.ts` 相对源码导入，让 Turbopack 与 Node 服务消费同一 schema。基础 TypeScript 配置启用 `rewriteRelativeImportExtensions`，运行构建会输出 `.js` 导入；Web 在 `noEmit` 下启用 `allowImportingTsExtensions`。包间依赖仍使用公开导出，修改此边界时同时验证浏览器渲染和编译后的 Node 导入。

@@ -18,7 +18,7 @@ checkPaths:
   - supabase/**
   - package.json
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: d0edb278f9d57dd0939d5c5d7cf7110ab5f135ab
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
 
 ## Before you start
@@ -48,6 +48,7 @@ Then run Docpact route for the actual target paths before creating or changing f
 
 | Page                                                                                    | Question answered                                                                                                   |
 | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| [Public data use and agent connection](/en/development/wiser-data-guide/)               | How can an organization account read public-service data, prepare trial intake, and connect a client today?         |
 | [Repository structure and dependency boundaries](/en/development/repository-structure/) | Where should code, runtime assets, examples, and tests live?                                                        |
 | [Local development environment](/en/development/local-environment/)                     | Should I use the complete stack, base stack, or standalone app, and what are the ports, identities, and stop paths? |
 | [Backend development](/en/development/backend/)                                         | How do API, both workers, MCP, and Telemetry Ingress run and verify?                                                |
@@ -68,5 +69,3 @@ Then run Docpact route for the actual target paths before creating or changing f
 - Run `pnpm verify` before handoff; add focused database and browser integration tests when relevant.
 
 Repository `CONTRIBUTING.md` defines contribution rules; root `AGENTS.md` defines the immutable delivery contract for agents.
-
-Shared Data contracts use explicit `.ts` relative source imports so Turbopack can consume the same schema as Node services. The base TypeScript configuration enables `rewriteRelativeImportExtensions` to emit `.js` imports for runnable builds. Web has `allowImportingTsExtensions` with `noEmit`. Keep package imports on public exports, and verify both browser rendering and emitted Node imports when changing this boundary.

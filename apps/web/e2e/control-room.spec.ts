@@ -297,7 +297,7 @@ test('separates scenario management from active multi-agent runs', async ({
 
   await expect(page.getByRole('heading', { name: '场景配置' })).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: '角色与协作契约' }),
+    page.getByRole('heading', { name: '角色与协作要求' }),
   ).toBeVisible();
   await expect(page.getByTestId('scenario-contract-summary')).toContainText(
     '4 个必需角色',
@@ -315,7 +315,7 @@ test('opens a human-first Run overview before technical drill-down', async ({
   await page.goto('/zh-CN/runs/run-yongding-spring-042');
 
   await expect(page.getByRole('heading', { name: '运行概览' })).toBeVisible();
-  await expect(page.getByText('裁决通过', { exact: true })).toBeVisible();
+  await expect(page.getByText('评测通过', { exact: true })).toBeVisible();
   await expect(page.getByText('遥测有缺口', { exact: true })).toBeVisible();
   await expect(page.getByText('待办与风险', { exact: true })).toBeVisible();
   await expect(page.getByTestId('run-decision-spine')).toBeVisible();
@@ -387,7 +387,7 @@ test('shows causal agent exchanges and per-recipient delivery without claiming t
   const refreshButton = page.getByRole('button', { name: '刷新协作状态' });
   await expect(refreshButton).toBeVisible();
   await expect(page.getByTestId('collaboration-refresh-status')).toContainText(
-    '参考投影',
+    '协作状态',
   );
   await refreshButton.click();
   await expect(refreshButton).toBeEnabled();
@@ -397,7 +397,7 @@ test('shows causal agent exchanges and per-recipient delivery without claiming t
   await expect(page.getByTestId('collaboration-exchange')).toHaveCount(7);
   await expect(page.getByTestId('collaboration-handoff')).toHaveCount(3);
   await expect(page.getByTestId('collaboration-request')).toHaveCount(1);
-  await expect(page.getByText('3 个专业工件已交接')).toBeVisible();
+  await expect(page.getByText('3 份专业成果已交接')).toBeVisible();
 
   const request = page.getByTestId('collaboration-request');
   const requestButton = request.getByRole('button').first();

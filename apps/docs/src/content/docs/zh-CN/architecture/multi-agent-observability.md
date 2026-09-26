@@ -1,6 +1,6 @@
 ---
 title: 多智能体导调与可观测性
-description: 场景管理、多 Agent Run、OTel 式 Trace 和当时视角回放的 v2 设计。
+description: 当前演练如何区分团队结果、协作记录、执行追踪与历史回放。
 docType: architecture
 scope: observability
 status: active
@@ -15,13 +15,15 @@ checkPaths:
   - apps/web/**
   - apps/telemetry-ingress/**
   - infrastructure/observability/**
-lastReviewedAt: 2026-09-15
-lastReviewedCommit: f9bc654295360ff2d97eb6dba31d54599b2f313f
+lastReviewedAt: 2026-09-26
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
+
+演练工作区回答不同问题：**总览**先呈现结果和待处理事项；**协作**说明成果如何发送与接收；**评测**给出按规则形成的结论；**追踪**和**回放**用于查明执行过程及当时各角色可见的信息。技术遥测缺失不会改变已记录的演练事件或评测结果。
 
 ## 一个 Run 是一次团队演练
 
-v2 把 `Scenario → ScenarioVersion → ExerciseRun → RunAgent` 作为主导航。每个新场景必须定义多个必需角色、并行 Task、汇流 Barrier 和团队提交，并由不同 RunAgent 实例占据必需角色；不能只给一个 Agent 添加多个标签。
+当前演练领域关系为 `Scenario → ScenarioVersion → ExerciseRun → RunAgent`。每个新场景必须定义多个必需角色、并行 Task、汇流 Barrier 和团队提交，并由不同 RunAgent 实例占据必需角色；不能只给一个 Agent 添加多个标签。
 
 Run 只管理阶段和虚拟时钟；评价与重做属于各自 Task。这样水情、水动力、生态目标和调度协调 Agent 可以同时工作。
 
@@ -79,7 +81,7 @@ Trace/Log 作为单独的 `bestEffortTelemetryOverlay` 按权限叠加，明确�
 
 单 Agent 视角来自不可变 issuance `AgentViewReceipt` 和 append-only acknowledgement；两者各有自己的 `run_seq`，因此可在任意 cursor 严格判断当时状态。`eligible` 由 disclosure grant 计算而不是一种 Receipt；未拉取的 Inject 不能被描述为该 Agent 已知。
 
-## 推荐观测栈
+## 遥测部署路径
 
 可选 Compose profile 使用：
 

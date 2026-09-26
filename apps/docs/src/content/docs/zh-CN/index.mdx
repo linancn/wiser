@@ -1,6 +1,6 @@
 ---
 title: WISER 文档
-description: WISER Platform、Agent EXCON 与 Data Foundation 的统一产品和开发文档。
+description: 按使用、接入和开发任务找到 WISER 当前系统的入口、权限与操作说明。
 docType: overview
 scope: documentation-home
 status: active
@@ -24,21 +24,23 @@ lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
 
 ## 系统地图
 
+WISER 提供一套组织账户与项目访问范围。数据基座管理资料及其来源，智能体演练场组织演练；两者在同一门户下提供各自的工作区。
+
 <Cards>
   <Card
     title="WISER Platform"
     href="/architecture/wiser-platform/"
-    description="统一 Auth、Tenant/Project、授权、Web Shell、API/MCP/文档宿主与跨系统依赖规则。"
+    description="了解统一账户、项目权限，以及两个业务系统如何协作。"
   />
   <Card
-    title="Data Foundation / 数据基座"
+    title="数据基座"
     href="/architecture/data-foundation/"
-    description="数据入库、不可变版本、质量、血缘、检索、图谱、GIS 与可重建投影。"
+    description="查阅和接入资料，核对来源、版本、质量与权限，再联动探索记录、关联和地图。"
   />
   <Card
     title="智能体演练场"
     href="/architecture/agent-excon/"
-    description="多场景、多 RunAgent 演练，确定性裁决、Receipt、回放与可观测性。"
+    description="管理场景和演练运行，查看团队协作、评测结果、执行追踪与回放。"
   />
 </Cards>
 
@@ -46,37 +48,49 @@ lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
 
 <Cards>
   <Card
-    title="第一次运行"
+    title="查阅现网资料"
+    href="/development/wiser-data-guide/"
+    description="使用已有组织账户进入项目，核对资料，并了解样本试录入和外部客户端的当前边界。"
+  />
+  <Card
+    title="在本机运行 WISER"
     href="/quick-start/"
-    description="安装依赖、启动完整平台、登录并确认所有主要入口。"
+    description="从干净的仓库安装依赖，启动隔离的本机完整栈并验证主要入口。"
   />
   <Card
     title="参与开发"
     href="/development/"
-    description="选择本机运行模式，定位前后端源码，运行数据库、测试和文档流程。"
+    description="找到负责当前任务的目录、运行命令、验证门禁和文档维护规则。"
+  />
+  <Card
+    title="连接 AI 助手"
+    href="/protocols/agent-setup/"
+    description="复制公开接入说明，安装经过校验的 Skill，再按项目权限完成连接。"
   />
   <Card
     title="接入 Data Foundation"
     href="/protocols/data-rest/"
-    description="从 REST、GraphQL、MCP 与 Skill 中选择同一 Capability 契约的传输面。"
+    description="选择 REST、GraphQL 或 MCP，了解身份、资料范围与可调用操作。"
   />
   <Card
     title="接入智能体演练场"
     href="/protocols/http/"
-    description="使用 HTTP 或 MCP 参与演练、同步 Receipt、提交任务与读取反馈。"
+    description="通过 HTTP 或 MCP 加入演练，领取任务、提交成果并读取反馈。"
   />
   <Card
     title="理解身份与安全"
     href="/architecture/unified-auth/"
-    description="了解 Supabase Session、委托身份、Tenant/Project 与跨库授权边界。"
+    description="了解组织账户、项目成员资格、资料许可与智能体委托授权。"
   />
   <Card
     title="运行示例"
     href="/scenarios/yongding-river-dispatch/"
-    description="使用版本化场景包和可执行 Cookbook 验证多智能体协作。"
+    description="运行永定河合成演练，理解多智能体如何协作与复盘。"
   />
 </Cards>
 
-## 文档边界
+## 如何判断当前状态
 
-本文档站描述当前可运行系统。命令、端口和代码入口必须能从仓库直接验证；版本号以 manifest、lockfile 与容器版本登记为准。规划、里程碑复盘和已经被当前实现取代的设计过程不属于运行手册。
+网页可完成的操作以当前账户、项目及资料许可为准。资料完成接入或解析不代表已经发布，也不代表适合科学分析；演练追踪不改变评测结果。现网外部客户端的协议与本人客户端验收状态见[资料查阅与接入指南](/development/wiser-data-guide/)。
+
+本地开发命令和协议细节以本仓库可运行实现为准。文档分别说明当前支持的路径和需要额外授权或验收的边界；依赖版本以项目清单、锁文件及容器配置为准。

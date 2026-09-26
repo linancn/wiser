@@ -2,6 +2,7 @@
   "title": "开发手册",
   "pages": [
     "index",
+    "wiser-data-guide",
     "repository-structure",
     "local-environment",
     "backend",

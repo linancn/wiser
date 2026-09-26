@@ -35,11 +35,11 @@ export function HomeHero({ locale }: { locale: DocsLocale }) {
           </div>
           <div>
             <dt>{copy.protocols}</dt>
-            <dd>HTTP · MCP</dd>
+            <dd>{copy.protocolsValue}</dd>
           </div>
           <div>
             <dt>{copy.authority}</dt>
-            <dd>Auth · Event · Version</dd>
+            <dd>{copy.authorityValue}</dd>
           </div>
         </dl>
       </div>

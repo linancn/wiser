@@ -1,6 +1,6 @@
 ---
 title: WISER documentation
-description: Unified product and development documentation for WISER Platform, Agent EXCON, and Data Foundation.
+description: Find current WISER entrypoints, permissions, and procedures by use, integration, or development task.
 docType: overview
 scope: documentation-home
 status: active
@@ -24,21 +24,23 @@ lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
 
 ## System map
 
+WISER provides one organization account and project access scope. Data Foundation manages data and its sources; Agent EXCON manages exercises. Each has its own workspace under the same Portal.
+
 <Cards>
   <Card
     title="WISER Platform"
     href="/en/architecture/wiser-platform/"
-    description="Unified Auth, tenants/projects, authorization, Web shell, API/MCP/docs hosts, and cross-system dependency rules."
+    description="Understand the shared account, project access, and how the two business systems work together."
   />
   <Card
     title="Data Foundation"
     href="/en/architecture/data-foundation/"
-    description="Ingestion, immutable versions, quality, lineage, search, graph, GIS, and rebuildable projections."
+    description="Find and ingest data, check its source, version, quality, and access, then explore records, relations, and maps."
   />
   <Card
     title="Agent EXCON"
     href="/en/architecture/agent-excon/"
-    description="Multi-scenario, multi-RunAgent exercises with deterministic adjudication, receipts, replay, and observability."
+    description="Manage scenarios and runs, and review team collaboration, evaluation, execution traces, and replay."
   />
 </Cards>
 
@@ -46,37 +48,49 @@ lastReviewedCommit: c9b9047b81f84ad7a704f9d0806526a43a90d7f1
 
 <Cards>
   <Card
-    title="Run WISER for the first time"
+    title="Use the public data workspace"
+    href="/en/development/wiser-data-guide/"
+    description="Sign in with an existing organization account, check project data, and understand trial ingestion and external-client limits."
+  />
+  <Card
+    title="Run WISER locally"
     href="/en/quick-start/"
-    description="Install dependencies, start the complete platform, sign in, and verify its primary entrypoints."
+    description="Install from a clean checkout, start the isolated local stack, and verify the main entrypoints."
   />
   <Card
     title="Develop WISER"
     href="/en/development/"
-    description="Choose a local runtime mode, find frontend/backend source, and run database, test, and docs workflows."
+    description="Find the directory, commands, verification gates, and documentation rules for your change."
+  />
+  <Card
+    title="Connect an AI assistant"
+    href="/en/protocols/agent-setup/"
+    description="Copy the public setup instructions, install the verified Skill, and connect within your project access."
   />
   <Card
     title="Integrate Data Foundation"
     href="/en/protocols/data-rest/"
-    description="Choose REST, GraphQL, MCP, or Skill over the same Capability contract."
+    description="Choose REST, GraphQL, or MCP and review identity, data scope, and available actions."
   />
   <Card
     title="Integrate Agent EXCON"
     href="/en/protocols/http/"
-    description="Participate through HTTP or MCP, synchronize receipts, submit tasks, and read feedback."
+    description="Join an exercise through HTTP or MCP, receive tasks, submit work, and read feedback."
   />
   <Card
     title="Understand identity and security"
     href="/en/architecture/unified-auth/"
-    description="Review Supabase sessions, delegated identities, tenant/project scope, and cross-database authorization."
+    description="Understand organization accounts, project membership, data permission, and agent delegation."
   />
   <Card
     title="Run an example"
     href="/en/scenarios/yongding-river-dispatch/"
-    description="Use the versioned scenario package and executable Cookbook to verify multi-agent collaboration."
+    description="Run the synthetic Yongding River exercise to understand agent collaboration and replay."
   />
 </Cards>
 
-## Documentation boundary
+## Reading current status
 
-This site describes the systems that run now. Commands, ports, and source entrypoints must be verifiable from the repository. Manifests, the lockfile, and container-version records are authoritative for versions. Planning notes, milestone recaps, and design processes superseded by the implementation do not belong in operational guidance.
+Available web actions follow the current account, project, and data permission. Ingestion or parsing does not mean publication or scientific suitability; execution traces do not change exercise evaluation. See the [data access and integration guide](/en/development/wiser-data-guide/) for the public external-client protocol and personal-client acceptance boundary.
+
+Local commands and protocol details describe the runnable repository. Each guide distinguishes supported paths from those needing further authorization or acceptance. Package manifests, the lockfile, and container configuration are authoritative for dependency versions.

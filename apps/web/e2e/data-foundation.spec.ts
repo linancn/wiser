@@ -12,7 +12,7 @@ test('keeps the live Data Foundation workspace bilingual and fail-closed', async
   ).toBeVisible();
   await expect(page.getByText('按权限显示')).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: '数据基座暂未开放' }),
+    page.getByRole('heading', { name: '暂时无法进入数据基座' }),
   ).toBeVisible();
   await expect(page.locator('main')).not.toContainText(
     /HTTP\s*\d{3}|WISER_[A-Z_]+|\/health\/|Capability Registry|DTO|DAL|工作进程/,
@@ -29,7 +29,7 @@ test('keeps the live Data Foundation workspace bilingual and fail-closed', async
   ).toBeVisible();
   await expect(
     page.getByRole('heading', {
-      name: 'Data Foundation is not available yet',
+      name: 'Cannot open Data Foundation right now',
     }),
   ).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');

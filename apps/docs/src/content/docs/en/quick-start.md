@@ -1,6 +1,6 @@
 ---
 title: Quick start
-description: Install dependencies from a clean checkout, start WISER, sign in, and confirm default services plus the Data verification path.
+description: Start an isolated local WISER stack from a clean checkout, sign in, and confirm the data and exercise entrypoints.
 docType: workflow
 scope: repository
 status: active
@@ -17,10 +17,10 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: 86651aa7c44d64f6f7195eb148e5dc92d584c4b1
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
 
-This page covers the first complete run only. See the [local development environment](/en/development/local-environment/) for standalone frontend/backend commands, every port, environment variables, and troubleshooting.
+Use this page when running WISER in your own development environment for the first time. For public data access or external-client connection, see the [public use guide](/en/development/wiser-data-guide/). For standalone applications, ports, configuration, and troubleshooting, see the [local development environment](/en/development/local-environment/).
 
 ## 0. Prerequisites
 
@@ -29,7 +29,7 @@ This page covers the first complete run only. See the [local development environ
 - Docker Engine 29+ and Docker Compose 5+
 - Git
 
-Confirm Docker is running and allocate enough CPU, memory, and disk. Data Foundation starts database, object-store, search, graph, and GIS services.
+Confirm Docker is running and allocate enough CPU, memory, and disk. The complete stack includes database, file storage, search, graph, and map services.
 
 ## 1. Install
 
@@ -40,7 +40,7 @@ corepack enable
 pnpm install --frozen-lockfile
 ```
 
-Do not create a second lockfile in an application directory. Package manifests and the root `pnpm-lock.yaml` define npm versions; `compose.yaml` and `infrastructure/data-foundation/versions.env` define container versions.
+Run these commands from the repository root. Do not create a second lockfile in an application directory.
 
 ## 2. Start the complete platform
 
@@ -48,16 +48,7 @@ Do not create a second lockfile in an application directory. Package manifests a
 pnpm stack:full:up
 ```
 
-The command:
-
-1. starts local Supabase Auth, control-plane PostgreSQL, Storage, and Studio;
-2. creates ignored local runtime keys;
-3. builds and starts API, Web, the Agent EXCON v1 compatibility/testing worker, and docs; that worker provides compatibility-process health and does not execute default v2 evaluation;
-4. starts the Data Foundation profile and runs checksum migrations plus deterministic seed;
-5. starts the Data worker, MCP gateway, and data infrastructure;
-6. runs an end-to-end smoke across Data REST, GraphQL, MCP, and authenticated Web.
-
-The default complete stack is ready only after the command succeeds. It neither reads nor mounts `~/.codex/auth.json`, and it never injects a Supabase service-role key into applications.
+This starts local sign-in, the product web app, API, documentation, agent entrypoint, and Data Foundation services. It prepares isolated local test data and checks the web and protocol paths. Open the entrypoints below **after the command succeeds**. If it fails, follow the terminal message and use the [local environment guide](/en/development/local-environment/) for service logs and recovery.
 
 ## 3. Open the entrypoints
 
@@ -74,28 +65,26 @@ The default complete stack is ready only after the command succeeds. It neither 
 | MCP Streamable HTTP   | `http://127.0.0.1:13004/mcp`               |
 | Supabase Studio       | `http://127.0.0.1:56323`                   |
 
-These are isolated local development endpoints. The public OAuth deployment worktree uses HTTPS `:7100` in `supabase/config.toml`; use a separate local worktree with local Auth URLs and callbacks for this fixture workflow. See [the public data access and sample trial entry guide](/en/development/wiser-data-guide/).
+These addresses are for local development only. Do not use the local test account on the public service; see the [data access guide](/en/development/wiser-data-guide/) for public entrypoints and account access.
 
-Sign in with the local fixture account:
+Sign in with the local test account:
 
 ```text
 operator@agent-excon.test
 WiserLocalOperator-2026!
 ```
 
-This account and password are only for local seed data. Never copy them into a shared or production environment.
+This account exists only in local test data. After sign-in, choose Data Foundation or Agent EXCON; the current account determines visible projects and content. Agents joining an exercise over MCP need a separate exercise participant identity; see [Agent EXCON MCP](/en/protocols/mcp/).
 
-The complete stack injects a real local Supabase identity for Data Foundation Web and Data MCP. The shared MCP process also receives a local placeholder that is sufficient only to configure the EXCON client. Data Tools do not use it, but every `excon_*` call fails authentication until a real RunAgent-bound credential is supplied. Agent EXCON live Web uses the verified signed-in Supabase user session and checks operator authorization. Missing or invalid identity produces an explicit failure and never falls back to fabricated data.
+## Verify an agent exercise
 
-## Verify the Agent EXCON protocol loop
-
-Use an isolated local lab and four deterministic scripted RunAgents to verify EXCON HTTP/MCP, receipts, Barriers, collaboration, and evaluation without model use:
+Use a local synthetic scenario and scripted agents to check task delivery, collaboration, submission, evaluation, and replay. This command does not call a paid model:
 
 ```bash
 pnpm cookbook:scripted
 ```
 
-This proves the Agent EXCON system. EXCON MCP clients obtain RunAgent credentials from trusted Run staffing; live Web uses the verified signed-in Supabase user with operator authorization.
+After it succeeds, review the corresponding collaboration and evaluation records in the exercise run workspace. See [Agent EXCON HTTP](/en/protocols/http/) and [MCP](/en/protocols/mcp/) for protocol fields and participant identity.
 
 ## 4. Stop
 
@@ -111,11 +100,7 @@ Stop only the Data Foundation profile:
 pnpm data:down
 ```
 
-Removing Data Foundation volumes is destructive and requires exact confirmation:
-
-```bash
-WISER_DATA_RESET_CONFIRM=reset-wiser-data-foundation pnpm data:reset
-```
+Before clearing local data, read the reset scope and confirmation requirements in [Database development](/en/development/databases/).
 
 ## Next steps
 

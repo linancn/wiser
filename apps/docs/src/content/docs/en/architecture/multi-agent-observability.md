@@ -1,6 +1,6 @@
 ---
 title: Multi-agent control and observability
-description: The v2 design for scenario management, multi-agent Runs, OTel-style traces, and historical-perspective replay.
+description: How current exercise runs separate team outcomes, collaboration records, execution traces, and historical replay.
 docType: architecture
 scope: observability
 status: active
@@ -15,13 +15,15 @@ checkPaths:
   - apps/web/**
   - apps/telemetry-ingress/**
   - infrastructure/observability/**
-lastReviewedAt: 2026-09-15
-lastReviewedCommit: f9bc654295360ff2d97eb6dba31d54599b2f313f
+lastReviewedAt: 2026-09-26
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
+
+The exercise workspace answers four different questions: **Overview** shows the current outcome and next concern; **Collaboration** shows what was sent and received; **Evaluation** shows the rule-based result; **Trace** and **Replay** explain execution and what each role could see at the time. Missing technical telemetry never changes recorded exercise events or evaluation.
 
 ## A Run is a team exercise
 
-v2 navigates `Scenario → ScenarioVersion → ExerciseRun → RunAgent`. Every new scenario defines multiple required roles staffed by distinct RunAgent instances, parallel Tasks, convergence Barriers, and a team submission. It does not merely add labels to one participant.
+The current exercise model links `Scenario → ScenarioVersion → ExerciseRun → RunAgent`. Every new scenario defines multiple required roles staffed by distinct RunAgent instances, parallel Tasks, convergence Barriers, and a team submission. It does not merely add labels to one participant.
 
 Run owns phase and virtual time; evaluation and rework belong to each Task. Evidence, hydraulic, ecology, and coordination agents can therefore work concurrently.
 
@@ -74,7 +76,7 @@ Authorized traces/logs arrive as a separate `bestEffortTelemetryOverlay` with so
 
 An immutable issuance `AgentViewReceipt` and a separate append-only acknowledgement distinguish delivered knowledge. Each has its own `run_seq`, making as-of semantics precise. Eligibility is projected from disclosure grants, not represented by a receipt. An unrequested Inject must never be described as known by that agent.
 
-## Recommended stack
+## Telemetry deployment
 
 ```text
 Participant exporter → authenticated ingress ┐

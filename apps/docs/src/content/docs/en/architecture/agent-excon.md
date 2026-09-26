@@ -1,6 +1,6 @@
 ---
 title: Agent EXCON architecture
-description: Agent EXCON multi-agent domain, persistence, concurrency, visibility, replay, and observability boundaries.
+description: Current Agent EXCON scenarios, multi-agent runs, evaluation, collaboration, replay, and observability boundaries.
 docType: architecture
 scope: agent-excon
 status: active
@@ -23,9 +23,19 @@ checkPaths:
   - apps/web/src/app/*/runs/**
   - supabase/**
   - infrastructure/observability/**
-lastReviewedAt: 2026-08-23
-lastReviewedCommit: 334c995ea21d39535fc93e398bda354957331968
+lastReviewedAt: 2026-09-26
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
+
+## What runs today
+
+| User task           | Current capability                                                                       | Boundary                                                                 |
+| ------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Prepare an exercise | Manage a scenario's roles, stages, deliverables, and published versions                  | Published versions stay fixed; changes create a new draft                |
+| Run a team exercise | Distinct agents participate through HTTP or MCP, exchange work, and submit a team result | The Web workspace observes and manages; it does not act as a participant |
+| Review the outcome  | Inspect rule-based evaluation, collaboration, trace, and historical replay               | Missing telemetry does not change a verdict or invent an event           |
+
+For the page-by-page user path, start with [Product interface and content design](/en/development/product-experience/). For participant requests, use the [HTTP](/en/protocols/http/) or [MCP](/en/protocols/mcp/) reference. The sections below document implementation and authority.
 
 Agent EXCON compiles water-system work into versioned, concurrent, adjudicable, and replayable multi-agent environments. It shares WISER Auth, API, Web, MCP, and documentation hosts with Data Foundation, but the two systems do not share domain state machines or authoritative facts.
 

@@ -1,6 +1,6 @@
 ---
 title: WISER 多系统平台
-description: WISER、Agent EXCON、Data Foundation 与共享宿主的长期系统边界。
+description: WISER 平台、数据基座与智能体演练场当前的职责和共享边界。
 docType: architecture
 scope: wiser-platform
 status: active
@@ -18,7 +18,7 @@ checkPaths:
   - infrastructure/**
   - supabase/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: b842f324611ce7d8dfacf4ab522c4adb604d2a71
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
 
 ## 决策摘要

@@ -1,6 +1,6 @@
 ---
 title: WISER multi-system platform
-description: Long-term system boundaries for WISER, Agent EXCON, Data Foundation, and their shared hosts.
+description: Current responsibilities and shared boundaries of WISER Platform, Data Foundation, and Agent EXCON.
 docType: architecture
 scope: wiser-platform
 status: active
@@ -18,7 +18,7 @@ checkPaths:
   - infrastructure/**
   - supabase/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: b842f324611ce7d8dfacf4ab522c4adb604d2a71
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
 
 ## Decision summary

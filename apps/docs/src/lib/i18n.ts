@@ -7,25 +7,29 @@ export const defaultLocale: DocsLocale = 'zh-CN';
 
 const homeZh = {
   description:
-    'WISER 以统一身份、界面和协议连接水系统智能能力：数据基座支持可信数据的接入、查询与联动探索，智能体演练场支持可追溯的多智能体协作与演练。',
-  start: '运行第一个闭环',
-  architecture: '查看平台边界',
-  summary: 'WISER 平台能力摘要',
+    '在这里了解如何查阅和管理水系统资料、组织智能体演练，以及接入或开发 WISER。选择你的任务，按当前可用的入口和权限开始。',
+  start: '从本机启动 WISER',
+  architecture: '了解系统职责',
+  summary: 'WISER 当前系统与访问方式',
   systems: '业务系统',
   systemsValue: '数据基座 · 智能体演练场',
-  protocols: '接入协议',
-  authority: '权威边界',
+  protocols: '使用入口',
+  protocolsValue: '网页 · 智能体 · API',
+  authority: '访问范围',
+  authorityValue: '组织 · 项目 · 资料',
 };
 const homeEn: typeof homeZh = {
   description:
-    'WISER connects water intelligence through one identity, interface, and protocol surface: Data Foundation supports trusted ingestion, queries, and linked exploration; Agent EXCON supports traceable multi-agent collaboration and exercises.',
-  start: 'Run the first loop',
-  architecture: 'Explore platform boundaries',
-  summary: 'WISER platform summary',
+    'Learn how to find and manage water-system data, run agent exercises, and connect to or develop WISER. Choose your task and follow the available entrypoint and access requirements.',
+  start: 'Start WISER locally',
+  architecture: 'Understand system roles',
+  summary: 'Current WISER systems and access paths',
   systems: 'Systems',
   systemsValue: 'Data Foundation · Agent EXCON',
-  protocols: 'Integration protocols',
-  authority: 'Authority',
+  protocols: 'Entry points',
+  protocolsValue: 'Web · Agents · API',
+  authority: 'Access scope',
+  authorityValue: 'Organization · Project · Data',
 };
 export const homeCopy = { 'zh-CN': homeZh, en: homeEn };
 

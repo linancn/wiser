@@ -19,7 +19,7 @@ checkPaths:
   - apps/docs/src/**
   - apps/docs/e2e/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: a92e91d0b319d45aa25342035389cc26826b3397
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
 
 ## 两个前端应用
@@ -52,16 +52,16 @@ Portal、导航层级、产品命名和用户文案见[产品界面与内容设�
 
 ## 产品 Web 路由
 
-| 工作区                 | 路由                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------------------ |
-| WISER Portal           | `/[locale]`；允许匿名查看平台与系统介绍                                                                |
-| 统一身份               | `/[locale]/login`、`/[locale]/auth/login`、`/[locale]/auth/callback`、`/[locale]/auth/sign-out`        |
-| Agent OAuth 授权       | `/oauth/consent` 入口、`/[locale]/oauth/consent` 页面与 `decision` 表单路由                            |
-| Agent EXCON 场景       | `/[locale]/scenarios`、`/[locale]/scenarios/[scenarioId]`                                              |
-| Agent EXCON 运行       | `/[locale]/runs`、`/[locale]/runs/[runId]` 及 `collaboration`、`diagnostics`、`trace`、`replay` 子路由 |
-| Data Foundation 总览   | `/[locale]/data-foundation`                                                                            |
-| Data Foundation 工作区 | `catalog`、`ingestions`、`quality`、`search`、`knowledge`、`graph`、`geo`、`map`、`capabilities`       |
-| Data Foundation 详情   | `catalog/[dataItemId]`、`ingestions/[ingestionId]`、`operations/[operationId]`、`lineage/[dataItemId]` |
+| 工作区                 | 路由                                                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------- |
+| WISER Portal           | `/[locale]`；允许匿名查看平台与系统介绍                                                                     |
+| 统一身份               | `/[locale]/login`、`/[locale]/auth/login`、`/[locale]/auth/callback`、`/[locale]/auth/sign-out`             |
+| Agent OAuth 授权       | `/oauth/consent` 入口、`/[locale]/oauth/consent` 页面与 `decision` 表单路由                                 |
+| Agent EXCON 场景       | `/[locale]/scenarios`、`/[locale]/scenarios/[scenarioId]`                                                   |
+| Agent EXCON 运行       | `/[locale]/runs`、`/[locale]/runs/[runId]` 及 `collaboration`、`diagnostics`、`trace`、`replay` 子路由      |
+| Data Foundation 总览   | `/[locale]/data-foundation`                                                                                 |
+| Data Foundation 工作区 | `explore`、`catalog`、`ingestions`、`quality`、`search`、`knowledge`、`graph`、`geo`、`map`、`capabilities` |
+| Data Foundation 详情   | `catalog/[dataItemId]`、`ingestions/[ingestionId]`、`operations/[operationId]`、`lineage/[dataItemId]`      |
 
 Supabase 模式中，Portal、登录和 Auth transport 公开；其他 locale 产品路由要求 Proxy 取得已验证的 authenticated claims，否则保留目标地址并跳转到同语言登录页。`WISER_AUTH_MODE=off` 只保留本机 reference 预览。
 
@@ -154,11 +154,13 @@ Playwright 使用用户可感知的 role、label、可见文本或稳定 test id
 - 新路由、字典键、数据契约和权限失败都具有聚焦测试；截图用于视觉比较，不代替语义断言。
 - 相关架构、协议或开发文档同步更新，并通过 Docpact 和根目录 `pnpm verify`。
 
+## 当前数据基座工作区
+
 `/[locale]/data-foundation/explore` 工作区与 API 共享严格探索契约。紧凑查询栏、资源表格与选择详情面板将结果区置于页面上方。服务端渲染建立或恢复授权结果集，后续请求经过验证当前 Session 的 Next.js 入口 `/api/data-foundation/explore`。调整筛选建立新版本清单，分页沿用同一 `queryId`。数据名称支持键盘操作，详情显示精确版本、就绪状态及来源限制；未知分析数量不会显示为零。
 
-探索地图按需加载高德 JS API 2.0 官方底图，以及透明的 MapLibre GL JS 6.8.0、react-map-gl 8.1.3 业务图层。`apps/web/scripts/prepare-maplibre.mjs` 在开发和构建前，将匹配的 Worker 与共享模块复制到同源、带版本号的公共目录；生成文件不提交 Git。显示坐标与视角在高德边界同步，授权查询与原文件保留来源坐标。高德标识和版权信息始终可见。
+探索地图按需加载高德官方底图，以及透明的 MapLibre GL JS、react-map-gl 业务图层。`apps/web/scripts/prepare-maplibre.mjs` 在开发和构建前，将匹配的 Worker 与共享模块复制到同源、带版本号的公共目录；生成文件不提交 Git。显示坐标与视角在高德边界同步，授权查询与原文件保留来源坐标。高德标识和版权信息始终可见。
 
-探索工作区的统计页签按需加载 [Apache ECharts 6.1.0](https://github.com/apache/echarts/releases/tag/6.1.0)，使用 SVG 渲染和所需图表组件，展示服务端计算的完整授权查询就绪状态数量。选择图柱或对应的键盘可用文字按钮，将同一状态条件应用到资源探索。图表颜色遵循语义变量；卸载时释放尺寸/主题观察器和图表实例。资源数量不能表述为记录数或科学观测数。
+探索工作区的统计页签按需加载 Apache ECharts，使用 SVG 渲染和所需图表组件，展示服务端计算的完整授权查询就绪状态数量。选择图柱或对应的键盘可用文字按钮，将同一状态条件应用到资源探索。图表颜色遵循语义变量；卸载时释放尺寸/主题观察器和图表实例。资源数量不能表述为记录数或科学观测数。
 
 当响应表明授权或固定成员范围失效，或结果到达声明的过期时间时，探索工作区一并清除当前查询、选择、文件详情及已渲染视图；从后台或历史页面恢复时再次检查同一截止时间。旧查询的迟到失败不能清除新查询，被中止的请求也不能恢复旧数据。查询表单条件保留，便于重新获取当前有权查看的结果。临时地图故障卸载画布并提供重新加载，不展示上游诊断。
 

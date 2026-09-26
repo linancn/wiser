@@ -25,7 +25,7 @@ describe('Run overview', () => {
     );
 
     expect(html).toContain('运行概览');
-    expect(html).toContain('裁决通过');
+    expect(html).toContain('评测通过');
     expect(html).toContain('遥测有缺口');
     expect(html).toContain('待办与风险');
     expect(html).toContain('data-testid="run-decision-spine"');
@@ -37,6 +37,6 @@ describe('Run overview', () => {
     expect(html).toContain(`/zh-CN/runs/${run.id}/trace`);
     expect(html).toContain(`/zh-CN/runs/${run.id}/replay`);
     expect(html).toContain(`/zh-CN/runs/${run.id}/collaboration`);
-    expect(html).toContain('<strong>3</strong> 个专业工件已交接');
+    expect(html).toContain('<strong>3</strong> 份专业成果已交接');
   });
 });

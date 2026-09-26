@@ -18,42 +18,38 @@ checkPaths:
   - apps/docs/src/content/**
   - apps/docs/src/lib/**
   - apps/docs/e2e/**
-lastReviewedAt: 2026-09-21
-lastReviewedCommit: c05533c0502c2b05cb8f09480463d7f7fc36308d
+lastReviewedAt: 2026-09-26
+lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
 ---
 
-# WISER Docs / 文档应用
+# WISER Docs / 文档站
 
-`apps/docs` is the single Fumadocs site for WISER Platform, Agent EXCON, Data Foundation, and future systems. `apps/docs` 是所有 WISER 系统共用的 Fumadocs 文档站。
+`apps/docs` 是 WISER 的中英文文档站。它从使用任务引导读者查阅数据、加入智能体演练、连接外部客户端或在本机开发；架构和协议页保留可供开发者与 AI 核对的精确边界。 / `apps/docs` is the bilingual WISER documentation site. It starts with user tasks and keeps precise architecture and protocol references for developers and AI readers.
 
-首页和文档页提供双语智能体接入复制操作，地址由公开的 `WISER_AGENT_SETUP_URL` 配置；生产预渲染时在构建阶段提供该值。 / Home and document pages provide a bilingual Agent setup copy action configured with the public `WISER_AGENT_SETUP_URL`; supply it during the production prerender build. See [the protocol](./src/content/docs/en/protocols/agent-setup.md) / [接入协议](./src/content/docs/zh-CN/protocols/agent-setup.md).
+## 阅读入口 / Reading paths
 
-## Entrypoints / 入口
+- [中文首页](./src/content/docs/zh-CN/index.mdx) / [English home](./src/content/docs/en/index.mdx)：选择系统和任务。
+- [现网资料使用指南](./src/content/docs/zh-CN/development/wiser-data-guide.md) / [Public data guide](./src/content/docs/en/development/wiser-data-guide.md)：查阅资料、试验接入和外部客户端连接状态。
+- [快速开始](./src/content/docs/zh-CN/quick-start.md) / [Quick start](./src/content/docs/en/quick-start.md)：本机完整体验。
+- [开发手册](./src/content/docs/zh-CN/development/index.md) / [Development guide](./src/content/docs/en/development/index.md)：开发、验证与维护。
+- [数据接口](./src/content/docs/zh-CN/protocols/data-rest.md) / [Data REST](./src/content/docs/en/protocols/data-rest.md)：从可调用接口进入 HTTP、GraphQL 与 MCP 协议说明。
 
-- Chinese (default) / 中文（默认）：<http://127.0.0.1:4321/>
-- English / 英文：<http://127.0.0.1:4321/en/>
-- Application routes / 应用路由：`src/app/`
-- Documentation content / 文档内容：`src/content/docs/{zh-CN,en}/`
-- Navigation / 导航：each directory's `meta.json`
+首页和文档页提供双语智能体设置复制入口；生产构建使用公开的 `WISER_AGENT_SETUP_URL` 指向当前接入说明。复制不授予访问权限。 / The bilingual agent setup action points to the current public setup instructions through `WISER_AGENT_SETUP_URL`; copying does not grant access.
 
-## Run / 运行
+## 运行与维护 / Run and maintain
 
-Install dependencies once from the repository root, then start the fixed local port:
+从仓库根目录运行： / From the repository root:
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm --filter @wiser/docs dev
 ```
 
-## Content rules / 内容规则
+本机入口为 `http://127.0.0.1:4321/`（中文）和 `http://127.0.0.1:4321/en/`（英文）。源文件在 `src/content/docs/{zh-CN,en}/`，目录顺序由同级 `meta.json` 控制。两种语言共享路径、功能、状态和操作。 / The source lives under `src/content/docs/{zh-CN,en}/`; each directory's `meta.json` controls navigation. Both languages preserve routes and meaning.
 
-- Every visible page exists at the same locale-free slug in `zh-CN` and `en`.
-- Chinese is the default; both languages preserve the same meaning, routes, states, and actions.
-- Current architecture and executable workflows belong in the site. Release narratives and superseded plans stay in Git history or issue tracking.
-- Package versions come from manifests/lockfile; container versions come from Compose/version records. Do not copy transient version inventories into prose.
-- Add each page to the relevant `meta.json`, give governed Markdown complete Docpact frontmatter, and update links in the same change.
+当前架构与可运行工作流属于文档站；过期计划和里程碑记录留在 Git 或议题中。依赖版本以清单、锁文件和容器配置为准。每页需要完整 Docpact frontmatter，并与同语言导航及另一语言页面同步。 / Keep current architecture and runnable workflows here, historical plans in Git or issues, versions in manifests, and both locales aligned.
 
-## Verify / 验证
+## 验证 / Verify
 
 ```bash
 pnpm --filter @wiser/docs typecheck
@@ -61,10 +57,4 @@ pnpm --filter @wiser/docs build
 pnpm --filter @wiser/docs test:e2e
 ```
 
-The search browser check waits for the static index response and completed download before checking visible results, so a cold development build uses the bounded network wait. / 搜索浏览器测试先确认静态索引响应与下载完成，再检查可见结果；首次开发构建使用有界的网络等待。
-
-The human workflow is documented in [Development documentation](./src/content/docs/en/development/index.md) and [Quick start](./src/content/docs/en/quick-start.md). / 面向人的开发流程见[开发手册](./src/content/docs/zh-CN/development/index.md)与[快速开始](./src/content/docs/zh-CN/quick-start.md)。
-
-Layout browser checks run each theme/viewport combination as an independent test. They wait for the route's heading, main content and fonts instead of global network idle, then retain every overflow/error assertion and screenshot within the default deadline. / 布局浏览器检查按主题和屏幕尺寸拆成独立测试，等待当前页面标题、正文和字体就绪后执行全部溢出／错误断言及截图，保留默认超时，不依赖整个开发服务器的网络空闲。
-
-The reference CI job runs Web and Docs together. Docs uses one browser worker in CI and four locally, so host core count cannot silently create a competing browser burst; test deadlines and assertions are unchanged. / 参考 CI 同时运行网页与文档测试，文档测试在 CI 固定一个浏览器工作进程，本地四个，避免根据机器核数自动增加并发、与网页测试争抢资源；测试时限和断言保持不变。
+仓库交付检查见[测试与验证](./src/content/docs/zh-CN/development/testing.md) / [Testing and verification](./src/content/docs/en/development/testing.md)。
