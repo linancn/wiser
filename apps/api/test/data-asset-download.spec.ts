@@ -42,7 +42,7 @@ afterEach(async () => {
 
 describe('governed version asset download', () => {
   function downloadApp(requestContext: PlatformRequestContext = context) {
-    const assetContentFetch = vi.fn((_input: RequestInfo | URL, _init?: RequestInit) =>
+    const assetContentFetch = vi.fn((_input: unknown, _init?: RequestInit) =>
       Promise.resolve(
         new Response('source bytes', {
           headers: { 'content-type': 'text/plain', 'content-length': '12' },
@@ -104,7 +104,9 @@ describe('governed version asset download', () => {
         init?.method !== 'GET' ||
         new Headers(init.headers).get('range') !== 'bytes=0-0'
       )
-        return Promise.resolve(new Response('signature mismatch', { status: 403 }));
+        return Promise.resolve(
+          new Response('signature mismatch', { status: 403 }),
+        );
       return Promise.resolve(
         new Response('s', {
           status: 206,
@@ -143,7 +145,9 @@ describe('governed version asset download', () => {
         init?.method !== 'GET' ||
         new Headers(init.headers).get('range') !== 'bytes=5-6'
       )
-        return Promise.resolve(new Response('signature mismatch', { status: 403 }));
+        return Promise.resolve(
+          new Response('signature mismatch', { status: 403 }),
+        );
       return Promise.resolve(
         new Response('ce', {
           status: 206,
@@ -179,7 +183,10 @@ describe('governed version asset download', () => {
       .mockResolvedValueOnce(
         new Response(null, {
           status: 416,
-          headers: { 'content-range': 'bytes */0', 'content-type': 'application/xml' },
+          headers: {
+            'content-range': 'bytes */0',
+            'content-type': 'application/xml',
+          },
         }),
       )
       .mockResolvedValueOnce(

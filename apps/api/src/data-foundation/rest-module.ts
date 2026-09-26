@@ -755,18 +755,62 @@ export function createDataFoundationRestModule(
                 const close = () => controller.abort();
                 reply.raw.once('close', close);
                 try {
-                  const upstream = await (
-                    options.assetContentFetch ?? globalThis.fetch
-                  )(download.url, {
-                    method: request.method,
-                    headers: range === undefined ? {} : { range },
+                  // The internal URL signs GetObject. A HEAD against that URL
+                  // has a different SigV4 method and is rejected by storage.
+                  const metadataProbe =
+                    request.method === 'HEAD' && range === undefined;
+                  const fetchContent =
+                    options.assetContentFetch ?? globalThis.fetch;
+                  const upstreamSignal = AbortSignal.any([
+                    controller.signal,
+                    AbortSignal.timeout(120000),
+                  ]);
+                  let upstream = await fetchContent(download.url, {
+                    method: 'GET',
+                    headers:
+                      range === undefined
+                        ? metadataProbe
+                          ? { range: 'bytes=0-0' }
+                          : {}
+                        : { range },
                     redirect: 'error',
-                    signal: AbortSignal.any([
-                      controller.signal,
-                      AbortSignal.timeout(120000),
-                    ]),
+                    signal: upstreamSignal,
                   });
+                  if (
+                    metadataProbe &&
+                    upstream.status === 416 &&
+                    upstream.headers.get('content-range') === 'bytes */0'
+                  ) {
+                    await upstream.body?.cancel();
+                    // Empty objects have no first byte. Retrieve their real
+                    // content type without transferring an object body.
+                    upstream = await fetchContent(download.url, {
+                      method: 'GET',
+                      redirect: 'error',
+                      signal: upstreamSignal,
+                    });
+                    if (
+                      upstream.status !== 200 ||
+                      upstream.headers.get('content-length') !== '0'
+                    ) {
+                      await upstream.body?.cancel();
+                      return sendError(request, reply, errors.unavailable);
+                    }
+                  }
                   if (![200, 206, 416].includes(upstream.status)) {
+                    await upstream.body?.cancel();
+                    return sendError(request, reply, errors.unavailable);
+                  }
+                  const probeRange = metadataProbe && upstream.status === 206;
+                  const probeLength = probeRange
+                    ? /^bytes 0-0\/([1-9][0-9]{0,14})$/.exec(
+                        upstream.headers.get('content-range') ?? '',
+                      )?.[1]
+                    : undefined;
+                  if (
+                    (probeRange && probeLength === undefined) ||
+                    (metadataProbe && upstream.status === 416)
+                  ) {
                     await upstream.body?.cancel();
                     return sendError(request, reply, errors.unavailable);
                   }
@@ -798,7 +842,7 @@ export function createDataFoundationRestModule(
                     return sendError(request, reply, errors.unavailable);
                   }
                   reply
-                    .status(upstream.status)
+                    .status(probeRange ? 200 : upstream.status)
                     .header('Content-Type', type)
                     .header('X-Content-Type-Options', 'nosniff')
                     .header(
@@ -811,13 +855,19 @@ export function createDataFoundationRestModule(
                     'content-range',
                     'accept-ranges',
                   ]) {
+                    if (probeRange && header === 'content-range') continue;
                     const value = upstream.headers.get(header);
+                    const represented =
+                      probeRange && header === 'content-length'
+                        ? probeLength
+                        : value;
                     if (
-                      value !== null &&
-                      value.length < 128 &&
-                      !/[\r\n]/.test(value)
+                      represented !== null &&
+                      represented !== undefined &&
+                      represented.length < 128 &&
+                      !/[\r\n]/.test(represented)
                     )
-                      reply.header(header, value);
+                      reply.header(header, represented);
                   }
                   if (request.method === 'HEAD' || upstream.status === 416) {
                     await upstream.body?.cancel();
