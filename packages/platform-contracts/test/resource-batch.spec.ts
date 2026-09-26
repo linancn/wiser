@@ -31,7 +31,7 @@ it('accepts explicit fixed versions while rejecting caller authority and unbound
     { presetVersion: 0 },
     { approvedBy: id },
     { status: 'approved' },
-    { purpose: 'agent-data' },
+    { purpose: 'unregistered-purpose' },
     { expiresAt: input.startsAt },
     { reason: 'x' },
   ])
@@ -40,6 +40,20 @@ it('accepts explicit fixed versions while rejecting caller authority and unbound
         .success,
     ).toBe(false);
 });
+it.each(['web-console', 'agent-data'])(
+  'requires an explicit supported %s purpose',
+  (purpose) => {
+    expect(
+      ResourceBatchPreviewCommandSchema.parse({ ...input, purpose }).purpose,
+    ).toBe(purpose);
+    expect(
+      ResourceBatchPreviewCommandSchema.safeParse({
+        ...input,
+        purpose: undefined,
+      }).success,
+    ).toBe(false);
+  },
+);
 it('requires an optimistic version and explicit decision without accepting a claimed approver', () => {
   const command = {
     projectId: id,

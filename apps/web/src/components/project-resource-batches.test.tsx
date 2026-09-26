@@ -178,105 +178,112 @@ it('clears old project information when a late request resolves', async () => {
   resolve?.(response());
   await waitFor(() => expect(screen.queryByText('公开水文资料')).toBeNull());
 });
-it('selects only explicit loaded members and fixed definitions for a preview', async () => {
-  const calls: RequestInit[] = [];
-  vi.stubGlobal(
-    'fetch',
-    vi.fn((url: string, init?: RequestInit) => {
-      if (init?.method === 'POST') {
-        calls.push(init);
-        return Promise.resolve(
-          calls.length === 1
-            ? Response.json({ code: 'ACCESS_UNAVAILABLE' }, { status: 503 })
-            : Response.json(batch),
-        );
-      }
-      if (url.includes('/members?'))
-        return Promise.resolve(
-          Response.json({
-            items: [
-              {
-                actorId: id(7),
-                displayName: '研究成员',
-                email: 'reader@example.test',
-                status: 'active',
-                version: 1,
-                expiresAt: null,
-                protected: false,
-                roles: [],
-              },
-            ],
-            hasMore: true,
-          }),
-        );
-      if (url.includes('resource-definitions'))
-        return Promise.resolve(
-          Response.json({
-            items: [
-              url.includes('kind=package')
-                ? {
-                    kind: 'package',
-                    id: id(4),
-                    version: 1,
-                    name: '公开水文资料',
-                    resourceCount: 2,
-                    allowedActions: ['content.read'],
-                    licenseBasis: '公开资料许可',
-                  }
-                : {
-                    kind: 'preset',
-                    id: id(5),
-                    version: 1,
-                    name: '研究查阅',
-                    actions: ['content.read'],
-                    maxDays: 30,
-                    approvalLevel: 'ordinary',
-                  },
-            ].map((x) => ({ ...x, createdAt: batch.startsAt })),
-            hasMore: false,
-            authorityRevision: 1,
-          }),
-        );
-      return Promise.resolve(Response.json({ items: [], hasMore: false }));
-    }),
-  );
-  render(
-    <ProjectResourceBatches
-      locale="zh-CN"
-      project={project}
-      viewerId={id(6)}
-    />,
-  );
-  await screen.findByText('暂无符合条件的批次。');
-  fireEvent.click(screen.getByRole('button', { name: '新建批量申请' }));
-  await screen.findByRole('checkbox', { name: '研究成员' });
-  fireEvent.click(screen.getByRole('checkbox', { name: '研究成员' }));
-  fireEvent.change(screen.getByLabelText('资源包'), {
-    target: { value: id(4) },
-  });
-  fireEvent.change(screen.getByLabelText('权限预设'), {
-    target: { value: id(5) },
-  });
-  fireEvent.change(screen.getByLabelText('办理原因'), {
-    target: { value: '本课题研究资料查阅' },
-  });
-  fireEvent.click(screen.getByRole('button', { name: '生成授权预览' }));
-  await screen.findByRole('alert');
-  fireEvent.click(screen.getByRole('button', { name: '生成授权预览' }));
-  await screen.findByText('办理回执');
-  expect(calls).toHaveLength(2);
-  expect(calls[1]?.body).toBe(calls[0]?.body);
-  expect(new Headers(calls[1]?.headers).get('idempotency-key')).toBe(
-    new Headers(calls[0]?.headers).get('idempotency-key'),
-  );
-  expect(JSON.parse(requestBody(calls[0]?.body))).toMatchObject({
-    actorIds: [id(7)],
-    packageId: id(4),
-    packageVersion: 1,
-    presetId: id(5),
-    presetVersion: 1,
-  });
-});
+it.each(['web-console', 'agent-data'])(
+  'selects explicit members, definitions and %s purpose for a preview',
+  async (purpose) => {
+    const calls: RequestInit[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === 'POST') {
+          calls.push(init);
+          return Promise.resolve(
+            calls.length === 1
+              ? Response.json({ code: 'ACCESS_UNAVAILABLE' }, { status: 503 })
+              : Response.json(batch),
+          );
+        }
+        if (url.includes('/members?'))
+          return Promise.resolve(
+            Response.json({
+              items: [
+                {
+                  actorId: id(7),
+                  displayName: '研究成员',
+                  email: 'reader@example.test',
+                  status: 'active',
+                  version: 1,
+                  expiresAt: null,
+                  protected: false,
+                  roles: [],
+                },
+              ],
+              hasMore: true,
+            }),
+          );
+        if (url.includes('resource-definitions'))
+          return Promise.resolve(
+            Response.json({
+              items: [
+                url.includes('kind=package')
+                  ? {
+                      kind: 'package',
+                      id: id(4),
+                      version: 1,
+                      name: '公开水文资料',
+                      resourceCount: 2,
+                      allowedActions: ['content.read'],
+                      licenseBasis: '公开资料许可',
+                    }
+                  : {
+                      kind: 'preset',
+                      id: id(5),
+                      version: 1,
+                      name: '研究查阅',
+                      actions: ['content.read'],
+                      maxDays: 30,
+                      approvalLevel: 'ordinary',
+                    },
+              ].map((x) => ({ ...x, createdAt: batch.startsAt })),
+              hasMore: false,
+              authorityRevision: 1,
+            }),
+          );
+        return Promise.resolve(Response.json({ items: [], hasMore: false }));
+      }),
+    );
+    render(
+      <ProjectResourceBatches
+        locale="zh-CN"
+        project={project}
+        viewerId={id(6)}
+      />,
+    );
+    await screen.findByText('暂无符合条件的批次。');
+    fireEvent.click(screen.getByRole('button', { name: '新建批量申请' }));
+    await screen.findByRole('checkbox', { name: '研究成员' });
+    fireEvent.click(screen.getByRole('checkbox', { name: '研究成员' }));
+    fireEvent.change(screen.getByLabelText('访问用途'), {
+      target: { value: purpose },
+    });
+    fireEvent.change(screen.getByLabelText('资源包'), {
+      target: { value: id(4) },
+    });
+    fireEvent.change(screen.getByLabelText('权限预设'), {
+      target: { value: id(5) },
+    });
+    fireEvent.change(screen.getByLabelText('办理原因'), {
+      target: { value: '本课题研究资料查阅' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '生成授权预览' }));
+    await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: '生成授权预览' }));
+    await screen.findByText('办理回执');
+    expect(calls).toHaveLength(2);
+    expect(calls[1]?.body).toBe(calls[0]?.body);
+    expect(new Headers(calls[1]?.headers).get('idempotency-key')).toBe(
+      new Headers(calls[0]?.headers).get('idempotency-key'),
+    );
+    expect(JSON.parse(requestBody(calls[0]?.body))).toMatchObject({
+      purpose,
+      actorIds: [id(7)],
+      packageId: id(4),
+      packageVersion: 1,
+      presetId: id(5),
+      presetVersion: 1,
+    });
+  },
+);
 
 it('keeps page selection explicit, supports removal and cancellation, and validates duration', async () => {
   vi.stubGlobal(

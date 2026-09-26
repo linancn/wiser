@@ -18,8 +18,8 @@ checkPaths:
   - packages/data-infra/src/migrations/**
   - scripts/data-foundation/**
   - compose.yaml
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: e11dd07b
+lastReviewedAt: 2026-09-26
+lastReviewedCommit: ce7c39fbcc4aebc5bca1f67ee80634b7ce544c4d
 ---
 
 ## Start with the two PostgreSQL boundaries
@@ -74,6 +74,8 @@ Keep all four Supabase artifacts synchronized: ordered migrations are replayable
 `supabase:verify` first executes `db reset --local`, then runs pgTAP, database lint, and all advisors. It deletes local Supabase data; never point it at a shared or production database. Never rename, reorder, or edit a migration that has entered history. Append another migration instead.
 
 The Agent consent/exchange integration test uses `WISER_AGENT_TEST_DATABASE_URL` with a disposable, migrated and seeded Supabase database. Run `pnpm exec vitest run apps/api/test/platform-agent-connections.integration.spec.ts` with that variable set. It creates synthetic OAuth Sessions, clients, consents and Agent memberships; run it after pgTAP, not concurrently with seed-count assertions. Without the variable, the integration suite is skipped. Normal unit tests remain independent of databases and AI providers.
+
+Migration `20260926084756_resource_batch_agent_purpose.sql` only expands the private batch purpose constraint to the two explicit Web and AI/MCP purposes. Declarative schema `06_resource_batches.sql` and pgTAP case 12 retain that same constraint; seed grants no resource access. The batch integration suite uses `WISER_RESOURCE_TEST_DATABASE_URL` against a disposable migrated and seeded database to verify purpose-specific preview, approval, execution and renewal. Apply the additive migration before the API/Web runtime. Back up the control database and runtime first. Once an AI/MCP batch is recorded, recovery must retain a runtime that can read both purposes and preserve the immutable history; old Web-only readers cannot decode those records. Previously saved previews require regeneration because the fingerprint now binds purpose.
 
 ## Data Foundation change workflow
 

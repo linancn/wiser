@@ -166,6 +166,13 @@ const zhCN = {
     previous: '上一页来源',
     next: '下一页来源',
   },
+  resourcePurposes: {
+    label: '访问用途',
+    'web-console': '网页访问',
+    'agent-data': 'AI/MCP 访问',
+    other: '其他用途',
+    help: '两种用途分别授权。AI/MCP 访问还需要本人登录并明确同意连接；网页授权不会自动用于 AI/MCP。',
+  },
   resourceGrants: {
     title: '资源授权',
     help: '授权记录说明',
@@ -3057,6 +3064,13 @@ const en: typeof zhCN = {
     cancel: 'Cancel',
     previous: 'Previous sources',
     next: 'Next sources',
+  },
+  resourcePurposes: {
+    label: 'Access purpose',
+    'web-console': 'Web access',
+    'agent-data': 'AI/MCP access',
+    other: 'Other purpose',
+    help: 'Each purpose needs a separate grant. AI/MCP also requires the user to sign in and explicitly consent to the connection; web grants do not automatically authorize AI/MCP.',
   },
   resourceGrants: {
     title: 'Resource grants',

@@ -3,6 +3,7 @@ import { ResourceAccessActionSchema } from './resource-access.ts';
 const Id = z.string().uuid();
 const Version = z.number().int().min(1).max(2147483646);
 const Reason = z.string().trim().min(5).max(1000);
+export const ResourceBatchPurposeSchema = z.enum(['web-console', 'agent-data']);
 export const ResourceBatchPreviewCommandSchema = z
   .strictObject({
     projectId: Id,
@@ -15,7 +16,7 @@ export const ResourceBatchPreviewCommandSchema = z
       .min(1)
       .max(50)
       .refine((v) => new Set(v).size === v.length),
-    purpose: z.literal('web-console'),
+    purpose: ResourceBatchPurposeSchema,
     startsAt: z.string().datetime({ offset: true }),
     expiresAt: z.string().datetime({ offset: true }),
     reason: Reason,
@@ -74,7 +75,7 @@ export const ResourceBatchViewSchema = z.object({
   resourceCount: z.number().int().min(1).max(1000),
   actions: z.array(ResourceAccessActionSchema).min(1).max(5),
   approvalLevel: z.enum(['ordinary', 'important']),
-  purpose: z.literal('web-console'),
+  purpose: ResourceBatchPurposeSchema,
   startsAt: z.string().datetime({ offset: true }),
   expiresAt: z.string().datetime({ offset: true }),
   validUntil: z.string().datetime({ offset: true }),

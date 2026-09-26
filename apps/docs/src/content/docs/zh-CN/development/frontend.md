@@ -18,8 +18,8 @@ checkPaths:
   - apps/docs/package.json
   - apps/docs/src/**
   - apps/docs/e2e/**
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: cc766b69
+lastReviewedAt: 2026-09-26
+lastReviewedCommit: ce7c39fbcc4aebc5bca1f67ee80634b7ce544c4d
 ---
 
 ## 两个前端应用

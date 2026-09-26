@@ -4,6 +4,7 @@ import {
   ResourceBatchesPageSchema,
   ResourceBatchViewSchema,
   ResourceBatchPreviewCommandSchema,
+  ResourceBatchPurposeSchema,
   ResourceDefinitionsPageSchema,
   ProjectAccessMembersPageSchema,
   type ResourceBatchView,
@@ -223,7 +224,7 @@ function BatchForm({
       presetId: preset.id,
       presetVersion: preset.version,
       actorIds: Object.keys(selected),
-      purpose: 'web-console',
+      purpose: field(form, 'purpose'),
       startsAt: new Date(now).toISOString(),
       expiresAt: new Date(now + days * 86400000).toISOString(),
       reason: field(form, 'reason'),
@@ -240,6 +241,7 @@ function BatchForm({
       presetId: preset.id,
       presetVersion: preset.version,
       actorIds: Object.keys(selected).sort(),
+      purpose: parsed.data.purpose,
       days,
       reason: parsed.data.reason,
     });
@@ -266,6 +268,22 @@ function BatchForm({
           locale={locale}
           onSelect={setPreset}
         />
+        <label>
+          {getDictionary(locale).resourcePurposes.label}
+          <select
+            name="purpose"
+            aria-label={getDictionary(locale).resourcePurposes.label}
+            defaultValue="web-console"
+            required
+          >
+            {ResourceBatchPurposeSchema.options.map((purpose) => (
+              <option key={purpose} value={purpose}>
+                {getDictionary(locale).resourcePurposes[purpose]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p>{getDictionary(locale).resourcePurposes.help}</p>
         <label>
           {t.memberSearch}
           <input
@@ -404,6 +422,8 @@ function BatchDetails({
   return (
     <>
       <dl className={styles.batchFacts}>
+        <dt>{getDictionary(locale).resourcePurposes.label}</dt>
+        <dd>{getDictionary(locale).resourcePurposes[batch.purpose]}</dd>
         <dt>{t.preset}</dt>
         <dd>
           {batch.presetName} · {t.version} {batch.presetVersion}
