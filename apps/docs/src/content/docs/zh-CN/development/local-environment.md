@@ -17,7 +17,7 @@ checkPaths:
   - .env.example
   - scripts/data-foundation/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: d0edb278f9d57dd0939d5c5d7cf7110ab5f135ab
+lastReviewedCommit: 86651aa7c44d64f6f7195eb148e5dc92d584c4b1
 ---
 
 ## 运行模式
@@ -101,6 +101,14 @@ CLI 邀请模板读取 `apps/web/public/auth-email-templates/invite.html`；Comp
 具体 header、scope 与调用顺序见 [Platform Auth](/architecture/unified-auth/)、[Agent EXCON HTTP](/protocols/http/) 和 [MCP](/protocols/mcp/)。
 
 ## 环境变量与秘密
+
+提供方可用以下可选自查命令，将原件的流式 SHA-256 和字节数与有大小上限的已保存解析记录比对：
+
+```bash
+pnpm exec tsx scripts/data-foundation/intake-preflight.mts /absolute/original /absolute/profile.json
+```
+
+只有文件完全对应时才复用解析事实。检测到 HTML 仅确定已保存内容的类型，保留对应文档的解析结果，不能证明介绍页所述数据集已经取得。文件变化后须重新解析已保存原件；原解析记录无效时仍保持无效。该命令不下载或写入服务器数据，输出仅属提供方自查；接收 API 独立核对已保存来源及解析结果。
 
 Web 与 Docs 通过公开的 `WISER_AGENT_SETUP_URL` 生成可复制的智能体接入指令，本机默认为 `http://127.0.0.1:3101/agent-setup/prompt.md`。部署时指向公开 API，生产 Docs 构建时也需提供。API 的 `DATA_PUBLIC_API_ORIGIN` 控制按内容固定的 Skill 下载地址。发行校验与独立的身份连接见[智能体接入](/protocols/agent-setup/)。
 

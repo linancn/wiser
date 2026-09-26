@@ -59,3 +59,91 @@ it('reuses parsed profiles only for the same original and labels results as prov
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+async function checkSavedHtml(
+  target: 'DESCRIPTION_PAGE' | 'DOWNLOAD_FILE' | 'DATASET',
+  profileState: 'ready' | 'stale' | 'invalid' = 'ready',
+) {
+  const dir = await mkdtemp(join(tmpdir(), 'wiser-html-preflight-'));
+  try {
+    const bytes = Buffer.from(
+      '<!doctype html><html><body><p>已保存的来源说明。</p></body></html>',
+    );
+    const hash = createHash('sha256').update(bytes).digest('hex');
+    const source = join(dir, 'source.html');
+    const profile = join(dir, 'profile.json');
+    await writeFile(source, bytes);
+    await writeFile(
+      profile,
+      JSON.stringify({
+        declaration: {
+          kind: 'DOCUMENT',
+          target,
+          expectedSourceHash: hash,
+          entry: 'VALID',
+          access: 'AUTHORIZED',
+          acquisition: 'ORIGINAL_ACQUIRED',
+          coverage: 'COMPLETE',
+          evidence: 'Saved page, paragraph 1',
+          metadata: {
+            source: 'Self-authored test document',
+            authorization: 'Test fixture use',
+            locator: 'Paragraph 1',
+          },
+        },
+        facts: {
+          sourceHash: profileState === 'stale' ? 'a'.repeat(64) : hash,
+          // The actual bytes identify HTML even when the supplied MIME is wrong.
+          mediaType: 'text/plain',
+          byteSize: bytes.length,
+          parserVersion: 'local-profile-v1',
+          status: profileState === 'invalid' ? 'INVALID' : 'READY',
+          columns: ['c1'],
+          recordCount: profileState === 'invalid' ? null : 1,
+          featureCount: profileState === 'invalid' ? null : 0,
+          reason: profileState === 'invalid' ? 'INVALID_CONTENT' : null,
+          sourceRegistered: false,
+        },
+      }),
+    );
+    return await preflightFiles(source, profile);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+it.each(['DESCRIPTION_PAGE', 'DOWNLOAD_FILE'] as const)(
+  'retains the parsed HTML profile for the saved %s without calling it invalid',
+  async (target) => {
+    const result = await checkSavedHtml(target);
+    expect(result.profileReused).toBe(true);
+    expect(result.result.acquisition).toBe('ORIGINAL_ACQUIRED');
+    expect(result.result.findings).toEqual([]);
+    expect(result.result.nextAction).toBe('REVIEW_EVIDENCE');
+  },
+);
+
+it('keeps a parsed HTML page separate from acquisition of its described dataset', async () => {
+  const result = await checkSavedHtml('DATASET');
+  expect(result.result.acquisition).toBe('REGISTERED_ONLY');
+  expect(result.result.findings.map((finding) => finding.code)).toContain(
+    'TARGET_NOT_ACQUIRED',
+  );
+});
+
+it('requires parsing the saved HTML original again when its profile is stale', async () => {
+  const result = await checkSavedHtml('DESCRIPTION_PAGE', 'stale');
+  expect(result.profileReused).toBe(false);
+  expect(result.result.nextAction).toBe('PARSE_SAVED_ORIGINAL');
+  expect(result.result.findings.map((finding) => finding.code)).toContain(
+    'CONTENT_NOT_PARSED',
+  );
+});
+
+it('does not promote an invalid parser result because a saved page looks like HTML', async () => {
+  const result = await checkSavedHtml('DESCRIPTION_PAGE', 'invalid');
+  expect(result.result.findings.map((finding) => finding.code)).toContain(
+    'CONTENT_NOT_PARSED',
+  );
+  expect(result.result.nextAction).toBe('COMPLETE_METADATA');
+});
