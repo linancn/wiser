@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 import { assertResourceManagementPolicy } from '@wiser/platform-auth';
 import { createDataManagementCatalogReader } from '../src/data-foundation/management-catalog.js';
 
 it.skipIf(process.env['WISER_DATA_PG_INTEGRATION'] !== '1')(
-  'lists only appointed project metadata under a column-limited non-bypass role',
+  'lists only appointed project metadata with provisioned column grants and current RLS helpers',
   async () => {
     const url = process.env['DATA_TEST_DATABASE_URL'];
     if (!url) throw Error('DATA_TEST_DATABASE_URL is required');
@@ -55,20 +56,20 @@ it.skipIf(process.env['WISER_DATA_PG_INTEGRATION'] !== '1')(
       await client.query(
         `grant wiser_data_metadata to ${runner} with inherit false, set true`,
       );
-      await client.query(
-        'grant usage on schema catalog,security to wiser_data_metadata',
+      // Use deployment's grants, not a second list that can diverge from the
+      // installed RLS policies. The fixture and all grants roll back together.
+      const provisioning = await readFile(
+        new URL(
+          '../../../infrastructure/data-foundation/postgres/provision-runtime.sql',
+          import.meta.url,
+        ),
+        'utf8',
       );
-      await client.query(`grant select (tenant_id,project_id,data_item_id,name,source_organization,
-        publication_status,acceptance_status,security_level,policy_version,authorization_scope)
-        on catalog.data_item to wiser_data_metadata`);
-      await client.query(`grant select (tenant_id,project_id,data_item_id,version_id,version_number,
-        publication_status,acceptance_status,security_level,policy_version,processing_stage,committed_at)
-        on catalog.data_item_version to wiser_data_metadata`);
-      await client.query(`grant execute on function security.resource_scope_legacy(),
-        security.resource_version_members(),security.authorized_row(uuid,uuid,text,bigint),
-        security.current_tenant_id(),security.current_project_id(),
-        security.current_max_security_level(),security.current_policy_version(),
-        security.security_rank(text) to wiser_data_metadata`);
+      const metadataStart = provisioning.indexOf('-- Only these columns');
+      expect(metadataStart).toBeGreaterThan(0);
+      await client.query(
+        provisioning.slice(metadataStart).replace(/commit;\s*$/, ''),
+      );
       for (const [index, s] of source.entries()) {
         const otherProject = index === 1 ? randomUUID() : projectId;
         const security = index === 2 ? 'L2_RESTRICTED' : 'L1_INTERNAL';

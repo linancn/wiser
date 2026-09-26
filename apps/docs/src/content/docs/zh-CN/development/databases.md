@@ -113,18 +113,21 @@ Agent 授权与交换集成测试通过 `WISER_AGENT_TEST_DATABASE_URL` 连接�
 
 Supabase 中的 EXCON journal 由非超级用户、`NOBYPASSRLS` 的 `wiser_excon_api` 通过 `wiser_excon_runtime` 最小权限组访问。浏览器使用 Supabase Session；service-role 或数据库凭据只能留在可信服务端。
 
-Data Foundation 的部署脚本创建四个明确角色：
+Data Foundation 的部署脚本创建五个明确角色：
 
-| Role                 | 用途与限制                                                     |
-| -------------------- | -------------------------------------------------------------- |
-| `wiser_data_runtime` | 无登录的共同权限组；只有需要的 schema、表、序列和函数权限      |
-| `wiser_data_api`     | API 登录；继承 runtime 权限，非超级用户且不能绕过 RLS          |
-| `wiser_data_worker`  | Worker 登录；继承 runtime 权限，使用独立密码和超时             |
-| `wiser_data_gis`     | 隔离的 GIS 登录；不继承通用 runtime，只能执行受控 MVT function |
+| Role                  | 用途与限制                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------- |
+| `wiser_data_runtime`  | 无登录的共同权限组；只有需要的 schema、表、序列和函数权限                                   |
+| `wiser_data_api`      | API 登录；继承 runtime 权限，非超级用户且不能绕过 RLS                                       |
+| `wiser_data_worker`   | Worker 登录；继承 runtime 权限，使用独立密码和超时                                          |
+| `wiser_data_gis`      | 隔离的 GIS 登录；不继承通用 runtime，只能执行受控 MVT function                              |
+| `wiser_data_metadata` | 无登录元数据角色；仅可读目录身份和状态列、执行必需的调用者权限 RLS 函数，不继承通用 runtime |
 
 Data 的每个数据库事务必须以 transaction-local `set_config` 设置并验证 `wiser.tenant_id`、`wiser.project_id`、`wiser.max_security_level` 和 `wiser.policy_version`。缺少或不匹配上下文时应返回零行或失败，不能退化为无租户查询。所有角色保持 `NOSUPERUSER`、`NOBYPASSRLS`，应用不得使用 migration owner 作为 runtime 连接。
 
 表级 grant 不代表可以绕过领域权威。`service.operation`、`ingestion.session`、`ingestion.job` 与 `ingestion.transform_plan` 的数据库 trigger 检查每一次整行更新，而不只检查显式写出状态列的语句；非法生命周期边、identity/scope 重绑、policy 修改、安全降级、终态结果或冻结计划修改、不合法的同态 lease/content 变化，以及不等于 `old.row_version + 1` 的乐观版本变化都会被拒绝。合法转换变化时必须同步 application/core policy 与这些数据库 guard。
+
+元数据角色还需执行迁移 `0031` 后目录行策略引用的 `security.resource_related_ids(text)`。即使选择旧模式分支，PostgreSQL 仍检查该函数的执行权。部署脚本只补充此调用者权限函数，不授予正文列或内容表权限。`pnpm test:postgres:data-api` 使用实际部署授权和完整迁移，验证跨项目、密级、发布状态及私有列拒绝。
 
 ## 事务、并发与 Outbox
 

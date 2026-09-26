@@ -113,18 +113,21 @@ An `authenticated` role alone is not authorization. Policies check ownership and
 
 The Supabase EXCON journal is accessed by the non-superuser, `NOBYPASSRLS` `wiser_excon_api` through the least-privilege `wiser_excon_runtime` group. Browsers use Supabase sessions; service-role and database credentials remain on trusted servers.
 
-Data Foundation provisioning creates four explicit roles:
+Data Foundation provisioning creates five explicit roles:
 
-| Role                 | Purpose and constraints                                                                                     |
-| -------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `wiser_data_runtime` | Non-login common privilege group with only the required schema, table, sequence, and function privileges    |
-| `wiser_data_api`     | API login that inherits runtime privileges; non-superuser and unable to bypass RLS                          |
-| `wiser_data_worker`  | Worker login that inherits runtime privileges with a separate password and timeouts                         |
-| `wiser_data_gis`     | Isolated GIS login that does not inherit the common runtime and can execute only the governed MVT functions |
+| Role                  | Purpose and constraints                                                                                                                |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `wiser_data_runtime`  | Non-login common privilege group with only the required schema, table, sequence, and function privileges                               |
+| `wiser_data_api`      | API login that inherits runtime privileges; non-superuser and unable to bypass RLS                                                     |
+| `wiser_data_worker`   | Worker login that inherits runtime privileges with a separate password and timeouts                                                    |
+| `wiser_data_gis`      | Isolated GIS login that does not inherit the common runtime and can execute only the governed MVT functions                            |
+| `wiser_data_metadata` | Non-login metadata reader; only catalog identity/status columns and required invoker RLS functions, without common runtime inheritance |
 
 Every Data database transaction sets and validates transaction-local `wiser.tenant_id`, `wiser.project_id`, `wiser.max_security_level`, and `wiser.policy_version` values with `set_config`. Missing or mismatched context returns no rows or fails; it must never degrade into an unscoped query. All roles remain `NOSUPERUSER` and `NOBYPASSRLS`, and applications never connect as the migration owner at runtime.
 
 Table grants are not permission to bypass domain authority. Database triggers on `service.operation`, `ingestion.session`, `ingestion.job`, and `ingestion.transform_plan` validate every row update, not only statements that explicitly name the state column. They reject illegal lifecycle edges, identity or scope rebinding, policy mutation, security downgrade, terminal-result or frozen-plan mutation, invalid same-state lease/content changes, and any optimistic version change other than `old.row_version + 1`. Keep application/core transition policies and these database guards synchronized whenever a legal edge changes.
+
+The metadata reader must also execute `security.resource_related_ids(text)`, referenced by the catalog item policy since migration `0031`. PostgreSQL checks that function privilege even when the legacy branch is selected. Provisioning grants this one invoker function without granting content columns or tables. `pnpm test:postgres:data-api` exercises the actual provisioning grants against all applied migrations and checks cross-project, security, publication and private-column denial.
 
 ## Transactions, concurrency, and Outbox
 
