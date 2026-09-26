@@ -17,7 +17,7 @@ checkPaths:
   - apps/mcp/src/**
   - supabase/config.toml
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: 0635f3f684efbbaeacda76618d200458d5511f6c
+lastReviewedCommit: b842f324611ce7d8dfacf4ab522c4adb604d2a71
 ---
 
 ## 网页入口
@@ -36,7 +36,7 @@ lastReviewedCommit: 0635f3f684efbbaeacda76618d200458d5511f6c
 
 ## 外部 AI/MCP 接入
 
-**端到端状态：BLOCKED（截至 2026-09-26）。** 公网 OAuth 发现和授权入口已启用，但尚未取得本人浏览器同意/拒绝、真实 MCP 客户端换取令牌和按项目调用的完整验收证据。健康检查及发现接口 200 不代表正式可用。
+**本人客户端端到端状态：BLOCKED（截至 2026-09-26，用户推迟联调）。** 使用现有合成普通账号、真实 Chromium 浏览器及官方 MCP TypeScript SDK 1.30.0 的公网协议与权限验收已通过。此证据不能替代本人实际客户端验收，也不代表第三方客户端均已兼容。
 
 支持 OAuth 2.1 授权码与 PKCE S256 的 MCP 客户端按以下顺序接入：
 
@@ -44,13 +44,23 @@ lastReviewedCommit: 0635f3f684efbbaeacda76618d200458d5511f6c
 2. 客户端从 401 的 `WWW-Authenticate` 找到受保护资源元数据，再发现 issuer `https://auth.wiser.thuenv.tiangong.world:7100/auth/v1`，通过动态客户端注册登记自己的回调地址。授权请求须带准确的 `resource`、`redirect_uri` 与 PKCE S256 challenge。
 3. 在浏览器用本人已有的 WISER 账户登录。授权页面会显示客户端、回调主机以及本人可授权的项目；明确选择一个项目、查询或录入模式、最高资料级别与 15 分钟或 1 小时有效期，然后点击同意；也可以点击拒绝。此流程不需要 Google、GitHub 等第三方登录。
 4. 客户端接收授权码并自行在公网 Auth 令牌端点交换，之后把 OAuth Bearer Token 放在 MCP 请求头。客户端和用户不得把密码、授权码或令牌贴进聊天、工具参数或日志。
-5. 验收时分别检查：获准项目的查询成功；另一项目和未选的录入能力被拒；拒绝授权没有令牌；到期、撤销 OAuth consent 或 WISER Agent connection 后的旧令牌被拒。撤销 WISER connection 使用本人 Session 调用 `POST /api/platform/v1/agent-connections/{connectionId}/revoke`，需 UUID `Idempotency-Key` 与空 JSON body；同一用户可用 `GET /api/platform/v1/agent-connections` 查自己的连接。
+5. 从账户菜单打开“AI/MCP 连接”，可断开本人连接，同时清除该客户端保存的同意记录。连接到期或需要新增资料范围时，先断开，再回到原客户端重新发起并明确同意；仅清除客户端令牌不足以让当前授权服务器再次显示同意页面。受管项目需要管理员分别批准“网页访问”和“AI/MCP 访问”用途。
+6. 本人联调仍须记录客户端名称、所选项目与调用结果，检查获准查询、跨项目和未获准操作拒绝、拒绝授权、到期及撤权。不要提交密码、授权码或令牌。断开未完全完成时，访问已停止，但须按页面提示重试清除旧授权。
 
 ### 已完成的独立检查
 
-- 公网 MCP 元数据公布准确的 `https://mcp.wiser.thuenv.tiangong.world:7100/mcp` 和公网 HTTPS 授权服务器；未授权 `POST /mcp` 返回 401 及包含公网元数据地址的 `WWW-Authenticate`。
-- 公网 OAuth 授权服务器发现、OIDC 发现、JWKS 可访问；授权端点接受带 PKCE S256 的测试请求并重定向到 WISER 浏览器授权入口；公网动态客户端注册成功。令牌端点接受 POST 路由，尚未用本人授权码完成交换。
-- 授权入口在公网使用相对跳转，未登录时引导到已有账户的密码登录页。Auth 域名的 Kong REST/Storage 路径仍为 404；API 健康入口和密码登录页可访问。上述检查不替代实际密码登录及项目调用验收。
+2026-09-26 在公网 `:7100` 验证，使用现有合成普通身份，业务访问未使用管理员密钥：
+
+| 检查             | 已取得的证据                                                                                                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 发现及未授权响应 | MCP 公网 resource、Auth HTTPS issuer 和授权/令牌端点正确；未授权返回 401 与正确的 `WWW-Authenticate`。                                                                                      |
+| 完整授权协议     | 真实浏览器密码登录、明确选择项目并同意，PKCE S256 授权码交换成功；官方 SDK 初始化、列出工具和实际资料调用成功；点击拒绝返回 `access_denied` 且没有授权码。                                  |
+| 资源与项目边界   | 独立审批的 A 资料及其两条记录可读；未批 B、另一项目和未批准导出均拒绝。新增 B 不会进入旧委托，撤销旧同意并重新明确授权后才可读。                                                            |
+| 撤销与期限       | 同一未过期 OAuth 令牌在撤销 A 后立即失去 A；B 按真实时钟到期后停止读取。原委托到期与原 OAuth JWT 自然到期后均返回 401；JWT 到期检查使用的委托此前已过期，不将两种拒绝原因混为独立隔离证明。 |
+| 原有功能与入口   | 普通密码会话仍可读原项目 2,409 项资料，跨项目及撤销会话被拒；其他 30 个容器 ID、镜像及启动时间未变；HAProxy 原有段保留，7770/7800 HTTPS 响应分别与现有后端一致。                            |
+| 路由与注册       | Auth 主机仍拒绝 REST、Storage 和网关状态路由；注册设置与实际拒绝行为如下。                                                                                                                  |
+
+对应修复与验证记录见 [PR #87](https://github.com/linancn/wiser/pull/87)、[PR #88](https://github.com/linancn/wiser/pull/88)、[PR #89](https://github.com/linancn/wiser/pull/89)、[PR #90](https://github.com/linancn/wiser/pull/90)。这些变更均通过六个 CI 验证通道与汇总门禁。现场 JSON 验收收据和回退配置由部署维护者保存；不在指南中发布认证材料。测试资料明确为合成权限夹具，不能作为黑臭水体科学数据或专业审核结论。
 
 ### 自行注册状态
 

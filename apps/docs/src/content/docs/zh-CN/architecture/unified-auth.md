@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: ce7c39fbcc4aebc5bca1f67ee80634b7ce544c4d
+lastReviewedCommit: b842f324611ce7d8dfacf4ab522c4adb604d2a71
 ---
 
 ## 单一身份源
@@ -113,7 +113,7 @@ API 同时配置 `WISER_AGENT_MCP_RESOURCE`（精确的公开 `/mcp` URL）与 `
 
 当前部署启用了 GoTrue OAuth 2.1、动态客户端注册与 `platform_private.agent_access_token_hook`。Web 的 `/oauth/consent` 把授权请求送到已登录的双语页面；页面先通过 Supabase 关联当前 human，再从 WISER API 读取可授权项目。用户必须明确选择一个项目、模式、级别和期限，或拒绝。项目授权先提交，随后 Supabase 才批准授权码。MCP 发现元数据中的 resource 为 `https://mcp.wiser.thuenv.tiangong.world:7100/mcp`，issuer 为 `https://auth.wiser.thuenv.tiangong.world:7100/auth/v1`。Auth 反代只允许 `/auth/v1` 和精确的 `/.well-known/oauth-authorization-server/auth/v1`；后者在反代内改写到 Kong 的 Auth 路由，不开放 Kong 的 REST/Storage。
 
-截至 2026-09-26，公网发现、PKCE 授权入口、动态注册、匿名 401 和浏览器登录重定向已核验。本人浏览器授权/拒绝、真实 MCP 客户端令牌交换、项目隔离与撤销效果仍需联调，因此端到端状态为 **BLOCKED**。公众自行注册已关闭：现网认证 API 返回 `disable_signup=true`，公众注册请求得到 `signup_disabled`。已有邮箱密码登录保持开启；管理员邀请仍须分别验证邮件投递与收件人接受。
+截至 2026-09-26，现有合成普通身份已通过公网浏览器同意／拒绝、PKCE 交换及官方 MCP SDK 实际调用，包含受管资料范围、跨项目拒绝、撤销和真实时钟到期。本人的真实客户端验收由用户明确推迟，仍为 **BLOCKED**；合成协议证据不能替代本人验收。详见资料指南中的范围与收据说明。公众自行注册已关闭：现网认证 API 返回 `disable_signup=true`，公众注册请求得到 `signup_disabled`。已有邮箱密码登录保持开启；管理员邀请仍须分别验证邮件投递与收件人接受。
 
 ## 请求处理
 
@@ -276,4 +276,10 @@ PostgreSQL资源授权读取器通过同一语句读取项目配置、固定资�
 
 本变更不改写表结构或既有数据，也不启用任何项目的受管模式。回退可恢复此前应用，并由连接所有者通过 API 撤销受影响连接，保留不可变授权及审计历史；此前未绑定资源的受管连接须重新同意。合成身份集成验证和公网协议验证不能替代用户已推迟的本人客户端验收。
 
-GoTrue v2.195.0 可能对相同身份范围自动复用该客户端已有的同意。连接到期或新增资源授权后，如需改变 WISER 的固定范围，所有者须先通过 Supabase `oauth.revokeGrant`（普通用户 `DELETE /auth/v1/user/oauth/grants?client_id=...`）撤销该客户端授权，再从客户端重新发起并明确同意。这会撤销该用户在该客户端的 OAuth 会话，不影响其他用户或直接密码登录会话。只清除客户端令牌或添加 `prompt=consent` 对此固定版本不足以触发重新同意；仅撤销 WISER 连接会停止访问，但不会清除 Supabase 保存的同意。
+GoTrue v2.195.0 可能对相同身份范围自动复用该客户端已有的同意。连接到期或新增资源授权后，如需改变 WISER 的固定范围，所有者须先通过 Supabase `oauth.revokeGrant({ clientId })`（普通用户 `DELETE /auth/v1/user/oauth/grants?client_id=...`）撤销该客户端授权，再从客户端重新发起并明确同意。这会撤销该用户在该客户端的 OAuth 会话，不影响其他用户或直接密码登录会话。只清除客户端令牌或添加 `prompt=consent` 对此固定版本不足以触发重新同意；仅撤销 WISER 连接会停止访问，但不会清除 Supabase 保存的同意。
+
+### 本人管理 AI/MCP 连接
+
+已登录账户区提供 `/[locale]/account/agents`，显示最近更新的最多 100 个本人连接、仍可见的项目名称、期限和当前状态。失去项目成员资格不妨碍断开连接。Supabase 客户端名称只作为不可信文本显示，不生成提供方链接或暴露凭据。
+
+用户明确点击断开，以同源 POST 提交。服务端验证当前会话、重新读取本人连接，并从该记录取得 OAuth 客户端，不接受浏览器传入客户端标识。先撤销 WISER 连接，再清除该用户的 Supabase 授权；提供方失败时访问已停止，但页面提示重试，不报告全部完成。提供方授权已不存在时可幂等完成。表单拒绝重复或多余字段、外站或 null Origin 及超限请求体；页面以 `same-origin` 保持原生表单来源，决策响应禁用缓存并使用 `no-referrer`。断开后由用户回到原客户端重新发起并明确选择项目授权。

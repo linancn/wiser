@@ -34,11 +34,11 @@ function apiOrigin(): string {
   }
 }
 
-async function platformRequest(
+export async function agentPlatformRequest(
   path: string,
   token: string,
   method: 'GET' | 'POST',
-  body?: PlatformAgentAuthorizeCommand,
+  body?: PlatformAgentAuthorizeCommand | Record<string, never>,
   idempotencyKey?: string,
 ): Promise<unknown> {
   const response = await fetch(`${apiOrigin()}${path}`, {
@@ -53,6 +53,7 @@ async function platformRequest(
     },
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: 'no-store',
+    redirect: 'error',
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) {
@@ -64,7 +65,7 @@ async function platformRequest(
           : 'unavailable',
     );
   }
-  return response.json();
+  return response.status === 204 ? undefined : response.json();
 }
 
 export async function getAgentConsentServerContext() {
@@ -83,7 +84,7 @@ export async function getAgentConsentServerContext() {
     oauth: client.auth.oauth,
     inspect: async (accessToken, authorizationId) =>
       PlatformAgentAuthorizationViewSchema.parse(
-        await platformRequest(
+        await agentPlatformRequest(
           `/api/platform/v1/agent-authorizations/${encodeURIComponent(authorizationId)}`,
           accessToken,
           'GET',
@@ -91,7 +92,7 @@ export async function getAgentConsentServerContext() {
       ),
     authorize: async (accessToken, command, idempotencyKey) => {
       const result = PlatformAgentConnectionViewSchema.parse(
-        await platformRequest(
+        await agentPlatformRequest(
           '/api/platform/v1/agent-connections',
           accessToken,
           'POST',

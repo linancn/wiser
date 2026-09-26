@@ -17,7 +17,7 @@ checkPaths:
   - apps/mcp/src/**
   - supabase/config.toml
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: 0635f3f684efbbaeacda76618d200458d5511f6c
+lastReviewedCommit: b842f324611ce7d8dfacf4ab522c4adb604d2a71
 ---
 
 ## Web links
@@ -36,7 +36,7 @@ For black-odor water data, confirm your organization and Project, then check sou
 
 ## External AI/MCP connection
 
-**End-to-end status: BLOCKED (2026-09-26).** Public OAuth discovery and authorization entrypoints are enabled. Personal browser approval and denial, a real MCP client's token exchange, and Project-scoped calls have not yet been jointly verified. Health or discovery HTTP 200 is not proof of readiness.
+**Personal-client end-to-end status: BLOCKED (2026-09-26; deferred by the user).** Public protocol and authorization checks passed with existing synthetic ordinary accounts, real Chromium and the official MCP TypeScript SDK 1.30.0. This does not replace personal-client acceptance or establish compatibility with every third-party client.
 
 An MCP client supporting OAuth 2.1 authorization code and PKCE S256 connects in this order:
 
@@ -44,13 +44,23 @@ An MCP client supporting OAuth 2.1 authorization code and PKCE S256 connects in 
 2. Read protected resource metadata from the 401 `WWW-Authenticate` challenge, discover issuer `https://auth.wiser.thuenv.tiangong.world:7100/auth/v1`, and dynamically register the client's callback. The authorization request needs the exact `resource`, `redirect_uri`, and PKCE S256 challenge.
 3. Sign in with your existing personal WISER account in the browser. Review the client and callback host, then explicitly choose one eligible Project, query or ingestion mode, maximum data level, and a 15-minute or one-hour term before approving. You can also deny. Google, GitHub, and other social sign-in providers are not part of this flow.
 4. The client receives the authorization code, exchanges it at the public Auth token endpoint, and sends the OAuth Bearer token in the MCP request header. Do not place passwords, codes, or tokens in chat, Tool arguments, or logs.
-5. Acceptance must test an allowed Project query, another Project and unselected ingestion being denied, denial yielding no token, and expired or revoked tokens being rejected. With the user's own Session, `GET /api/platform/v1/agent-connections` lists their connections; `POST /api/platform/v1/agent-connections/{connectionId}/revoke` revokes one with a UUID `Idempotency-Key` and empty JSON body.
+5. Open “AI/MCP connections” from the account menu to disconnect an owned connection and clear its saved client consent. After expiry or a resource-scope change, disconnect first, then restart authorization and explicitly consent in the original client. Discarding client tokens alone does not force this server to show consent again. Managed Projects require separately approved Web and AI/MCP resource purposes.
+6. Personal acceptance must still record the client name, selected Project and call outcomes, including allowed reads, denied cross-Project/unapproved operations, denial, expiry and revocation. Do not provide passwords, codes or tokens. If disconnection is partial, access has stopped; follow the page's retry action to clear saved consent.
 
 ### Independent checks completed
 
-- Public MCP metadata publishes the exact HTTPS `/mcp` resource and public issuer. An unauthorized `POST /mcp` returns 401 with a `WWW-Authenticate` link to public resource metadata.
-- Public authorization server and OIDC discovery plus JWKS are reachable. A PKCE S256 authorization test redirects to WISER browser consent; public dynamic client registration succeeded. The token endpoint accepts POST, but a personal authorization code has not yet been exchanged.
-- The browser consent entry uses a relative public-site redirect and anonymous visitors reach the existing password sign-in page. Kong REST and Storage paths on the Auth hostname still return 404. API health and the password sign-in page load. These checks do not prove an actual password login or Project call.
+Public `:7100` checks on 2026-09-26 used existing synthetic ordinary identities, without administrative keys for business access:
+
+| Check                           | Evidence obtained                                                                                                                                                                                                                                                                                                                |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Discovery and challenge         | Correct public MCP resource, HTTPS issuer and authorization/token endpoints; unauthenticated requests return 401 with the correct `WWW-Authenticate`.                                                                                                                                                                            |
+| Complete authorization protocol | Real password login, explicit Project approval and successful PKCE S256 code exchange; official SDK initialization, tool listing and actual data calls. Browser denial yields `access_denied` without a code.                                                                                                                    |
+| Resource and Project bounds     | Independently approved A and its two records are readable; unapproved B, another Project and unapproved export are denied. New B is excluded from the old delegation and becomes readable only after revoking prior consent and explicitly consenting again.                                                                     |
+| Revocation and expiry           | The same unexpired OAuth token loses A immediately after revocation. B stops being readable at actual wall-clock expiry. Original delegation expiry and original OAuth JWT expiry both yield 401; that delegation had already expired when the JWT expired, so these are not claimed as isolated proofs of each rejection cause. |
+| Existing features and entries   | An ordinary password session still reads the original 2,409-resource Project; cross-Project and revoked-session reads are denied. Thirty other container IDs, images and start times are unchanged. Existing HAProxy sections are preserved; 7770/7800 HTTPS responses match their configured backends.                          |
+| Routing and registration        | Auth still denies REST, Storage and gateway status routes. Registration settings and denial are recorded below.                                                                                                                                                                                                                  |
+
+Changes and verification are recorded in [PR #87](https://github.com/linancn/wiser/pull/87), [PR #88](https://github.com/linancn/wiser/pull/88), [PR #89](https://github.com/linancn/wiser/pull/89) and [PR #90](https://github.com/linancn/wiser/pull/90). All six CI lanes and the aggregate gate passed for each change. The deployment maintainer retains JSON acceptance receipts and rollback configuration; authentication materials are not published in this guide. Test resources are explicitly synthetic permission fixtures, not scientific black-odor water data or professional review conclusions.
 
 ### Self-registration status
 

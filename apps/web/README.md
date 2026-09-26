@@ -16,7 +16,7 @@ checkPaths:
   - apps/api/src/v2-*
   - apps/api/src/data-foundation/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: 6ecec49ff897d44bf0d25e6eed5bfac58f2e85aa
+lastReviewedCommit: b842f324611ce7d8dfacf4ab522c4adb604d2a71
 ---
 
 # WISER Web / 产品前端
@@ -158,3 +158,5 @@ The opt-in account workspace and its isolated real-session browser checks are do
 The normal account access workspace opens project resource coverage through verified-session HTTP reads, whole-query summaries and bounded resource pages. Selected project context is reauthorized by the API. / 正常账户权限工作区通过已验证会话读取所选项目资料覆盖，采用完整查询汇总和有界资源分页；项目上下文仍由API重新授权。
 
 Managed project managers can create fixed-version resource packages from authorized coverage and versioned presets in the same workspace. Saving definitions does not grant access. / 已启用资源管理的项目管理员可在同一工作区从获准清单创建固定版本资源包及权限预设；保存定义不等于授予权限。
+
+The signed-in account menu includes `/[locale]/account/agents` for owner-only MCP disconnection and prior OAuth consent reset; details and recovery semantics are in Unified Auth. / 已登录账户菜单提供 AI/MCP 连接管理，允许本人断开连接并清除旧同意记录；完整流程和部分失败恢复见统一身份文档。

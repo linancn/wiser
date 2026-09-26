@@ -18,7 +18,7 @@ checkPaths:
   - apps/mcp/**
   - apps/telemetry-ingress/**
 lastReviewedAt: 2026-09-26
-lastReviewedCommit: ce7c39fbcc4aebc5bca1f67ee80634b7ce544c4d
+lastReviewedCommit: b842f324611ce7d8dfacf4ab522c4adb604d2a71
 ---
 
 ## One identity authority
@@ -113,7 +113,7 @@ These routes determine project ownership from the verified Session, persisted co
 
 The current deployment enables the GoTrue OAuth 2.1 server, dynamic client registration, and `platform_private.agent_access_token_hook`. Web `/oauth/consent` leads to the authenticated bilingual consent page. It first associates the authorization request with the human through Supabase, then reads eligible Projects from the WISER API. The user explicitly chooses one Project, mode, security ceiling, and duration, or denies access. WISER commits the bounded Project grant before Supabase approves the authorization code. MCP metadata publishes `https://mcp.wiser.thuenv.tiangong.world:7100/mcp` as the resource and `https://auth.wiser.thuenv.tiangong.world:7100/auth/v1` as the issuer. The Auth proxy allows only `/auth/v1` and the exact `/.well-known/oauth-authorization-server/auth/v1` path; it rewrites the latter to Kong's Auth route without exposing Kong REST or Storage.
 
-As of 2026-09-26, public discovery, the PKCE authorization entry, dynamic registration, anonymous 401, and the browser sign-in redirect have been checked. Personal browser approval/denial, a real MCP client's token exchange, Project isolation, and revocation remain to be jointly tested, so end-to-end status is **BLOCKED**. Public self-registration is disabled: the deployed Auth API reports `disable_signup=true`, and a public signup attempt returns `signup_disabled`. Existing email/password authentication remains enabled; administrative invitations require their own delivery and recipient acceptance evidence.
+As of 2026-09-26, existing synthetic ordinary identities passed public browser approval/denial, PKCE exchange and actual official MCP SDK calls, including managed resource bounds, cross-Project denial, revocation and wall-clock expiry. Personal-client acceptance remains **BLOCKED**, explicitly deferred by the user; synthetic protocol evidence does not replace it. Detailed scope and receipts are summarized in the data guide. Public self-registration is disabled: the deployed Auth API reports `disable_signup=true`, and a public signup attempt returns `signup_disabled`. Existing email/password authentication remains enabled; administrative invitations require their own delivery and recipient acceptance evidence.
 
 ## Request processing
 
@@ -276,4 +276,10 @@ The consenting human approves this delegation. Each event retains the original g
 
 This change introduces no schema or data rewrite and does not activate managed mode. Rollback can restore the prior application and revoke affected connections through the owner API while retaining immutable grant/audit history; existing pre-change managed connections need fresh consent to gain a resource binding. Synthetic integration checks and public protocol acceptance do not replace the user's deferred personal-client acceptance.
 
-GoTrue v2.195.0 may automatically reuse an existing client consent for the same identity scopes. To change the bounded WISER scope after expiry or new resource approval, the owner must first revoke that client grant through Supabase `oauth.revokeGrant` (ordinary-user `DELETE /auth/v1/user/oauth/grants?client_id=...`), then restart the client authorization and explicitly consent again. This revokes that user's OAuth sessions for the client; it does not revoke other users or direct password sessions. Merely discarding a client token or adding `prompt=consent` is insufficient for this pinned server. WISER connection revocation alone stops access but does not clear Supabase's saved consent.
+GoTrue v2.195.0 may automatically reuse an existing client consent for the same identity scopes. To change the bounded WISER scope after expiry or new resource approval, the owner must first revoke that client grant through Supabase `oauth.revokeGrant({ clientId })` (ordinary-user `DELETE /auth/v1/user/oauth/grants?client_id=...`), then restart the client authorization and explicitly consent again. This revokes that user's OAuth sessions for the client; it does not revoke other users or direct password sessions. Merely discarding a client token or adding `prompt=consent` is insufficient for this pinned server. WISER connection revocation alone stops access but does not clear Supabase's saved consent.
+
+### Owner-managed AI/MCP connections
+
+The signed-in account control opens `/[locale]/account/agents`. It shows the most recently updated 100 owned connections, project labels where still visible, expiry and current status. Missing project membership does not prevent disconnecting. Supabase client names are untrusted text; the page does not render provider links or credentials.
+
+Disconnect submits an explicit same-origin POST. The server verifies the current session, reloads owned connections and derives the OAuth client from that record, never from browser input. It revokes the WISER connection first, then clears that user's Supabase grant. Provider failure leaves access stopped and offers a retry; it is not reported as complete. An already absent provider grant is an idempotent success. The bounded form rejects duplicate or extra fields, foreign/null Origin and oversized bodies. The page uses `same-origin` referrer policy for native forms; decisions are uncached and use `no-referrer`. After disconnection the user restarts authorization in the original client and explicitly chooses the project again.
