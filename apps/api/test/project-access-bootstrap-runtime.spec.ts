@@ -59,7 +59,7 @@ function preparedDatabase(
     readonly existingAppointments?: boolean;
     readonly denied?: boolean;
     readonly failOnGrant?: boolean;
-    readonly missingResearcherPreview?: boolean;
+    readonly missingResearcherSourceRole?: boolean;
   } = {},
 ) {
   const plan = buildProjectAccessBootstrapPlan(config, now);
@@ -150,13 +150,17 @@ function preparedDatabase(
         );
       if (sql.includes('from auth.users'))
         return rows([{ id: String(values[0]) }]);
-      if (sql.startsWith('select m.actor_id'))
+      if (sql.startsWith('select m.actor_id')) {
+        const researcherSourceRole =
+          values[1] === config.researcher.email &&
+          values[2] === 'researcher-read-delegate';
         return rows(
-          options.missingResearcherPreview &&
-            values[1] === config.researcher.email
+          values[1] === config.researcher.email &&
+            (!researcherSourceRole || options.missingResearcherSourceRole)
             ? []
             : [{ id: String(values[1]) }],
         );
+      }
       if (sql.includes('from platform_private.project_access_settings'))
         return rows([{ requests_enabled: values[0] === config.demo.slug }]);
       if (sql.includes('from platform_private.project_access_roles'))
@@ -266,8 +270,8 @@ describe('private bootstrap transaction', () => {
     expect(database.close).toHaveBeenCalled();
   });
 
-  it('rejects source write access when the researcher no longer has source preview access', async () => {
-    const state = preparedDatabase({ missingResearcherPreview: true });
+  it('rejects source write access when the researcher no longer has the source read role', async () => {
+    const state = preparedDatabase({ missingResearcherSourceRole: true });
     await expect(runProjectAccessBootstrap(file, true)).rejects.toThrow(
       'Original preview membership or expiry differs',
     );
