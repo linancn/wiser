@@ -59,6 +59,7 @@ function preparedDatabase(
     readonly existingAppointments?: boolean;
     readonly denied?: boolean;
     readonly failOnGrant?: boolean;
+    readonly missingResearcherPreview?: boolean;
   } = {},
 ) {
   const plan = buildProjectAccessBootstrapPlan(config, now);
@@ -150,7 +151,12 @@ function preparedDatabase(
       if (sql.includes('from auth.users'))
         return rows([{ id: String(values[0]) }]);
       if (sql.startsWith('select m.actor_id'))
-        return rows([{ id: String(values[1]) }]);
+        return rows(
+          options.missingResearcherPreview &&
+            values[1] === config.researcher.email
+            ? []
+            : [{ id: String(values[1]) }],
+        );
       if (sql.includes('from platform_private.project_access_settings'))
         return rows([{ requests_enabled: values[0] === config.demo.slug }]);
       if (sql.includes('from platform_private.project_access_roles'))
@@ -196,7 +202,7 @@ describe('private bootstrap transaction', () => {
     const result = await runProjectAccessBootstrap(file, false);
     expect(result.applied).toBe(false);
     expect(result.changedActorCount).toBe(4);
-    expect(result.assignments).toHaveLength(5);
+    expect(result.assignments).toHaveLength(6);
     expect(Object.keys(result.projects)).toEqual([
       'source-project',
       'demo-project',
@@ -217,7 +223,7 @@ describe('private bootstrap transaction', () => {
     expect(database.close).toHaveBeenCalled();
   });
 
-  it('commits only the five scoped appointments with their audit trail', async () => {
+  it('commits only the six scoped appointments with their audit trail', async () => {
     const state = preparedDatabase();
     const result = await runProjectAccessBootstrap(file, true);
     expect(result.changedActorCount).toBe(4);
@@ -243,7 +249,7 @@ describe('private bootstrap transaction', () => {
       state.committed.filter(
         (entry) => entry.table === 'platform_private.project_access_events',
       ),
-    ).toHaveLength(5);
+    ).toHaveLength(6);
     expect(
       state.committed.some((entry) => entry.table.startsWith('auth.')),
     ).toBe(false);
@@ -258,6 +264,15 @@ describe('private bootstrap transaction', () => {
     expect(state.committed).toEqual([]);
     expect(state.rolledBack()).toBe(true);
     expect(database.close).toHaveBeenCalled();
+  });
+
+  it('rejects source write access when the researcher no longer has source preview access', async () => {
+    const state = preparedDatabase({ missingResearcherPreview: true });
+    await expect(runProjectAccessBootstrap(file, true)).rejects.toThrow(
+      'Original preview membership or expiry differs',
+    );
+    expect(state.committed).toEqual([]);
+    expect(state.rolledBack()).toBe(true);
   });
 
   it('rolls back a tentative membership when granting a role fails', async () => {
