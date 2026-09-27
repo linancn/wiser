@@ -273,7 +273,7 @@ describe('private bootstrap transaction', () => {
   it('rejects source write access when the researcher no longer has the source read role', async () => {
     const state = preparedDatabase({ missingResearcherSourceRole: true });
     await expect(runProjectAccessBootstrap(file, true)).rejects.toThrow(
-      'Original preview membership or expiry differs',
+      'Source membership or role expiry differs',
     );
     expect(state.committed).toEqual([]);
     expect(state.rolledBack()).toBe(true);

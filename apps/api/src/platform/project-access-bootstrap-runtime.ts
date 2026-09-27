@@ -341,11 +341,11 @@ async function requireActor(db: Db, email: string) {
   return result.rows[0].id;
 }
 
-async function requireOriginalPreview(
+async function requireExistingSourceRole(
   db: Db,
   sourceId: string,
   actorId: string,
-  previewRoleId: string,
+  requiredRoleId: string,
   expiresAt: string,
 ) {
   const result = await db.query<IdRow>(
@@ -358,10 +358,10 @@ async function requireOriginalPreview(
        and b.effective_at<=statement_timestamp()
        and (b.expires_at is null or b.expires_at >= $4::timestamptz)
      limit 1`,
-    [sourceId, actorId, previewRoleId, expiresAt],
+    [sourceId, actorId, requiredRoleId, expiresAt],
   );
   if (!result.rows[0])
-    throw new Error('Original preview membership or expiry differs');
+    throw new Error('Source membership or role expiry differs');
 }
 
 async function ensureMembership(
@@ -555,7 +555,7 @@ export async function runProjectAccessBootstrap(file: string, apply: boolean) {
     for (const item of plan.assignments.filter(
       (assignment) => assignment.projectSlug === config.demo.slug,
     )) {
-      await requireOriginalPreview(
+      await requireExistingSourceRole(
         client,
         source.id,
         actors.get(item.email)!,
@@ -590,6 +590,13 @@ export async function runProjectAccessBootstrap(file: string, apply: boolean) {
         role.key,
         await ensureRole(client, tenantId, config.maintenanceActorId, role),
       );
+    await requireExistingSourceRole(
+      client,
+      source.id,
+      actors.get(config.researcher.email)!,
+      roles.get('researcher-read-delegate')!,
+      config.researcher.expiresAt,
+    );
     await ensureAssignablePreview(
       client,
       tenantId,
