@@ -17,8 +17,8 @@ checkPaths:
   - apps/web/**
   - apps/mcp/**
   - apps/telemetry-ingress/**
-lastReviewedAt: 2026-09-26
-lastReviewedCommit: 37d60e1cf561bf0f12a97ed34f48ece1a50f29d5
+lastReviewedAt: 2026-09-27
+lastReviewedCommit: 73c57fe8de33284fb676bc28a4b0388468d33ac8
 ---
 
 ## Where access starts
@@ -200,7 +200,7 @@ An explicit private role policy controls assignable roles and maximum days. New 
 
 Commands recheck authority, serialize on the project, compare membership versions, enforce actor-scoped idempotency, advance the effective authorization version, and atomically append member history, authorization audit and Control Outbox. A replay returns the original command receipt; clients must reload current membership before showing effective access. The audit and idempotency rows are immutable. Invitation delivery is described below; the independent approval workflow is described below.
 
-The trusted host maintenance entry `apps/api/src/platform/project-access-bootstrap-cli.ts` initializes an isolated access demonstration and a separate, legacy-mode intake project from a private JSON configuration. Run it with `--dry-run` first; the complete transaction is rolled back after validating current authority, the three existing preview memberships, role definitions, expiry bounds, and database constraints. `--apply` commits the same bounded plan with append-only access events, authorization audit and Control Outbox. The three temporary accounts retain their existing source-project bindings; only the first three receive project-bound demo appointments for at most seven days. The researcher receives a dedicated read/delegation role on the source project and an intake/operation role on the separate trial project, without publish, approval or member-management scopes. No managed resource settings are created. Re-running an applied configuration verifies exact existing state without extending expiry. A changed requirement needs a new reviewed configuration or access revocation through a trusted maintenance transaction; do not delete audit history or enable source-project managed mode as recovery.
+The trusted host maintenance entry `apps/api/src/platform/project-access-bootstrap-cli.ts` initializes an isolated access demonstration and a separate, legacy-mode intake project from a private JSON configuration. Run it with `--dry-run` first; the complete transaction is rolled back after validating current authority, the existing source preview memberships, role definitions, expiry bounds, and database constraints. `--apply` commits the same bounded plan with append-only access events, authorization audit and Control Outbox. The three temporary accounts retain their existing source-project bindings; only the first three receive project-bound demo appointments for at most seven days. The researcher receives a dedicated read/delegation role and an intake/operation role on the source project, plus the intake/operation role on the separate trial project, all bounded by the researcher expiry. These roles have no publish, approval or member-management scopes. No managed resource settings are created. Re-running an applied configuration verifies exact existing state without extending expiry. A changed requirement needs a new reviewed configuration or access revocation through a trusted maintenance transaction; do not delete audit history or enable source-project managed mode as recovery.
 
 ## Project access workspace
 

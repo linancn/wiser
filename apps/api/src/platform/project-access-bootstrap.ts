@@ -179,6 +179,12 @@ export function buildProjectAccessBootstrapPlan(
         expiresAt: researcher.expiresAt,
       },
       {
+        projectSlug: sourceProjectSlug,
+        email: emails[3]!,
+        roleKey: 'intake-submitter',
+        expiresAt: researcher.expiresAt,
+      },
+      {
         projectSlug: intake.slug,
         email: emails[3]!,
         roleKey: 'intake-submitter',

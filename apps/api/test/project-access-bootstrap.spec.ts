@@ -33,7 +33,7 @@ const input = {
 };
 
 describe('project access bootstrap plan', () => {
-  it('separates the three demo duties and keeps the source project untouched', () => {
+  it('adds bounded intake access to the researcher source project without publishing authority', () => {
     const plan = buildProjectAccessBootstrapPlan(
       input,
       '2026-09-24T00:00:00.000Z',
@@ -71,6 +71,12 @@ describe('project access bootstrap plan', () => {
         projectSlug: 'yongding-lab',
         email: 'researcher@example.test',
         roleKey: 'researcher-read-delegate',
+        expiresAt: input.researcher.expiresAt,
+      },
+      {
+        projectSlug: 'yongding-lab',
+        email: 'researcher@example.test',
+        roleKey: 'intake-submitter',
         expiresAt: input.researcher.expiresAt,
       },
     ]);
