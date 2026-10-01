@@ -30,7 +30,7 @@
     "@aws-sdk/client-s3": "3.1141.0",
     "@aws-sdk/s3-request-presigner": "3.1141.0",
     "@wiser/data-contracts": "workspace:*",
-    "csv-parse": "7.0.2",
+    "csv-parse": "7.0.3",
     "pg": "8.23.0"
   },
   "devDependencies": {
