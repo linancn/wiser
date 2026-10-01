@@ -68,13 +68,13 @@
   "devDependencies": {
     "@agent-excon/scenarios": "workspace:*",
     "@types/node": "24.13.6",
-    "@vitest/coverage-v8": "5.0.1",
-    "oxlint": "1.85.0",
+    "@vitest/coverage-v8": "5.0.2",
+    "oxlint": "1.86.0",
     "oxlint-tsgolint": "7.0.2003",
     "prettier": "3.9.9",
-    "supabase": "2.117.0",
+    "supabase": "2.118.0",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vitest": "5.0.1"
+    "vitest": "5.0.2"
   }
 }
